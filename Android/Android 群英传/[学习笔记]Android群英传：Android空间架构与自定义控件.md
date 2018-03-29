@@ -470,8 +470,334 @@ xmlns:custom="http://schemas.android.com/apk/res-auto"
 通过<include>标签使用这个UI模板
 
 ### 重写View来实现全新的控件
+通常需要基础View类，重写onDraw()，onMeasure()等方式实现绘制，同事重写onTouchEvent()等触控时间来事先交互逻辑。
+CircleProgressView:
+```
 
+public class CircleProgressView extends View {
 
+    private int mMeasureHeigth;
+    private int mMeasureWidth;
+
+    private Paint mCirclePaint;
+    private float mCircleXY;
+    private float mRadius;
+
+    private Paint mArcPaint;
+    private RectF mArcRectF;
+    private float mSweepAngle;
+    private float mSweepValue = 66;
+
+    private Paint mTextPaint;
+    private String mShowText;
+    private float mShowTextSize;
+
+    public CircleProgressView(Context context, AttributeSet attrs,
+                              int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+    }
+
+    public CircleProgressView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    public CircleProgressView(Context context) {
+        super(context);
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec,
+                             int heightMeasureSpec) {
+
+        mMeasureWidth = MeasureSpec.getSize(widthMeasureSpec);
+        mMeasureHeigth = MeasureSpec.getSize(heightMeasureSpec);
+        setMeasuredDimension(mMeasureWidth, mMeasureHeigth);
+        initView();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        // 绘制圆
+        canvas.drawCircle(mCircleXY, mCircleXY, mRadius, mCirclePaint);
+        // 绘制弧线
+        canvas.drawArc(mArcRectF, 270, mSweepAngle, false, mArcPaint);
+        // 绘制文字
+        canvas.drawText(mShowText, 0, mShowText.length(),
+                mCircleXY, mCircleXY + (mShowTextSize / 4), mTextPaint);
+    }
+
+    private void initView() {
+        float length = 0;
+        if (mMeasureHeigth >= mMeasureWidth) {
+            length = mMeasureWidth;
+        } else {
+            length = mMeasureHeigth;
+        }
+
+        mCircleXY = length / 2;
+        mRadius = (float) (length * 0.5 / 2);
+        mCirclePaint = new Paint();
+        mCirclePaint.setAntiAlias(true);
+        mCirclePaint.setColor(getResources().getColor(
+                android.R.color.holo_blue_bright));
+
+        mArcRectF = new RectF(
+                (float) (length * 0.1),
+                (float) (length * 0.1),
+                (float) (length * 0.9),
+                (float) (length * 0.9));
+        mSweepAngle = (mSweepValue / 100f) * 360f;
+        mArcPaint = new Paint();
+        mArcPaint.setAntiAlias(true);
+        mArcPaint.setColor(getResources().getColor(
+                android.R.color.holo_blue_bright));
+        mArcPaint.setStrokeWidth((float) (length * 0.1));
+        mArcPaint.setStyle(Style.STROKE);
+
+        mShowText = setShowText();
+        mShowTextSize = setShowTextSize();
+        mTextPaint = new Paint();
+        mTextPaint.setTextSize(mShowTextSize);
+        mTextPaint.setTextAlign(Paint.Align.CENTER);
+    }
+
+    private float setShowTextSize() {
+        this.invalidate();
+        return 50;
+    }
+
+    private String setShowText() {
+        this.invalidate();
+        return "Android Skill";
+    }
+
+    public void forceInvalidate() {
+        this.invalidate();
+    }
+
+    public void setSweepValue(float sweepValue) {
+        if (sweepValue != 0) {
+            mSweepValue = sweepValue;
+        } else {
+            mSweepValue = 25;
+        }
+        this.invalidate();
+    }
+}
+
+```
+VolumeView:
+```
+
+public class VolumeView extends View {
+
+    private int mWidth;
+    private int mRectWidth;
+    private int mRectHeight;
+    private Paint mPaint;
+    private int mRectCount;
+    private int offset = 5;
+    private double mRandom;
+    private LinearGradient mLinearGradient;
+
+    public VolumeView(Context context) {
+        super(context);
+        initView();
+    }
+
+    public VolumeView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        initView();
+    }
+
+    public VolumeView(Context context, AttributeSet attrs,
+                      int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        initView();
+    }
+
+    private void initView() {
+        mPaint = new Paint();
+        mPaint.setColor(Color.BLUE);
+        mPaint.setStyle(Paint.Style.FILL);
+        mRectCount = 12;
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        mWidth = getWidth();
+        mRectHeight = getHeight();
+        mRectWidth = (int) (mWidth * 0.6 / mRectCount);
+        mLinearGradient = new LinearGradient(
+                0,
+                0,
+                mRectWidth,
+                mRectHeight,
+                Color.YELLOW,
+                Color.BLUE,
+                Shader.TileMode.CLAMP);
+        mPaint.setShader(mLinearGradient);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        for (int i = 0; i < mRectCount; i++) {
+            mRandom = Math.random();
+            float currentHeight = (float) (mRectHeight * mRandom);
+            canvas.drawRect(
+                    (float) (mWidth * 0.4 / 2 + mRectWidth * i + offset),
+                    currentHeight,
+                    (float) (mWidth * 0.4 / 2 + mRectWidth * (i + 1)),
+                    mRectHeight,
+                    mPaint);
+        }
+        postInvalidateDelayed(300);
+    }
+}
+```
+
+## 自定义ViewGroup
+自定义ViewGroup是需要onMeasure()来测量的，然后重写onLayout()来确定位置，重写onTouchEvent()来相应事件
+
+MyScrollView:
+```
+public class MyScrollView extends ViewGroup {
+
+    private int mScreenHeight;
+    private Scroller mScroller;
+    private int mLastY;
+    private int mStart;
+    private int mEnd;
+
+    public MyScrollView(Context context) {
+        super(context);
+        initView(context);
+    }
+
+    public MyScrollView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        initView(context);
+    }
+
+    public MyScrollView(Context context, AttributeSet attrs,
+                        int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        initView(context);
+    }
+
+    private void initView(Context context) {
+        WindowManager wm = (WindowManager) context.getSystemService(
+                Context.WINDOW_SERVICE);
+        DisplayMetrics dm = new DisplayMetrics();
+        wm.getDefaultDisplay().getMetrics(dm);
+        mScreenHeight = dm.heightPixels;
+        mScroller = new Scroller(context);
+    }
+
+    @Override
+    protected void onLayout(boolean changed,
+                            int l, int t, int r, int b) {
+        int childCount = getChildCount();
+        // 设置ViewGroup的高度
+        MarginLayoutParams mlp = (MarginLayoutParams) getLayoutParams();
+        mlp.height = mScreenHeight * childCount;
+        setLayoutParams(mlp);
+        for (int i = 0; i < childCount; i++) {
+            View child = getChildAt(i);
+            if (child.getVisibility() != View.GONE) {
+                child.layout(l, i * mScreenHeight,
+                        r, (i + 1) * mScreenHeight);
+            }
+        }
+    }
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec,
+                             int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        int count = getChildCount();
+        for (int i = 0; i < count; ++i) {
+            View childView = getChildAt(i);
+            measureChild(childView,
+                    widthMeasureSpec, heightMeasureSpec);
+        }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        int y = (int) event.getY();
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mLastY = y;
+                mStart = getScrollY();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (!mScroller.isFinished()) {
+                    mScroller.abortAnimation();
+                }
+                int dy = mLastY - y;
+                if (getScrollY() < 0) {
+                    dy = 0;
+                }
+                if (getScrollY() > getHeight() - mScreenHeight) {
+                    dy = 0;
+                }
+                scrollBy(0, dy);
+                mLastY = y;
+                break;
+            case MotionEvent.ACTION_UP:
+                int dScrollY = checkAlignment();
+                if (dScrollY > 0) {
+                    if (dScrollY < mScreenHeight / 3) {
+                        mScroller.startScroll(
+                                0, getScrollY(),
+                                0, -dScrollY);
+                    } else {
+                        mScroller.startScroll(
+                                0, getScrollY(),
+                                0, mScreenHeight - dScrollY);
+                    }
+                } else {
+                    if (-dScrollY < mScreenHeight / 3) {
+                        mScroller.startScroll(
+                                0, getScrollY(),
+                                0, -dScrollY);
+                    } else {
+                        mScroller.startScroll(
+                                0, getScrollY(),
+                                0, -mScreenHeight - dScrollY);
+                    }
+                }
+                break;
+        }
+        postInvalidate();
+        return true;
+    }
+	private int checkAlignment() {
+        int mEnd = getScrollY();
+        boolean isUp = ((mEnd - mStart) > 0) ? true : false;
+        int lastPrev = mEnd % mScreenHeight;
+        int lastNext = mScreenHeight - lastPrev;
+        if (isUp) {
+            //向上的
+            return lastPrev;
+        } else {
+            return -lastNext;
+        }
+    }
+    @Override
+    public void computeScroll() {
+        super.computeScroll();
+        if (mScroller.computeScrollOffset()) {
+            scrollTo(0, mScroller.getCurrY());
+            postInvalidate();
+        }
+    }
+}
+```
   [1]: http://img-blog.csdn.net/20160308223320045
   [2]: http://img-blog.csdn.net/20160308223337794
   [3]: http://img-blog.csdn.net/20160308224421308
