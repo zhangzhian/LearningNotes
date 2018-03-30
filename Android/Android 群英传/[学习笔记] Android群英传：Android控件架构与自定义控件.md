@@ -243,7 +243,7 @@ public class ShineTextView extends TextView {
 
 经常需要继承一个合适的ViewGroup，再给他添加指定功能的控件，从而组成一个新的合适的控件
 
-1. 定义属性
+1.定义属性
 需要在values下新建一个attrs.xml文件
 
 ```
@@ -277,7 +277,7 @@ public class ShineTextView extends TextView {
 ```
         ta.recycle();
 ```
-2. 组合控件
+2.组合控件
 完整代码
 ```
 public class TopBar extends RelativeLayout {
@@ -441,7 +441,7 @@ public class TopBar extends RelativeLayout {
     }
 }
 ```
-3. 引用UI模板
+3.引用UI模板
 
 自定义属需要自己的命名空间，例如：
 ```
