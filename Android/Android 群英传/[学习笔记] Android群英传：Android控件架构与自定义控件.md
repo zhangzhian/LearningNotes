@@ -1,4 +1,4 @@
-﻿# [学习笔记]Android群英传：Android空间架构与自定义控件
+﻿# [学习笔记] Android群英传：Android控件架构与自定义控件
 
 ---
 
@@ -798,6 +798,43 @@ public class MyScrollView extends ViewGroup {
     }
 }
 ```
+
+## 事件拦截分析
+
+在MotionEvent中封装了很多东西，比如获取坐标点event.getX()和getRawX()。MotionEvent提供的手势，常用的有DOWN,UP,MOVE。
+一般ViewGroup需要重写三个方法:
+```
+@Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        return super.onInterceptTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return super.onTouchEvent(event);
+    }
+```
+View重写两个：
+```
+@Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return super.onTouchEvent(event);
+    }
+```
+默认返回值都为false
+事件传递的返回值：true，拦截，不继续；false，不拦截，继续流程
+事件处理的返回值：true，处理 ；false，给上级处理
+
   [1]: http://img-blog.csdn.net/20160308223320045
   [2]: http://img-blog.csdn.net/20160308223337794
   [3]: http://img-blog.csdn.net/20160308224421308
