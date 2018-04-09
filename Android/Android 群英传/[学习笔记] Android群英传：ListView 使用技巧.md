@@ -304,16 +304,15 @@ listview.getLastVisiblePosition();
 ```
 
 ##二.ListView常用扩展
->虽然ListView应用很广泛，但是毕竟是一个显示的东西，扩展性肯定要的，我们接下来说几种常见的扩展
 
 ###1.具有弹性的ListView
->Android默认滑动到顶部或者底部只会有一个阴影，而在5.X之后改变成了半圆的阴影
+Android默认滑动到顶部或者底部只会有一个阴影，而在5.X之后改变成了半圆的阴影
 
-![这里写图片描述](http://img.blog.csdn.net/20160320183200576)
+![](http://img.blog.csdn.net/20160320183200576)
 
->而在IOS上，列表是具有弹性的，即滚动到顶部或者底部，会再滚动一段距离，这样的设计感觉还是挺友好的，我们也来模仿一下
->
->我们在查看ListView的源码的时候会发现一个控制滑动到边缘的处理方法
+在IOS上，列表是具有弹性的，即滚动到顶部或者底部，会再滚动一段距离。
+
+在查看ListView的源码的时候会发现一个控制滑动到边缘的处理方法
 
 ```
 @Override
@@ -325,16 +324,8 @@ listview.getLastVisiblePosition();
 >我們可以看到这样一个参数maxOverScrollY，就是他负责控制滑动的个数的，默认是0，我们重写ListView
 
 ```
-package com.lgl.listviewdemo;
-
-import android.content.Context;
-import android.util.AttributeSet;
-import android.util.DisplayMetrics;
-import android.widget.ListView;
-
 /**
  * 弹性ListView
- * Created by lgl on 16/3/20.
  */
 public class ListViewScroll extends ListView {
 
@@ -360,11 +351,8 @@ public class ListViewScroll extends ListView {
 ```
 
 ###2.自动显示，隐藏布局的ListView
->相信看过Google最新的应用，或者使用了MD风格的应用都知道，列表滑动可以躺actionbar显示或者隐藏，
-
-**这一段作者写的很乱**
-
->这要是讲一下大概，需要使用ToolsBar,然后一个listview
+列表滑动actionbar显示或者隐藏
+需要使用ToolsBar,然后一个listview
 
 ```
 <android.support.v7.widget.Toolbar
@@ -373,12 +361,94 @@ public class ListViewScroll extends ListView {
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary" />
 ```
+```
+public class ScrollHideListView extends Activity {
 
->不详细记了，在我讲MD风格的时候会详细介绍的
+    private Toolbar mToolbar;
+    private ListView mListView;
+    private String[] mStr = new String[20];
+    private int mTouchSlop;
+    private float mFirstY;
+    private float mCurrentY;
+    private int direction;
+    private ObjectAnimator mAnimator;
+    private boolean mShow = true;
 
+    View.OnTouchListener myTouchListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    mFirstY = event.getY();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    mCurrentY = event.getY();
+                    if (mCurrentY - mFirstY > mTouchSlop) {
+                        direction = 0;// down
+                    } else if (mFirstY - mCurrentY > mTouchSlop) {
+                        direction = 1;// up
+                    }
+                    if (direction == 1) {
+                        if (mShow) {
+                            toolbarAnim(1);//hide
+                            mShow = !mShow;
+                        }
+                    } else if (direction == 0) {
+                        if (!mShow) {
+                            toolbarAnim(0);//show
+                            mShow = !mShow;
+                        }
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    break;
+            }
+            return false;
+        }
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.scroll_hide);
+        mTouchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        mListView = (ListView) findViewById(R.id.listview);
+        for (int i = 0; i < mStr.length; i++) {
+            mStr[i] = "Item " + i;
+        }
+        View header = new View(this);
+        header.setLayoutParams(new AbsListView.LayoutParams(
+                AbsListView.LayoutParams.MATCH_PARENT,
+                (int) getResources().getDimension(
+                        R.dimen.abc_action_bar_default_height_material)));
+        mListView.addHeaderView(header);
+        mListView.setAdapter(new ArrayAdapter<String>(
+                ScrollHideListView.this,
+                android.R.layout.simple_expandable_list_item_1,
+                mStr));
+        mListView.setOnTouchListener(myTouchListener);
+    }
+
+    private void toolbarAnim(int flag) {
+        if (mAnimator != null && mAnimator.isRunning()) {
+            mAnimator.cancel();
+        }
+        if (flag == 0) {
+            mAnimator = ObjectAnimator.ofFloat(mToolbar,
+                    "translationY", mToolbar.getTranslationY(), 0);
+        } else {
+            mAnimator = ObjectAnimator.ofFloat(mToolbar,
+                    "translationY", mToolbar.getTranslationY(),
+                    -mToolbar.getHeight());
+        }
+        mAnimator.start();
+    }
+}
+
+```
 ###3.聊天ListView
->相信大家都看过聊天的ListView吧，这个主要是adapter做手脚，其实设计者早就想到了这种方法，所以在继承BaseAdapter的时候还需要重写两个方法
-
+继承BaseAdapter的时候需要重写两个方法
 ```
  @Override
     public int getItemViewType(int position) {
@@ -391,17 +461,12 @@ public class ListViewScroll extends ListView {
     }
 ```
 
->我们这里大致的了解一个思路，我们可以设置一个tag来识别不同的方向，先写两个item,分别是左边的和右边的布局，然后，我们再来写个实体类Bean
+实体类Bean
 
 ####Bean
 ```
-package com.lgl.listviewdemo;
-
-import android.graphics.Bitmap;
-
 /**
  * 实体类
- * Created by lgl on 16/3/20.
  */
 public class Bean {
 
@@ -444,28 +509,14 @@ public class Bean {
 ####SpeakAdapter
 
 ```
-package com.lgl.listviewdemo;
 
-import android.content.Context;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.ImageView;
-import android.widget.TextView;
-
-import java.util.List;
-
-/**
- * Created by lgl on 16/3/20.
- */
-public class SpeakAdapter extends BaseAdapter{
+public class ChatAdapter extends BaseAdapter{
 
     private List<Bean>mData;
     private LayoutInflater mInflater;
 
     //构造方法
-    public SpeakAdapter(Context context,List<Bean>mData){
+    public ChatAdapter(Context context,List<Bean>mData){
         this.mData = mData;
         mInflater = LayoutInflater.from(context);
     }
@@ -531,32 +582,20 @@ public class SpeakAdapter extends BaseAdapter{
 
 ```
 
->这里大致的思路也就是在getview中区分，现在我们的SpeakListViewActivity中就可以这样写
+ChatListViewActivity：
 
 ```
-package com.lgl.listviewdemo;
-
-import android.graphics.BitmapFactory;
-import android.os.Bundle;
-import android.os.PersistableBundle;
-import android.support.v7.app.AppCompatActivity;
-import android.widget.ListView;
-
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * 聊天ListView
- * Created by lgl on 16/3/20.
  */
-public class SpeakListViewActivity extends AppCompatActivity {
+public class ChatListViewActivity extends AppCompatActivity {
 
     private ListView mListview;
 
     @Override
     public void onCreate(Bundle savedInstanceState, PersistableBundle persistentState) {
         super.onCreate(savedInstanceState, persistentState);
-        setContentView(R.layout.activity_speak);
+        setContentView(R.layout.activity_chat);
 
         mListview = (ListView) findViewById(R.id.listview);
         Bean bean1 = new Bean();
@@ -573,60 +612,77 @@ public class SpeakListViewActivity extends AppCompatActivity {
         data.add(bean1);
         data.add(bean2);
 
-        SpeakAdapter adapter = new SpeakAdapter(this,data);
+        ChatAdapter adapter = new ChatAdapter(this,data);
         mListview.setAdapter(adapter);
     }
 }
 
 ```
 
->把数据装载好了就行，这里只是演示
-
-
 ###4.动态改变ListView的布局
-**都是什么鬼，写的不是很详细呀**
->通常情况下，如果要动态的改变点击item的布局来达到Focus的效果，一般有两种方法，一是将两个布局写在一起，通过布局的显示隐藏来达到切换布局的效果，另外一种则是在getView的时候，通过判断来选择不同的加载不同的布局，两种方法都有利弊，关键还是要看看应用场景，所以我们还是得在Adapter下手脚
 
 ```
- private View addFocusView(int i){
+public class FocusListViewAdapter extends BaseAdapter {
+
+    private List<String> mData;
+    private Context mContext;
+    private int mCurrentItem = 0;
+
+    public FocusListViewAdapter(Context context, List<String> data) {
+        this.mContext = context;
+        this.mData = data;
+    }
+
+    public int getCount() {
+        return mData.size();
+    }
+
+    public Object getItem(int position) {
+        return mData.get(position);
+    }
+
+    public long getItemId(int position) {
+        return position;
+    }
+
+    public View getView(int position, View convertView, ViewGroup parent) {
+        LinearLayout layout = new LinearLayout(mContext);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        if (mCurrentItem == position) {
+            layout.addView(addFocusView(position));
+        } else {
+            layout.addView(addNormalView(position));
+        }
+        return layout;
+    }
+
+    public void setCurrentItem(int currentItem) {
+        this.mCurrentItem = currentItem;
+    }
+
+    private View addFocusView(int i) {
         ImageView iv = new ImageView(mContext);
-        iv.setImageResource(R.mipmap.ic_launcher);
+        iv.setImageResource(R.drawable.ic_launcher);
         return iv;
     }
 
-    private View addNormalView(int i){
+    private View addNormalView(int i) {
         LinearLayout layout = new LinearLayout(mContext);
         layout.setOrientation(LinearLayout.HORIZONTAL);
         ImageView iv = new ImageView(mContext);
-        iv.setImageResource(R.mipmap.ic_launcher);
-        layout.addView(iv,new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT));
+        iv.setImageResource(R.drawable.in_icon);
+        layout.addView(iv, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         TextView tv = new TextView(mContext);
-        tv.setText(list.get(i));
-        layout.addView(tv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        tv.setText(mData.get(i));
+        layout.addView(tv, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.setGravity(Gravity.CENTER);
         return layout;
     }
 ```
-
->在这两个方法中就可以根据item的不同位置显示不同的信息了，下面我们回到adapter中
-
-```
-@Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        LinearLayout layout = new LinearLayout(mContext);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        if(mCurrentItem == position){
-            layout.addView(addFocusView(position));
-        }else {
-            layout.addView(addNormalView(position));
-        }
-
-        return convertView;
-    } 
-```
-
->这样就可以自由选择了
->那我们现在就来监听他的点击逻辑吧
 
 ```
  listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
