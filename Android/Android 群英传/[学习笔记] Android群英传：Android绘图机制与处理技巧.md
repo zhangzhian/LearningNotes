@@ -352,3 +352,198 @@ public class RectView extends View {
 </selector>
 
 ```
+
+##四.Android绘图技巧
+>在学完Android的基本绘图之后我们来讲解一下常用的绘图技巧
+
+###1.Canvas
+Canvas作为绘制图形的直接对象，提供了一下几个非常有用的方法
+
+- Canvas.save()
+- Canvas.restore()
+- Canvas.translate()
+- Canvas.roate()
+
+
+Canvas.save()这个方法，从字面上的意思可以理解为保存画布，作用就是讲之前的图像保存起来，让后续的操作能像在新的画布一样操作，这跟PS的图层基本差不多
+Canvas.restore()这个方法，则可以理解为合并图层，就是讲之前保存下来的东西合并
+Canvas.translate()画布平移，坐标系平移，调用translate（x,y）之后，则将原点（0,0）移动到（x,y）之后的所有绘图都是在这一点上执行的
+Canvas.roate()画布旋转，坐标系旋转
+
+**例子：画一个表盘：**
+![这里写图片描述](http://img.blog.csdn.net/20180410153644816?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+将表盘分解
+
+- 1.仪表盘——外面的大圆盘
+- 2.刻度线——包含四个长的刻度线和其他短的刻度线
+- 3.刻度值——包含长刻度线对应的大的刻度尺和其他小的刻度尺
+- 4.指针——中间的指针，一粗一细两根
+
+第一步，先画表盘。关键在于确定圆心和半径，这里直接居中
+
+
+```java
+// 画外圆
+Paint paintCircle = new Paint();
+paintCircle.setAntiAlias(true);
+paintCircle.setStyle(Paint.Style.STROKE);
+paintCircle.setStrokeWidth(5);
+canvas.drawCircle(mWidth / 2, mHeight / 2, mWidth / 2, paintCircle);
+```
+
+![这里写图片描述](http://img.blog.csdn.net/20180410153625384?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+
+画刻度尺，通过旋转画布——实际上是旋转了画图的坐标轴来绘绘制刻度
+
+```
+	// 画刻度
+		Paint paintDegree = new Paint();
+		paintDegree.setStrokeWidth(3);
+		for (int i = 0; i < 24; i++) {
+			// 区别整点和非整点
+			if (i == 0 || i == 6 || i == 12 || i == 18) {
+				paintDegree.setStrokeWidth(5);
+				paintDegree.setTextSize(30);
+				canvas.drawLine(mWidth / 2, mHeight / 2 - mWidth / 2, mWidth,
+						mHeight / 2 - mWidth / 2 + 60, paintDegree);
+				String degree = String.valueOf(i);
+				canvas.drawText(degree,
+						mWidth / 2 - paintDegree.measureText(degree) / 2,
+						mHeight / 2 - mWidth / 2 + 90, paintDegree);
+			} else {
+				paintDegree.setStrokeWidth(3);
+				paintDegree.setTextSize(15);
+				canvas.drawLine(mWidth / 2, mHeight / 2 - mWidth / 2, mWidth,
+						mHeight / 2 - mWidth / 2 + 30, paintDegree);
+				String degree = String.valueOf(i);
+				canvas.drawText(degree,
+						mWidth / 2 - paintDegree.measureText(degree) / 2,
+						mHeight / 2 - mWidth / 2 + 60, paintDegree);
+			}
+			// 通过旋转画布简化坐标运算
+			canvas.rotate(15, mWidth / 2, mHeight / 2);
+		}
+```
+
+![这里写图片描述](http://img.blog.csdn.net/20180410153636725?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+
+绘制两根指针
+
+```
+		// 画指针
+		Paint paintHour = new Paint();
+		paintHour.setStrokeWidth(20);
+		Paint paintMinute = new Paint();
+		paintMinute.setStrokeWidth(10);
+		canvas.save();
+		canvas.translate(mWidth / 2, mHeight / 2);
+		canvas.drawLine(0, 0, 100, 100, paintHour);
+		canvas.drawLine(0, 0, 100, 200, paintMinute);
+		canvas.restore();
+```
+
+完整的代码：
+
+```
+
+public class DialView extends View {
+
+	// 宽高
+	private int mWidth;
+	private int mHeight;
+
+	// 构造方法
+	public DialView(Context context, AttributeSet attrs) {
+		super(context, attrs);
+		// 获取屏幕的宽高
+		WindowManager wm = (WindowManager) getContext().getSystemService(
+				Context.WINDOW_SERVICE);
+		mWidth = wm.getDefaultDisplay().getWidth();
+		mHeight = wm.getDefaultDisplay().getHeight();
+	}
+
+	@Override
+	protected void onDraw(Canvas canvas) {
+		// TODO Auto-generated method stub
+		super.onDraw(canvas);
+
+		// 画外圆
+		Paint paintCircle = new Paint();
+		paintCircle.setAntiAlias(true);
+		paintCircle.setStyle(Paint.Style.STROKE);
+		paintCircle.setStrokeWidth(5);
+		canvas.drawCircle(mWidth / 2, mHeight / 2, mWidth / 2, paintCircle);
+
+		// 画刻度
+		Paint paintDegree = new Paint();
+		paintDegree.setStrokeWidth(3);
+		for (int i = 0; i < 24; i++) {
+			// 区别整点和非整点
+			if (i == 0 || i == 6 || i == 12 || i == 18) {
+				paintDegree.setStrokeWidth(5);
+				paintDegree.setTextSize(30);
+				canvas.drawLine(mWidth / 2, mHeight / 2 - mWidth / 2,
+						mWidth / 2, mHeight / 2 - mWidth / 2 + 60, paintDegree);
+				String degree = String.valueOf(i);
+				canvas.drawText(degree,
+						mWidth / 2 - paintDegree.measureText(degree) / 2,
+						mHeight / 2 - mWidth / 2 + 90, paintDegree);
+			} else {
+				paintDegree.setStrokeWidth(3);
+				paintDegree.setTextSize(15);
+				canvas.drawLine(mWidth / 2, mHeight / 2 - mWidth / 2,
+						mWidth / 2, mHeight / 2 - mWidth / 2 + 30, paintDegree);
+				String degree = String.valueOf(i);
+				canvas.drawText(degree,
+						mWidth / 2 - paintDegree.measureText(degree) / 2,
+						mHeight / 2 - mWidth / 2 + 60, paintDegree);
+			}
+			// 通过旋转画布简化坐标运算
+			canvas.rotate(15, mWidth / 2, mHeight / 2);
+		}
+
+		// 画指针
+		Paint paintHour = new Paint();
+		paintHour.setStrokeWidth(20);
+		Paint paintMinute = new Paint();
+		paintMinute.setStrokeWidth(10);
+		canvas.save();
+		canvas.translate(mWidth / 2, mHeight / 2);
+		canvas.drawLine(0, 0, 100, 100, paintHour);
+		canvas.drawLine(0, 0, 100, 200, paintMinute);
+		canvas.restore();
+	}
+
+}
+
+```
+
+###2.Layer图层
+
+![这里写图片描述](http://img.blog.csdn.net/20160327215159839)
+
+Android通过saveLayer()方法，saveLayerAlpha()将一个图层入栈
+使用restore(）方法，restoreToCount（）方法将一个图层出栈
+入栈的时候，后面的所有才做都是发生在这个图层上的，而出栈的时候，则会把图层绘制在上层Canvas上
+
+```java
+@Override
+	protected void onDraw(Canvas canvas) {
+		// TODO Auto-generated method stub
+		super.onDraw(canvas);
+		canvas.drawColor(Color.WHITE);
+		mPaint.setColor(Color.BLUE);
+		canvas.drawCircle(150, 150, 100, mPaint);
+		
+		canvas.saveLayerAlpha(0, 0,400,400,127,LAYER_TYPE_NONE);
+		mPaint.setColor(Color.RED);
+		canvas.drawCircle(200, 200, 100, mPaint);
+		canvas.restore();
+	}
+```
+
+当绘制两个相交的圆时，就是图层
+接下来将图层后面的透明度设置成127 255 0三个
+
+
+![这里写图片描述](http://img.blog.csdn.net/20160327221258101)
