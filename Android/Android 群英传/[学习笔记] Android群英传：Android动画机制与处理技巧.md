@@ -442,3 +442,664 @@ public class CustomTV extends Animation {
 
     }
 ```
+
+
+##六.Android 5.X SVG矢量动画机制
+
+Google在Android5.X中增加了对SVG矢量图形的支持
+
+首先，什么是SVG：
+
+- 可伸缩矢量图形
+- 定义用于网络的基于矢量的图形
+- 使用xml格式定义图形
+- 图片在放大或者改变尺寸的情况下其图形质量不会有所损失
+- 万维网联盟的标准
+- 与诸多DOM和XSL之类的W3C标准是一个整体
+
+SVG放大不会失真，而且bitmap需要不同分辨率适配，SVG不需要
+
+###1.< path >标签
+使用< path >标签来创建SVG，就是用指令的方式来控制一支画笔，列入，移动画笔来到某一个坐标位置，画一条线，画一条曲线，结束
+< path >标签所支持的指令大致有一下几种:
+
+- M = moveto(M X,Y):将画笔移动到指定的坐标位置，但未发生绘制
+
+- L = lineto(L X,Y):画直线到指定的位置
+
+- H = horizontal lineto(H X):画水平线到指定的X坐标位置
+
+- V = vertical lineto(V Y):画垂直线到指定的Y坐标
+
+- C = curveto(C,X1,Y1,X2,Y2,ENDX,ENDY):三次贝塞尔曲线
+
+- S = smooth curveto(S X2,Y2,ENDX,ENDY):三次贝塞尔曲线
+
+- Q = quadratic Belzier curve(Q X Y,ENDX,ENDY):二次贝塞尔曲线
+
+- T = smooth quadratic Belzier curvrto(T,ENDX,ENDY):映射前面路径的重点
+
+- A = elliptical Are(A RX,RY,XROTATION,FLAG1FLAG2,X,Y):弧线
+
+- Z = closepath() 关闭路径
+
+>使用上面的指令时，需要注意的几点
+
+- 坐标轴以（0,0）位中心，X轴水平向右，Y轴水平向下
+- 所有指令大小写均可，大写绝对定位，参照全局坐标系，小写相对定位，参照父容器坐标系
+- 指令和数据间的空格可以无视
+- 同一指令出现多次可以用一个
+
+###2.SVG常见指令
+####L
+绘制直线的指令是“L”，代表从当前点绘制直线到给定点，“L”之后的参数是一个点坐标，如“L 200 400”绘制直线，同时，还可以使用“H”和“V”指令来绘制水平竖直线，后面的参数是x坐标，y坐标。
+####M
+M指令类似Android绘图中的path类moveto方法，即代表画笔移动到某一点，但并不发生绘图动作
+####A
+A指令是用来绘制一条弧线，且允许弧线不闭合，可以把A指令绘制的弧度想象成椭圆的某一段A指令一下有七个指令
+
+- RX，RY指所有的椭圆的半轴大小
+- XROTATION 指椭圆的X轴和水平方向顺时针方向的夹角，可以想象成一个水平的椭圆饶中心点顺时针旋转XROTATION 的角度
+- FLAG1 只有两个值，1表示大角度弧度，0为小角度弧度
+- FLAG2 只有两个值，确定从起点到终点的方向1顺时针，0逆时针
+- X，Y为终点坐标
+
+###3.SVG编辑器
+
+网上有很多在线的编辑器，通过可视化编辑图像之后，点击view source可以转换成SVG代码
+
+地址：http://editor.method.ac/
+
+![这里写图片描述](http://img.blog.csdn.net/20160416230547587)
+
+下载离线的SVG编辑器，例如：Inkscape，由很多强大的功能
+
+###4.Android中使用SVG
+
+Google在Android5.X后给我们提供了两个新的API来支持SVG
+
+- VectorDrawable
+
+- AnimatedVectorDrawable
+
+其中，VectorDrawable可以创建基于XML的SVG图像，并且结合AnimatedVectorDrawable来实现动画效果
+
+####1.VectorDrawable
+>在XML中创建一个静态的SVG，通过这个结构
+
+![这里写图片描述](http://img.blog.csdn.net/20160416231719716)
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportHeight="100dp"
+    android:viewportWidth="100dp">
+
+</vector>
+```
+
+>这个代码之中包含了两组高宽，width,和height是表示SVG图像的具体大小，后面的是表示SVG图像划分的比例，后面再绘制path时所使用的参数，就是根据这两个值来进行转换的，比如上面的代码，将200dp划分100份，如果在绘图中使用坐标（50,50），则意味着该坐标为正中间，现在我们加上path标签
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportHeight="100dp"
+    android:viewportWidth="100dp">
+
+    <group
+        android:name="svg1"
+        android:rotation="0">
+        <path
+            android:fillColor="@android:color/holo_blue_light"
+            android:pathData="M 25 50 a 25,25 0 1,0 50,0" />
+
+    </group>
+
+</vector>
+```
+
+通过添加< path >标签绘制一个SVG齐总pathData就是图形所用到的指令了，先用M指令，将画笔移动到（25 ， 50）的位置，再通过A指令来绘制一个圆弧并且填充他，通过以上代码，就可以绘制一个SVG图形了
+
+
+
+![这里写图片描述](http://img.blog.csdn.net/20160418204231456)
+
+填充指令
+
+![这里写图片描述](http://img.blog.csdn.net/20160418204901274)
+
+####2.AnimatedVectorDrawable
+AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过AnimatedVectorDrawable来连接静态的VectorDrawable和动态的objectAnimator
+
+首先我们在xml中定义一个< animated-vector>，来申明对AnimatedVectorDrawable的使用，并且指明是作用在path或者group上
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/verctors">
+    <target
+        android:animation="@android:anim/fade_in"
+        android:name="test">
+    </target>
+
+</animated-vector>
+```
+
+对应的vector即为静态的VectorDrawable
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="200dp"
+    android:width="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <group
+        android:name="test"
+        android:rotation="0"
+        >
+
+        <path
+            android:strokeColor="@android:color/holo_blue_light"
+            android:strokeWidth="2"
+            android:pathData="M 25 50 a 25 , 25 0 1 , 0 50 ,0"
+            >
+
+        </path>
+        
+    </group>
+
+</vector>
+```
+
+需要注意的是，AnimatedVectorDrawable中指明的target和name属性，必须与VectorDrawable中需要的name保持一致，这样系统能找到找到要实现的动画元素，最后，通过AnimatedVectorDrawable中的target和animation属性，将一个动画作用在对应的name上，objectanimator代码如下
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="4000"
+    android:propertyName="rotation"
+    android:valueFrom="0"
+    android:valueTo="360">
+
+</objectAnimator>
+```
+
+在< group>标签和< path>标签中添加rotation，fillColor，pathData属性，那么在objecyAnimator中，就可以通过指定，android:valueFrom=XXX，和android:property="XXX"属性，控制动画的起始值，唯一需要注意的是，如果指定属性为pathData，那么需要添加一个属性android:valueType-"pathType"来告诉系统进行pathData变换，类似的情况，可以使用rotation来进行旋转变换，使用fileColor实现变换颜色，使用pathData进行形状，位置的变换。
+
+当所有的XML准备好之后，我们就可以直接给一个imageview设置背景了
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" 
+        android:layout_gravity="center"
+        android:src="@drawable/myver"/>
+
+</LinearLayout>
+```
+
+在程序中，只要使用这个start方法开启动画就可以
+
+###5.SVG动画实例
+####1 线图动画
+
+在android5.X之后，Google大量引入了线图动画，当页面发生改变的时候，页面的icon不再是生硬的切换，而是通过非常生动的动画，转换成另一种形态
+
+要实现这样的一个效果，我们首先要创建一个SVG图形，即动态的VectorDrawable，要实现的效果就是上下两根线，然后他们形成一个X的效果
+
+path1和path2分别绘制了两条直线
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportHeight="100"
+    android:viewportWidth="100">
+
+    <group>
+        <path
+            android:name="path1"
+            android:pathData="M 20,80 L 50,80 80 , 80"
+            android:strokeColor="@android:color/holo_green_dark"
+            android:strokeLineCap="round"
+            android:strokeWidth="5" />
+
+        <path
+            android:name="path2"
+            android:pathData="M 20,20 L 50,20 80 , 20"
+            android:strokeColor="@android:color/holo_green_dark"
+            android:strokeLineCap="round"
+            android:strokeWidth="5" />
+
+    </group>
+
+</vector>
+```
+
+>path1和path2分别绘制了一条直线,
+
+![这里写图片描述](http://img.blog.csdn.net/20160418210700953)
+
+每条线都有三个点控制，接下来就是变换的动画了
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="5000"
+    android:propertyName="pathData"
+    android:valueFrom="M 20, 80 L 50 , 80 80 ,80"
+    android:valueTo="M 20 ,80 L 50 ,50 80 ,80"
+    android:valueType="pathType"
+    android:interpolator="@android:anim/bounce_interpolator">
+
+</objectAnimator>
+```
+
+在以上代码中，定义了一个pathType动画，并且指定了起点，中点，终点
+
+```
+android:valueFrom="M 20, 80 L 50 , 80 80 ,80"
+android:valueTo="M 20 ,80 L 50 ,50 80 ,80"
+```
+
+这两个值是对应的起始点，需要注意的是，SVG的路径变换属性动画中，变换前后阶段属性必须相同，这也是前面需要使用的三个点看来绘制一条直线的原因，有了VectorDrawable和objectAnimator，现在只需要AnimatedVectorDrawable将他们加起来就起来
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ver2">
+
+
+    <target
+        android:name="path1"
+        android:animation="@anim/anim2" />
+
+
+    <target
+        android:name="path2"
+        android:animation="@anim/anim2" />
+
+</animated-vector>
+```
+
+最后只需要去启动动画就可以了
+
+```
+/**
+ * 绘制SVG
+ */
+public class SVGActivity extends AppCompatActivity {
+
+    private ImageView iv;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_svg);
+
+        iv = (ImageView) findViewById(R.id.iv);
+        iv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+    }
+
+    private void anim() {
+        Drawable drawable = iv.getDrawable();
+        if (drawable instanceof Animatable) {
+            ((Animatable) drawable).start();
+        }
+    }
+
+}
+
+
+
+```
+
+
+####2 模拟三球仪
+三球仪是天体文学中的星象仪器，用来模拟地球，月亮和太阳的运行轨迹，如图
+
+![这里写图片描述](http://img.blog.csdn.net/20160418211632362)
+
+实现例子：
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportHeight="100"
+    android:viewportWidth="100">
+
+    <group
+        android:name="sun"
+        android:pivotX="60"
+        android:pivotY="50"
+        android:rotation="0">
+
+        <path
+            android:name="path_sun"
+            android:fillColor="@android:color/holo_blue_light"
+            android:pathData="M 50 ,50 a 10,10 0 1 , 0 20 , 0 a 10 ,10 0 1 , 0 -20 ,0" />
+
+        <group
+            android:name="earth"
+            android:pivotX="75"
+            android:pivotY="50"
+            android:rotation="0">
+
+            <path
+                android:name="path_earth"
+                android:fillColor="@android:color/holo_orange_dark"
+                android:pathData="M 70 , 50 a 5 , 5 0  1 , 0 10 ,0 a 5 , 5 0 1,0 -10 ,0" />
+
+
+            <group>
+                <path
+                    android:fillColor="@android:color/holo_green_dark"
+                    android:pathData="M 90,50 m -5 0 a 4 , 4 0 1,0 8 0 a 4 , 4 0 1 , 0 - 8 , 0" />
+
+            </group>
+
+        </group>
+    </group>
+
+</vector>
+```
+
+![这里写图片描述](http://img.blog.csdn.net/20160418213000364)
+
+>可以从代码冲发现，sun在这个group中，有一个earth的group，我们这里再定义一个动画
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="4000"
+    android:propertyName="rotation"
+    android:valueFrom="0"
+    android:valueTo="360"
+   >
+
+</objectAnimator>
+```
+
+后面的跟前面的类似
+
+####3.轨迹动画
+android对SVG的支持带来了很多的特效，做一个搜索的放大镜效果吧，先定义好轨迹
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="160dp"
+    android:height="30dp"
+    android:viewportHeight="30"
+    android:viewportWidth="160">
+
+    <path
+        android:name="search"
+        android:pathData="M141 , 17 A9 ,9 0 1 , 1 ,142 , 16 L149 ,23"
+        android:strokeAlpha="0.8"
+        android:strokeColor="#ff3570be"
+        android:strokeLineCap="square"
+        android:strokeWidth="2" />
+
+    <path
+        android:name="bar"
+        android:pathData="M0,23 L149 ,23"
+        android:strokeAlpha="0.8"
+        android:strokeColor="#ff3570be"
+        android:strokeLineCap="square"
+        android:strokeWidth="2"
+        />
+
+
+</vector>
+```
+
+![这里写图片描述](http://img.blog.csdn.net/20160418213839313)
+
+
+##七.android动画特效
+
+###1.卫星菜单
+
+当点击小红点的时候，弹出菜单，并且带有一个缓冲的效果，这就是Google在MD中强调的动画过渡，要实现这个动画，其实是一个开始一个结束动画
+```
+ /**
+     * 执行动画
+     */
+    private void statAnim(){
+        ObjectAnimator animator0 = ObjectAnimator.ofFloat(iv0,"alpha",1F,0.5F);
+        ObjectAnimator animator1 = ObjectAnimator.ofFloat(iv1,"translationY",200F);
+        ObjectAnimator animator2 = ObjectAnimator.ofFloat(iv2,"translationX",200F);
+        ObjectAnimator animator3 = ObjectAnimator.ofFloat(iv3,"translationY",-200F);
+        ObjectAnimator animator4 = ObjectAnimator.ofFloat(iv4,"translationX",-200F);
+        AnimatorSet set = new AnimatorSet();
+        set.setInterpolator(new BounceInterpolator());
+        set.playTogether(animator0,animator1,animator2,animator3,animator4);
+        set.start();
+        mFlag = false;
+    }
+
+```
+
+>下面就是点击事件
+
+```
+iv0.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                   if (mFlag){
+                       statAnim();
+                   }else{
+                       closeAnim();
+                   }
+            }
+        });
+```
+
+
+###2.计时器动画
+
+通过这个示例，了解一下ValueAnimator的效果，当用户点击后，数字不断增加，好的，我们开始
+
+```
+/**
+ * 绘制SVG
+ */
+public class SVGActivity extends AppCompatActivity {
+
+    private TextView tv;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_svg);
+
+        tv = (TextView) findViewById(R.id.tv);
+        tv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tvTimer(tv);
+            }
+        });
+    }
+
+    private void  tvTimer(final  View view){
+        ValueAnimator va = ValueAnimator.ofInt(0,100);
+        va.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                ( (TextView)view).setText("$"+(Integer)animation.getAnimatedValue());
+            }
+        });
+        va.setDuration(3000);
+        va.start();
+    }
+
+}
+
+
+
+```
+
+
+###3.下拉展开动画
+
+实现一个展开的动画，首先，XML是这样的
+
+```
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/holo_blue_bright"
+        android:gravity="center_vertical"
+        android:onClick="llClick"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/app_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:src="@mipmap/ic_launcher" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="5dp"
+            android:gravity="left"
+            android:text="Click me"
+            android:textSize="30sp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/hidden_view"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="@android:color/holo_orange_light"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:src="@mipmap/ic_launcher" />
+
+        <TextView
+            android:id="@+id/tv_hidden"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="I Am Hidden"
+            android:textSize="20sp" />
+
+    </LinearLayout>
+
+</LinearLayout>
+```
+
+
+```
+package com.lgl.animations;
+
+import android.animation.ValueAnimator;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+
+/**
+ * 下拉展开动画
+ * Created by LGL on 2016/4/18.
+ */
+public class AnimaActivity extends AppCompatActivity {
+
+    private LinearLayout mHiddenView;
+    private float mDensity;
+    private int mHiddenViewMeasuredHeight;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_anima);
+
+        mHiddenView = (LinearLayout) findViewById(R.id.hidden_view);
+        //获取像素密度
+        mDensity = getResources().getDisplayMetrics().density;
+        //获取布局的高度
+        mHiddenViewMeasuredHeight = (int) (mDensity*40+0.5);
+    }
+
+    public  void llClick(View view){
+        if (mHiddenView.getVisibility() == View.GONE){
+            animOpen(mHiddenView);
+        }else{
+            animClose(mHiddenView);
+        }
+    }
+
+    private void animOpen(final  View view){
+        view.setVisibility(View.VISIBLE);
+        ValueAnimator va = createDropAnim(view,0,mHiddenViewMeasuredHeight);
+        va.start();
+    }
+
+
+    private void animClose(final  View view){
+        int origHeight = view.getHeight();
+        ValueAnimator va = createDropAnim(view,origHeight,0);
+        va.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                view.setVisibility(View.GONE);
+            }
+        });
+        va.start();
+    }
+
+
+    private ValueAnimator createDropAnim(final  View view,int start,int end) {
+        ValueAnimator va = ValueAnimator.ofInt(start, end);
+        va.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                int value = (int) animation.getAnimatedValue();
+                ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+                layoutParams.height = value;
+                view.setLayoutParams(layoutParams);
+            }
+        });
+        return  va;
+    }
+
+}
+
+```
