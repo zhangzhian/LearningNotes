@@ -776,7 +776,6 @@ public class SVGActivity extends AppCompatActivity {
 ####2 模拟三球仪
 三球仪是天体文学中的星象仪器，用来模拟地球，月亮和太阳的运行轨迹，如图
 
-![这里写图片描述](http://img.blog.csdn.net/20160418211632362)
 
 实现例子：
 
