@@ -164,5 +164,5 @@ Float 表示32位浮点数。精度要求不高的话可以使用此类型。
 
 3. 运算符优先级
  
-	![](https://img-blog.csdn.net/20180928215719759?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
+	![](https://github.com/zhangzhian/LearningNotes/blob/master/res/WX20180928-215705.png?raw=true)
 
