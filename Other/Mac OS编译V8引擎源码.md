@@ -152,3 +152,12 @@ subprocess.CalledProcessError: Command '['/usr/bin/python', '-u', 'tools/mb/mb.p
 我这儿是`sudo rm -rf /Library/Developer/CommandLineTools`删了原先版本，然后直接选择了Xcode 9.2这个版本
 
 ![在这里插入图片描述](https://github.com/zhangzhian/LearningNotes/blob/master/res/v8引擎编译.png?raw=true)
+
+
+**参考文档**
+1.[GitHub v8源码](https://github.com/v8/v8)
+2.[GitHub v8 Building from Source](https://github.com/v8/v8/wiki/Building-from-Source)
+3.[Installing V8 on a Mac](https://gist.github.com/kevincennis/0cd2138c78a07412ef21)
+4.[Show a helpful error message if the Xcode license agreement hasn’t been accepted](https://bugs.chromium.org/p/chromium/issues/detail?id=729990#c1)
+5.[Mac OS下V8引擎编译方法](https://blog.csdn.net/u013230511/article/details/78137513)
+6.[编译 V8 源码](https://zhuanlan.zhihu.com/p/25120909)
