@@ -5,7 +5,9 @@
 什么增量更新呢？比如：应用市场省流量更新软件，一个100M的apk可能只需要下载一个20M的增量包就能完成更新，不需要下载整个Apk。增量更新不仅限于apk。
 
 本篇博客主要记录bsdiff/bspatch增量更新编译为so库的过程。分为2个部分提取增量文件和合并增量文件
+
 [CSDN](https://blog.csdn.net/baidu_32237719/article/details/88318760)
+
 ### 准备工作
 1. [bsdiff/bspatch下载路径](https://github.com/mendsley/bsdiff)
 2. [bzip2下载路径](https://github.com/zhangzhian/Bsdiff_Bspatch/tree/master/app/src/main/cpp/bzip2)
