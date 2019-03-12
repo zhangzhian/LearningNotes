@@ -1,0 +1,19 @@
+- Socket(String host, int port) 构建一个套接字，用来连接给定的主机和端口
+- InputStream getInputStream() OutputStream getOutputStream() 获取可以从套接字中读取数据的流，以及可以向套接字写出数据的流
+- setSoTimeout方法设置超时时间
+- InetAddress.getByName 返回代表某个主机的InetAddress对象，然后使用getAddress方法来访问这些字节
+- SeverSocket(int port) 创建一个监听端口的服务器套接字  Socket accept() 等待连接 
+- 半关闭 half-close ：套接字连接的一端可以终止其输出，同时仍可以接收来自另一端的数据
+- shutdownOutput 将输出流设为“流结束”
+- shutdownInput 将输入流设为“流结束”
+- SocketChannel 可以中断套接字操作 
+- Channels.newOutputStream 可以将通道转化为输出流
+- 统一资源标识符 URI 纯粹的语法结构，包含用来指定Web资源的字符串的各种组成部分
+- [scheme:]schemeSpecificPart[#fragment]   [...]表示可选部分，:和#可以被包含在标识符内，包含scheme: 部分的URI称为绝对URI，否则，相对URI ，所有的URI都是分层的，一个分层的schemeSpecificPart具有以下结构：[//authority][path][?query] ，[...]表示可选部分，对于基于服务器的URI，authority：[user-info@]host[:port] port必须是一个整数
+- 统一资源定位符 URL ，URI的特例，包含了用于定位Web资源的足够信息
+- 操作URLConnection对象，操作步骤：
+  -  调用URL类中的openConnection方法获得URLConnection
+  - 设置请求属性
+  - 调用connect方法连接远程资源
+  - 建立连接后，查询头信息。getHeaderFieldKey和getHeaderField枚举流消息头的所有字段，getHeaderFields方法返回一个包含了消息头中所有字段的标准Map对象
+  - 访问资源数据
