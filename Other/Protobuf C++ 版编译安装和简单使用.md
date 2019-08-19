@@ -1,4 +1,4 @@
-﻿# Protobuf C++ 版编译安装和简单使用
+# Protobuf C++ 版编译安装和简单使用
 ## Protobuf 简介
 Protobuf是一种平台无关、语言无关、可扩展且轻便高效的序列化数据结构的协议，可以用于网络通信和数据存储。
 
@@ -9,7 +9,7 @@ Protobuf是一种平台无关、语言无关、可扩展且轻便高效的序列
 本次编译安装版本为 [protobuf-cpp-3.9.1.tar.gz](https://github.com/protocolbuffers/protobuf/releases/download/v3.9.1/protobuf-cpp-3.9.1.tar.gz)
 
 ## Protobuf 特点
-![特点](https://img-blog.csdnimg.cn/2019081518380995.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
+![protobuf特点](https://github.com/zhangzhian/LearningNotes/blob/master/res/protobuf特点.png?raw=true)
 ## Protobuf 编译安装
 在Linux 64位环境下进行编译
 
