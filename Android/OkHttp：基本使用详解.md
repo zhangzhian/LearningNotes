@@ -342,8 +342,20 @@ MultipartBody 可以构建复杂的请求体，与HTML文件上传形式兼容�
 ### 拦截器
 
 OkHttp的拦截器链可谓是其整个框架的精髓，用户可传入的 `interceptor`分为两类：
-①一类是全局的 `interceptor`，该类 `interceptor`在整个拦截器链中最早被调用，通过 `OkHttpClient.Builder#addInterceptor(Interceptor)`传入；
-②另外一类是非网页请求的 `interceptor`，这类拦截器只会在非网页请求中被调用，并且是在组装完请求之后，真正发起网络请求前被调用，所有的 `interceptor`被保存在 `List<Interceptor> interceptors`集合中，按照添加顺序来逐个调用，具体可参考 `RealCall#getResponseWithInterceptorChain()`方法。通过 `OkHttpClient.Builder#addNetworkInterceptor(Interceptor)`传入；
+- 应用拦截器(Interceptors)
+	- `addInterceptor()` 
+	- 不必要担心响应和重定向之间的中间响应。
+	- 通常只调用一次，即使HTTP响应是通过缓存提供的。
+	- 遵从应用层的最初目的。与OkHttp的注入头部无关，如If-None-Match。
+	- 允许短路而且不调用Chain.proceed()。
+	- 允许重试和多次调用Chain.proceed()。
+
+- 网络拦截器(networkInterceptors)
+	- `addNetworkInterceptor()` 
+	- 允许像重定向和重试一样操作中间响应。
+	- 网络发生短路时不调用缓存响应。
+	- 在数据被传递到网络时观察数据。
+	- 有权获得装载请求的连接。
 
 ```java
     /**
@@ -380,8 +392,6 @@ OkHttp的拦截器链可谓是其整个框架的精髓，用户可传入的 `int
 ```
 
 
-
-![img](https:////upload-images.jianshu.io/upload_images/3631399-164b722ab35ae9bf.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/432)
 
 ### 支持缓存
 
