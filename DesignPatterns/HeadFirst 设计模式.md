@@ -71,6 +71,46 @@ observable有多个观察者时，不可以依赖特定的通知顺序，observa
 
 
 
+## 单例模式
+
+单例模式：确保一个类只有一个实例，并提供一个全局访问点
+
+多线程下的单例模式：
+
+- 如果`getInstance()`的性能对应用不是很关键，就什么也别做
+- 使用“饿汉式”创建实例，而不用“懒汉式”实例化的做法
+- 用“双重检查锁”，在`getInstance()`中减少使用同步
+
+```java
+public class Singleton {
+	private volatile static Singleton uniqueInstance;
+ 
+	private Singleton() {}
+ 
+	public static Singleton getInstance() {
+		if (uniqueInstance == null) {
+			synchronized (Singleton.class) {
+				if (uniqueInstance == null) {
+					uniqueInstance = new Singleton();
+				}
+			}
+		}
+		return uniqueInstance;
+	}
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
