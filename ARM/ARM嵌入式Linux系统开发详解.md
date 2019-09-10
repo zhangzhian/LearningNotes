@@ -322,6 +322,7 @@ RTC控制器：实时时钟（Real Time Clock），当系统断电，RTC可以�
 ## 深入BIOS
 
 常见BootLoader：U-Boot 是一个规模庞大的开源BootLoader软件。U-Boot支持处理器和操作系统很多，但是对PowerPC系列处理器和Linux操作系统支持最好。
+
 U-Boot启动分为stage1和stage2两个阶段。stage1使用汇编，与CPU体系紧密相关，如处理器初始化和设备初始化代码等。stage2使用C语言，包括初始化Flash器件、检测系统内存映射、初始化网络设备、进入命令循环，接收用户从串口发送的命令然后进行相应的处理。
 
 ### 移植U-Boot到开发板
