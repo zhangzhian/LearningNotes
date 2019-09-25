@@ -1,4 +1,4 @@
-﻿# Protobuf： C++ 产生的代码简析（Proto3）
+# Protobuf： C++ 产生的代码简析（Proto3）
 
 ## 前言
 参考官方[C++ Generated Code](https://developers.google.cn/protocol-buffers/docs/reference/cpp-generated)文档，主要是参考了官方文档。
@@ -7,7 +7,7 @@
 
 ## 编译器调用
 
-之前的文档已经描述过，不在关注，如有需要请查看之前的文档。
+之前的文档已经描述过，不再关注，如有需要请查看之前的文档。
 
 
 ## Messages

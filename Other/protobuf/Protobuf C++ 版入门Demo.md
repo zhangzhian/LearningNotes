@@ -1,4 +1,4 @@
-﻿# Protobuf C++ 版入门Demo
+# Protobuf C++ 版入门Demo
 
 ## 前言
 有关其编译和安装请查看：[Protobuf C++ 版编译安装和简单使用](https://blog.csdn.net/baidu_32237719/article/details/99649451)
@@ -46,7 +46,7 @@ message TopMessage
 ![对照关系](https://img-blog.csdnimg.cn/20190819141517203.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
 
 ## 解析出.cc和.h文件
-使用一下命令
+使用以下命令
 ```
 protoc proto文件路径 --cpp_out=C++代码文件导出目录
 ```
