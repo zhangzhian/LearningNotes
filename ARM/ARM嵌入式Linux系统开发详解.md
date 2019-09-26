@@ -409,3 +409,56 @@ ARM目标平台名称是arm-linux-gnu
 
 BusyBox是嵌入式系统常用的一个命令系统
 
+## Linux内核移植
+
+移植Linux内核对硬件平台需要考虑的方面：
+
+- 目标平台
+- 内存管理单元
+- 内存映射
+- 存储器
+
+移植内核到新平台主要任务是修改arch目录下对应体系结构的代码
+
+## 内核和应用程序调试技术
+
+- gdb调试应用程序
+
+- kdb调试内核
+
+### 基本调试技术
+
+启动gdb：gdb 名称
+
+列出代码：list
+
+设置断点：break 行号/函数名 简写b
+
+查看断点：info breakpoints
+
+关闭断点：disable 断点num
+
+打开断点：enable 断点num
+
+删除断点：delete 断点num
+
+执行程序：run和continue
+
+显示程序变量：print和display（undisplay）
+
+信号管理：模拟操作系统向被调试的程序发送信号。使用"signal<信号>"发送指定信号
+
+单步执行：next，简写n
+
+使用gcc编译器需要加入-g参数，生成调试信息，否则无法调试。
+
+多进程：attach 进程ID
+
+### 调试意外终止的程序
+
+查看core文件缓冲区大小： ulinit -a 
+
+修改大小：ulimit -c 1024
+
+gdb <程序名> <core文件名>
+
