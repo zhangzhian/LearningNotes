@@ -1,11 +1,13 @@
-﻿# [学习笔记] Android群英传：Android体系与系统架构和ADB常用命令
-
+# [学习笔记] Android群英传：Android体系与系统架构和ADB常用命令
 
 ---
 ### Android体系与系统架构
 
 ![此处输入图片的描述][1]
-1. Dalvik：在运行时编译 ART：安装时就进行编译
+
+
+
+1. Dalvik：在运行时编译。ART：安装时就进行编译。5.X版本开始ART取代Dalvik。
 2. Activity、Service、Application都是继承自Context，在创建Activity、Service、Application的时候创建Context
 3. android系统目录
 
@@ -27,7 +29,8 @@
  - 安装apk adb install -r 应用程序.apk
  - 向手机写入文件 adb push <local> <remote>
  - 从手机获取文件 adb pull <remote> <local>
- - 列出目标设备中已安装的应用程序包 adb shell pm list packages 
+ - 查看log：adb shell 下logcat
+ - 列出目标设备中已安装的应用程序包 adb shell pm list packages -f
  - 删除应用 adb uninstall 完整包名
  - 查看系统盘符 adb shell df
  - 模拟按键输入 adb shell input keyevent 数字 数字为keyevent对应的code
@@ -45,4 +48,4 @@
  - 查看屏幕密度 adb shell wm density
 
 
-  [1]: http://img.my.csdn.net/uploads/201501/23/1421980198_3393.jpg
+[1]: https://upload-images.jianshu.io/upload_images/688934-c8d3e9b3d0cfd385.png?imageMogr2/auto-orient/strip|imageView2/2/w/650
