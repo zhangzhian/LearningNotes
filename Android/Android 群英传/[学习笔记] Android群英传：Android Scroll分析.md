@@ -1,4 +1,4 @@
-﻿# [学习笔记] Android群英传：Android Scroll分析
+# [学习笔记] Android群英传：Android Scroll分析
 ---
 
 
@@ -21,7 +21,7 @@
 ###3.触控事件——MotionEvent
 看MotionEvent中封装了一些常量，定义了触摸事件的不同类型。
 
-```
+```java
 	//单点触摸按下的动作
     public static final int ACTION_DOWN = 0;
     //单点触摸离开的动作
@@ -40,7 +40,7 @@
 
 通常情况下，我们会在onTouchEvent(MotionEvent event)方法中通过event.getAction()来获取触摸事件的类型，并使用switch来判断
 
-```
+```java
  	@Override
     public boolean onTouchEvent(MotionEvent event) {
         //获取当前输入点的X,Y坐标（视图坐标）
@@ -68,7 +68,7 @@
 这些方法可以分成两个类别
 
   **View提供的获取坐标方法**
- 
+
 > getTop():获取到的是View自身的顶部到其父布局顶部的距离
 > 
 > getLeft():获取到的是View自身的左边到其父布局左边的距离
@@ -78,7 +78,7 @@
 > getBottom():获取到的是View自身的底部到其父布局底部的距离
 
 ---
- 
+
   **MotionEvent提供的方法**
 
 > getX():获取点击事件距离控件左边的距离，即视图坐标
@@ -95,7 +95,7 @@
 通过实例来看看Android中如何实现滑动的效果：
 定义一个View，简单的实现一个布局
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -114,7 +114,7 @@
 ###1.layout方法
 在View的绘制上，会调用onLayout()方法来设置显示的位置，同样可以修改View的left,top,right,bottom四个属性来控制View的坐标
 
-```
+```java
  //触摸事件
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -149,7 +149,7 @@
 ###2.offsetLeftAndRight()与offsetTopAndBottom()
 系统提供的一个对左右，上下移动的封装，当计算出偏移量的时候，只需要使用如下的代码就可以完成View的重新布局，效果和使用Layout（）方法是一样的
 
-```
+```java
 //同时对左右偏移
 offsetLeftAndRight(officeX);
 //同时对上下偏移
@@ -160,7 +160,7 @@ offsetTopAndBottom(officeY);
 ###3.LayoutParams
 LayoutParams保留了一个View的布局参数，因此可以在程序中，通过改变LayoutParams来动态改变一个布局的位置参数，从而改变View位置的效果，我们可以很方便的在程序中使用getLayoutParams()来获取一个View的LayoutParams，当然，在计算偏移量的方法和Layout方法中计算offset是一样的，当获取到偏移量之后，可以通过setLayoutParams来改变LayoutParams:
 
-```
+```java
 LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) getLayoutParams();
                 layoutParams.leftMargin = getLeft()+officeX;
                 layoutParams.topMargin = getTop()+officeY;
@@ -171,8 +171,9 @@ LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) getLayoutPa
 
 在通过一个layoutParams来改变一个View的位置时，通常改变的是这个view的Margin属性，所以除了使用布局的layoutParams属性外，还需要 ViewGroup.MarginLayoutParams来实现这样的功能
 
-```
+```javascript
 ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) getLayoutParams();
+
                 layoutParams.leftMargin = getLeft()+officeX;
                 layoutParams.topMargin = getTop()+officeY;
                 setLayoutParams(layoutParams);
@@ -185,7 +186,7 @@ ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) getLa
 scrollTo(x,y);表示移动到一个具体的点
 scrollBy(dx,dy);表示移动的增量
 
-```
+```java
 int officeX = rawX - lastX;
 int officeY = rawY - lastY;
 scrollBy(officeX,officeY);
@@ -195,7 +196,7 @@ scrollBy(officeX,officeY);
 
 在该View所在的ViewGroup中使用scrollBy方法来移动这个view
 
-```
+```java
   ((View)getParent()).scrollBy(officeX,officeY);
 ```
 
@@ -260,7 +261,7 @@ Scroller类提供了computeScrollOffset（）来判断是否完成了整个页�
 
 实例，在构造分钟初始化Scroller对象，然后重写computeScroll方法，最后需要监听手指离开屏幕的事件，并在该事件之后调用startScroll()完成平移，所以我们在ACTION_UP中
 
-```
+```java
 case MotionEvent.ACTION_UP:
                 //处理输入的离开动作
                 View view = ((View)getParent());
@@ -288,7 +289,7 @@ Google在其support库中为我们提供了一个DrawerLayout和SlidingPaneLayou
 
 要重写拦截事件，将事件传递给ViewDragHelper进行处理
 
-```
+```java
  //事件拦截
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
@@ -311,7 +312,7 @@ Google在其support库中为我们提供了一个DrawerLayout和SlidingPaneLayou
 
 使用ViewDragHelper也是需要重写computeScroll的，因为ViewDragHelper内部也是通过Scroller来实现平移的，我们可以这样使用
 
-```
+```java
     @Override
     public void computeScroll() {
         if(mViewDragHelper.continueSettling(true)){
@@ -324,7 +325,7 @@ Google在其support库中为我们提供了一个DrawerLayout和SlidingPaneLayou
 - 处理回调Cakkback
 
 
-```
+```java
 //侧滑回调
     private ViewDragHelper.Callback callback = new ViewDragHelper.Callback() {
         //何时开始触摸
@@ -366,7 +367,7 @@ Google在其support库中为我们提供了一个DrawerLayout和SlidingPaneLayou
 
 下面自定义一个viewGroup来完成整个编码的实例
 
-```
+```java
 /**
  * 侧滑
  */
@@ -483,7 +484,7 @@ public class DragViewGroup extends FrameLayout{
 
 - onViewCaptured
 
-```
+```java
         //用户触摸到view回调
         @Override
         public void onViewCaptured(View capturedChild, int activePointerId) {
@@ -493,7 +494,7 @@ public class DragViewGroup extends FrameLayout{
 
 - onViewDragStateChanged
 
-```
+```java
         //拖拽状态改变时，比如idle,dragging
         @Override
         public void onViewDragStateChanged(int state) {
@@ -503,7 +504,7 @@ public class DragViewGroup extends FrameLayout{
 
 - onViewPositionChanged
 
-```
+```java
 //位置发生改变，常用语滑动scale效果
         @Override
         public void onViewPositionChanged(View changedView, int left, int top, int dx, int dy) {
