@@ -1,11 +1,11 @@
-﻿# [学习笔记] Android群英传：ListView 使用技巧
+# [学习笔记] Android群英传：ListView 使用技巧
 
 ##一.Listview常用优化技巧
 
 ###1.使用ViewHolder模式提高效率
 ViewHolder模式利用了ListView的视图缓存机制，避免每次调用getView()的时候去通过findViewById()实例化控件，需要在自定义的Adapter里面定义一个内部类ViewHolder即可，代码如下：
 
-```
+```java
 	public final class ViewHolder{
         public ImageView img;
         public TextView tv;
@@ -14,7 +14,7 @@ ViewHolder模式利用了ListView的视图缓存机制，避免每次调用getVi
 
 完整的Adapter：
 
-```
+```java
 /**
  * 自定义Adapter
  * Created by LGL on 2016/3/10.
@@ -75,7 +75,7 @@ public class MyAdapter extends BaseAdapter {
 ```
 使用adapter：
 
-```
+```java
 
 public class MainActivity extends AppCompatActivity {
 
@@ -105,26 +105,26 @@ public class MainActivity extends AppCompatActivity {
 ###2.设置项目间分割栏、
 >ListView在各个项目之中，可以通过分割线进行区分的，系统也提供了两个属性来设置item间的颜色和高度
 
-```
+```xml
 android:dividerHeight="10dp"
 android:divider="@android:color/holo_blue_bright"
 ```
 
 去掉这个分割线的话：
 
-```
+```xml
  android:divider="@null"
 ```
 
 ###3.隐藏listview的滚动条
 
-```
+```xml
  android:scrollbars="none"
 ```
 
 ###4.取消ListView的item点击效果
 
-```
+```xml
  android:listSelector="@android:color/transparent"
 ```
 
@@ -132,13 +132,13 @@ android:divider="@android:color/holo_blue_bright"
 
 ###5.设置ListView需要显示在第几项
 
-```
+```java
 listview.setSelection(15);
 ```
 
 类似于平滑的效果了：
 
-```
+```java
 listview.smoothScrollBy(1,15);
 listview.smoothScrollByOffset(15);
 listview.smoothScrollToPosition(15);
@@ -147,7 +147,7 @@ listview.smoothScrollToPosition(15);
 
 ###6.动态修改ListView
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -171,7 +171,7 @@ listview.smoothScrollToPosition(15);
 
 点击事件：
 
-```
+```java
  @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -187,15 +187,15 @@ listview.smoothScrollToPosition(15);
 ###7.遍历所有的item
 ListView作为一个ViewGroup,他提供了很多操纵子View的方法，最常用的就是getChilaAt()来获取View了
 
-```
+```java
 for (int j = 0; j < listview.getChildCount();j++){
             View v = listview.getChildAt(12);
-        }
+}
 
 ```
 
 ###8.处理空ListView
-```
+```xml
  <TextView
         android:id="@+id/tv"
         android:text="没有数据"
@@ -205,7 +205,7 @@ for (int j = 0; j < listview.getChildCount();j++){
 
 在代码中设置如果是空数据的话就加载指定控件：
 
-```
+```java
  listview.setEmptyView(findViewById(R.id.tv));
 ```
 
@@ -215,7 +215,7 @@ for (int j = 0; j < listview.getChildCount();j++){
 ####1. OnTouchListener
 OnTouchListener是View的监听事件，包括ACTION_DOWN,UP,MOVE等，通过坐标的改变老发生不同的逻辑
 
-```
+```java
 listview.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -238,7 +238,7 @@ listview.setOnTouchListener(new View.OnTouchListener() {
 ####2. OnScrollListener
 OnScrollListener是AbsListView的监听事件，他封装了很多ListView的相关信息
 
-```
+```java
  listview.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(AbsListView absListView, int scrollState) {
@@ -275,14 +275,14 @@ onScroll():
  **firstVisibleItem:**当前能看到的第一个item(包括部分显示的ListItem)的id(下标从0开始)
   **visibleItemCount:**可以看到的item(包括部分显示的ListItem)总数
  **totalItemCount:**表示ListView的ListItem总数
- 
-```
+
+```java
  if(firstVisibleItem+visibleItemCount == totalItemCount &&totalItemCount>0){
      //滚动到最后一行
      }
 ```
 
-```
+```java
 
  if(firstVisibleItem>lastVisiblePosition){
      //上滑
@@ -296,7 +296,7 @@ onScroll():
 
 
 ListView提供了获取位置信息的Api
-```
+```java
  //获取可视区域内最后一个item的id
 listview.getLastVisiblePosition();
  //获取可视区域内第一个item的id
@@ -314,7 +314,7 @@ Android默认滑动到顶部或者底部只会有一个阴影，而在5.X之后�
 
 在查看ListView的源码的时候会发现一个控制滑动到边缘的处理方法
 
-```
+```java
 @Override
     protected boolean overScrollBy(int deltaX, int deltaY, int scrollX, int scrollY, int scrollRangeX, int scrollRangeY, int maxOverScrollX, int maxOverScrollY, boolean isTouchEvent) {
         return super.overScrollBy(deltaX, deltaY, scrollX, scrollY, scrollRangeX, scrollRangeY, maxOverScrollX, maxOverScrollY, isTouchEvent);
@@ -323,7 +323,7 @@ Android默认滑动到顶部或者底部只会有一个阴影，而在5.X之后�
 
 >我們可以看到这样一个参数maxOverScrollY，就是他负责控制滑动的个数的，默认是0，我们重写ListView
 
-```
+```java
 /**
  * 弹性ListView
  */
@@ -354,14 +354,14 @@ public class ListViewScroll extends ListView {
 列表滑动actionbar显示或者隐藏
 需要使用ToolsBar,然后一个listview
 
-```
+```xml
 <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary" />
 ```
-```
+```java
 public class ScrollHideListView extends Activity {
 
     private Toolbar mToolbar;
@@ -464,7 +464,7 @@ public class ScrollHideListView extends Activity {
 实体类Bean
 
 ####Bean
-```
+```java
 /**
  * 实体类
  */
@@ -508,7 +508,7 @@ public class Bean {
 
 ####SpeakAdapter
 
-```
+```java
 
 public class ChatAdapter extends BaseAdapter{
 
@@ -584,7 +584,7 @@ public class ChatAdapter extends BaseAdapter{
 
 ChatListViewActivity：
 
-```
+```java
 /**
  * 聊天ListView
  */
@@ -621,7 +621,7 @@ public class ChatListViewActivity extends AppCompatActivity {
 
 ###4.动态改变ListView的布局
 
-```
+```java
 public class FocusListViewAdapter extends BaseAdapter {
 
     private List<String> mData;
@@ -684,7 +684,7 @@ public class FocusListViewAdapter extends BaseAdapter {
     }
 ```
 
-```
+```java
  listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
