@@ -1,4 +1,4 @@
-﻿# [学习笔记] Android群英传：Android控件架构与自定义控件
+# [学习笔记] Android群英传：Android控件架构与自定义控件
 
 ---
 
@@ -22,7 +22,7 @@ MeasureSpec类，通过他来帮助我们测量View, MeasureSpec是一个32位�
 
 View默认的onMeasure只支持EXACTLY模式，在自定义控件的时候不重写这个方法，只能使用EXACTLY模式
 ###例子
-```
+```java
     /**
      * 测量
      * @param widthMeasureSpec
@@ -35,7 +35,7 @@ View默认的onMeasure只支持EXACTLY模式，在自定义控件的时候不重
 
 ```
 重写onMeasure这个方法
-```
+```java
  @Override
     protected void onMeasure(int widthMeasureSpec,
                              int heightMeasureSpec) {
@@ -44,7 +44,7 @@ View默认的onMeasure只支持EXACTLY模式，在自定义控件的时候不重
                 measureHeight(heightMeasureSpec));
     }
 ```
-```
+``` java
  private int measureWidth(int measureSpec) {
         int result = 0;
         //从MeasureSpec类中提取出具体的测量模式和大小
@@ -66,11 +66,11 @@ View默认的onMeasure只支持EXACTLY模式，在自定义控件的时候不重
 
 ### Canvas
 画布，而onDraw()就含有参数Canvas了，在其他地方绘制的话，就需要new对象
-```
+```java
     Canvas canvas = new Canvas(Bitmap);
 ```
 Bitmap是和Canvas紧密联系的，这个过程我们称之为装载画布，这个bitmap用来储存画布的一些像素信息，而且我们可以用canvas.drawxxx()来绘制相关的基础图形
-```
+```java
 //绘制直线
 canvas.drawLine(float startX, float startY, float stopX, float stopY, Paint paint);
 
@@ -93,7 +93,7 @@ canvas.drawBirmap(Bitmap bitmap, float left, float top, Paint paint);
 
 ##ViewGroup的绘制
 ViewGroup在一般情况下是不会绘制的，因为他本身没有需要绘制的东西，如果不是指定ViewGroup的背景颜色，他连onDraw()都不会调用，但是ViewGroup会使用dispatchDraw()来绘制其他子View，其过程同样是遍历所有的子View，并调用子View的绘制方法来完成绘制的
-```
+```java
     @Override
     protected void dispatchDraw(Canvas canvas)  {
         super.dispatchDraw(canvas);
@@ -119,7 +119,7 @@ ViewGroup在一般情况下是不会绘制的，因为他本身没有需要绘�
 
 ### 对现有的控件进行扩展
 在原生控件的基础上进行扩展，增加新功能、修改UI等。
-```
+```java
  @Override
     protected void onDraw(Canvas canvas) {
         //在回调父类之前，实现自己的逻辑，对textview来说就是绘制文本内容前
@@ -129,7 +129,7 @@ ViewGroup在一般情况下是不会绘制的，因为他本身没有需要绘�
 ```
 
 例子1：
-```
+```java
 public class MyTextView extends TextView {
 
     private Paint mPaint1, mPaint2;
@@ -186,7 +186,7 @@ public class MyTextView extends TextView {
 }
 ```
 例子2：
-```
+```java
 
 public class ShineTextView extends TextView {
 
@@ -246,7 +246,7 @@ public class ShineTextView extends TextView {
 1.定义属性
 需要在values下新建一个attrs.xml文件
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="TopBar">
@@ -265,21 +265,22 @@ public class ShineTextView extends TextView {
 用<declare-styleable>标签声明一些属性的，然后name确定引用名称。 <attr>标签声明具体自定义属性。
 
 在构造方法中，通过下列代码获取xml中的自定义属性。
-```
+```java
  TypedArray ta = context.obtainStyledAttributes(attrs,R.styleable.TopBar);
 ```
 通过TypedArray对象的方法读取出相应的值设置属性
-```
+```java
         mLeftTextColor = ta.getColor(R.styleable.TopBar_leftTextColor, 0);
 ```
 
 获取完TypedArray的值之后，一般要调用recyle方法来避免重复创建时候的错误
-```
+```java
         ta.recycle();
 ```
 2.组合控件
 完整代码
-```
+
+```java
 public class TopBar extends RelativeLayout {
 
     // 包含topbar上的元素：左按钮、右按钮、标题
@@ -444,11 +445,11 @@ public class TopBar extends RelativeLayout {
 3.引用UI模板
 
 自定义属需要自己的命名空间，例如：
-```
+```xml
 xmlns:custom="http://schemas.android.com/apk/res-auto"
 ```
 完整代码：
-```
+```xml
 <com.xys.mytopbar.Topbar xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:custom="http://schemas.android.com/apk/res-auto"
     android:id="@+id/topBar"
@@ -472,7 +473,7 @@ xmlns:custom="http://schemas.android.com/apk/res-auto"
 ### 重写View来实现全新的控件
 通常需要基础View类，重写onDraw()，onMeasure()等方式实现绘制，同事重写onTouchEvent()等触控时间来事先交互逻辑。
 CircleProgressView:
-```
+```java
 
 public class CircleProgressView extends View {
 
@@ -588,7 +589,7 @@ public class CircleProgressView extends View {
 
 ```
 VolumeView:
-```
+```java
 
 public class VolumeView extends View {
 
@@ -663,7 +664,7 @@ public class VolumeView extends View {
 自定义ViewGroup是需要onMeasure()来测量的，然后重写onLayout()来确定位置，重写onTouchEvent()来相应事件
 
 MyScrollView:
-```
+```java
 public class MyScrollView extends ViewGroup {
 
     private int mScreenHeight;
@@ -803,7 +804,7 @@ public class MyScrollView extends ViewGroup {
 
 在MotionEvent中封装了很多东西，比如获取坐标点event.getX()和getRawX()。MotionEvent提供的手势，常用的有DOWN,UP,MOVE。
 一般ViewGroup需要重写三个方法:
-```
+```java
 @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         return super.dispatchTouchEvent(ev);
@@ -820,7 +821,7 @@ public class MyScrollView extends ViewGroup {
     }
 ```
 View重写两个：
-```
+```java
 @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         return super.dispatchTouchEvent(ev);
@@ -835,6 +836,6 @@ View重写两个：
 事件传递的返回值：true，拦截，不继续；false，不拦截，继续流程
 事件处理的返回值：true，处理 ；false，给上级处理
 
-  [1]: http://img-blog.csdn.net/20160308223320045
-  [2]: http://img-blog.csdn.net/20160308223337794
-  [3]: http://img-blog.csdn.net/20160308224421308
+[1]: http://img-blog.csdn.net/20160308223320045
+[2]: http://img-blog.csdn.net/20160308223337794
+[3]: http://img-blog.csdn.net/20160308224421308
