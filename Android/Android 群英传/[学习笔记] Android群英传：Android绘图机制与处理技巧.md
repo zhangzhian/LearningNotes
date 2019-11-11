@@ -1,4 +1,4 @@
-﻿# [学习笔记] Android群英传：Android绘图机制与处理技巧
+# [学习笔记] Android群英传：Android绘图机制与处理技巧
 ---
 包含内容：
 - Android屏幕相关知识
@@ -34,7 +34,7 @@
 
 ###4.单位换算
 
-```
+```java
 package com.lgl.playview;
 
 import android.content.Context;
@@ -117,7 +117,7 @@ public class DisplayUtils {
 系统通过提供的Canvas对象来提供绘图方法，它提供了各种绘制图像的API,drawLine,deawPoint,drawRect,drawVertices,drawAce,drawCircle等等
 
 Paint:
-```
+```java
    setAntiAlias();            //设置画笔的锯齿效果
 
 　　setColor();                //设置画笔的颜色
@@ -137,7 +137,7 @@ Paint:
 ```
 
 
-```
+```java
 
 public class RectView extends View {
 
@@ -180,7 +180,7 @@ public class RectView extends View {
 
 ###1.Bitmap
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <bitmap xmlns:android="http://schemas.android.com/apk/res/android"
     android:src="@mipmap/ic_launcher">
@@ -194,7 +194,7 @@ public class RectView extends View {
 
 通过Shape可以绘制各种图形，下面展示一下shape的参数
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
 
@@ -237,14 +237,13 @@ public class RectView extends View {
     <solid android:color="@color/colorAccent" />
 
     <!--指定边框-->
+  	<!--虚线间隔宽度-->
+		<!--虚线宽度-->
     <stroke
         android:width="1dp"
-        android:color="@color/colorAccent" />
-    <!--虚线宽度-->
-    android:dashWidth= "1dp"
-
-    <!--虚线间隔宽度-->
-    android:dashGap= "1dp"
+        android:color="@color/colorAccent"
+    android:dashWidth= "1dp" 
+    android:dashGap= "1dp" />
 
 </shape>
 
@@ -252,7 +251,7 @@ public class RectView extends View {
 
 >shape可以说是xml绘图的精华所在，而且功能十分的强大，无论是扁平化，拟物化还是渐变，都是十分的OK，我们现在来做一个阴影的效果
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
@@ -277,7 +276,7 @@ public class RectView extends View {
 ###3.Layer
 >Layer是在PhotoShop中是非常常用的功能，在Android中，我们同样可以实现图层的效果
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <!--图片1-->
@@ -298,7 +297,7 @@ public class RectView extends View {
 ###4.Selector
 > Selector的作用是帮助开发者实现静态View的反馈，通过设置不同的属性呈现不同的效果
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 默认时候的背景-->
@@ -325,7 +324,7 @@ public class RectView extends View {
 
 下面这个例子就展示了在一个selector中使用shape作为他的item的例子，实现一个具体点击反馈效果的，圆角矩形的selector，代码如下
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
@@ -364,7 +363,6 @@ Canvas作为绘制图形的直接对象，提供了一下几个非常有用的�
 - Canvas.translate()
 - Canvas.roate()
 
-
 Canvas.save()这个方法，从字面上的意思可以理解为保存画布，作用就是讲之前的图像保存起来，让后续的操作能像在新的画布一样操作，这跟PS的图层基本差不多
 Canvas.restore()这个方法，则可以理解为合并图层，就是讲之前保存下来的东西合并
 Canvas.translate()画布平移，坐标系平移，调用translate（x,y）之后，则将原点（0,0）移动到（x,y）之后的所有绘图都是在这一点上执行的
@@ -395,7 +393,7 @@ canvas.drawCircle(mWidth / 2, mHeight / 2, mWidth / 2, paintCircle);
 
 画刻度尺，通过旋转画布——实际上是旋转了画图的坐标轴来绘绘制刻度
 
-```
+```java
 	// 画刻度
 		Paint paintDegree = new Paint();
 		paintDegree.setStrokeWidth(3);
@@ -429,7 +427,7 @@ canvas.drawCircle(mWidth / 2, mHeight / 2, mWidth / 2, paintCircle);
 
 绘制两根指针
 
-```
+```java
 		// 画指针
 		Paint paintHour = new Paint();
 		paintHour.setStrokeWidth(20);
@@ -444,7 +442,7 @@ canvas.drawCircle(mWidth / 2, mHeight / 2, mWidth / 2, paintCircle);
 
 完整的代码：
 
-```
+```java
 
 public class DialView extends View {
 
@@ -618,7 +616,7 @@ R1 = a * R + b* G + c*B+d *A + e
 在Android中，系统封装了一个类——ColorMatrix，也就是颜色矩阵。通过这个类，可以很方便地通过改变矩阵值来处理颜色的效果。
 创建一个ColorMatrix对象非常简单代码如下：
 
-```
+```java
 ColorMatrix colorMatrix = new ColorMatrix();
 ```
 
@@ -628,7 +626,7 @@ ColorMatrix colorMatrix = new ColorMatrix();
 
 setRotate()设置三个颜色的色调，第一个参数系统分别使用0，1，2来代表red green blue三个颜色的处理，第二个参数就是需要处理的值了
 
-```
+```java
 		ColorMatrix colorMatrix = new ColorMatrix();
 		colorMatrix.setRotate(0, 2);
 		colorMatrix.setRotate(1, 4);
@@ -639,7 +637,7 @@ setRotate()设置三个颜色的色调，第一个参数系统分别使用0，1�
 
 setSaturation（）来设置颜色的饱和度，参数即代表饱和度的值，当饱和度为0的时候是灰色的
 
-```
+```java
     ColorMatrix colorMatrix = new ColorMatrix();
     colorMatrix.setSaturation(10);
 ```
@@ -648,14 +646,14 @@ setSaturation（）来设置颜色的饱和度，参数即代表饱和度的值�
 
 当三原色以相同的比例及及混合的时候，就会显示出白色，系统使用这个原理来改变一个图像的亮度,代码如下，当亮度为零时图像会变成全黑。
 
-```
+```java
 ColorMatrix colorMatrix = new ColorMatrix();
 colorMatrix.setScale(10, 10, 10, 10);
 ```
 
 PostConcat方法来将矩阵的作用效果混合，从而叠加处理效果代码如下：
 
-```
+```java
 		ColorMatrix colorMatrix = new ColorMatrix();
 		colorMatrix.postConcat(colorMatrix);
 		colorMatrix.postConcat(colorMatrix);
@@ -667,7 +665,7 @@ PostConcat方法来将矩阵的作用效果混合，从而叠加处理效果代�
 
 代码如下
 
-```
+```java
 public class PrimaryColor extends Activity implements SeekBar.OnSeekBarChangeListener {
 
     private static int MAX_VALUE = 255;
@@ -726,7 +724,7 @@ public class PrimaryColor extends Activity implements SeekBar.OnSeekBarChangeLis
     }
 }
 ```
-```
+```java
 
 public class ImageHelper {
 
@@ -765,7 +763,7 @@ public class ImageHelper {
 
 模拟一个4X5的颜色矩阵，通过修改矩阵的值，验证前面所说的改变图像色彩效果的原理，对矩阵产生的作用效果更加清晰
 
-```
+```xml
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -811,7 +809,7 @@ public class ImageHelper {
 
 要动态的去添加EditText
 
-```
+```java
 	private Bitmap bitmap;
 	private GridLayout mGroup;
 	private ImageView mImageView;
@@ -869,10 +867,10 @@ public class ImageHelper {
 	
 ```
 
->**注意：**无法再onCreate里获得视图的宽高值，所以通过View的Post方法，在视图创建完成后获得其宽高值
+>**注意：**无法在onCreate里获得视图的宽高值，所以通过View的Post方法，在视图创建完成后获得其宽高值
 
 接下来，只需要获得修改后的edittext值，并将矩阵值设置给颜色矩阵即可
-```
+```java
 
 	/**
 	 * 获得矩阵值
@@ -903,7 +901,7 @@ public class ImageHelper {
 
 最后设置两个按钮的点击事件
 
-```
+```java
     /**
 	 * 作用点击事件
 	 */
@@ -936,7 +934,7 @@ public class ImageHelper {
 
 在Android中，系统系统提供了Bitmap.getPixels()方法来帮我们提取整个Bitmap中的像素密度点，并保存在一个数组中，该方法如下
 
-```
+```java
     bitmap.getPixels(pixels,offset, stride, x, y, width, height);
 ```
 
@@ -952,13 +950,13 @@ public class ImageHelper {
 
 通常情况下，可以这样
 
-```
+```java
  bitmap.getPixels(oldPx, 0, bitmap.getWidth(), 0, 0, width, height);
 ```
 
 接下来，我们可以获取每一个像素具体的ARGB值，代码如下
 
-```
+```java
 		color = oldPx[i];
 		r = Color.red(color);
 		g = Color.green(color)
@@ -968,7 +966,7 @@ public class ImageHelper {
 
 当获取到具体的颜色值后，就可以通过相应的算法去修改这个ARGB值了，从而重构一张图片
 
-```
+```java
 		r1 = (int) (0.393 * r + 0.769 * g + 0.189 * b);
         g1 = (int) (0.349 * r + 0.686 * g + 0.168 * b);
         b1 = (int) (0.272 * r + 0.534 * g + 0.131 * b);
@@ -976,13 +974,13 @@ public class ImageHelper {
 
 再通过如下代码将新的RGBA值合成像素点
 
-```
+```java
  newPx[i] = Color.argb(a, r1, b1, g1);
 ```
 
 最后将处理后的像素点重新设置成新的bitmap
 
-```
+```java
 bmp.setPixels(newPx, 0, width, 0, 0, width, height);
 ```
 
@@ -992,7 +990,7 @@ bmp.setPixels(newPx, 0, width, 0, 0, width, height);
 
 若在ABC三个像素点上，要求B点对应的底片效果算法，代码如下
 
-```
+```java
 		B.r = 255 - B.r;
         B.g = 255 - B.g;
         B.b = 255 - B.b;
@@ -1000,7 +998,7 @@ bmp.setPixels(newPx, 0, width, 0, 0, width, height);
 
 实际代码如下
 
-```
+```java
     /**
      * 底片效果
      *
@@ -1058,7 +1056,7 @@ bmp.setPixels(newPx, 0, width, 0, 0, width, height);
 
 ####2.老照片效果
 
-```
+```java
  r = (int) (0.393 * r + 0.769 * g + 0.189 * b);
  g = (int) (0.349 * r + 0.686 * g + 0.168 * b);
  b = (int) (0.272 * r + 0.534 * g + 0.131 * b);
@@ -1066,7 +1064,7 @@ bmp.setPixels(newPx, 0, width, 0, 0, width, height);
 
 ####3.浮雕效果
 
-```
+```java
 B.r = C.r - B.r + 127;
 B.g = C.g - B.g + 127;
 B.b = C.b - B.b + 127;
@@ -1598,9 +1596,9 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback,Run
 ```
 
  - 初始化SurfaceView
- 
+
 在自定义的SurfaceView构造方法中，需要对SurfaceView进行出还刷，我们首先要定义三个成员变量
- 
+
 ```
 	 //SurfaceHolder
     private SurfaceHolder mHolder;
