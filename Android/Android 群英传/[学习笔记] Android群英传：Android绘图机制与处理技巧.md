@@ -1,4 +1,5 @@
-# [学习笔记] Android群英传：Android绘图机制与处理技巧
+[学习笔记] Android群英传：Android绘图机制与处理技巧
+
 ---
 包含内容：
 - Android屏幕相关知识
@@ -1213,19 +1214,19 @@ private void flagWava(){
 
 然后
 
-```
+```java
 canvas.drawBitmapMesh(mBitmap,WIDTH,HEIGHT,verts,0,null,0,null);
 ```
 
 为了能够让图片动起来，可以利用正弦函数的周期性来实现，在获取纵坐标的偏移量的时候给函数增加一个周期
 
-```
+```java
  float offsetY = (float)Math.sin((float)i/WIDTH*2*Math.PI+Math.PI*k);
 ```
 
 在重绘 d 时候，给K值增加
 
-```
+```java
         flagWava();
         k+=0.1f;   
         canvas.drawBitmapMesh(mBitmap,WIDTH,HEIGHT,verts,0,null,0,null);
