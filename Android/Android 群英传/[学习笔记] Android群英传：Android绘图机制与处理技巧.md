@@ -1156,7 +1156,7 @@ y = K2 X y0;
 
 通过了一个一位数组将一个一位数组转换为变换矩阵
 
-```
+```java
 private float [] mImageMatrix = new float[9];
 Matrix matrix = new Matrix();
 matrix.setValues(mImageMatrix);
@@ -1167,7 +1167,7 @@ canvas.drawBitmap(mBitmmap,matrix,null);
 ###2.像素块分析
 进行图像的处理方式也有两种，即前面讲的使用矩阵来进行图像变换和马上要使用到的drawBitmapMesh()方法来处理，操作像素块的原理，该方法如下
 
-```
+```java
 canvas.drawBitmapMesh(Bitmap bitmap,int meshWidth,int meshHeight,float [] verts,int vertOffset,int [] color,int colorOffset,Paint paint);
 ```
 - bitmap:将要扭曲的图像
@@ -1178,7 +1178,7 @@ canvas.drawBitmapMesh(Bitmap bitmap,int meshWidth,int meshHeight,float [] verts,
 
 要想使用drawBitmapMesh()的方法先要将突破分成若干份，所以在图像各画N-1条线，将图片分成N块
 
-```
+```java
 mBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.nice);
 
         float bitmapWidth = mBitmap.getWidth();
@@ -1199,7 +1199,7 @@ mBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.nice);
 
 接下来，在onDraw()方法中改变交叉点的纵坐标的值，为了实现旗帜飘飘的效果，使用sin x，来改变交叉点的坐标值，使横坐标不变，将其变化后的值保存在数组中
 
-```
+```java
 private void flagWava(){
         for (int j = 0; j<=HEIGHT;j++){
             for (int i = 0; i<=WIDTH;i++){
@@ -1245,7 +1245,7 @@ canvas.drawBitmapMesh(mBitmap,WIDTH,HEIGHT,verts,0,null,0,null);
 
 >**注意：** PorterDuffXfermode设置两个图层交集区域的显示方法des是先画的图像，src是后画的
 
-```
+```java
 mBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.nice);
         mOut = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(mOut);
@@ -1259,7 +1259,7 @@ mBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.nice);
 类似于刮刮卡的效果,其实效果就是两张图片，上面那张一刮就显示下面的那张：
 首先要做的就是初始化一些数据
 
-```
+```java
 	/**
      * 初始化
      */
@@ -1282,7 +1282,7 @@ mBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.nice);
 
 给paint设置一些属性，让他更圆一点，然后我们再监听触摸时间
 
-```
+```java
 	/**
      * 触摸事件
      * @param event
@@ -1307,7 +1307,7 @@ mBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.nice);
 
 最后使用DST_IN来完善覆盖即可，这里我把源码放上来
 
-```
+```java
 
 /**
  * 涂鸦
@@ -1399,7 +1399,7 @@ BitmapShader所产生的是一个图像，有点类似PS里面的图像填充，
 
 
 
-```
+```java
  mBitmap = BitmapFactory.decodeResource(getResources(),R.drawable.nice);
         mBitmapShader = new BitmapShader(mBitmap, Shader.TileMode.CLAMP,Shader.TileMode.CLAMP);
         mPaint = new Paint();
@@ -1409,7 +1409,7 @@ BitmapShader所产生的是一个图像，有点类似PS里面的图像填充，
 
 看LinearGradient，理解起来就是线性渐变的意思，例子：
 
-```
+```java
 mPaint = new Paint();
         mPaint.setShader(new LinearGradient(0,0,400,400, Color.BLUE,Color.YELLOW, Shader.TileMode.REPEAT));
         canvas.drawRect(0,0,400,400,mPaint);
@@ -1417,7 +1417,7 @@ mPaint = new Paint();
 
 倒影的例子：
 
-```
+```java
 
 /**
  * 倒影
@@ -1488,7 +1488,7 @@ PathEffect就是指，用各种笔触效果绘制路径，Android系统提供的
 
 简单的实例：
 
-```
+```java
 
 /**
  * PathEffect
@@ -1562,13 +1562,13 @@ SurfaeView在使用时，有一套使用的模板代码，大部分的surfaceVie
 
 创建自定义的surfaceView，实现它的两个接口
 
-```
+```java
 public class SurfaView extends SurfaceView implements SurfaceHolder.Callback,Runnable
 ```
 
 通过实现它的两个几口，就会有三个回调方法
 
-```
+```java
 @Override
     public void surfaceCreated(SurfaceHolder holder) {
 
@@ -1588,7 +1588,7 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback,Run
 
 对于Runnable接口，会实现他的回调
 
-```
+```java
 	@Override
     public void run() {
 
@@ -1599,7 +1599,7 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback,Run
 
 在自定义的SurfaceView构造方法中，需要对SurfaceView进行出还刷，我们首先要定义三个成员变量
 
-```
+```java
 	 //SurfaceHolder
     private SurfaceHolder mHolder;
     //用于绘制的Canvas
@@ -1610,7 +1610,7 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback,Run
 
 初始化方法就是对回调初始化以及注册
 
-```
+```java
 mHolder = getHolder();
 mHolder.addCallback(this);
 ```
@@ -1623,7 +1623,7 @@ mHolder.addCallback(this);
 
 绘制的时候，充分利用SurfaceView的回调方法，在surfaceCreated方法中开启子线程进行绘制，而子线程开启了一个while(mIsDrawing)的循环来不停的绘制，而在具体的逻辑中，通过lookCanvas()方法获取Canvas对象进行绘制，，整个代码模块如下：
 
-```
+```java
 
 /**
  * SurfaceView的使用
@@ -1699,7 +1699,7 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback, Ru
 
 ####1.正弦曲线
 
-```
+```java
 /**
  * SurfaceView的使用
  */
@@ -1783,7 +1783,7 @@ public class SurfaView extends SurfaceView implements SurfaceHolder.Callback, Ru
 ####2.绘图板
 >实现一个画板
 
-```
+```java
 
 /**
  * SurfaceView的使用
