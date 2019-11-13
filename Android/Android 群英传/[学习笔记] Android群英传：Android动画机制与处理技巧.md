@@ -1,8 +1,8 @@
-﻿# [学习笔记] Android群英传：Android动画机制与处理技巧
+# [学习笔记] Android群英传：Android动画机制与处理技巧
 
 学习的主要内容有：
 
-- Android视图动画‘
+- Android视图动画
 - Android属性动画
 - Android动画实例
 
@@ -14,7 +14,7 @@ Animation动画框架定义了透明度，旋转，缩放个移动等几种动�
 ###1.透明动画
 
 
-```
+```java　
 AlphaAnimation al = new AlphaAnimation(0,1);
 al.setDuration(2000);
 alpha.startAnimation(al);
@@ -22,7 +22,7 @@ alpha.startAnimation(al);
 
 ###2.旋转动画
 
-```
+```java　
  RotateAnimation ro = new RotateAnimation(0,300,100,100);
  ro.setDuration(2000);
  rotate.setAnimation(ro);
@@ -30,7 +30,7 @@ alpha.startAnimation(al);
 
 ###3.平移动画
 
-```
+```java　
 TranslateAnimation tr = new TranslateAnimation(0,200,0,300);
 tr.setDuration(2000);
 translate.setAnimation(tr);
@@ -38,7 +38,7 @@ translate.setAnimation(tr);
 
 ###4.缩放动画
 
-```
+```java　
  ScaleAnimation sc = new ScaleAnimation(0,2,0,2);
  sc.setDuration(2000);
  scale.setAnimation(sc);
@@ -46,7 +46,7 @@ translate.setAnimation(tr);
 
 ###5.动画集合
 
-```
+```java　
 AnimationSet setAnimation = new AnimationSet(true);
 setAnimation.setDuration(2000);
 
@@ -64,7 +64,7 @@ set.startAnimation(setAnimation);
 
 动画的监听：
 
-```
+```java　
 AlphaAnimation al = new AlphaAnimation(0,1);
                 al.setDuration(2000);
                 alpha.startAnimation(al);
@@ -97,12 +97,12 @@ AlphaAnimation al = new AlphaAnimation(0,1);
 ObjectAnimator是属性动画框架中最重要的实行类,创建一个ObjectAnimator只需通过他
 的静态工厂类直接返回一个ObjectAnimator对象，参数包括一个对象和对象的属性名字,但这
 个属性必须有get和set函数，内部会通过Java反射机制来调用set函数修改对象属性值.同样
-你也可以调用setIn设置相应的差值器。 
+你也可以调用setInterpolator设置相应的差值器。 
 
 
 简单的平移动画的实现：
 
-```
+```java　
  ObjectAnimator ob = ObjectAnimator.ofFloat(view,"translationX",300);
                 ob.setDuration(2000);
                 ob.start();
@@ -131,7 +131,7 @@ ObjectAnimator是属性动画框架中最重要的实行类,创建一个ObjectAn
 
 使用包装类的方法给一个属性增加set，get方法：
 
-```
+```java
  private static class WrapperView {
 
         private View mTarget;
@@ -153,7 +153,7 @@ ObjectAnimator是属性动画框架中最重要的实行类,创建一个ObjectAn
 
 通过上面的代码就给一个属性包装上了一层，并且提供set，get方法
 
-```
+```java
 WrapperView vi = new WrapperView(alpha);
 ObjectAnimator.ofInt(vi,"width",500).setDuration(2000).start();
 ```
@@ -161,7 +161,7 @@ ObjectAnimator.ofInt(vi,"width",500).setDuration(2000).start();
 ###2.PropertyValuesHolder
 类似视图动画中的AnimationSet，就是把动画给组合起来，在属性动画中，如果针对一个对象的多个属性，就同时需要多个动画了，可以使用PropertyValuesHolder来实现，比如需要在平移的过程中，同时改变x,y的缩放，可以这样实现
 
-```
+```java
 PropertyValuesHolder pvh1 = PropertyValuesHolder.ofFloat("translationX",300f);
 PropertyValuesHolder pvh2 = PropertyValuesHolder.ofFloat("scaleX",1f,0,1f);
 PropertyValuesHolder pvh3 = PropertyValuesHolder.ofFloat("scaleY",1f,0,1f);        ObjectAnimator.ofPropertyValuesHolder(alpha,pvh1,pvh2,pvh3).setDuration(2000).start();
@@ -171,14 +171,14 @@ PropertyValuesHolder pvh3 = PropertyValuesHolder.ofFloat("scaleY",1f,0,1f);     
 ###3.ValueAnimator
 ValueAnimator是属性动画的核心所在，ObjectAnimator也是继承自它：
 
-```
+```java
 public final class ObjectAnimator extends ValueAnimator
 
 ```
 
 >ValueAnimator本身不提供任何动画，像是一个数值发生器，用来产生一定具有规律的数字，从而让调用者控制动画的整个过程，我们举个例子来说明
 
-```
+```java
 ValueAnimator va = ValueAnimator.ofFloat(0,100);
                 va.setTarget(value);
                 va.setDuration(2000).start();
@@ -196,7 +196,7 @@ ValueAnimator va = ValueAnimator.ofFloat(0,100);
 
 一个完整的动画是具有，start，repeat，end，cancel四个过程的：
 
-```
+```java
  ob.addListener(new Animator.AnimatorListener() {
                     @Override
                     public void onAnimationStart(Animator animation) {
@@ -222,7 +222,7 @@ ValueAnimator va = ValueAnimator.ofFloat(0,100);
 
 只关心动画结束，Android提供了一个AnimatorLisistenerAdapter来让你自己选择监听事件
 
-```
+```java
 va.addListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
@@ -235,7 +235,7 @@ va.addListener(new AnimatorListenerAdapter() {
 ###5.AnimatorSet
 AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的动画，AnimatorSet是这样实现的
 
-```
+```java
 		ObjectAnimator animator1 = ObjectAnimator.ofFloat(alpha, "translationX", 300f);
         ObjectAnimator animator2 = ObjectAnimator.ofFloat(alpha, "scaleX", 1f, 0, 1f);
         ObjectAnimator animator3 = ObjectAnimator.ofFloat(alpha, "scaleY", 1f, 0, 1f);
@@ -249,7 +249,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 ###6.在XML中定义动画
 
-```
+```java
 <?xml version="1.0" encoding="utf-8"?>
 <objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="2000"
@@ -263,7 +263,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 在代码中引用
 
-```
+```java
 
     /**
      * 引用xml动画
@@ -281,7 +281,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 在Android3.0，Google给view增加了animate方法直接来驱动属性动画，代码如下，其实animate就是属性动画的一种缩写
 
-```
+```java
  view.animate().alpha(0).y(300).setDuration(2000).withStartAction(new Runnable() {
                     @Override
                     public void run() {
@@ -304,13 +304,13 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 布局动画，就是作用在ViewGruop中给View添加的过渡效果，最简单的方法是在xml中打开
 
-```
+```java
  android:animateLayoutChanges="true"
 ```
 
 可以通过LayoutAnimationController来定义
 
-```
+```java
 		ll = (LinearLayout) findViewById(R.id.ll);
         //设置过渡动画
         ScaleAnimation sa = new ScaleAnimation(0, 1, 0, 1);
@@ -334,7 +334,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 ##五.自定义动画
 >创建自定义动画很简单，只需要实现applyTransformation的逻辑就可以，不过通常情况下，我们还要覆盖父类的initialize方法来完成一些初始化工作，
 
-```
+```java
 @Override
     protected void applyTransformation(float interpolatedTime, Transformation t) {
         super.applyTransformation(interpolatedTime, t);
@@ -343,7 +343,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 第一个参数interpolatedTime是前面说的插值器的时间因子，这个因子是由动画当前完成的百分比和当前时间对应的差值计算的，取值范围在0-1.0，第二个参数是矩阵的封装类，一般使用这个类获取当前的矩阵对象，代码如下
 
-```
+```java
  Matrix matrix = t.getMatrix();
 ```
 
@@ -351,7 +351,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 
 实现一个电视机关闭的效果：
 
-```
+```java
  @Override
     protected void applyTransformation(float interpolatedTime, Transformation t) {
 
@@ -362,7 +362,7 @@ AnimatorSet能更精准的控制顺序，同样是实现PropertyValuesHolder的�
 ```
 
 完整代码：
-```
+```java
 public class CustomTV extends Animation {
 
     private int mCenterWidth;
@@ -407,7 +407,7 @@ public class CustomTV extends Animation {
 ```
 结合矩阵，并且使用Canmera来实现一个3D的效果，要注意的是，这里所指的Camera不是相机，而这个类封装了 openGl的3D动画，我们继续用代码来实现
 
-```
+```java
   @Override
     public void initialize(int width, int height, int parentWidth, int parentHeight) {
 
@@ -529,7 +529,7 @@ Google在Android5.X后给我们提供了两个新的API来支持SVG
 
 ![这里写图片描述](http://img.blog.csdn.net/20160416231719716)
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
@@ -542,7 +542,7 @@ Google在Android5.X后给我们提供了两个新的API来支持SVG
 
 >这个代码之中包含了两组高宽，width,和height是表示SVG图像的具体大小，后面的是表示SVG图像划分的比例，后面再绘制path时所使用的参数，就是根据这两个值来进行转换的，比如上面的代码，将200dp划分100份，如果在绘图中使用坐标（50,50），则意味着该坐标为正中间，现在我们加上path标签
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
@@ -577,7 +577,7 @@ AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过An
 
 首先我们在xml中定义一个< animated-vector>，来申明对AnimatedVectorDrawable的使用，并且指明是作用在path或者group上
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/verctors">
@@ -591,7 +591,7 @@ AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过An
 
 对应的vector即为静态的VectorDrawable
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:height="200dp"
@@ -619,7 +619,7 @@ AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过An
 
 需要注意的是，AnimatedVectorDrawable中指明的target和name属性，必须与VectorDrawable中需要的name保持一致，这样系统能找到找到要实现的动画元素，最后，通过AnimatedVectorDrawable中的target和animation属性，将一个动画作用在对应的name上，objectanimator代码如下
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="4000"
@@ -634,7 +634,7 @@ AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过An
 
 当所有的XML准备好之后，我们就可以直接给一个imageview设置背景了
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -661,7 +661,7 @@ AnimatedVectorDrawable的作用是给VectorDrawable提供动画效果，通过An
 
 path1和path2分别绘制了两条直线
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
@@ -695,7 +695,7 @@ path1和path2分别绘制了两条直线
 
 每条线都有三个点控制，接下来就是变换的动画了
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="5000"
@@ -710,14 +710,14 @@ path1和path2分别绘制了两条直线
 
 在以上代码中，定义了一个pathType动画，并且指定了起点，中点，终点
 
-```
+```xml
 android:valueFrom="M 20, 80 L 50 , 80 80 ,80"
 android:valueTo="M 20 ,80 L 50 ,50 80 ,80"
 ```
 
 这两个值是对应的起始点，需要注意的是，SVG的路径变换属性动画中，变换前后阶段属性必须相同，这也是前面需要使用的三个点看来绘制一条直线的原因，有了VectorDrawable和objectAnimator，现在只需要AnimatedVectorDrawable将他们加起来就起来
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/ver2">
@@ -737,7 +737,7 @@ android:valueTo="M 20 ,80 L 50 ,50 80 ,80"
 
 最后只需要去启动动画就可以了
 
-```
+```java
 /**
  * 绘制SVG
  */
@@ -779,7 +779,7 @@ public class SVGActivity extends AppCompatActivity {
 
 实现例子：
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
@@ -827,7 +827,7 @@ public class SVGActivity extends AppCompatActivity {
 
 >可以从代码冲发现，sun在这个group中，有一个earth的group，我们这里再定义一个动画
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <objectAnimator xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="4000"
@@ -844,7 +844,7 @@ public class SVGActivity extends AppCompatActivity {
 ####3.轨迹动画
 android对SVG的支持带来了很多的特效，做一个搜索的放大镜效果吧，先定义好轨迹
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="160dp"
@@ -881,8 +881,8 @@ android对SVG的支持带来了很多的特效，做一个搜索的放大镜效�
 ###1.卫星菜单
 
 当点击小红点的时候，弹出菜单，并且带有一个缓冲的效果，这就是Google在MD中强调的动画过渡，要实现这个动画，其实是一个开始一个结束动画
-```
- /**
+```java
+ 		/**
      * 执行动画
      */
     private void statAnim(){
@@ -902,7 +902,7 @@ android对SVG的支持带来了很多的特效，做一个搜索的放大镜效�
 
 >下面就是点击事件
 
-```
+```java
 iv0.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -920,7 +920,7 @@ iv0.setOnClickListener(new View.OnClickListener() {
 
 通过这个示例，了解一下ValueAnimator的效果，当用户点击后，数字不断增加，好的，我们开始
 
-```
+```java
 /**
  * 绘制SVG
  */
@@ -965,7 +965,7 @@ public class SVGActivity extends AppCompatActivity {
 
 实现一个展开的动画，首先，XML是这样的
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -1025,7 +1025,7 @@ public class SVGActivity extends AppCompatActivity {
 ```
 
 
-```
+```java
 package com.lgl.animations;
 
 import android.animation.ValueAnimator;
