@@ -1,4 +1,4 @@
-﻿#[学习笔记] Android群英传：Activity与Activity调用栈分析
+#[学习笔记] Android群英传：Activity与Activity调用栈分析
 
 主要内容
 
@@ -33,7 +33,7 @@
 ###3.生命周期
 
 
-```
+```java
 	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
