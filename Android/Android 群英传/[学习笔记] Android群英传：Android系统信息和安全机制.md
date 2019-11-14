@@ -1,4 +1,4 @@
-﻿#[学习笔记] Android群英传：Android系统信息和安全机制
+#[学习笔记] Android群英传：Android系统信息和安全机制
 
 ---
 主要内容：
@@ -94,7 +94,7 @@ android系统还在另外一个非常重要的目录来存储系统信息——/
 
 ##二.Android APK应用程序信息获取值PackageManager
 
-###1.PackageManager
+PackageManager
 
 ![这里写图片描述](http://img.blog.csdn.net/20160428214218256)
 
@@ -141,7 +141,7 @@ Android提供了PackageManager来负责管理所有已安装的App，PackageMana
 
 通过一个实例来分析，先封装一个Bean来保存我们需要的字段
 
-```
+```java
 /**
  * Bean
  */
@@ -187,7 +187,7 @@ public class PMAPPInfo {
 ```
 通过上面的方法判断各种类型的应用，主布局
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -227,7 +227,7 @@ public class PMAPPInfo {
 
 有一个listview，所以我们需要一个adapter和一个item
 
-```
+```java
 
 /**
  * 数据源
@@ -293,7 +293,7 @@ public class PkgAdapter extends BaseAdapter {
 
 item
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/empty"
@@ -330,7 +330,7 @@ item
 
 主程序的逻辑就是
 
-```
+```java
 
 
 /**
@@ -436,7 +436,7 @@ ActivityManager也封装的部分Bean对象：
 
 
 
-```
+```java
 
 public class AMProcessInfo {
     
@@ -486,7 +486,7 @@ public class AMProcessInfo {
 
 >然后我们用一个方法就可以获取到了
 
-```
+```java
      /**
      * 正在运行
      * @return
@@ -639,7 +639,7 @@ jd-gui 这个工具用于将jar文件转换成java代码
 ###3.Android APK 加密
 >由于java字节的特殊性，他很容易反编译，为了能够保护好代码，我们通常会使用一些措施，比如说混淆，而在Android studio中，可以很方便的使用ProGuard，在Gradle Scripts目录下
 
-```
+```java
  buildTypes {
         release {
             minifyEnabled false
