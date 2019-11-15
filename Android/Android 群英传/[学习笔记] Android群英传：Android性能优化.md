@@ -1,4 +1,4 @@
-﻿#[学习笔记] Android群英传：Android性能优化
+#[学习笔记] Android群英传：Android性能优化
 
 ---
 主要内容
@@ -316,12 +316,12 @@ adb pull /adcard/trace_log/local/LOG/
 按照指定的平率进行抽样调查，这种方式需要较长的时间来获取较为精准的样本数据，执行一段时间之后，再次点击按钮则会取消监听
 
 ###2.打开TiaceView日志
->对于导出的TiaceView日志文件，可以使用SDK的sdk\tools\traceview.bat工具来打开或者在ADM工具中，选择File,open file，
+>对于导出的TiaceView日志文件，可以使用SDK的sdk\tools\traceview.bat工具来打开或者在ADM工具中，选择File下open file。
 
 ###3.分析TiaceView日志
 > TiaceView的分析界面共有两部分，上面是用于显示方法的时间和时间轴区域，下面是profile区域
 
-###1.时间轴区域
+####1.时间轴区域
 
 ![这里写图片描述](http://img.blog.csdn.net/20160430135137683)
 
