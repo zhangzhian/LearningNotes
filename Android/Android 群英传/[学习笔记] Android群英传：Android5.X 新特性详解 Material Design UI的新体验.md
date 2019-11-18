@@ -1,4 +1,4 @@
-﻿#[学习笔记] Android群英传：Android5.X 新特性详解 Material Design UI的新体验
+#[学习笔记] Android群英传：Android5.X 新特性详解 Material Design UI的新体验
 
 主要内容
 
@@ -29,7 +29,7 @@ Material Design中用了大量高饱和度，适中亮度的大色块来突出�
 
 我们先来看看如何使用主题，MD一共有三种默认的主题可以设置
 
-```
+```xml
 @android:style/Theme.Material (dark version)        
 @android:style/Theme.Material.Light (light version)     
 @android:style/Theme.Material.Light.DarkActionBar   
@@ -45,7 +45,7 @@ Material Design中用了大量高饱和度，适中亮度的大色块来突出�
 
 通过如下所示的代码，可以通过自定义style的方式来创建自己的Color palette颜色主题，从而实现颜色的不同风格
 
-```
+```xml
 <!-- inherit from the material theme-->
     <style name="AppTheme" parent="android:Theme.Material">
         <!-- Main theme color-->
@@ -85,7 +85,7 @@ compile 'com.android.support:palette-v7:21.0.+'
 
 例子，演示如何通过加载的图片的柔和色调来改变状态栏和actionbar的色调，代码如下
 
-```
+```java
 
 public class MainActivity extends AppCompatActivity {
 
@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
 
 而且，可以使用不同的方法获取不同的色调颜色
 
-```
+```java
 palette.getVibrantSwatch();
 palette.getDarkMutedSwatch();
 palette.getLightMutedSwatch();
@@ -142,13 +142,13 @@ Material Design的一个很重要的特点就是拟物扁平化，通过展现�
 
 在Android 5.X中，View的Z值由两部分组成，elevation和translationZ(他们都是Android5.X新引入的属性)，elevation是静态的成员，translationZ可以在代码中使用来实现动画效果，他们的关系
 
-```
+```java
 Z = elevation + translationZ;
 ```
 
 通过下面的代码，演示了不同视图高度所显示的效果，xml代码
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -185,13 +185,13 @@ Z = elevation + translationZ;
 
 在程序中，我们也可以使用代码改变视图高度
 
-```
+```java
  view.setTranslationZ(xxx);
 ```
 
 通常也会使用属性动画来为视图高度改变的时候增加动画效果
 
-```
+```java
 	if(flag){
             view.animate().translationZ(100);
             flag = false;
@@ -208,7 +208,7 @@ Android5.X在对图像的操作有了更多的功能，下面来看看Android5.X
 ###1.Tinting（着色）
 Tinting的使用非常的简单，只要在XML中配置好tint和tintMode就可以了，对于配置组合效果，只需要大家实际操作一下，就能非常清晰的理解处理效果，在下面的代码中，设置了几种不同的tint和tintMode效果，XML代码如下
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -267,7 +267,7 @@ Clipping可以让我们改变一个视图的外形，要使用Clipping，首先�
 
 下面这个例子，将一个正方形的textview通过Clipping裁剪成一个圆形的正方形和一个圆，XML代码如下
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -299,7 +299,7 @@ Clipping可以让我们改变一个视图的外形，要使用Clipping，首先�
 
 逻辑代码很简单
 
-```
+```java
     /**
      * Clipping裁剪
      */
@@ -349,7 +349,7 @@ compile 'com.android.support:recyclerview-v7:21.0.+'
 
 使用RecyclerView的重点和使用和ListView一样，需要使用一个合适的数据适配器来加载数据，RecyclerView中需要重写的很多方法都似曾相识，不过RecyclerView更加先进的是，它已经封装好了ViewHolder，只要实现功能就可以，，先看Adapter
 
-```
+```java
 /**
  * RecyclerView的适配器
  */
@@ -413,7 +413,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
 上面就是一个非常简单却典型的RecyclerView，通过onCreateViewHolder将List item的布局转换成View,并传递给RecyclerView封装好的ViewHolder，就可以将数据和视图关联起来了，但是有一点要注意的是，Android并没有给RecyclerView增进点击事件，所以需要自己写接口回调，代码如图
 
-```
+```java
  public AdapterView.OnItemClickListener itemClickListener;
 
     public void setOnItemClickListener(AdapterView.OnItemClickListener itemClickListener) {
@@ -435,7 +435,7 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
 类似ListView的List item视图
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -452,14 +452,14 @@ public class RecyclerAdapter extends RecyclerView.Adapter<RecyclerAdapter.ViewHo
 
 Google在RecyclerView中定义了LayoutManager来帮助开发者更加方便的创建不同但的布局，下面的例子就演示如何创建水平和垂直布局，当然，你也可以通过自定义LayoutManager来创建自己的布局，核心代码如下：
 
-```
+```java
    mRcList.setLayoutManager(new LinearLayoutManager(this));
    mRcList.setLayoutManager(new GridLayoutManager(this));
 ```
 
 >完整代码：
 
-```
+```java
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView mRcList;
@@ -556,13 +556,13 @@ CardView曾经开始流行在Google+，后来越来越多的APP也引入了Card�
 
 同时要添加命名空间
 
-```
+```xml
 xmlns:app="http://schemas.android.com/apk/res-auto"
 ```
 
 举个例子
 
-```
+```xml
  <android.support.v7.widget.CardView xmlns:app="http://schemas.android.com/apk/res-auto"
         android:id="@+id/cardview"
         android:layout_width="match_parent"
@@ -614,24 +614,24 @@ Android5.X提供了三种Transition类型
 
 首先来看看普通的三种Activity过渡动画，要使用这些动画非常简单，例如从ActivityA转到ActivityB，只需要在ActivityA中将基本的startActivity(intent)方法改为如下代码即可
 
-```
+```java
 startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(MainActivity.this).toBundle());
 ```
 而在AchvityB中，只需要设置下如下所示代码
 
-```
+```java
  getWindow().requestFeature(Window.FEATURE_CONTENT_TRANSITIONS);
 ```
 
 或者在样式文件中设置如下所示代码
 
-```
+```xml
  <item name="android:windowContentTransitions">true</item>
 ```
 
 那么接下来就可以设置进人/退出ActivityB的具体的动画效果了， 代码如下所示
 
-```
+```java
 getWindow().setEnterTransition(new Explode());
 getWindow().setEnterTransition(new Slide());
 getWindow().setEnterTransition(new Fade());
@@ -643,24 +643,24 @@ getWindow().setEnterTransition(new Fade());
 
 要想在程序中使用共享元素的动画效果也很简单，首先需要在他的activity1布局中设置共享元素，增加元素代码
 
-```
+```xml
 android:transitionName="XXX"
 ```
 同时在activity2中，也增加一个相应的共享元素属性，如果只要一个共享元素，那么在activity1中可以这样写
 
-```
+```java
 startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this,view,"share").toBundle());
 ```
 
 使用的参数就是前面普通动画的基础上增加了共享的的view和前面取的名字，如果由多个共享元素，那么我们可以通过
 
-```
+```java
  Pair.create()
 ```
 
 来创建多个共享元素
 
-```
+```java
 startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this, Pair.create(view,"share"),Pair.create(fab,"fab")).toBundle());
 ```
 
@@ -668,7 +668,7 @@ startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this, Pair.cr
 
 >BActivity的XML
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -714,7 +714,7 @@ startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this, Pair.cr
 
 >实现逻辑
 
-```
+```java
 /**
  * BActivity
  */
@@ -769,7 +769,7 @@ public class BActivity extends AppCompatActivity {
 
 再看CActivity的XML
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -821,7 +821,7 @@ public class BActivity extends AppCompatActivity {
 
 实现逻辑就更简单了
 
-```
+```java
 
 /**
  * CActivity
@@ -864,7 +864,7 @@ public class CActivity extends AppCompatActivity {
 ###1.Ripple效果
 在Android5.X中，Material Design大量的使用了Ripple动画，即点就博文效果，可以通过如下代码设置波纹的背景
 
-```
+```xml
 //波纹有边界
  android:background="?android:attr/selectableItemBackground"
  //波纹无边界
@@ -875,7 +875,7 @@ public class CActivity extends AppCompatActivity {
 
 XML
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -908,7 +908,7 @@ XML
 
 同样的，我们可以写一个xml文件来实现Ripple效果
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="@android:color/holo_blue_dark">
@@ -928,7 +928,7 @@ XML
 ###2.Circular Reveal
 这个动画效果是在Google I/O 大会上演示了好多次的，具体变现为一个View以圆形的形式展开，揭示出来，通过ViewAnimationUtils.createCircularReveal()来创建动画，代码如下：
 
-```
+```java
 public static Animator createCircularReveal(View view, int centerX, int centerY, float startRadius, float endRadius) {
 
         return new RevealAnimator(view,centerX,centerY,startRadius,endRadius);
@@ -941,12 +941,12 @@ RevealAnimator的使用特别简单，主要就是几个关键的坐标点
 - centerY 动画开始的中心点Y
 - startRadius 动画开始半径
 - endRadius   动画结束半径
- 
+
 通过一个实例去演示一下
- 
+
 XML
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -970,8 +970,8 @@ XML
 ```
 
 逻辑代码
- 
-```
+
+```java
 
 /**
  * Circular Reveal
@@ -1022,7 +1022,7 @@ StaetListAnimator作为视图改变时的动画效果，通常会使用Seletor�
 
 在XML中定义一个StaetListAnimator
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
@@ -1041,7 +1041,7 @@ StaetListAnimator作为视图改变时的动画效果，通常会使用Seletor�
 
 然后直接在布局中设置即可
 
-```
+```xml
  <Button
         android:layout_width="200dp"
         android:layout_height="200dp"
@@ -1068,7 +1068,7 @@ Theme.AppCompat.Light.NoActionBar
 
 然后在XML中
 
-```
+```java
 <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -1078,7 +1078,7 @@ Theme.AppCompat.Light.NoActionBar
 
 在代码中获取
 
-```
+```java
 		 mToolbar = (Toolbar) findViewById(R.id.toolbar);
         mToolbar.setLogo(R.mipmap.ic_launcher);
         mToolbar.setTitle("主标题");
@@ -1092,7 +1092,7 @@ Theme.AppCompat.Light.NoActionBar
 
 具体实现以下，加入一个侧滑的效果，XML代码
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -1149,7 +1149,7 @@ Theme.AppCompat.Light.NoActionBar
 
 然后设置一下
 
-```
+```java
  mToolbar = (Toolbar) findViewById(R.id.toolbar);
         mToolbar.setLogo(R.mipmap.ic_launcher);
         mToolbar.setTitle("主标题");
@@ -1189,13 +1189,13 @@ Notification会有一个从白色到灰色的动画切换效果，最终显示�
 ###1.基本的Notification
 通过Notification.Builder创建一个Notification的builder，代码如下
 
-```
+```java
  Notification.Builder builder = new Notification.Builder(this);
 ```
 
 这个与AlertDialog的使用方法非常的相似，接下来，要点击Notification执行一个intent，由于这个intent的不是立即执行，而是用户触发的，所以用pendingintent来完成这个延时操作，代码如下：
 
-```
+```java
 Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.baidu.com"));
 //构造pendingdintent
 PendingIntent pendingIntent = PendingIntent.getActivities(this,0,intent,0);
@@ -1203,7 +1203,7 @@ PendingIntent pendingIntent = PendingIntent.getActivities(this,0,intent,0);
 
 这样点击PendingIntent 之后就会触发时间了，我们也可以给他增加属性
 
-```
+```java
 		builder.setSmallIcon(R.mipmap.ic_launcher);
         builder.setContentIntent(pendingIntent);
         builder.setAutoCancel(true);
@@ -1215,7 +1215,7 @@ PendingIntent pendingIntent = PendingIntent.getActivities(this,0,intent,0);
 
 通过下面的代码发布通知栏
 
-```
+```java
  //通过NotificationManager来发出
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.notify(0,builder.build());
@@ -1229,7 +1229,7 @@ PendingIntent pendingIntent = PendingIntent.getActivities(this,0,intent,0);
 
 折叠式Notification也是一种自定义视图的Notification，常常用于显示文本，他拥有两个视图状态，我们可以用RemoteView来帮助我们创建一个Notification视图，代码如下：
 
-```
+```java
 		//通过RemoteViews创建自定义视图
         RemoteViews contentView = new RemoteViews(getPackageName(),R.layout.notification);
         contentView.setTextViewText(R.id.textView,"通知栏");
@@ -1237,7 +1237,7 @@ PendingIntent pendingIntent = PendingIntent.getActivities(this,0,intent,0);
 
 其中notification的布局是这样的
 
-```
+```java
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -1275,7 +1275,7 @@ notification.bigContentView = expandedView;
 
 完整代码
 
-```
+```java
 
 /**
  * Notification
@@ -1328,7 +1328,7 @@ public class NotificationActivity extends AppCompatActivity {
 
 在Android Sample中，Google给我们展示了这个项目，代码如下：
 
-```
+```java
 Notification.Builder builder = new Notification.Builder(this).setSmallIcon(R.mipmap.ic_launcher).setPriority(Notification.PRIORITY_DEFAULT).setCategory(Notification.CATEGORY_MESSAGE).setContentTitle("Headsup Notification").setContentText("I am Headsup Notification");
         Intent push = new Intent();
         push.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
