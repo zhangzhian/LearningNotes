@@ -1044,67 +1044,943 @@ if (fork()) {
 
 event_reinit（）定义在<event2/event.h>中，在 libevent 1.4.3-alpha 版中首次可用。
 
+### 三、创建event loop
+
+#### 1. 运行循环
+一旦有了一个已经注册了某些事件的 event_base（关于如何创建和注册事件请看下一节），就需要让 libevent 等待事件并且通知事件的发生。
+
+**接口**
+
+```c
+#define EVLOOP_ONCE             0x01
+#define EVLOOP_NONBLOCK         0x02
+#define EVLOOP_NO_EXIT_ON_EMPTY 0x04
+
+int event_base_loop(struct event_base *base, int flags);
+```
+
+默认情况下，event_base_loop（）函数将运行一个event_base，直到其中没有注册更多事件为止。为了运行循环，它反复检查是否已触发任何已注册的事件（例如，读取事件的文件描述符是否已准备好读取，或者超时事件的超时是否已准备就绪）。一旦发生这种情况，它将所有触发的事件标记为“活动”，并开始运行它们。
+
+可以通过在event_base_loop（）的flags参数中设置一个或多个标志来更改其行为。
+
+如果设置了EVLOOP_ONCE，则循环将等待，直到某些事件变为活动状态，然后运行活动事件，直到没有其他要运行的状态，然后返回。
+
+如果设置了EVLOOP_NONBLOCK，则该循环将不等待事件触发：它将仅检查是否有任何事件准备立即触发，并在可能时运行其回调。
+
+通常，一旦没有挂起或活动事件，循环将立即退出。您可以通过传递EVLOOP_NO_EXIT_ON_EMPTY标志来覆盖此行为-例如，如果要从其他线程添加事件。如果您确实设置了EVLOOP_NO_EXIT_ON_EMPTY，则循环将一直运行，直到有人调用event_base_loopbreak（）或调用event_base_loopexit（）或发生错误为止。
+
+完成后，如果event_base_loop（）正常退出，则返回0；如果由于后端发生一些未处理的错误而退出，则返回-1；如果由于没有更多pending 或active 事件而退出，则返回1。
+
+为了帮助理解，以下是event_base_loop算法的大致摘要：
+
+**伪代码**
+
+```c
+while (any events are registered with the loop,
+        or EVLOOP_NO_EXIT_ON_EMPTY was set) {
+
+    if (EVLOOP_NONBLOCK was set, or any events are already active)
+        If any registered events have triggered, mark them active.
+    else
+        Wait until at least one event has triggered, and mark it active.
+
+    for (p = 0; p < n_priorities; ++p) {
+       if (any event with priority of p is active) {
+          Run all active events with priority of p.
+          break; /* Do not run any events of a less important priority */
+       }
+    }
+
+    if (EVLOOP_ONCE was set or EVLOOP_NONBLOCK was set)
+       break;
+}
+```
+
+为方便起见，也可以调用:
+
+**接口**
+
+```c
+int event_base_dispatch(struct event_base *base);
+```
+
+event_base_dispatch （ ） 等 同 于 没 有 设 置 标 志 的 event_base_loop （ ）。
+
+event_base_dispatch （）将一直运行，直到没有已经注册的事件了，或者调用 了event_base_loopbreak（）或者 event_base_loopexit（）为止。  
+
+这些函数定义在<event2/event.h>中，从 libevent 1.0版就存在了。
+
+#### 2. 停止循环
+如果想在移除所有已注册的事件之前停止活动的事件循环，可以调用两个稍有不同的函数。 接口
+
+```c
+int event_base_loopexit(struct event_base *base,
+                        const struct timeval *tv);
+int event_base_loopbreak(struct event_base *base);
+```
+
+event_base_loopexit（）让 event_base 在给定时间之后停止循环。如果 tv 参数为 NULL，event_base 会立即停止循环，没有延时。如果 event_base 当前正在执行任何激活事件的回调，则回调会继续运行，直到**运行完所有激活事件的回调**之才退出。
+
+event_base_loopbreak （ ） 让 event_base 立 即 退 出 循 环 。 它 与 event_base_loopexit（base,NULL）的不同在于，如果 event_base 当前正在执行激活事件的回调，它将在**执行完当前正在处理的事件后立即退出**。
+
+注意 event_base_loopexit(base,NULL)和 event_base_loopbreak(base)在事件循环没有运行时的行为不同：前者安排下一次事件循环在下一轮回调完成后立即停止（就好像 带EVLOOP_ONCE 标志调用一样）；后者却仅仅停止当前正在运行的循环，如果事件循环没有运行，则没有任何效果。
+
+这两个函数都在成功时返回0，失败时返回-1。
+
+**示例：立即关闭**
+
+```c
+#include <event2/event.h>
+
+/* Here's a callback function that calls loopbreak */
+void cb(int sock, short what, void *arg)
+{
+    struct event_base *base = arg;
+    event_base_loopbreak(base);
+}
+
+void main_loop(struct event_base *base, evutil_socket_t watchdog_fd)
+{
+    struct event *watchdog_event;
+
+    /* Construct a new event to trigger whenever there are any bytes to
+       read from a watchdog socket.  When that happens, we'll call the
+       cb function, which will make the loop exit immediately without
+       running any other active events at all.
+     */
+    watchdog_event = event_new(base, watchdog_fd, EV_READ, cb, base);
+
+    event_add(watchdog_event, NULL);
+
+    event_base_dispatch(base);
+}
+```
+
+**示例：执行事件循环10秒，然后退出**
+
+```c
+#include <event2/event.h>
+
+void run_base_with_ticks(struct event_base *base)
+{
+  struct timeval ten_sec;
+
+  ten_sec.tv_sec = 10;
+  ten_sec.tv_usec = 0;
+
+  /* Now we run the event_base for a series of 10-second intervals, printing
+     "Tick" after each.  For a much better way to implement a 10-second
+     timer, see the section below about persistent timer events. */
+  while (1) {
+     /* This schedules an exit ten seconds from now. */
+     event_base_loopexit(base, &ten_sec);
+
+     event_base_dispatch(base);
+     puts("Tick");
+  }
+}
+```
+
+有时候需要知道对 event_base_dispatch（）或者 event_base_loop（）的调用是正常退出的，还是因为调用 event_base_loopexit（）或者 event_base_break（）而退出的。可以调用下述函数来确定是否调用了 loopexit 或者 break 函数。
+
+**接口**
+
+```c
+int event_base_got_exit(struct event_base *base);
+int event_base_got_break(struct event_base *base);
+```
+
+这两个函数分别会在因为调用 event_base_loopexit（）或者 event_base_break（）而退出循环的时候返回 true，否则返回 false。下次启动事件循环的时候，这些值会被重设。
+
+这些函数声明在<event2/event.h>中。event_break_loopexit()函数首次在 libevent 1.0c 版本中实现；event_break_loopbreak()首次在 libevent 1.4.3版本中实现。
+
+#### 3. 检查内部时间缓存
+有时候需要在事件回调中获取当前时间的近似视图，但不想调用 gettimeofday()（可能是因为 OS 将gettimeofday()作为系统调用实现，而你试图避免系统调用的开销）。
+
+在回调中，可以请求 libevent 开始本轮回调时的当前时间视图。
+
+**接口**
+
+```c
+int event_base_gettimeofday_cached(struct event_base *base,
+    struct timeval *tv_out);
+```
+
+如果当前正在执行回调，event_base_gettimeofday_cached()函数将 tv_out 参数的值置为缓存的时间。否则，函数调用 evutil_gettimeofday()获取真正的当前时间。成功时函数返回0，失败时返回负数。
+
+注意，因为 libevent 在开始执行回调的时候缓存时间值，所以这个值至少是有一点不精确的。如果回调执行很长时间，这个值将非常不精确。
+
+要强制立即更新缓存，可以调用以下函数：
+
+**接口**
+
+```c
+int event_base_update_cache_time(struct event_base *base);
+```
+
+如果成功，则返回0，失败则返回-1，如果event base未运行其事件循环，则无效。
+
+event_base_gettimeofday_cached（）函数是Libevent 2.0.4-alpha中的新增功能。 Libevent 2.1.1-alpha添加了event_base_update_cache_time（）。
+
+#### 4. 转储 event_base 的状态
+**接口**
+
+```c
+void event_base_dump_events(struct event_base *base, FILE *f);
+```
+
+为帮助调试程序（或者调试 libevent），有时候可能需要加入到 event_base 的事件及其状态的完整列表。调用 event_base_dump_events()可以将这个列表输出到指定的文件中。
+
+这个列表是人可读的，未来版本的 libevent 将会改变其格式。
+
+这个函数在 libevent 2.0.1-alpha 版本中引入。
+
+### 四、创建event
+
+libevent 的基本操作单元是事件。每个事件代表一组条件的集合，这些条件包括： 
+
+- 文件描述符已经就绪，可以读取或者写入 
+
+- 文件描述符变为就绪状态，可以读取或者写入（仅对于边沿触发 IO） 
+
+- 超时事件 
+
+- 发生某信号 
+
+- 用户触发事件
+
+所有事件具有相似的生命周期。调用 libevent 函数设置事件并且关联到 event_base 之后，事件进入“**已初始化（initialized）**”状态。此时可以将事件添加到 event_base 中，这使之进入“**未决（pending）**”状态。在未决状下，如果触发事件的条件发生（比如说，文件描述符的状态改变，或者超时时间到达），则事件进入“**激活（active）**”状态，（用户提供的）事件回调函数将被执行。如果配置为“**持久的（persistent）**”，事件将保持为未决状态。否则，执行完回调后，事件不再是未决的。删除操作可以让未决事件成为**非未决（已初始化）**的；添加操作可以让非未决事件再次成为未决的。
+
+#### 1. 构造事件对象
+##### 1.1 创建事件
+使用 event_new（）接口创建事件。
+
+**接口**
+
+```c
+#define EV_TIMEOUT      0x01
+#define EV_READ         0x02
+#define EV_WRITE        0x04
+#define EV_SIGNAL       0x08
+#define EV_PERSIST      0x10
+#define EV_ET           0x20
+
+typedef void (*event_callback_fn)(evutil_socket_t, short, void *);
+
+struct event *event_new(struct event_base *base, evutil_socket_t fd,
+    short what, event_callback_fn cb,
+    void *arg);
+
+void event_free(struct event *event);
+```
+
+event_new()试图分配和构造一个用于 base 的新的事件。what 参数是上述标志的集合。如果 fd 非负，则它是将被观察其读写事件的文件。事件被激活时，libevent 将调用 cb 函数，传递这些参数：
+
+- 文件描述符 fd，表示所有被触发事件的位字段，
+
+- 以及构造事件时的 arg 参数。
+
+发生内部错误，或者传入无效参数时，event_new（）将返回 NULL。
+
+所有新创建的事件都处于已初始化和非未决状态，调用 event_add（）可以使其成为未决的。
+
+要释放事件，调用 event_free（）。对未决或者激活状态的事件调用 event_free（）是安全的：在释放事件之前，函数将会使事件成为非激活和非未决的。
+
+**示例**
+
+```c
+#include <event2/event.h>
+
+void cb_func(evutil_socket_t fd, short what, void *arg)
+{
+        const char *data = arg;
+        printf("Got an event on socket %d:%s%s%s%s [%s]",
+            (int) fd,
+            (what&EV_TIMEOUT) ? " timeout" : "",
+            (what&EV_READ)    ? " read" : "",
+            (what&EV_WRITE)   ? " write" : "",
+            (what&EV_SIGNAL)  ? " signal" : "",
+            data);
+}
+
+void main_loop(evutil_socket_t fd1, evutil_socket_t fd2)
+{
+        struct event *ev1, *ev2;
+        struct timeval five_seconds = {5,0};
+        struct event_base *base = event_base_new();
+
+        /* The caller has already set up fd1, fd2 somehow, and make them
+           nonblocking. */
+
+        ev1 = event_new(base, fd1, EV_TIMEOUT|EV_READ|EV_PERSIST, cb_func,
+           (char*)"Reading event");
+        ev2 = event_new(base, fd2, EV_WRITE|EV_PERSIST, cb_func,
+           (char*)"Writing event");
+
+        event_add(ev1, &five_seconds);
+        event_add(ev2, NULL);
+        event_base_dispatch(base);
+}
+```
+
+上 述 函 数 定 义 在 <event2/event.h> 中 ， 首 次 出 现 在 libevent 2.0.1-alpha 版 本 中 。event_callback_fn 类型首次在2.0.4-alpha 版本中作为 typedef 出现。
+
+##### 1.2事件标志
+
+- EV_TIMEOUT 
+
+这个标志表示某超时时间流逝后事件成为激活的。构造事件的时候，EV_TIMEOUT 标志是被忽略的：可以在添加事件的时候设置超时，也可以不设置。超时发生时，回调函数的 what参数将带有这个标志。 
+
+- EV_READ 
+
+表示指定的文件描述符已经就绪，可以读取的时候，事件将成为激活的。 
+
+- EV_WRITE 
+
+表示指定的文件描述符已经就绪，可以写入的时候，事件将成为激活的。 
+
+- EV_SIGNAL
+
+用于实现信号检测，请看下面的“构造信号事件”章节。
+
+- EV_PERSIST 
+
+表示事件是“持久的”，请看下面的“关于事件持久性”章节。 
+
+- EV_ET 
+
+表示如果底层的 event_base 后端支持边沿触发事件，则事件应该是边沿触发的。这个标志影响 EV_READ 和 EV_WRITE 的语义。 
+
+从2.0.1-alpha 版本开始，可以有任意多个事件因为同样的条件而未决。比如说，可以有两 个事件因为某个给定的 fd 已经就绪，可以读取而成为激活的。这种情况下，多个事件回调 被执行的次序是不确定的。
+
+ 这些标志定义在<event2/event.h>中。除了 EV_ET 在2.0.1-alpha 版本中引入外，所有标志从1.0版本开始就存在了。
+
+##### 1.3 关于事件持久性
+默认情况下，每当未决事件成为激活的（因为 fd 已经准备好读取或者写入，或者因为超时），事件将在其回调被执行前成为非未决的。如果想让事件再次成为未决的，可以在回调函数中再次对其调用 event_add（）。
+然而，如果设置了 EV_PERSIST 标志，事件就是持久的。这意味着即使其回调被激活，事件还是会保持为未决状态。如果想在回调中让事件成为非未决的，可以对其调用 event_del（）。
+每次执行事件回调的时候 ，持久事件的超时值会被复位 。因此如果具有EV_READ|EV_PERSIST 标志，以及5秒的超时值，则事件将在以下情况下成为激活的：
+
+- 套接字已经准备好被读取的时候
+- 从最后一次成为激活的开始，已经逝去5秒
 
 
 
+##### 1.4 创建事件作为其的回调参数
+通常，可能要创建一个将自身作为回调参数接收的事件。 但是，您不能仅将指向事件的指针作为event_new（）的参数传递，因为它尚不存在。 要解决此问题，可以使用event_self_cbarg（）。
+
+**接口**
+
+```c
+void *event_self_cbarg();
+```
+
+event_self_cbarg（）函数返回一个“魔术”指针，该指针在作为事件回调参数传递时，告诉event_new（）创建一个将自身作为其回调参数接收的事件。
+
+**示例**
+
+```c
+#include <event2/event.h>
+
+static int n_calls = 0;
+
+void cb_func(evutil_socket_t fd, short what, void *arg)
+{
+    struct event *me = arg;
+
+    printf("cb_func called %d times so far.\n", ++n_calls);
+
+    if (n_calls > 100)
+       event_del(me);
+}
+
+void run(struct event_base *base)
+{
+    struct timeval one_sec = { 1, 0 };
+    struct event *ev;
+    /* We're going to set up a repeating timer to get called called 100
+       times. */
+    ev = event_new(base, -1, EV_PERSIST, cb_func, event_self_cbarg());
+    event_add(ev, &one_sec);
+    event_base_dispatch(base);
+}
+```
+
+此函数也可以与event_new（），evtimer_new（），evsignal_new（），event_assign（），evtimer_assign（）和evsignal_assign（）一起使用。 但是，**它不能用作非事件的回调参数**。
+
+在libbevent 2.1.1-alpha中引入了event_self_cbarg（）函数。
+
+##### 1.5 只有超时的事件
+
+为使用方便，libevent 提供了一些以 evtimer_开头的宏，用于替代 event_*调用来操作纯超
+时事件。使用这些宏能改进代码的清晰性。
+
+**接口**
+
+```c
+#define evtimer_new(base, callback, arg) \
+    event_new((base), -1, 0, (callback), (arg))
+#define evtimer_add(ev, tv) \
+    event_add((ev),(tv))
+#define evtimer_del(ev) \
+    event_del(ev)
+#define evtimer_pending(ev, tv_out) \
+    event_pending((ev), EV_TIMEOUT, (tv_out))
+```
 
 
 
+除了 evtimer_new（）首次出现在2.0.1-alpha 版本中之外，这些宏从0.6版本就存在了。 
 
+##### 1.6 构造信号事件
 
+libevent 也可以监测 POSIX 风格的信号。要构造信号处理器，使用：
 
+**接口**
 
+```c
+#define evsignal_new(base, signum, cb, arg) \
+    event_new(base, signum, EV_SIGNAL|EV_PERSIST, cb, arg)
+```
 
+除了提供一个信号编号代替文件描述符之外，各个参数与 event_new（）相同。
 
+**示例**
 
+```c
+struct event *hup_event;
+struct event_base *base = event_base_new();
 
+/* call sighup_function on a HUP signal */
+hup_event = evsignal_new(base, SIGHUP, sighup_function, NULL);
+```
 
+注意：信号回调是信号发生后在事件循环中被执行的，所以可以安全地调用通常不能在POSIX 风格信号处理器中使用的函数。
 
+> 警告：不要在信号事件上设置超时，这可能是不被支持的。[待修正：真是这样的吗？]
 
+libevent 也提供了一组方便使用的宏用于处理信号事件：
 
+**接口**
 
+```c
+#define evsignal_add(ev, tv) \
+    event_add((ev),(tv))
+#define evsignal_del(ev) \
+    event_del(ev)
+#define evsignal_pending(ev, what, tv_out) \
+    event_pending((ev), (what), (tv_out))
+```
 
+evsignal_*宏从2.0.1-alpha 版本开始存在。先前版本中这些宏叫做 signal_add（）、signal_del （）等等。
 
+**关于信号的警告**
+在当前版本的 libevent 和大多数后端中，每个进程任何时刻只能有一个 event_base 可以监听信号。如果同时向两个 event_base 添加信号事件，即使是不同的信号，也只有一个event_base 可以取得信号。kqueue 后端没有这个限制。
 
+##### 1.7 设置不使用堆分配的事件
 
+出于性能考虑或者其他原因，有时需要将事件作为一个大结构体的一部分。对于每个事件的 
 
+使用，这可以节省： 
 
+- 内存分配器在堆上分配小对象的开销 
 
+- 对 event 结构体指针取值的时间开销 
 
+- 如果事件不在缓存中，因为可能的额外缓存丢失而导致的时间开销
 
+使用此方法可能会破坏与其他版本的Libevent的二进制兼容性，这些版本的事件结构可能具有不同的大小。
 
+这是非常小的成本，对于大多数应用来说都没有关系。 除非知道使用堆分配事件会严重降低性能，否则应该坚持使用event_new（）。 如果将来的Libevent版本使用的事件结构比构建时使用的事件结构大，则使用event_assign（）可能会导致难以诊断的错误。
 
+**接口**
 
+```c
+int event_assign(struct event *event, struct event_base *base,
+    evutil_socket_t fd, short what,
+    void (*callback)(evutil_socket_t, short, void *), void *arg);
+```
 
+除了 event 参数必须指向一个未初始化的事件之外，event_assign（）的参数与 event_new （）的参数相同。成功时函数返回0，如果发生内部错误或者使用错误的参数，函数返回-1。
 
+**示例**
 
+```c
+#include <event2/event.h>
+/* Watch out!  Including event_struct.h means that your code will not
+ * be binary-compatible with future versions of Libevent. */
+#include <event2/event_struct.h>
+#include <stdlib.h>
 
+struct event_pair {
+         evutil_socket_t fd;
+         struct event read_event;
+         struct event write_event;
+};
+void readcb(evutil_socket_t, short, void *);
+void writecb(evutil_socket_t, short, void *);
+struct event_pair *event_pair_new(struct event_base *base, evutil_socket_t fd)
+{
+        struct event_pair *p = malloc(sizeof(struct event_pair));
+        if (!p) return NULL;
+        p->fd = fd;
+        event_assign(&p->read_event, base, fd, EV_READ|EV_PERSIST, readcb, p);
+        event_assign(&p->write_event, base, fd, EV_WRITE|EV_PERSIST, writecb, p);
+        return p;
+}
+```
 
+也可以用 event_assign（）初始化栈上分配的，或者静态分配的事件。 
 
+**警告** 
 
+不要对已经在 event_base 中未决的事件调用 event_assign（），这可能会导致难以诊断的错误。如果已经初始化和成为未决的，调用 event_assign（）之前需要调用 event_del（）。libevent 提供了方便的宏将event_assign（）用于仅超时事件或者信号事件。 
 
+**接口**
 
+```c
+#define evtimer_assign(event, base, callback, arg) \
+    event_assign(event, base, -1, 0, callback, arg)
+#define evsignal_assign(event, base, signum, callback, arg) \
+    event_assign(event, base, signum, EV_SIGNAL|EV_PERSIST, callback, arg)
+```
 
+如果需要使用 event_assign（），又要保持与将来版本 libevent 的二进制兼容性，可以请求libevent 告知 struct event 在运行时应该有多大： 
 
+**接口**
 
+```c
+size_t event_get_struct_event_size(void);
+```
 
+这个函数返回需要为 event 结构体保留的字节数。再次强调，只有在确信堆分配是一个严重的性能问题时才应该使用这个函数，因为这个函数让代码难以阅读和编写。 
 
+注意，将来版本的 event_get_struct_event_size()的返回值可能比 sizeof(struct event)小，这表示 event 结构体末尾的额外字节仅仅是保留用于将来版本 libevent 的填充字节。 
 
+下面这个例子跟上面的那个相同，但是不依赖于 event_struct.h 中的 event 结构体的大小，而是使用 event_get_struct_size（）来获取运行时的正确大小。  
 
+**示例**
 
+```c
+#include <event2/event.h>
+#include <stdlib.h>
 
+/* When we allocate an event_pair in memory, we'll actually allocate
+ * more space at the end of the structure.  We define some macros
+ * to make accessing those events less error-prone. */
+struct event_pair {
+         evutil_socket_t fd;
+};
 
+/* Macro: yield the struct event 'offset' bytes from the start of 'p' */
+#define EVENT_AT_OFFSET(p, offset) \
+            ((struct event*) ( ((char*)(p)) + (offset) ))
+/* Macro: yield the read event of an event_pair */
+#define READEV_PTR(pair) \
+            EVENT_AT_OFFSET((pair), sizeof(struct event_pair))
+/* Macro: yield the write event of an event_pair */
+#define WRITEEV_PTR(pair) \
+            EVENT_AT_OFFSET((pair), \
+                sizeof(struct event_pair)+event_get_struct_event_size())
 
+/* Macro: yield the actual size to allocate for an event_pair */
+#define EVENT_PAIR_SIZE() \
+            (sizeof(struct event_pair)+2*event_get_struct_event_size())
 
+void readcb(evutil_socket_t, short, void *);
+void writecb(evutil_socket_t, short, void *);
+struct event_pair *event_pair_new(struct event_base *base, evutil_socket_t fd)
+{
+        struct event_pair *p = malloc(EVENT_PAIR_SIZE());
+        if (!p) return NULL;
+        p->fd = fd;
+        event_assign(READEV_PTR(p), base, fd, EV_READ|EV_PERSIST, readcb, p);
+        event_assign(WRITEEV_PTR(p), base, fd, EV_WRITE|EV_PERSIST, writecb, p);
+        return p;
+}
+```
 
+event_assign（）定义在<event2/event.h>中，从2.0.1-alpha 版本开始就存在了。从2.0.3-alpha 版本开始，函数返回 int，在这之前函数返回 void。event_get_struct_event_size（）在2.0.4-alpha 版本中引入。event 结构体定义在<event2/event_struct.h>中。
 
+#### 2. 让事件未决和非未决
 
+构造事件之后，在将其添加到 event_base 之前实际上是不能对其做任何操作的。使用event_add（）将事件添加到 event_base。 
 
+**接口**
 
+```c
+int event_add(struct event *ev, const struct timeval *tv);
+```
 
+在非未决的事件上调用 event_add（）将使其在配置的 event_base 中成为未决的。成功时函数返回0，失败时返回-1。如果 tv 为 NULL，添加的事件不会超时。否则，tv 以秒和微秒指定超时值。 
 
+如果对已经未决的事件调用 event_add（），事件将保持未决状态，并在指定的超时时间被重新调度。  
 
+> 注 意 ： 不 要 设 置 tv 为 希 望 超 时 事 件 执 行 的 时 间 。 如 果 在 2010 年 1 月 1 日 设 置 “tv->tv_sec=time(NULL)+10;”，超时事件将会等待40年，而不是10秒。
 
+**接口**
+
+```c
+int event_remove_timer(struct event *ev);
+```
+
+对已经初始化的事件调用 event_del（）将使其成为非未决和非激活的。如果事件不是未决 的或者激活的，调用将没有效果。成功时函数返回0，失败时返回-1。 
+
+注意：如果在事件激活后，其回调被执行前删除事件，回调将不会执行。 
+
+这些函数定义在<event2/event.h>中，从0.1版本就存在了。
+
+#### 3. 带优先级的事件
+多个事件同时触发时，libevent 没有定义各个回调的执行次序。可以使用优先级来定义某些事件比其他事件更重要。
+在前一章讨论过，每个 event_base 有与之相关的一个或者多个优先级。在初始化事件之后，但是在添加到 event_base 之前，可以为其设置优先级。
+**接口**
+
+```c
+int event_priority_set(struct event *event, int priority);
+```
+
+事件的优先级是一个在0和 event_base 的优先级减去1之间的数值。成功时函数返回0，失败时返回-1。
+多个不同优先级的事件同时成为激活的时候，低优先级的事件不会运行。libevent 会执行高优先级的事件，然后重新检查各个事件。只有在没有高优先级的事件是激活的时候，低优先级的事件才会运行。
+
+**示例**
+
+```c
+#include <event2/event.h>
+
+void read_cb(evutil_socket_t, short, void *);
+void write_cb(evutil_socket_t, short, void *);
+
+void main_loop(evutil_socket_t fd)
+{
+  struct event *important, *unimportant;
+  struct event_base *base;
+
+  base = event_base_new();
+  event_base_priority_init(base, 2);
+  /* Now base has priority 0, and priority 1 */
+  important = event_new(base, fd, EV_WRITE|EV_PERSIST, write_cb, NULL);
+  unimportant = event_new(base, fd, EV_READ|EV_PERSIST, read_cb, NULL);
+  event_priority_set(important, 0);
+  event_priority_set(unimportant, 1);
+
+  /* Now, whenever the fd is ready for writing, the write callback will
+     happen before the read callback.  The read callback won't happen at
+     all until the write callback is no longer active. */
+}
+```
+
+如果不为事件设置优先级，则默认的优先级将会是 event_base 的优先级数目除以2。
+这个函数声明在<event2/event.h>中，从1.0版本就存在了。
+
+#### 4. 检查事件状态
+有时候需要了解事件是否已经添加，检查事件代表什么。
+**接口**
+
+```c
+int event_pending(const struct event *ev, short what, struct timeval *tv_out);
+
+#define event_get_signal(ev) /* ... */
+evutil_socket_t event_get_fd(const struct event *ev);
+struct event_base *event_get_base(const struct event *ev);
+short event_get_events(const struct event *ev);
+event_callback_fn event_get_callback(const struct event *ev);
+void *event_get_callback_arg(const struct event *ev);
+int event_get_priority(const struct event *ev);
+
+void event_get_assignment(const struct event *event,
+        struct event_base **base_out,
+        evutil_socket_t *fd_out,
+        short *events_out,
+        event_callback_fn *callback_out,
+        void **arg_out);
+```
+
+event_pending（）函数确定给定的事件是否是未决的或者激活的。如果是，而且 what 参数设置了 EV_READ、EV_WRITE、EV_SIGNAL 或者 EV_TIMEOUT 等标志，则函数会返回事件当前为之未决或者激活的所有标志。如果提供了 tv_out 参数，并且 what 参数中设置了 EV_TIMEOUT 标志，而事件当前正因超时事件而未决或者激活，则 tv_out 会返回事件的超时值。
+
+event_get_fd（）和 event_get_signal（）返回为事件配置的文件描述符或者信号值。
+
+event_get_base（）返回为事件配置的 event_base。
+
+event_get_events（）返回事件的标志（EV_READ、EV_WRITE 等）。
+
+event_get_callback（）和 event_get_callback_arg（）返回事件的回调函数及其参数指针。
+
+event_get_assignment（）复制所有为事件分配的字段到提供的指针中。任何为 NULL 的参数会被忽略。
+
+**示例**
+
+```c
+#include <event2/event.h>
+#include <stdio.h>
+
+/* Change the callback and callback_arg of 'ev', which must not be
+ * pending. */
+int replace_callback(struct event *ev, event_callback_fn new_callback,
+    void *new_callback_arg)
+{
+    struct event_base *base;
+    evutil_socket_t fd;
+    short events;
+
+    int pending;
+
+    pending = event_pending(ev, EV_READ|EV_WRITE|EV_SIGNAL|EV_TIMEOUT,
+                            NULL);
+    if (pending) {
+        /* We want to catch this here so that we do not re-assign a
+         * pending event.  That would be very very bad. */
+        fprintf(stderr,
+                "Error! replace_callback called on a pending event!\n");
+        return -1;
+    }
+
+    event_get_assignment(ev, &base, &fd, &events,
+                         NULL /* ignore old callback */ ,
+                         NULL /* ignore old callback argument */);
+
+    event_assign(ev, base, fd, events, new_callback, new_callback_arg);
+    return 0;
+}
+```
+
+这些函数声明在<event2/event.h>中。event_pending（）函数从0.1版就存在了。2.0.1-alpha 版引入了event_get_fd（）和 event_get_signal（）。2.0.2-alpha 引入了 event_get_base（）。其他的函数在2.0.4-alpha 版中引入。
+
+#### 5. 查找当前正在运行的事件
+为了调试或其他目的，您可以获取当前运行事件的指针。
+
+**接口**
+
+```c
+struct event *event_base_get_running_event(struct event_base *base);
+```
+
+请注意，仅在从提供的event_base循环中调用此函数时，才定义该函数的行为。 不支持从另一个线程调用它，这可能导致未定义的行为。
+
+此函数在<event2 / event.h>中声明。 它是在Libevent 2.1.1-alpha中引入的。
+
+#### 6. 配置一次触发事件
+
+如果不需要多次添加一个事件，或者要在添加后立即删除事件，而事件又不需要是持久的，则可以使用 event_base_once（）。
+
+**接口**
+
+```c
+int event_base_once(struct event_base *, evutil_socket_t, short,
+  void (*)(evutil_socket_t, short, void *), void *, const struct timeval *);
+```
+
+除了不支持 EV_SIGNAL 或者 EV_PERSIST 之外，这个函数的接口与 event_new（）相同。安排的事件将以默认的优先级加入到 event_base 并执行。回调被执行后，libevent 内部将会释放 event 结构。成功时函数返回0，失败时返回-1。
+
+不能删除或者手动激活使用 event_base_once（）插入的事件：如果希望能够取消事件，应该使用event_new（）或者 event_assign（）。
+
+另请注意，在Libevent 2.0之前的版本中，如果从未触发该事件，则将永远不会释放用于保存该事件的内部存储器。 从Libevent 2.1.2-alpha开始，释放event_base时将释放这些事件，即使它们尚未激活，但仍要注意：如果有一些与其回调参数相关联的存储，则除非释放该存储，否则除非 您的程序做了一些跟踪和发布的操作。
+
+#### 7. 手动激活事件
+极少数情况下，需要在事件的条件没有触发的时候让事件成为激活的。
+
+**接口**
+
+```c
+void event_active(struct event *ev, int what, short ncalls);
+```
+
+此功能使事件ev带有标志what（EV_READ，EV_WRITE和EV_TIMEOUT的组合）变为活动状态。 事件不需要已经处于未决状态，激活事件也不会让它成为未决的。
+
+警告：在同一事件上递归调用event_active（）可能会导致资源耗尽。 以下代码段是如何**错误**使用event_active的示例。
+
+**错误的例子：使用event_active（）进行无限循环**
+
+```c
+struct event *ev;
+
+static void cb(int sock, short which, void *arg) {
+        /* Whoops: Calling event_active on the same event unconditionally
+           from within its callback means that no other events might not get
+           run! */
+
+        event_active(ev, EV_WRITE, 0);
+}
+
+int main(int argc, char **argv) {
+        struct event_base *base = event_base_new();
+
+        ev = event_new(base, -1, EV_PERSIST | EV_READ, cb, NULL);
+
+        event_add(ev, NULL);
+
+        event_active(ev, EV_WRITE, 0);
+
+        event_base_loop(base, 0);
+
+        return 0;
+}
+```
+
+这将导致事件循环仅执行一次并永远调用函数“ cb”的情况。
+
+**示例：使用计时器解决上述问题的替代方法**
+
+```c
+struct event *ev;
+struct timeval tv;
+
+static void cb(int sock, short which, void *arg) {
+   if (!evtimer_pending(ev, NULL)) {
+       event_del(ev);
+       evtimer_add(ev, &tv);
+   }
+}
+
+int main(int argc, char **argv) {
+   struct event_base *base = event_base_new();
+
+   tv.tv_sec = 0;
+   tv.tv_usec = 0;
+
+   ev = evtimer_new(base, cb, NULL);
+
+   evtimer_add(ev, &tv);
+
+   event_base_loop(base, 0);
+
+   return 0;
+}
+```
+
+**示例：使用event_config_set_max_dispatch_interval（）解决上述问题的替代解决方案**
+
+```c
+struct event *ev;
+
+static void cb(int sock, short which, void *arg) {
+        event_active(ev, EV_WRITE, 0);
+}
+
+int main(int argc, char **argv) {
+        struct event_config *cfg = event_config_new();
+        /* Run at most 16 callbacks before checking for other events. */
+        event_config_set_max_dispatch_interval(cfg, NULL, 16, 0);
+        struct event_base *base = event_base_new_with_config(cfg);
+        ev = event_new(base, -1, EV_PERSIST | EV_READ, cb, NULL);
+
+        event_add(ev, NULL);
+
+        event_active(ev, EV_WRITE, 0);
+
+        event_base_loop(base, 0);
+
+        return 0;
+}
+```
+
+这个函数定义在<event2/event.h>中，从0.3版本就存在了。
+
+#### 8. 优化公用超时
+当前版本的 libevent 使用二进制堆算法跟踪未决事件的超时值，这让添加和删除事件超时值具有 O(logN)性能。对于随机分布的超时值集合，这是优化的，但对于大量具有相同超时值的事件集合，则不是。
+
+比如说，假定有10000个事件，每个都需要在添加后5秒触发超时事件。这种情况下，使用双链队列实现才可以取得 O（1）性能。
+
+自然地，不希望为所有超时值使用队列，因为队列仅对常量超时值更快。如果超时值或多或少地随机分布，则向队列添加超时值的性能将是 O（n），这显然比使用二进制堆糟糕得多。
+
+libevent 通过放置一些超时值到队列中，另一些到二进制堆中来解决这个问题。要使用这个机制，需要向 libevent 请求一个“**公用超时(common timeout)**”值，然后使用它来添加事件。如果有大量具有单个公用超时值的事件，使用这个优化应该可以改进超时处理性能。
+
+**接口**
+
+```c
+const struct timeval *event_base_init_common_timeout(
+    struct event_base *base, const struct timeval *duration);
+```
+
+这个函数需要 event_base 和要初始化的公用超时值作为参数。函数返回一个到特别的timeval 结构体的指针，可以使用这个指针指示事件应该被添加到 O（1）队列，而不是 O （logN）堆。可以在代码中自由地复制这个特的 timeval 或者进行赋值，但它仅对用于构造它的特定 event_base 有效。不能依赖于其实际内容：libevent 使用这个内容来告知自身使用哪个队列。 
+
+**示例**
+
+```c
+#include <event2/event.h>
+#include <string.h>
+
+/* We're going to create a very large number of events on a given base,
+ * nearly all of which have a ten-second timeout.  If initialize_timeout
+ * is called, we'll tell Libevent to add the ten-second ones to an O(1)
+ * queue. */
+struct timeval ten_seconds = { 10, 0 };
+
+void initialize_timeout(struct event_base *base)
+{
+    struct timeval tv_in = { 10, 0 };
+    const struct timeval *tv_out;
+    tv_out = event_base_init_common_timeout(base, &tv_in);
+    memcpy(&ten_seconds, tv_out, sizeof(struct timeval));
+}
+
+int my_event_add(struct event *ev, const struct timeval *tv)
+{
+    /* Note that ev must have the same event_base that we passed to
+       initialize_timeout */
+    if (tv && tv->tv_sec == 10 && tv->tv_usec == 0)
+        return event_add(ev, &ten_seconds);
+    else
+        return event_add(ev, tv);
+}
+```
+
+与所有优化函数一样，除非确信适合使用，应该避免使用公用超时功能。
+
+这个函数由2.0.4-alpha 版本引入。
+
+#### 9.从已清除的内存识别事件
+libevent 提供了函数，可以从已经通过设置为0（比如说，通过 calloc（）分配的，或者使用 memset（）或者 bzero（）清除了的）而清除的内存识别出已初始化的事件。
+
+**接口**
+
+```c
+int event_initialized(const struct event *ev);
+
+#define evsignal_initialized(ev) event_initialized(ev)
+#define evtimer_initialized(ev) event_initialized(ev)
+```
+
+**警告** 
+
+这个函数不能可靠地从没有初始化的内存块中识别出已经初始化的事件。除非知道被查询的 内存要么是已清除的，要么是已经初始化为事件的，才能使用这个函数。 
+
+除非编写一个非常特别的应用，通常不需要使用这个函数。event_new（）返回的事件总是 已经初始化的。 
+
+**示例**
+
+```c
+#include <event2/event.h>
+#include <stdlib.h>
+
+struct reader {
+    evutil_socket_t fd;
+};
+
+#define READER_ACTUAL_SIZE() \
+    (sizeof(struct reader) + \
+     event_get_struct_event_size())
+
+#define READER_EVENT_PTR(r) \
+    ((struct event *) (((char*)(r))+sizeof(struct reader)))
+
+struct reader *allocate_reader(evutil_socket_t fd)
+{
+    struct reader *r = calloc(1, READER_ACTUAL_SIZE());
+    if (r)
+        r->fd = fd;
+    return r;
+}
+
+void readcb(evutil_socket_t, short, void *);
+int add_reader(struct reader *r, struct event_base *b)
+{
+    struct event *ev = READER_EVENT_PTR(r);
+    if (!event_initialized(ev))
+        event_assign(ev, b, r->fd, EV_READ, readcb, r);
+    return event_add(ev, NULL);
+}
+```
+
+从Libevent 0.3开始，已经提供了event_initialized（）函数。
 
 
 
