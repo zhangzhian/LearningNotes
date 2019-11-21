@@ -849,7 +849,7 @@ int event_config_set_max_dispatch_interval(struct event_config *cfg,
     int min_priority);
 ```
 
-此功能通过限制在检查更多高优先级事件之前可以调用多少个低优先级事件回调来防止优先级倒置。 如果max_interval为非null，则事件循环将检查每个回调之后的时间，如果max_interval已通过，则重新扫描高优先级事件。 如果max_callbacks为非负数，则在调用max_callbacks回调后，事件循环还会检查更多事件。 这些规则适用于min_priority或更高级别的任何事件。
+此功能通过限制在检查更多高优先级事件之前可以调用多少个低优先级事件回调来防止优先级倒置。 如果max_interval为非null，则事件循环将检查每个回调之后的时间，如果max_interval已超过，则重新扫描高优先级事件。 如果max_callbacks为非负数，则在调用max_callbacks回调后，事件循环还会检查更多事件。 这些规则适用于min_priority或更高级别的任何事件。
 
 **示例：优先使用边缘触发的后端**
 
@@ -1063,11 +1063,11 @@ int event_base_loop(struct event_base *base, int flags);
 
 可以通过在event_base_loop（）的flags参数中设置一个或多个标志来更改其行为。
 
-如果设置了EVLOOP_ONCE，则循环将等待，直到某些事件变为活动状态，然后运行活动事件，直到没有其他要运行的状态，然后返回。
+如果设置了**EVLOOP_ONCE**，则循环将等待，直到某些事件变为活动状态，然后运行活动事件，直到没有其他要运行的状态，然后返回。
 
-如果设置了EVLOOP_NONBLOCK，则该循环将不等待事件触发：它将仅检查是否有任何事件准备立即触发，并在可能时运行其回调。
+如果设置了**EVLOOP_NONBLOCK**，则该循环将不等待事件触发：它将仅检查是否有任何事件准备立即触发，并在可能时运行其回调。
 
-通常，一旦没有挂起或活动事件，循环将立即退出。您可以通过传递EVLOOP_NO_EXIT_ON_EMPTY标志来覆盖此行为-例如，如果要从其他线程添加事件。如果您确实设置了EVLOOP_NO_EXIT_ON_EMPTY，则循环将一直运行，直到有人调用event_base_loopbreak（）或调用event_base_loopexit（）或发生错误为止。
+通常，一旦没有挂起或活动事件，循环将立即退出。您可以通过传递**EVLOOP_NO_EXIT_ON_EMPTY**标志来覆盖此行为-例如，如果要从其他线程添加事件。如果您确实设置了EVLOOP_NO_EXIT_ON_EMPTY，则循环将一直运行，直到有人调用event_base_loopbreak（）或调用event_base_loopexit（）或发生错误为止。
 
 完成后，如果event_base_loop（）正常退出，则返回0；如果由于后端发生一些未处理的错误而退出，则返回-1；如果由于没有更多pending 或active 事件而退出，则返回1。
 
@@ -1325,7 +1325,7 @@ void main_loop(evutil_socket_t fd1, evutil_socket_t fd2)
 
 上 述 函 数 定 义 在 <event2/event.h> 中 ， 首 次 出 现 在 libevent 2.0.1-alpha 版 本 中 。event_callback_fn 类型首次在2.0.4-alpha 版本中作为 typedef 出现。
 
-##### 1.2事件标志
+##### 1.2 事件标志
 
 - EV_TIMEOUT 
 
@@ -1999,6 +1999,111 @@ int add_reader(struct reader *r, struct event_base *b)
 ## 示例
 
 ### Timer
+
+**示例**
+
+```c
+#include <event2/event.h>
+#include <event2/util.h>
+
+static int numCalls = 0;
+static int numCalls_now = 0;
+struct timeval lasttime;
+struct timeval lasttime_now;
+
+static void timeout_cb(evutil_socket_t fd, short event, void *arg)
+{
+	struct event *ev = (struct event *)arg;
+	struct timeval newtime,tv_diff;
+	double elapsed;
+
+	evutil_gettimeofday(&newtime, NULL);
+	evutil_timersub(&newtime, &lasttime, &tv_diff);
+
+	elapsed = tv_diff.tv_sec +  (tv_diff.tv_usec / 1.0e6);
+
+	lasttime = newtime;
+	printf("[%.3f]timeout_cb %d \n",elapsed,++numCalls);
+	
+}
+
+static void now_timeout_cb(evutil_socket_t fd, short event, void *arg)
+{
+	struct event *ev = (struct event *)arg;
+	struct timeval tv = {3,0};
+	struct timeval newtime,tv_diff;
+	double elapsed;
+
+	evutil_gettimeofday(&newtime, NULL);
+	evutil_timersub(&newtime, &lasttime_now, &tv_diff);
+	elapsed = tv_diff.tv_sec +  (tv_diff.tv_usec / 1.0e6);
+
+	lasttime_now = newtime;
+	printf("[%.3f]now_timeout_cb %d \n",elapsed,++numCalls_now);
+
+	//每次回调都将当前先del，再次添加
+	//if (!event_pending(ev,EV_PERSIST|EV_TIMEOUT,NULL))
+	//{
+	//	printf("if\n");
+	//	event_del(ev);
+	//	event_add(ev, &tv);
+	//}
+	//添加新的event
+	if (!event_pending(ev,EV_PERSIST|EV_TIMEOUT,NULL))
+	{
+		struct event_base *evBase = event_get_base(ev);
+		event_del(ev);
+		event_free(ev);
+	
+		ev = event_new(evBase, -1, EV_PERSIST|EV_TIMEOUT, now_timeout_cb, event_self_cbarg());
+		event_add(ev, &tv);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	struct event_base *evBase = NULL;
+	struct event_config *evConf = NULL;
+	struct event *ev_now_timeout = NULL;
+	struct event *ev_timeout = NULL;
+	struct timeval tv = {0,0};
+	struct timeval tv_now = {0,0};
+	//创建简单的event_base
+	evBase = event_base_new();
+
+	//创建带配置的event_base
+	evConf = event_config_new();//创建event_config
+	evBase = event_base_new_with_config(evConf);
+
+	//创建event
+	//传递自己event_self_cbarg()
+	ev_now_timeout = evtimer_new(evBase, now_timeout_cb, event_self_cbarg());
+
+	//设置时间
+	tv.tv_sec = 1;
+	tv.tv_usec = 500 * 1000;
+	ev_timeout = event_new(evBase, -1, EV_PERSIST|EV_TIMEOUT, timeout_cb, event_self_cbarg());
+
+	//添加event
+	event_add(ev_now_timeout, &tv_now);//立即执行一次，然后定时
+	event_add(ev_timeout, &tv);
+
+	//获取时间
+    evutil_gettimeofday(&lasttime, NULL);
+	evutil_gettimeofday(&lasttime_now, NULL);
+	//循环
+	//event_base_loop(evBase, 0);
+	event_base_dispatch(evBase);
+	
+	//释放
+	event_free(ev_timeout);
+	event_free(ev_now_timeout);
+	event_config_free(evConf);
+	event_base_free(evBase);
+}
+```
+
+
 
 ### TCP
 
