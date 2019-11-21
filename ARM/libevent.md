@@ -729,6 +729,367 @@ void libevent_global_shutdown（void）;
 
 此函数在<event2 / event.h>中声明。它是在Libevent 2.1.1-alpha中引入的。
 
+### 二、创建event_base
+
+使用 libevent 函数之前需要分配一个或者多个 event_base 结构体。每个 event_base 结构体持有一个事件集合，可以检测以确定哪个事件是激活的。 
+
+如果设置 event_base 使用锁，则可以安全地在多个线程中访问它。然而，其事件循环只能运行在一个线程中。如果需要用多个线程检测 IO，则需要为每个线程使用一个 event_base。 
+
+每个 event_base 都有一种用于检测哪种事件已经就绪的“方法”，或者说后端。可以识别的方法有： 
+
+- select 
+
+- poll 
+
+- epoll 
+
+- kqueue 
+
+- devpoll 
+
+- evport 
+
+- win32 
+
+用户可以用环境变量禁止某些特定的后端。比如说，要禁止 kqueue 后端，可以设置 EVENT_NOKQUEUE 环境变量 。 如果要用编程的方法禁止后端 ， 请看下面关于event_config_avoid_method（）的说明。
+
+#### 1. 建立默认的 event_base
+event_base_new（）函数分配并且返回一个新的具有默认设置的 event_base。函数会检测环境变量，返回一个到 event_base 的指针。如果发生错误，则返回 NULL。选择各种方法时，函数会选择 OS 支持的最快方法。
+
+**接口**
+
+```c
+struct event_base *event_base_new(void);
+```
+
+大多数程序使用这个函数就够了。 
+
+event_base_new（）函数声明在<event2/event.h>中，首次出现在 libevent 1.4.3版。
+
+#### 2. 创建复杂的 event_base
+要对取得什么类型的 event_base 有更多的控制，就需要使用 event_config。event_config是一个容纳event_base 配置信息的不透明结构体。需要 event_base 时，将 event_config传递给 event_base_new_with_config（）。
+
+**接口**
+
+```c
+struct event_config *event_config_new(void);
+struct event_base *event_base_new_with_config(const struct event_config *cfg);
+void event_config_free(struct event_config *cfg);
+```
+
+要使用这些函数分配 event_base，先调用 event_config_new（）分配一个 event_config。 然后，对event_config 调用其它函数，设置所需要的 event_base 特征。最后，调用 event_base_new_with_config（）获取新的 event_base。完成工作后，使用 event_config_free（）释放 event_config。
+
+**接口**
+
+```c
+int event_config_avoid_method(struct event_config *cfg, const char *method);
+
+enum event_method_feature {
+    EV_FEATURE_ET = 0x01,
+    EV_FEATURE_O1 = 0x02,
+    EV_FEATURE_FDS = 0x04,
+};
+int event_config_require_features(struct event_config *cfg,
+                                  enum event_method_feature feature);
+
+enum event_base_config_flag {
+    EVENT_BASE_FLAG_NOLOCK = 0x01,
+    EVENT_BASE_FLAG_IGNORE_ENV = 0x02,
+    EVENT_BASE_FLAG_STARTUP_IOCP = 0x04,
+    EVENT_BASE_FLAG_NO_CACHE_TIME = 0x08,
+    EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST = 0x10,
+    EVENT_BASE_FLAG_PRECISE_TIMER = 0x20
+};
+int event_config_set_flag(struct event_config *cfg,
+```
+
+调用 event_config_avoid_method（）可以通过名字让 libevent 避免使用特定的可用后端。 
+
+调用 event_config_require_feature（）让 libevent 不要使用不能提供所有功能的后端。 
+
+调用 event_config_set_flag（）让 libevent 在创建 event_base 时设置一个或者多个将在下面介绍的运行时标志。
+
+**event_config_require_features（）可识别的特征值有：**
+
+- EV_FEATURE_ET：要求支持边沿触发的后端 
+
+- EV_FEATURE_O1：要求添加、删除单个事件，或者确定哪个事件激活的操作是 O（1）复杂度的后端 
+-  EV_FEATURE_FDS：要求支持任意文件描述符，而不仅仅是套接字的后端
+
+**event_config_set_flag（）可识别的选项值有：**
+
+- **EVENT_BASE_FLAG_NOLOCK**：不要为 event_base 分配锁。设置这个选项可以为event_base 节省一点用于锁定和解锁的时间，但是让在多个线程中访问 event_base成为不安全的。 
+
+- **EVENT_BASE_FLAG_IGNORE_ENV**：选择使用的后端时，不要检测 EVENT_*环境变量。使用这个标志需要三思：这会让用户更难调试你的程序与 libevent 的交互。 
+
+- **EVENT_BASE_FLAG_STARTUP_IOCP**：仅用于 Windows，让 libevent 在启动时就启用任何必需的 IOCP 分发逻辑，而不是按需启用。 
+
+- **EVENT_BASE_FLAG_NO_CACHE_TIME**：不是在事件循环每次准备执行超时回调时检测当前时间，而是在每次超时回调后进行检测。注意：这会消耗更多的 CPU 时间。 
+
+- **EVENT_BASE_FLAG_EPOLL_USE_CHANGELIST**：告诉 libevent，如果决定使用epoll 后端，可以安全地使用更快的基于 changelist 的后端。epoll-changelist 后端可以在后端的分发函数调用之间，同样的 fd 多次修改其状态的情况下，避免不必要的系统调用。但是如果传递任何使用 dup（）或者其变体克隆的 fd 给 libevent，epoll-changelist后端会触发一个内核 bug，导致不正确的结果。在不使用 epoll 后端的情况下，这个标志是没有效果的。也可以通过设置 EVENT_EPOLL_USE_CHANGELIST 环境变量来打开 epoll-changelist 选项。 
+- **EVENT_BASE_FLAG_PRECISE_TIMER**: 默认情况下，Libevent尝试使用操作系统提供的最快的可用计时机制。 如果存在较慢的计时机制，可以提供更精细的计时精度，则此标志告诉Libevent改用该计时机制。 如果操作系统不提供这种慢速但精确的机制，则此标志无效。
+
+上述操作 event_config 的函数都在成功时返回0，失败时返回-1。 
+
+>  **注意**  设置 event_config，请求 OS 不能提供的后端是很容易的。比如说，对于 libevent 2.0.1-alpha，在 Windows 中是没有 O（1）后端的；在 Linux 中也没有同时提供 EV_FEATURE_FDS 和EV_FEATURE_O1 特 征 的 后 端 。 如 果 创 建 了 libevent 不 能 满 足 的 配 置 ，event_base_new_with_config（）会返回 NULL
+
+**接口**
+
+```c
+int event_config_set_num_cpus_hint(struct event_config *cfg, int cpus)
+```
+
+这个函数当前仅在 Windows 上使用 IOCP 时有用，虽然将来可能在其他平台上有用。这个函数告诉 event_config 在生成多线程 event_base 的时候，应该试图使用给定数目的 CPU。注意这仅仅是一个提示：event_base 使用的CPU 可能比你选择的要少。  
+
+**接口**
+
+```c
+int event_config_set_max_dispatch_interval(struct event_config *cfg,
+    const struct timeval *max_interval, int max_callbacks,
+    int min_priority);
+```
+
+此功能通过限制在检查更多高优先级事件之前可以调用多少个低优先级事件回调来防止优先级倒置。 如果max_interval为非null，则事件循环将检查每个回调之后的时间，如果max_interval已通过，则重新扫描高优先级事件。 如果max_callbacks为非负数，则在调用max_callbacks回调后，事件循环还会检查更多事件。 这些规则适用于min_priority或更高级别的任何事件。
+
+**示例：优先使用边缘触发的后端**
+
+```c
+struct event_config *cfg;
+struct event_base *base;
+int i;
+
+/* My program wants to use edge-triggered events if at all possible.  So
+   I'll try to get a base twice: Once insisting on edge-triggered IO, and
+   once not. */
+for (i=0; i<2; ++i) {
+    cfg = event_config_new();
+
+    /* I don't like select. */
+    event_config_avoid_method(cfg, "select");
+
+    if (i == 0)
+        event_config_require_features(cfg, EV_FEATURE_ET);
+
+    base = event_base_new_with_config(cfg);
+    event_config_free(cfg);
+    if (base)
+        break;
+
+    /* If we get here, event_base_new_with_config() returned NULL.  If
+       this is the first time around the loop, we'll try again without
+       setting EV_FEATURE_ET.  If this is the second time around the
+       loop, we'll give up. */
+}
+```
+
+**示例：避免优先级倒置**
+
+```c
+struct event_config *cfg;
+struct event_base *base;
+
+cfg = event_config_new();
+if (!cfg)
+   /* Handle error */;
+
+/* I'm going to have events running at two priorities.  I expect that
+   some of my priority-1 events are going to have pretty slow callbacks,
+   so I don't want more than 100 msec to elapse (or 5 callbacks) before
+   checking for priority-0 events. */
+struct timeval msec_100 = { 0, 100*1000 };
+event_config_set_max_dispatch_interval(cfg, &msec_100, 5, 1);
+
+base = event_base_new_with_config(cfg);
+if (!base)
+   /* Handle error */;
+
+event_base_priority_init(base, 2);
+```
+
+这些函数和类型在<event2 / event.h>中声明。
+
+EVENT_BASE_FLAG_IGNORE_ENV标志首先出现在Libevent 2.0.2-alpha中。 EVENT_BASE_FLAG_PRECISE_TIMER标志首先出现在Libevent 2.1.2-alpha中。 event_config_set_num_cpus_hint（）函数是Libevent 2.0.7-rc中的新增功能，而event_config_set_max_dispatch_interval（）是2.1.1-alpha中的新增功能。 本节中的所有其他内容首先出现在Libevent 2.0.1-alpha中。
+
+#### 3. 检查 event_base 的后端方法
+
+有时候需要检查 event_base 支持哪些特征，或者当前使用哪种方法。
+
+**接口**
+
+```c
+const char **event_get_supported_methods(void);
+```
+
+event_get_supported_methods（）函数返回一个指针，指向 libevent 支持的方法名字数组。这个数组的最后一个元素是 NULL。
+
+**示例**
+
+```c
+int i;
+const char **methods = event_get_supported_methods();
+printf("Starting Libevent %s.  Available methods are:\n",
+    event_get_version());
+for (i=0; methods[i] != NULL; ++i) {
+    printf("    %s\n", methods[i]);
+}
+```
+
+> **注意**这个函数返回 libevent 被编译以支持的方法列表。然而 libevent 运行的时候，操作系统可能 不能支持所有方法。比如说，可能 OS X 版本中的 kqueue 的 bug 太多，无法使用。
+
+**接口**
+
+```c
+const char *event_base_get_method(const struct event_base *base);
+enum event_method_feature event_base_get_features(const struct event_base *base);
+```
+
+event_base_get_method（）返回 event_base 正在使用的方法。
+
+event_base_get_features（）返回 event_base 支持的特征的比特掩码。
+
+**示例**
+
+```c
+struct event_base *base;
+enum event_method_feature f;
+
+base = event_base_new();
+if (!base) {
+    puts("Couldn't get an event_base!");
+} else {
+    printf("Using Libevent with backend method %s.",
+        event_base_get_method(base));
+    f = event_base_get_features(base);
+    if ((f & EV_FEATURE_ET))
+        printf("  Edge-triggered events are supported.");
+    if ((f & EV_FEATURE_O1))
+        printf("  O(1) event notification is supported.");
+    if ((f & EV_FEATURE_FDS))
+        printf("  All FD types are supported.");
+    puts("");
+}
+```
+
+这个函数定义在<event2/event.h>中。event_base_get_method（）首次出现在1.4.3版本中，其他函数首次出现在2.0.1-alpha 版本中。
+
+#### 4. 释放 event_base
+使用完 event_base 之后，使用 event_base_free（）进行释放。
+**接口**
+
+```c
+void event_base_free(struct event_base *base);
+```
+
+> 注意：这个函数不会释放当前与 event_base 关联的任何事件，或者关闭他们的套接字，或者释放任何指针。
+
+event_base_free（）定义在<event2/event.h>中，首次由 libevent 1.2实现。
+
+#### 5. 设置 event_base 的优先级
+libevent 支持为事件设置多个优先级。然而，event_base 默认只支持单个优先级。可以调用event_base_priority_init（）设置 event_base 的优先级数目。
+
+**接口**
+
+```c
+int event_base_priority_init(struct event_base *base, int n_priorities);
+```
+
+成功时这个函数返回0，失败时返回-1。base 是要修改的 event_base，n_priorities 是要支持的优先级数目，这个数目至少是1。每个新的事件可用的优先级将从0（最高）到n_priorities-1（最低）。
+常量 EVENT_MAX_PRIORITIES 表示 n_priorities 的上限。调用这个函数时为 n_priorities给出更大的值是错误的。
+
+> **注意**
+> 必须在任何事件激活之前调用这个函数，最好在创建 event_base 后立刻调用。
+
+要查找某个数据库当前支持的优先级数量，可以调用event_base_getnpriorities（）。
+
+**接口**
+
+```c
+int event_base_get_npriorities(struct event_base *base);
+```
+
+返回值等于基础中配置的优先级数。 因此，如果event_base_get_npriorities（）返回3，则允许的优先级值为0、1和2。
+  
+
+**示例**
+关于示例，请看 event_priority_set 的文档。
+默认情况下，与 event_base 相关联的事件将被初始化为具有优先级 n_priorities / 2。event_base_priority_init（）函数定义在<event2/event.h>中，从 libevent 1.0版就可用了。
+
+#### 6. 在 fork（）之后重新初始化 event_base
+不是所有事件后端都在调用 fork（）之后可以正确工作。所以，如果在使用 fork（）或者其
+他相关系统调用启动新进程之后，希望在新进程中继续使用 event_base，就需要进行重新
+初始化。
+**接口**
+
+```c
+int event_reinit(struct event_base *base);
+```
+
+成功时这个函数返回0，失败时返回-1。 
+ **示例**
+
+```c
+struct event_base *base = event_base_new();
+
+/* ... add some events to the event_base ... */
+
+if (fork()) {
+    /* In parent */
+    continue_running_parent(base); /*...*/
+} else {
+    /* In child */
+    event_reinit(base);
+    continue_running_child(base); /*...*/
+}
+```
+
+event_reinit（）定义在<event2/event.h>中，在 libevent 1.4.3-alpha 版中首次可用。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
