@@ -2216,9 +2216,9 @@ int evutil_inet_pton(int af, const char *src, void *dst);
 
 这些函数根据 RFC 3493的规定解析和格式化 IPv4与 IPv6地址，与标准 inet_ntop()和inet_pton()函数行为相同。
 
-要格式化 IPv4地址，调用 evutil_inet_ntop()，设置 af 为 AF_INET，src 指向 in_addr 结构体，dst 指向大小为 len 的字符缓冲区。
+要格式化 IPv4地址，调用 evutil_inet_ntop()，设置 af 为 AF_INET，src 指向 in_addr 结构体，dst 指向大小为 len 的字符缓冲区。对于 IPv6地址，af 应该是AF_INET6，src 则指向 in6_addr 结构体。
 
-对于 IPv6地址，af 应该是AF_INET6，src 则指向 in6_addr 结构体。要解析 IP 地址，调用 evutil_inet_pton()，设置af 为 AF_INET 或者 AF_INET6，src 指向要解析的字符串，dst 指向一个 in_addr 或者in_addr6结构体。
+要解析 IP 地址，调用 evutil_inet_pton()，设置af 为 AF_INET 或者 AF_INET6，src 指向要解析的字符串，dst 指向一个 in_addr 或者in_addr6结构体。
 
 失败时 evutil_inet_ntop()返回 NULL，成功时返回到 dst 的指针。成功时 evutil_inet_pton()返回0，失败时返回-1。
 
@@ -2953,7 +2953,7 @@ void bufferevent_unlock(struct bufferevent *bufev);
 
 
 
-### 八、 evbuffer：缓冲 IO 实用功能
+### 八、evbuffer：缓冲 IO 实用功能
 
 libevent 的 evbuffer 实现了为向后面添加数据和从前面移除数据而优化的字节队列。
 
@@ -3355,7 +3355,7 @@ int count_instances(struct evbuffer *buf, const char *str)
 
 任何修改 evbuffer 或者其布局的调用都会使得 evbuffer_ptr 失效，不能再安全地使用。这些接口是2.0.1-alpha 版本新增加的。 
 
-#### 12.检测数据而不复制
+#### 12. 检测数据而不复制
 
 有时候需要读取 evbuffer 中的数据而不进行复制（像 evbuffer_copyout()那样），也不重新排列内部内存布局（像 evbuffer_pullup()那样）。有时候可能需要查看 evbuffer 中间的数据。 
 
@@ -4208,7 +4208,199 @@ int main(int argc, char **argv)
 
 ### TCP
 
+#### Server
+
+```c
+#include <unistd.h>
+#include <string.h>
+#include <event2/event.h>
+#include <event2/util.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h> 
+
+void read_cb(struct bufferevent *bev, void *arg)
+{
+    char buf[1024] = {0}; 
+    bufferevent_read(bev, buf, sizeof(buf));
+	printf("[client]rece server data\n");
+    printf("[client]server say: %s\n", buf);
+}
+ 
+void write_cb(struct bufferevent *bev, void *arg)
+{
+   printf("[client]write_cb\n"); 
+}
+ 
+void event_cb(struct bufferevent *bev, short events, void *arg)
+{
+    if (events & BEV_EVENT_EOF)
+    {
+        printf("[client]connection close\n");  
+    }
+    else if(events & BEV_EVENT_ERROR)   
+    {
+        printf("[client]connection error\n");
+    }
+    else if(events & BEV_EVENT_CONNECTED)
+    {
+        printf("[client]connection success\n");
+        return;
+    }
+    
+    bufferevent_free(bev);
+    printf("[client]bufferevent free\n");
+}
+ 
+void send_cb(evutil_socket_t fd, short what, void *arg)
+{
+    char buf[1024] = {0}; 
+    struct bufferevent* bev = (struct bufferevent*)arg;
+    read(fd, buf, sizeof(buf));
+    bufferevent_write(bev, buf, strlen(buf)+1);
+}
+
+int main(int argc, const char* argv[])
+{
+	struct event_base *base;
+	struct bufferevent* bev;
+	struct sockaddr_in serv;
+	struct event* ev;
+
+	base = event_base_new();
+
+	if (!base) {
+		printf("[client]Couldn't open event base\n");
+		return 1;
+	}
+
+	bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+
+	//连接服务器
+    memset(&serv, 0, sizeof(serv));
+    serv.sin_family = AF_INET;
+    serv.sin_port = htons(6666);
+	//解析 IP 地址
+    evutil_inet_pton(AF_INET, "127.0.0.1", &serv.sin_addr.s_addr);
+	//连接
+    bufferevent_socket_connect(bev, (struct sockaddr*)&serv, sizeof(serv));
+	//设置回调
+    bufferevent_setcb(bev, read_cb, write_cb, event_cb, NULL);
+    bufferevent_enable(bev, EV_READ);
+
+	// 创建一个事件
+	//STDIN_FILENO：接收键盘的输入
+    ev = event_new(base, STDIN_FILENO, EV_READ | EV_PERSIST, 
+                                 send_cb, bev);
+	event_add(ev, NULL);
+    
+    event_base_dispatch(base);
+
+	//释放
+	bufferevent_free(bev);
+	event_free(ev);
+	event_base_free(base);
+
+}
+```
+
+#### Client
+
+```c
+#include <unistd.h>
+#include <string.h>
+#include <event2/event.h>
+#include <event2/util.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h> 
+
+void read_cb(struct bufferevent *bev, void *arg)
+{
+    char buf[1024] = {0}; 
+    bufferevent_read(bev, buf, sizeof(buf));
+	printf("[client]rece server data\n");
+    printf("[client]server say: %s\n", buf);
+}
+ 
+void write_cb(struct bufferevent *bev, void *arg)
+{
+   printf("[client]write_cb\n"); 
+}
+ 
+void event_cb(struct bufferevent *bev, short events, void *arg)
+{
+    if (events & BEV_EVENT_EOF)
+    {
+        printf("[client]connection close\n");  
+    }
+    else if(events & BEV_EVENT_ERROR)   
+    {
+        printf("[client]connection error\n");
+    }
+    else if(events & BEV_EVENT_CONNECTED)
+    {
+        printf("[client]connection success\n");
+        return;
+    }
+    
+    bufferevent_free(bev);
+    printf("[client]bufferevent free\n");
+}
+ 
+void send_cb(evutil_socket_t fd, short what, void *arg)
+{
+    char buf[1024] = {0}; 
+    struct bufferevent* bev = (struct bufferevent*)arg;
+    read(fd, buf, sizeof(buf));
+    bufferevent_write(bev, buf, strlen(buf)+1);
+}
+
+int main(int argc, const char* argv[])
+{
+	struct event_base *base;
+	struct bufferevent* bev;
+	struct sockaddr_in serv;
+	struct event* ev;
+
+	base = event_base_new();
+
+	if (!base) {
+		printf("[client]Couldn't open event base\n");
+		return 1;
+	}
+
+	bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+
+	//连接服务器
+    memset(&serv, 0, sizeof(serv));
+    serv.sin_family = AF_INET;
+    serv.sin_port = htons(6666);
+	//解析 IP 地址
+    evutil_inet_pton(AF_INET, "127.0.0.1", &serv.sin_addr.s_addr);
+	//连接
+    bufferevent_socket_connect(bev, (struct sockaddr*)&serv, sizeof(serv));
+	//设置回调
+    bufferevent_setcb(bev, read_cb, write_cb, event_cb, NULL);
+    bufferevent_enable(bev, EV_READ);
+
+	// 创建一个事件
+	//STDIN_FILENO：接收键盘的输入
+    ev = event_new(base, STDIN_FILENO, EV_READ | EV_PERSIST, 
+                                 send_cb, bev);
+	event_add(ev, NULL);
+    
+    event_base_dispatch(base);
+
+	//释放
+	bufferevent_free(bev);
+	event_free(ev);
+	event_base_free(base);
+
+}
+```
+
 ### HTTP
+
+
 
 ### HTTPS
 
