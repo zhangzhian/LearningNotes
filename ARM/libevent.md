@@ -29,17 +29,11 @@ Libevent用于取代在事件驱动的网络服务器中的事件的循环。应
 libevent 由**下列组件构成**：
 
 -  evutil：用于抽象不同平台网络实现差异的通用功能。 
-
-- event 和 event_base：libevent 的核心，为各种平台特定的、基于事件的非阻塞 IO 后 端提供抽象 API，让程序可以知道套接字何时已经准备好，可以读或者写，并且处理基 本的超时功能，检测 OS 信号。 
-
-- bufferevent：为 libevent 基于事件的核心提供使用更方便的封装。除了通知程序套接字 已经准备好读写之外，还让程序可以请求缓冲的读写操作，可以知道何时 IO 已经真正 发生。 
-
-- evbuffer：在 bufferevent 层之下实现了缓冲功能，并且提供了方便有效的访问函数。 
-
-- evhttp：一个简单的 HTTP 客户端/服务器实现。 
-
-- evdns：一个简单的 DNS 客户端/服务器实现。 
-
+-  event 和 event_base：libevent 的核心，为各种平台特定的、基于事件的非阻塞 IO 后 端提供抽象 API，让程序可以知道套接字何时已经准备好，可以读或者写，并且处理基 本的超时功能，检测 OS 信号。 
+-  bufferevent：为 libevent 基于事件的核心提供使用更方便的封装。除了通知程序套接字 已经准备好读写之外，还让程序可以请求缓冲的读写操作，可以知道何时 IO 已经真正 发生。 
+-  evbuffer：在 bufferevent 层之下实现了缓冲功能，并且提供了方便有效的访问函数。 
+-  evhttp：一个简单的 HTTP 客户端/服务器实现。 
+-  evdns：一个简单的 DNS 客户端/服务器实现。 
 - evrpc：一个简单的 RPC 实现。
 
 ## 编译
@@ -155,6 +149,28 @@ Libevent提供了一个创建RPC服务器和客户端的框架。它负责对所
 [event2/rpc.h](https://libevent.org/doc/rpc_8h.html)  ：创建RPC服务器和客户端的框架
 
 [event2/watch.h](https://libevent.org/doc/watch_8h.html)  ：“准备”和“检查”观察者
+
+| ![-](https://libevent.org/doc/ftv2folderopen.png)[event2](https://libevent.org/doc/dir_db160b4728e6067cf5f9cc14ec42c79d.html) |                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/buffer_8h_source.html)[buffer.h](https://libevent.org/doc/buffer_8h.html) | Functions for buffering data for network sending or receiving |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/buffer__compat_8h_source.html)[buffer_compat.h](https://libevent.org/doc/buffer__compat_8h.html) | Obsolete and deprecated versions of the functions in [buffer.h](https://libevent.org/doc/buffer_8h.html): provided only for backward compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent_8h_source.html)[bufferevent.h](https://libevent.org/doc/bufferevent_8h.html) | Functions for buffering data for network sending or receiving |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent__compat_8h_source.html)[bufferevent_compat.h](https://libevent.org/doc/bufferevent__compat_8h.html) | Deprecated versions of the functions in [bufferevent.h](https://libevent.org/doc/bufferevent_8h.html): provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent__ssl_8h_source.html)[bufferevent_ssl.h](https://libevent.org/doc/bufferevent__ssl_8h.html) | OpenSSL support for bufferevents                             |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/dns_8h_source.html)[dns.h](https://libevent.org/doc/dns_8h.html) | Provides a few APIs to use for resolving DNS names, and a facility for implementing simple DNS servers |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/dns__compat_8h_source.html)[dns_compat.h](https://libevent.org/doc/dns__compat_8h.html) | Potentially non-threadsafe versions of the functions in [dns.h](https://libevent.org/doc/dns_8h.html): provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/event_8h_source.html)[event.h](https://libevent.org/doc/event_8h.html) | Core functions for waiting for and receiving events, and using event bases |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/event__compat_8h_source.html)[event_compat.h](https://libevent.org/doc/event__compat_8h.html) | Potentially non-threadsafe versions of the functions in [event.h](https://libevent.org/doc/event_8h.html): provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/http_8h_source.html)[http.h](https://libevent.org/doc/http_8h.html) | Basic support for HTTP serving                               |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/http__compat_8h_source.html)[http_compat.h](https://libevent.org/doc/http__compat_8h.html) | Potentially non-threadsafe versions of the functions in [http.h](https://libevent.org/doc/http_8h.html): provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/listener_8h_source.html)[listener.h](https://libevent.org/doc/listener_8h.html) | A callback that we invoke when a listener has a new connection |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/rpc_8h_source.html)[rpc.h](https://libevent.org/doc/rpc_8h.html) | This header files provides basic support for an RPC server and client |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/rpc__compat_8h_source.html)[rpc_compat.h](https://libevent.org/doc/rpc__compat_8h.html) | Deprecated versions of the functions in [rpc.h](https://libevent.org/doc/rpc_8h.html): provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/tag_8h_source.html)[tag.h](https://libevent.org/doc/tag_8h.html) | Helper functions for reading and writing tagged data onto buffers |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/tag__compat_8h_source.html)[tag_compat.h](https://libevent.org/doc/tag__compat_8h.html) | Obsolete/deprecated functions from [tag.h](https://libevent.org/doc/tag_8h.html); provided only for backwards compatibility |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/thread_8h_source.html)[thread.h](https://libevent.org/doc/thread_8h.html) | Functions for multi-threaded applications using Libevent     |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/util_8h_source.html)[util.h](https://libevent.org/doc/util_8h.html) | Common convenience functions for cross-platform portability and related socket manipulations |
+| ![ ](https://libevent.org/doc/ftv2blank.png)![*](https://libevent.org/doc/ftv2lastnode.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/watch_8h_source.html)[watch.h](https://libevent.org/doc/watch_8h.html) | "Prepare" and "check" watchers                               |
 
 
 
@@ -2951,7 +2967,346 @@ void bufferevent_unlock(struct bufferevent *bufev);
 
 ### 七、Bufferevent：高级话题
 
+本章介绍了Libevent的bufferevent实现的一些高级功能，这些功能对于典型用途不是必需的。 如果您只是在学习如何使用bufferevents，则应该暂时跳过本章，然后继续阅读evbuffer章。
 
+#### 1. 成对的 bufferevent
+有时候网络程序需要与自身通信。比如说，通过某些协议对用户连接进行隧道操作的程序，有时候也需要通过同样的协议对自身的连接进行隧道操作。当然，可以通过打开一个到自身监听端口的连接，让程序使用这个连接来达到这种目标。但是，通过网络栈来与自身通信比较浪费资源。
+
+替代的解决方案是，创建一对成对的 bufferevent。这样，写入到一个 bufferevent 的字节都被另一个接收（反过来也是），但是不需要使用套接字。
+
+**接口**
+
+```c
+int bufferevent_pair_new(struct event_base *base, int options,
+    struct bufferevent *pair[2]);
+```
+
+
+调用 bufferevent_pair_new()会设置 pair[0]和 pair[1]为一对相互连接的 bufferevent。除了 BEV_OPT_CLOSE_ON_FREE 无效、BEV_OPT_DEFER_CALLBACKS 总是打开的之外， 所有通常的选项都是支持的。 
+
+为什么 bufferevent 对需要带延迟回调运行？通常某一方上的操作会调用一个通知另一方的回调，从而调用另一方的回调，如此这样进行很多步。如果不延迟回调，这种调用链常常会导致栈溢出或者饿死其他连接，而且还要求所有的回调是可重入的。 
+
+成对的 bufferevent 支持 flush：设置模式参数为 BEV_NORMAL 或者 BEV_FLUSH 会强制要求所有相关数据从对中的一个 bufferevent 传输到另一个中，而忽略可能会限制传输的水位设置。增加 BEV_FINISHED 到模式参数中还会让对端的 bufferevent 产生 EOF 事件。 
+
+释放对中的任何一个成员不会自动释放另一个，也不会产生 EOF 事件。释放仅仅会使对中的另一个成员成为断开的。bufferevent 一旦断开，就不能再成功读写数据或者产生任何事件了。 
+
+**接口**
+
+```c
+struct bufferevent *bufferevent_pair_get_partner(struct bufferevent *bev)
+```
+
+有时可能只需要给一个缓冲事件对中的另一个成员。 为此，您可以调用bufferevent_pair_get_partner（）函数。 如果bev是该对中的一个成员，并且另一个成员仍然存在，它将返回该对中的另一个成员。 否则，它返回NULL。
+
+bufferevent 对由2.0.1-alpha 版本引入，而 bufferevent_pair_get_partner()函数由2.0.6版本引入。  
+
+#### 2. 过滤 bufferevent
+有时候需要转换传递给某 bufferevent 的所有数据，这可以通过添加一个压缩层，或者将协议包装到另一个协议中进行传输来实现。
+
+**接口**
+
+```c
+enum bufferevent_filter_result {
+        BEV_OK = 0,
+        BEV_NEED_MORE = 1,
+        BEV_ERROR = 2
+};
+typedef enum bufferevent_filter_result (*bufferevent_filter_cb)(
+    struct evbuffer *source, struct evbuffer *destination, ev_ssize_t dst_limit,
+    enum bufferevent_flush_mode mode, void *ctx);
+
+
+struct bufferevent *bufferevent_filter_new(struct bufferevent *underlying,
+        bufferevent_filter_cb input_filter,
+        bufferevent_filter_cb output_filter,
+        int options,
+        void (*free_context)(void *),
+        void *ctx);
+```
+
+bufferevent_filter_new（）函数创建一个封装现有的“底层”bufferevent 的过滤 bufferevent。所有通过底层 bufferevent 接收的数据在到达过滤 bufferevent 之前都会经过“输入”过滤器的转换；所有通过底层 bufferevent 发送的数据在被发送到底层 bufferevent 之前都会经过“输出”过滤器的转换。 
+
+向底层 bufferevent 添加过滤器将替换其回调函数。可以向底层 bufferevent 的 evbuffer 添加回调函数，但是如果想让过滤器正确工作，就不能再设置 bufferevent 本身的回调函数。
+
+input_filter 和 output_filter 函数将随后描述。options 参数支持所有通常的选项。如果设置了 BEV_OPT_CLOSE_ON_FREE ， 那 么 释 放 过 滤 bufferevent 也会同时释放底层bufferevent。ctx 参数是传递给过滤函数的任意指针；如果提供了 free_context，则在释放 ctx 之前它会被调用。 
+
+底层输入缓冲区有数据可读时，输入过滤器函数会被调用；过滤器的输出缓冲区有新的数据待写入时，输出过滤器函数会被调用。两个过滤器函数都有一对 evbuffer 参数：从 source 读取数据；向 destination 写入数据，而 dst_limit 参数描述了可以写入 destination 的字节数 上限。过滤器函数可以忽略这个参数，但是这样可能会违背高水位或者速率限制。如果dst_limit 是-1，则没有限制。mode 参数向过滤器描述了写入的方式。值 BEV_NORMAL 表示应该在方便转换的基础上写入尽可能多的数据；而 BEV_FLUSH 表示写入尽可能多的数据；BEV_FINISHED 表示过滤器函数应该在流的末尾执行额外的清理操作。最后，过滤器函数的 ctx 参数就是传递给 bufferevent_filter_new（）函数的指针（ctx 参数）。 
+
+如果成功向目标缓冲区写入了任何数据，过滤器函数应该返回 BEV_OK；如果不获得更多的输入，或者不使用不同的清空（flush）模式，就不能向目标缓冲区写入更多的数据，则应该返回 BEV_NEED_MORE；如果过滤器上发生了不可恢复的错误，则应该返回BEV_ERROR。 
+
+创建过滤器将启用底层 bufferevent 的读取和写入。随后就不需要自己管理读取和写入了：过滤器在不想读取的时候会自动挂起底层 bufferevent 的读取。从2.0.8-rc 版本开始，可以在过滤器之外独立地启用/禁用底层 bufferevent 的读取和写入。然而，这样可能会让过滤器不能成功取得所需要的数据。 
+
+不需要同时指定输入和输出过滤器：没有给定的过滤器将被一个不进行数据转换的过滤器取代。 
+
+#### 3. 限制最大单读/写大小
+默认情况下，每次事件循环调用时，bufferevent都不会读取或写入最大可能的字节数； 这样做会导致奇怪的不公平行为和资源匮乏。 另一方面，默认值可能并非在所有情况下都合理。
+
+接口
+
+```c
+int bufferevent_set_max_single_read（struct bufferevent * bev，size_t size）;
+int bufferevent_set_max_single_write（struct bufferevent * bev，size_t size）;
+
+ev_ssize_t bufferevent_get_max_single_read（struct bufferevent * bev）;
+ev_ssize_t bufferevent_get_max_single_write（struct bufferevent * bev）;
+```
+
+
+这两个“设置”功能分别替换了当前的最大读取和写入最大值。 如果大小值为0或大于EV_SSIZE_MAX，则将最大值设置为默认值。 这些函数成功返回0，失败返回-1。
+
+这两个“ get”函数分别返回当前的每个循环读取和写入最大值。
+
+这些功能已添加到2.1.1-alpha中。
+
+#### 4. bufferevent 和速率限制
+某些程序需要限制单个或者一组 bufferevent 使用的带宽。2.0.4-alpha 和2.0.5-alpha 版本添加了为单个或者一组 bufferevent 设置速率限制的基本功能。
+##### 4.1 速率限制模型
+libevent 的速率限制使用记号存储器（token bucket）算法确定在某时刻可以写入或者读取多少字节。每个速率限制对象在任何给定时刻都有一个“读存储器（read bucket）”和一个“写存储器（write bucket）”，其大小决定了对象可以立即读取或者写入多少字节。每个存储器有一个填充速率，一个最大突发尺寸，和一个时间单位，或者说“滴答（tick）”。一个时间单位流逝后，存储器被填充一些字节（决定于填充速率）——但是如果超过其突发尺寸，则超出的字节会丢失。
+因此，填充速率决定了对象发送或者接收字节的最大平均速率，而突发尺寸决定了在单次突发中可以发送或者接收的最大字节数；时间单位则确定了传输的平滑程度。
+
+##### 4.2 为 bufferevent 设置速率限制
+**接口**
+
+```c
+#define EV_RATE_LIMIT_MAX EV_SSIZE_MAX
+struct ev_token_bucket_cfg;
+struct ev_token_bucket_cfg *ev_token_bucket_cfg_new(
+        size_t read_rate, size_t read_burst,
+        size_t write_rate, size_t write_burst,
+        const struct timeval *tick_len);
+void ev_token_bucket_cfg_free(struct ev_token_bucket_cfg *cfg);
+int bufferevent_set_rate_limit(struct bufferevent *bev,
+    struct ev_token_bucket_cfg *cfg);
+```
+
+ev_token_bucket_cfg 结构体代表用于限制单个或者一组 bufferevent 的一对记号存储器的配置值。要创建 ev_token_bucket_cfg，调用 ev_token_bucket_cfg_new 函数，提供最大平均读取速率、最大突发读取量、最大平均写入速率、最大突发写入量，以及一个滴答的长度。如果 tick_len 参数为 NULL，则默认的滴答长度为一秒。如果发生错误，函数会返回 NULL。
+
+注意：read_rate 和 write_rate 参数的单位是字节每滴答。也就是说，如果滴答长度是十分之一秒，read_rate 是300，则最大平均读取速率是3000字节每秒。此外，不支持大于EV_RATE_LIMIT_MAX 的速率或者突发量。
+
+要 限 制 bufferevent的传输速率，使用一个 ev_token_bucket_cfg ， 对其调用bufferevent_set_rate_limit（）。成功时函数返回0，失败时返回-1。可以对任意数量的bufferevent 使 用 相 同 的 ev_token_bucket_cfg 。 要 移 除 速 率 限 制 ， 可 以 调 用bufferevent_set_rate_limit（），传递 NULL 作为 cfg 参数值。
+
+调用 ev_token_bucket_cfg_free（）可以释放 ev_token_bucket_cfg。注意：当前在没有任何 bufferevent 使用 ev_token_bucket_cfg 之前进行释放是不安全的。
+
+##### 4.3 为一组 bufferevent 设置速率限制
+如果要限制一组 bufferevent 总的带宽使用，可以将它们分配到一个速率限制组中。
+
+**接口**
+
+```c
+struct bufferevent_rate_limit_group;
+
+struct bufferevent_rate_limit_group *bufferevent_rate_limit_group_new(
+        struct event_base *base,
+        const struct ev_token_bucket_cfg *cfg);
+int bufferevent_rate_limit_group_set_cfg(
+        struct bufferevent_rate_limit_group *group,
+        const struct ev_token_bucket_cfg *cfg);
+void bufferevent_rate_limit_group_free(struct bufferevent_rate_limit_group *);
+int bufferevent_add_to_rate_limit_group(struct bufferevent *bev,
+    struct bufferevent_rate_limit_group *g);
+int bufferevent_remove_from_rate_limit_group(struct bufferevent *bev);
+```
+
+要创建速率限制组，使用一个 event_base 和一个已经初始化的 ev_token_bucket_cfg 作为参数调用 bufferevent_rate_limit_group_new 函 数 。使用bufferevent_add_to_rate_limit_group 将 bufferevent 添 加 到 组中 ；使用bufferevent_remove_from_rate_limit_group 从组中删除 bufferevent。这些函数成功时返回
+0，失败时返回-1。
+
+单个 bufferevent 在某时刻只能是一个速率限制组的成员。bufferevent 可以同时有单独的速率限制（通过 bufferevent_set_rate_limit 设置）和组速率限制。设置了这两个限制时，对每个 bufferevent，较低的限制将被应用。
+
+调用 bufferevent_rate_limit_group_set_cfg 修改组的速率限制。函数成功时返回0，失败时返回-1。bufferevent_rate_limit_group_free 函数释放速率限制组，移除所有成员。
+
+在2.0版本中，组速率限制试图实现总体的公平，但是具体实现可能在小的时间范围内并不公平。如果你强烈关注调度的公平性，请帮助提供未来版本的补丁。
+
+##### 4.4 检查当前速率限制
+有时候需要得知应用到给定 bufferevent 或者组的速率限制，为此，libevent 提供了函数：
+
+**接口**
+
+```c
+ev_ssize_t bufferevent_get_read_limit(struct bufferevent *bev);
+ev_ssize_t bufferevent_get_write_limit(struct bufferevent *bev);
+ev_ssize_t bufferevent_rate_limit_group_get_read_limit(
+        struct bufferevent_rate_limit_group *);
+ev_ssize_t bufferevent_rate_limit_group_get_write_limit(
+        struct bufferevent_rate_limit_group *);
+```
+
+上述函数返回以字节为单位的 bufferevent 或者组的读写记号存储器大小。注意：如果bufferevent 已经被强制超过其配置（清空(flush)操作就会这样），则这些值可能是负数。
+
+**接口**
+
+```c
+ev_ssize_t bufferevent_get_max_to_read(struct bufferevent *bev);
+ev_ssize_t bufferevent_get_max_to_write(struct bufferevent *bev);
+```
+
+这些函数返回在考虑了应用到 bufferevent 或者组（如果有）的速率限制，以及一次最大读写数据量的情况下，现在可以读或者写的字节数。 
+
+**接口**  
+
+```c
+void bufferevent_rate_limit_group_get_totals(
+    struct bufferevent_rate_limit_group *grp,
+    ev_uint64_t *total_read_out, ev_uint64_t *total_written_out);
+void bufferevent_rate_limit_group_reset_totals(
+    struct bufferevent_rate_limit_group *grp);
+```
+
+每个 bufferevent_rate_limit_group 跟踪经过其发送的总的字节数，这可用于跟踪组中所有bufferevent 总的使用情况。对一个组调用 bufferevent_rate_limit_group_get_totals 会分别设置 total_read_out 和 total_written_out 为组的总读取和写入字节数。组创建的时候这些计数从0开始，调用 bufferevent_rate_limit_group_reset_totals 会复位计数为0。
+
+##### 4.5 手动调整速率限制
+对于有复杂需求的程序，可能需要调整记号存储器的当前值。比如说，如果程序不通过使用bufferevent 的方式产生一些通信量时。
+
+**接口**
+
+```c
+int bufferevent_decrement_read_limit(struct bufferevent *bev, ev_ssize_t decr);
+int bufferevent_decrement_write_limit(struct bufferevent *bev, ev_ssize_t decr);
+int bufferevent_rate_limit_group_decrement_read(
+        struct bufferevent_rate_limit_group *grp, ev_ssize_t decr);
+int bufferevent_rate_limit_group_decrement_write(
+        struct bufferevent_rate_limit_group *grp, ev_ssize_t decr);
+```
+
+这些函数减小某个 bufferevent 或者速率限制组的当前读或者写存储器。注意：减小是有符号的。如果要增加存储器，就传入负值。
+##### 4.6 设置速率限制组的最小可能共享
+通常，不希望在每个滴答中为速率限制组中的所有 bufferevent 平等地分配可用的字节。比如说，有一个含有10000个活动 bufferevent 的速率限制组，它在每个滴答中可以写入10000字节，那么，因为系统调用和 TCP 头部的开销，让每个 bufferevent 在每个滴答中仅写入1字节是低效的。
+
+为解决此问题，速率限制组有一个“最小共享（minimum share）”的概念。在上述情况下，不是允许每个 bufferevent 在每个滴答中写入1字节，而是在每个滴答中允许某个 bufferevent写入一些（最小共享）字节，而其余的 bufferevent 将不允许写入。允许哪个 bufferevent写入将在每个滴答中随机选择。
+
+默认的最小共享值具有较好的性能，当前（2.0.6-rc 版本）其值为64。可以通过这个函数调整最小共享值：
+
+**接口**
+
+```c
+int bufferevent_rate_limit_group_set_min_share(
+        struct bufferevent_rate_limit_group *group, size_t min_share);
+```
+
+设置 min_share 为0将会完全禁止最小共享。
+
+速率限制功能从引入开始就具有最小共享了，而修改最小共享的函数在2.0.6-rc 版本首次引入。
+
+##### 4.7 速率限制实现的限制
+2.0版本的 libevent 的速率限制具有一些实现上的限制：
+
+- 不是每种 bufferevent 类型都良好地或者说完整地支持速率限制。
+- bufferevent 速率限制组不能嵌套，一个 bufferevent 在某时刻只能属于一个速率限制组。
+- 速率限制实现仅计算 TCP 分组传输的数据，不包括 TCP 头部。
+- 读速率限制实现依赖于 TCP 栈通知应用程序仅仅以某速率消费数据，并且在其缓冲区
+  满的时候将数据推送到 TCP 连接的另一端。
+- 某些 bufferevent 实现（特别是 Windows 中的 IOCP 实现）可能调拨过度。
+- 存储器开始于一个滴答的通信量。这意味着 bufferevent 可以立即开始读取或者写入，
+  而不用等待一个滴答的时间。但是这也意味着速率被限制为 N.1个滴答的 bufferevent
+  可能传输 N+1个滴答的通信量。
+- 滴答不能小于1毫秒，毫秒的小数部分都被忽略。
+
+#### 5. bufferevent 和 SSL
+bufferevent 可以使用 OpenSSL 库实现 SSL/TLS 安全传输层。因为很多应用不需要或者不想链接 OpenSSL，这部分功能在单独的 libevent_openssl 库中实现。未来版本的 libevent可能会添加其他 SSL/TLS 库，如 NSS 或者 GnuTLS，但是当前只有 OpenSSL。
+
+OpenSSL 功能在2.0.3-alpha 版本引入，然而直到2.0.5-beta 和2.0.6-rc 版本才能良好工作。
+
+这一节不包含对 OpenSSL、SSL/TLS 或者密码学的概述。
+
+这一节描述的函数都在 event2/bufferevent_ssl.h 中声明。
+
+##### 创建和使用基于 OpenSSL 的 bufferevent
+
+**接口**
+
+```c
+enum bufferevent_ssl_state {
+        BUFFEREVENT_SSL_OPEN = 0,
+        BUFFEREVENT_SSL_CONNECTING = 1,
+        BUFFEREVENT_SSL_ACCEPTING = 2
+};
+
+struct bufferevent *
+bufferevent_openssl_filter_new(struct event_base *base,
+    struct bufferevent *underlying,
+    SSL *ssl,
+    enum bufferevent_ssl_state state,
+    int options);
+
+struct bufferevent *
+bufferevent_openssl_socket_new(struct event_base *base,
+    evutil_socket_t fd,
+    SSL *ssl,
+    enum bufferevent_ssl_state state,
+    int options);
+```
+
+可以创建两种SSL bufferevent：基于过滤器的bufferevent，该事件通过另一个基础bufferevent进行通信，或者基于套接字的bufferevent，通知OpenSSL直接通过网络与网络进行通信。无论哪种情况，都必须提供SSL对象和SSL对象状态的描述。如果SSL当前正在作为客户端进行协商，则状态应为BUFFEREVENT_SSL_CONNECTING；如果SSL当前正在作为服务器进行协商，则状态应为BUFFEREVENT_SSL_ACCEPTING；如果SSL握手已完成，则状态应为BUFFEREVENT_SSL_OPEN。
+
+接受常规选项； BEV_OPT_CLOSE_ON_FREE使当关闭openssl bufferevent本身时，SSL对象和基础fd或bufferevent关闭。
+
+握手完成后，将使用标志中的BEV_EVENT_CONNECTED调用新的bufferevent的事件回调。
+
+如果您要创建基于套接字的bufferEvent，并且SSL对象已经设置了套接字，则无需自己提供套接字：只需传递-1。您还可以稍后使用bufferevent_setfd（）设置fd。
+
+/// TODO：bufferevent_shutdown（）API完成后，请删除此代码。
+
+请注意，在SSL缓冲区事件中设置BEV_OPT_CLOSE_ON_FREE时，将不会在SSL连接上执行干净关闭。这有两个问题：首先，连接似乎已被另一端“断开”，而不是被完全关闭：另一方将无法告知您是否关闭了连接，或断开了连接攻击者或第三方。其次，OpenSSL将会话视为“不良”会话，并从会话缓存中删除。这可能导致负载下的SSL应用程序性能显着下降。
+
+当前，唯一的解决方法是手动关闭惰性SSL。虽然这破坏了TLS RFC，但可以确保会话一旦关闭就将保留在缓存中。下面的代码实现此解决方法。
+
+**示例**
+
+```c
+SSL *ctx = bufferevent_openssl_get_ssl(bev);
+
+/*
+ * SSL_RECEIVED_SHUTDOWN tells SSL_shutdown to act as if we had already
+ * received a close notify from the other end.  SSL_shutdown will then
+ * send the final close notify in reply.  The other end will receive the
+ * close notify and send theirs.  By this time, we will have already
+ * closed the socket and the other end's real close notify will never be
+ * received.  In effect, both sides will think that they have completed a
+ * clean shutdown and keep their sessions valid.  This strategy will fail
+ * if the socket is not ready for writing, in which case this hack will
+ * lead to an unclean shutdown and lost session on the other end.
+ */
+SSL_set_shutdown(ctx, SSL_RECEIVED_SHUTDOWN);
+SSL_shutdown(ctx);
+bufferevent_free(bev);
+```
+
+**接口**
+
+```c
+SSL *bufferevent_openssl_get_ssl(struct bufferevent *bev);
+```
+
+这个函数返回 OpenSSL bufferevent 使用的 SSL 对象。如果 bev 不是一个基于 OpenSSL 的 bufferevent，则返回 NULL。  
+
+**接口**
+
+```c
+unsigned long bufferevent_get_openssl_error(struct bufferevent *bev);
+```
+
+这个函数返回给定 bufferevent 的第一个未决的 OpenSSL 错误；如果没有未决的错误，则返回0。错误值的格式与 openssl 库中的 ERR_get_error（）返回的相同。
+
+**接口**
+
+```c
+int bufferevent_ssl_renegotiate(struct bufferevent *bev);
+```
+
+调用这个函数要求 SSL 重新协商，bufferevent 会调用合适的回调函数。这是个高级功能，通常应该避免使用，除非你确实知道自己在做什么，特别是有些 SSL 版本具有与重新协商相关的安全问题。
+
+**接口**
+
+```c
+int bufferevent_openssl_get_allow_dirty_shutdown(struct bufferevent *bev);
+void bufferevent_openssl_set_allow_dirty_shutdown(struct bufferevent *bev,
+    int allow_dirty_shutdown);
+```
+
+SSL协议的所有良好版本（即SSLv3和所有TLS版本）都支持经过身份验证的关闭操作，该操作使各方可以区分下意识缓冲区中的故意关闭与意外或恶意引发的终止。 默认情况下，我们将正确关闭以外的所有内容都视为连接错误。 但是，如果allow_dirty_shutdown标志设置为1，则将连接中的关闭视为BEV_EVENT_EOF。
+
+Libevent 2.1.1-alpha中添加了allow_dirty_shutdown函数。
+
+**示例：一个简单的基于SSL的回显服务器**
 
 ### 八、evbuffer：缓冲 IO 实用功能
 
@@ -4093,9 +4448,836 @@ main(int argc, char **argv)
 
 ### 九、使用 libevent **的** DNS：高层和底层功能
 
+libevent 提供了少量用于解析 DNS 名字的 API，以及用于实现简单 DNS 服务器的机制。
 
+我们从用于名字查询的高层机制开始介绍，然后介绍底层机制和服务器机制。
 
+> **注意**
+> libevent 当前的 DNS 客户端实现存在限制：不支持 TCP 查询、DNSSec 以及任意记录类型。未来版本的 libevent 会修正这些限制。
 
+#### 1. 预备：可移植的阻塞式名字解析
+为移植已经使用阻塞式名字解析的程序，libevent 提供了标准 getaddrinfo()接口的可移植实现。对于需要运行在没有 getaddrinfo(）函数，或者 getaddrinfo()不像我们的替代函数那样遵循标准的平台上的程序，这个替代实现很有用。
+
+getaddrinfo()接口由 RFC 3493的6.1节定义。关于 libevent 如何不满足其一致性实现的概述，请看下面的“兼容性提示”节。
+
+**接口**
+
+```c
+struct evutil_addrinfo {
+    int ai_flags;
+    int ai_family;
+    int ai_socktype;
+    int ai_protocol;
+    size_t ai_addrlen;
+    char *ai_canonname;
+    struct sockaddr *ai_addr;
+    struct evutil_addrinfo *ai_next;
+};
+
+#define EVUTIL_AI_PASSIVE     /* ... */
+#define EVUTIL_AI_CANONNAME   /* ... */
+#define EVUTIL_AI_NUMERICHOST /* ... */
+#define EVUTIL_AI_NUMERICSERV /* ... */
+#define EVUTIL_AI_V4MAPPED    /* ... */
+#define EVUTIL_AI_ALL         /* ... */
+#define EVUTIL_AI_ADDRCONFIG  /* ... */
+
+int evutil_getaddrinfo(const char *nodename, const char *servname,
+    const struct evutil_addrinfo *hints, struct evutil_addrinfo **res);
+void evutil_freeaddrinfo(struct evutil_addrinfo *ai);
+const char *evutil_gai_strerror(int err);
+```
+
+evutil_getaddrinfo()函数试图根据 hints 给出的规则，解析指定的 nodename 和 servname，建立一个 evutil_addrinfo 结构体链表，将其存储在*res 中。成功时函数返回0，失败时返回非零的错误码。
+
+必须至少提供 nodename 和 servname 中的一个。如果提供了 nodename，则它是 IPv4字面地址（如127.0.0.1）、IPv6字面地址（如::1），或者是 DNS 名字（如 www.example.com）。
+
+如果提供了 servname，则它是某网络服务的符号名（如 https），或者是一个包含十进制端口号的字符串（如443）。
+
+如果不指定 servname，则 res 中的端口号将是零。如果不指定 nodename，则 res 中的地址要么是 localhost(默认），要么是“任意”（如果设置了 EVUTIL_AI_PASSIVE）。hints 的 ai_flags 字段指示 evutil_getaddrinfo 如何进行查询，它可以包含0个或者多个以或运算连接的下述标志：
+
+- EVUTIL_AI_PASSIVE
+  这个标志指示将地址用于监听，而不是连接。通常二者没有差别，除非 nodename 为空：对于连接，空的 nodename 表示 localhost（127.0.0.1或者::1）；而对于监听，空的 nodename表示任意（0.0.0.0或者::0）。
+
+- EVUTIL_AI_CANONNAME
+  如果设置了这个标志，则函数试图在 ai_canonname 字段中报告标准名称。
+
+- EVUTIL_AI_NUMERICHOST
+  如果设置了这个标志，函数仅仅解析数值类型的 IPv4和 IPv6地址；如果 nodename 要求名字查询，函数返回 EVUTIL_EAI_NONAME 错误。
+
+- EVUTIL_AI_NUMERICSERV
+  如果设置了这个标志，函数仅仅解析数值类型的服务名。如果 servname 不是空，也不是十进制整数，函数返回 EVUTIL_EAI_NONAME 错误。
+
+- EVUTIL_AI_V4MAPPED
+  这个标志表示，如果 ai_family 是 AF_INET6，但是找不到 IPv6地址，则应该以 v4映射(v4-mapped)型 IPv6地址的形式返回结果中的 IPv4地址。当前 evutil_getaddrinfo()不支持这个标志，除非操作系统支持它。
+
+- EVUTIL_AI_ALL
+  如果设置了这个标志和 EVUTIL_AI_V4MAPPED，则无论结果是否包含 IPv6地址，IPv4地址都应该以 v4映射型 IPv6地址的形式返回。当前 evutil_getaddrinfo()不支持这个标志，除非操作系统支持它。
+
+- EVUTIL_AI_ADDRCONFIG
+  如果设置了这个标志，则只有系统拥有非本地的 IPv4地址时，结果才包含 IPv4地址；只有系统拥有非本地的 IPv6地址时，结果才包含 IPv6地址。
+
+hints 的 ai_family 字段指示 evutil_getaddrinfo()应该返回哪个地址。字段值可以是 AF_INET，表示只请求 IPv4地址；也可以是 AF_INET6，表示只请求 IPv6地址；或者用 AF_UNSPEC表示请求所有可用地址。
+
+hints 的 ai_socktype 和 ai_protocol 字段告知 evutil_getaddrinfo()将如何使用返回的地址。这两个字段值的意义与传递给 socket()函数的 socktype 和 protocol 参数值相同。
+
+成功时函数新建一个 evutil_addrinfo 结构体链表，存储在*res 中，链表的每个元素通过ai_next 指针指向下一个元素。因为链表是在堆上分配的，所以需要调用 evutil_freeaddrinfo()进行释放。
+
+如果失败，函数返回数值型的错误码：
+
+- EVUTIL_EAI_ADDRFAMILY
+  请求的地址族对 nodename 没有意义。
+
+- EVUTIL_EAI_AGAIN
+  名字解析中发生可以恢复的错误，请稍后重试。
+
+- EVUTIL_EAI_FAIL
+  名字解析中发生不可恢复的错误：解析器或者 DNS 服务器可能已经崩溃。
+
+- EVUTIL_EAI_BADFLAGS
+  hints 中的 ai_flags 字段无效。
+
+- EVUTIL_EAI_FAMILY
+  不支持 hints 中的 ai_family 字段。
+
+- EVUTIL_EAI_MEMORY
+  回应请求的过程耗尽内存。
+
+- EVUTIL_EAI_NODATA
+  请求的主机不存在。
+
+- EVUTIL_EAI_SERVICE
+  请求的服务不存在。
+
+- EVUTIL_EAI_SOCKTYPE
+  不支持请求的套接字类型，或者套接字类型与 ai_protocol 不匹配。
+
+- EVUTIL_EAI_SYSTEM
+  名字解析中发生其他系统错误，更多信息请检查 errno。 
+
+- EVUTIL_EAI_CANCEL
+  应用程序在解析完成前请求取消。evutil_getaddrinfo()函数从不产生这个错误，但是后面描述的 evdns_getaddrinfo()可能产生这个错误。
+
+调用 evutil_gai_strerror()可以将上述错误值转化成描述性的字符串。
+
+注意如果操作系统定义了 addrinfo 结构体，则 evutil_addrinfo 仅仅是操作系统内置的addrinfo 结构体的别名。类似地，如果操作系统定义了 AI_*标志，则相应的 EVUTIL_AI_*标志仅仅是本地标志的别名；如果操作系统定义了 EAI_*错误，则相应的 EVUTIL_EAI_*只是本地错误码的别名。
+
+**示例：解析主机名，建立阻塞的连接**
+
+```c
+#include <event2/util.h>
+
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <unistd.h>
+
+evutil_socket_t
+get_tcp_socket_for_host(const char *hostname, ev_uint16_t port)
+{
+    char port_buf[6];
+    struct evutil_addrinfo hints;
+    struct evutil_addrinfo *answer = NULL;
+    int err;
+    evutil_socket_t sock;
+
+    /* Convert the port to decimal. */
+    evutil_snprintf(port_buf, sizeof(port_buf), "%d", (int)port);
+
+    /* Build the hints to tell getaddrinfo how to act. */
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC; /* v4 or v6 is fine. */
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP; /* We want a TCP socket */
+    /* Only return addresses we can use. */
+    hints.ai_flags = EVUTIL_AI_ADDRCONFIG;
+
+    /* Look up the hostname. */
+    err = evutil_getaddrinfo(hostname, port_buf, &hints, &answer);
+    if (err != 0) {
+          fprintf(stderr, "Error while resolving '%s': %s",
+                  hostname, evutil_gai_strerror(err));
+          return -1;
+    }
+
+    /* If there was no error, we should have at least one answer. */
+    assert(answer);
+    /* Just use the first answer. */
+    sock = socket(answer->ai_family,
+                  answer->ai_socktype,
+                  answer->ai_protocol);
+    if (sock < 0)
+        return -1;
+    if (connect(sock, answer->ai_addr, answer->ai_addrlen)) {
+        /* Note that we're doing a blocking connect in this function.
+         * If this were nonblocking, we'd need to treat some errors
+         * (like EINTR and EAGAIN) specially. */
+        EVUTIL_CLOSESOCKET(sock);
+        return -1;
+    }
+
+    return sock;
+}
+```
+上述函数和常量是2.0.3-alpha 版本新增加的，声明在 event2/util.h 中。
+
+#### 2. 使用 evdns_getaddrinfo()的非阻塞式名字解析
+
+通常的 getaddrinfo()，以及上面的 evutil_getaddrinfo()的问题是，它们是阻塞的：调用线程必须等待函数查询 DNS 服务器，等待回应。对于 libevent，这可能不是期望的行为。对于非阻塞式应用，libevent 提供了一组函数用于启动 DNS 请求，让 libevent 等待服务器回应。
+
+**接口**
+
+```c
+typedef void (*evdns_getaddrinfo_cb)(
+    int result, struct evutil_addrinfo *res, void *arg);
+struct evdns_getaddrinfo_request;
+
+struct evdns_getaddrinfo_request *evdns_getaddrinfo(
+    struct evdns_base *dns_base,
+    const char *nodename, const char *servname,
+    const struct evutil_addrinfo *hints_in,
+    evdns_getaddrinfo_cb cb, void *arg);
+
+void evdns_getaddrinfo_cancel(struct evdns_getaddrinfo_request *req);
+```
+
+除了不会阻塞在 DNS 查询上，而是使用 libevent 的底层 DNS 机制进行查询外，evdns_getaddrinfo()和 evutil_getaddrinfo()是一样的。因为函数不是总能立即返回结果，所以需要提供一个 evdns_getaddrinfo_cb 类型的回调函数，以及一个给回调函数的可选的用户参数。
+
+此外，调用 evdns_getaddrinfo()还要求一个 evdns_base 指针。evdns_base 结构体为libevent 的 DNS 解析器保持状态和配置。关于如何获取 evdns_base 指针，请看下一节。
+
+如果失败或者立即成功，函数返回 NULL。否则，函数返回一个 evdns_getaddrinfo_request指针。在解析完成之前可以随时使用 evdns_getaddrinfo_cancel()和这个指针来取消解析。
+
+注意：不论 evdns_getaddrinfo()是否返回 NULL，是否调用了 evdns_getaddrinfo_cancel()，回调函数总是会被调用。
+
+evdns_getaddrinfo()内部会复制 nodename、servname 和 hints 参数，所以查询进行过程中不必保持这些参数有效。
+
+**示例：使用evdns_getaddrinfo()的非阻塞查询**
+
+```c
+#include <event2/dns.h>
+#include <event2/util.h>
+#include <event2/event.h>
+
+#include <sys/socket.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+int n_pending_requests = 0;
+struct event_base *base = NULL;
+
+struct user_data {
+    char *name; /* the name we're resolving */
+    int idx; /* its position on the command line */
+};
+
+void callback(int errcode, struct evutil_addrinfo *addr, void *ptr)
+{
+    struct user_data *data = ptr;
+    const char *name = data->name;
+    if (errcode) {
+        printf("%d. %s -> %s\n", data->idx, name, evutil_gai_strerror(errcode));
+    } else {
+        struct evutil_addrinfo *ai;
+        printf("%d. %s", data->idx, name);
+        if (addr->ai_canonname)
+            printf(" [%s]", addr->ai_canonname);
+        puts("");
+        for (ai = addr; ai; ai = ai->ai_next) {
+            char buf[128];
+            const char *s = NULL;
+            if (ai->ai_family == AF_INET) {
+                struct sockaddr_in *sin = (struct sockaddr_in *)ai->ai_addr;
+                s = evutil_inet_ntop(AF_INET, &sin->sin_addr, buf, 128);
+            } else if (ai->ai_family == AF_INET6) {
+                struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)ai->ai_addr;
+                s = evutil_inet_ntop(AF_INET6, &sin6->sin6_addr, buf, 128);
+            }
+            if (s)
+                printf("    -> %s\n", s);
+        }
+        evutil_freeaddrinfo(addr);
+    }
+    free(data->name);
+    free(data);
+    if (--n_pending_requests == 0)
+        event_base_loopexit(base, NULL);
+}
+
+/* Take a list of domain names from the command line and resolve them in
+ * parallel. */
+int main(int argc, char **argv)
+{
+    int i;
+    struct evdns_base *dnsbase;
+
+    if (argc == 1) {
+        puts("No addresses given.");
+        return 0;
+    }
+    base = event_base_new();
+    if (!base)
+        return 1;
+    dnsbase = evdns_base_new(base, 1);
+    if (!dnsbase)
+        return 2;
+
+    for (i = 1; i < argc; ++i) {
+        struct evutil_addrinfo hints;
+        struct evdns_getaddrinfo_request *req;
+        struct user_data *user_data;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_flags = EVUTIL_AI_CANONNAME;
+        /* Unless we specify a socktype, we'll get at least two entries for
+         * each address: one for TCP and one for UDP. That's not what we
+         * want. */
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+
+        if (!(user_data = malloc(sizeof(struct user_data)))) {
+            perror("malloc");
+            exit(1);
+        }
+        if (!(user_data->name = strdup(argv[i]))) {
+            perror("strdup");
+            exit(1);
+        }
+        user_data->idx = i;
+
+        ++n_pending_requests;
+        req = evdns_getaddrinfo(
+                          dnsbase, argv[i], NULL /* no service name given */,
+                          &hints, callback, user_data);
+        if (req == NULL) {
+          printf("    [request for %s returned immediately]\n", argv[i]);
+          /* No need to free user_data or decrement n_pending_requests; that
+           * happened in the callback. */
+        }
+    }
+
+    if (n_pending_requests)
+      event_base_dispatch(base);
+
+    evdns_base_free(dnsbase, 0);
+    event_base_free(base);
+
+    return 0;
+}
+```
+
+上述函数是2.0.3-alpha 版本新增加的，声明在 event2/dns.h 中。
+
+#### 3. 创建和配置 evdns_base
+使用 evdns 进行非阻塞 DNS 查询之前需要配置一个 evdns_base。evdns_base 存储名字服务器列表和 DNS 配置选项，跟踪活动的、进行中的 DNS 请求。
+
+**接口**
+
+```c
+struct evdns_base *evdns_base_new(struct event_base *event_base,
+       int initialize);
+void evdns_base_free(struct evdns_base *base, int fail_requests);
+```
+
+成功时 evdns_base_new()返回一个新建的 evdns_base，失败时返回 NULL。如果 initialize参数为 true，函数试图根据操作系统的默认值配置 evdns_base；否则，函数让 evdns_base为空，不配置名字服务器和选项。
+
+可以用 evdns_base_free()释放不再使用的 evdns_base。如果 fail_request 参数为 true，函数会在释放 evdns_base 前让所有进行中的请求使用取消错误码调用其回调函数。
+
+##### 3.1 使用系统配置初始化 evdns
+
+如果需要更多地控制 evdns_base 如何初始化，可以为 evdns_base_new()的 initialize 参数传递0，然后调用下述函数。
+
+**接口**
+
+```c
+#define DNS_OPTION_SEARCH 1
+#define DNS_OPTION_NAMESERVERS 2
+#define DNS_OPTION_MISC 4
+#define DNS_OPTION_HOSTSFILE 8
+#define DNS_OPTIONS_ALL 15
+int evdns_base_resolv_conf_parse(struct evdns_base *base, int flags,
+                                 const char *filename);
+
+#ifdef WIN32
+int evdns_base_config_windows_nameservers(struct evdns_base *);
+#define EVDNS_BASE_CONFIG_WINDOWS_NAMESERVERS_IMPLEMENTED
+#endif
+```
+
+evdns_base_resolv_conf_parse()函数扫描 resolv.conf 格式的文件 filename，从中读取 flags
+指示的选项（关于 resolv.conf 文件的更多信息，请看 Unix 手册）。 
+
+- DNS_OPTION_SEARCH
+  请求从 resolv.conf 文件读取 domain 和 search 字段以及 ndots 选项，使用它们来确定使用哪个域（如果存在）来搜索不是全限定的主机名。
+
+- DNS_OPTION_NAMESERVERS
+  请求从 resolv.conf 中读取名字服务器地址。
+
+- DNS_OPTION_MISC
+  请求从 resolv.conf 文件中读取其他配置选项。
+
+- DNS_OPTION_HOSTSFILE
+  请求从/etc/hosts 文件读取主机列表。
+
+- DNS_OPTION_ALL
+  请求从 resolv.conf 文件获取尽量多的信息。
+
+Windows 中 没 有 可 以 告 知 名 字 服 务 器 在 哪 里 的 resolv.conf 文 件 ， 但 可 以 用evdns_base_config_windows_nameservers()函数从注册表（或者 NetworkParams，或者其他隐藏的地方）读取名字服务器。
+
+##### 3.2 resolv.conf 文件格式
+
+resolv.conf 是一个文本文件，每一行要么是空行，要么包含以#开头的注释，要么由一个跟
+随零个或者多个参数的标记组成。可以识别的标记有：
+
+- nameserver
+
+  必须后随一个名字服务器的 IP 地址。作为一个扩展，libevent 允许使用 IP:Port 或者[IPv6]:port 语法为名字服务器指定非标准端口。
+
+- domain
+
+  本地域名
+
+- search
+
+  解析本地主机名时要搜索的名字列表。如果不能正确解析任何含有少于“ndots”个点的本地名字，则在这些域名中进行搜索。比如说，如果“search”字段值为 example.com，“ndots” 为1，则用户请求解析“www”时，函数认为那是“www.example.com”。
+
+- options
+
+  空格分隔的选项列表。选项要么是空字符串，要么具有格式 option:value（如果有参数）。
+
+  可识别的选项有：
+
+  - ndots:INTEGER
+  用于配置搜索，请参考上面的“search”，默认值是1。
+
+  - timeout:FLOAT
+  等待 DNS 服务器响应的时间，单位是秒。默认值为5秒。
+
+  - max-timeouts:INT
+  名字服务器响应超时几次才认为服务器当机？默认是3次。
+
+  - max-inflight:INT
+    最多允许多少个未决的 DNS 请求？（如果试图发出多于这么多个请求，则过多的请求将被延迟，直到某个请求被响应或者超时）。默认值是 XXX。
+
+  -  attempts:INT
+  在放弃之前重新传输多少次 DNS 请求？默认值是 XXX。
+
+  -  randomize-case:INT
+    如果非零，evdns 会为发出的 DNS 请求设置随机的事务 ID，并且确认回应具有同样的随机事务 ID 值。这种称作 “0x20 hack” 的机制可以在一定程度上阻止对 DNS 的简单激活事件攻击。这个选项的默认值是1。
+
+  -  bind-to:ADDRESS
+    如果提供，则向名字服务器发送数据之前绑定到给出的地址。对于2.0.4-alpha 版本，这个设置仅应用于后面的名字服务器条目。
+
+  - initial-probe-timeout:FLOAT
+    确定名字服务器当机后，libevent 以指数级降低的频率探测服务器以判断服务器是否恢复。这个选项配置（探测时间间隔）序列中的第一个超时，单位是秒。默认值是10。
+
+  -  getaddrinfo-allow-skew:FLOAT
+    同时请求IPv4和IPv6地址时，evdns_getaddrinfo()用单独的DNS请求包分别请求两种地址，因为有些服务器不能在一个包中同时处理两种请求。服务器回应一种地址类型后，函数等待一段时间确定另一种类型的地址是否到达。这个选项配置等待多长时间，单位是秒。默认值是3秒。
+
+    不识别的字段和选项会被忽略。
+
+##### 3.3 手动配置 evdns
+
+如果需要更精细地控制 evdns 的行为，可以使用下述函数：
+
+**接口**
+
+```c
+int evdns_base_nameserver_sockaddr_add(struct evdns_base *base,
+                                 const struct sockaddr *sa, ev_socklen_t len,
+                                 unsigned flags);
+int evdns_base_nameserver_ip_add(struct evdns_base *base,
+                                 const char *ip_as_string);
+int evdns_base_load_hosts(struct evdns_base *base, const char *hosts_fname);
+
+void evdns_base_search_clear(struct evdns_base *base);
+void evdns_base_search_add(struct evdns_base *base, const char *domain);
+void evdns_base_search_ndots_set(struct evdns_base *base, int ndots);
+
+int evdns_base_set_option(struct evdns_base *base, const char *option,
+    const char *val);
+
+int evdns_base_count_nameservers(struct evdns_base *base);
+```
+
+evdns_base_nameserver_sockaddr_add()函数通过地址向 evdns_base 添加名字服务器。当前忽略 flags 参数，为向前兼容考虑，应该传入0。成功时函数返回0，失败时返回负值。（这个函数在2.0.7-rc 版本加入）
+
+evdns_base_nameserver_ip_add()函数向 evdns_base 加入字符串表示的名字服务器，格式可以是 IPv4地址、IPv6地址、带端口号的 IPv4地址（IPv4:Port)，或者带端口号的 IPv6地址（[IPv6]:Port）。成功时函数返回0，失败时返回负值。
+
+evdns_base_load_hosts()函数从 hosts_fname 文件中载入主机文件（格式与/etc/hosts 相 同）。成功时函数返回0，失败时返回负值。
+
+evdns_base_search_clear()函数从 evdns_base 中移除所有（通过 search 配置的）搜索后缀；evdns_base_search_add()则添加后缀。
+
+evdns_base_set_option()函数设置 evdns_base 中某选项的值。选项和值都用字符串表示。 （2.0.3版本之前，选项名后面必须有一个冒号）
+
+解析一组配置文件后，可以使用 evdns_base_count_nameservers()查看添加了多少个名字服务器。
+
+##### 3.4 库端配置 
+
+有一些为 evdns 模块设置库级别配置的函数： 
+
+**接口**
+
+```c
+typedef void (*evdns_debug_log_fn_type)(int is_warning, const char *msg);
+void evdns_set_log_fn(evdns_debug_log_fn_type fn);
+void evdns_set_transaction_id_fn(ev_uint16_t (*fn)(void));
+```
+
+因为历史原因，evdns 子系统有自己单独的日志。evdns_set_log_fn()可以设置一个回调函数，以便在丢弃日志消息前做一些操作。 
+
+为安全起见，evdns 需要一个良好的随机数发生源：使用0x20 hack 的时候，evdns 通过这个源来获取难以猜测（hard-to-guess）的事务 ID 以随机化查询（请参考“randomize-case”选项）。然而，较老版本的 libevent 没有自己的安全的 RNG（随机数发生器）。此时可以通过调用 evdns_set_transaction_id_fn()，传入一个返回难以预测（hard-to-predict）的两字节无符号整数的函数，来为 evdns 设置一个更好的随机数发生器。 
+
+2.0.4-alpha 以 及 后 续 版 本 中 ， libevent 有 自 己 内 置 的 安 全 的 RNG ，evdns_set_transaction_id_fn()就没有效果了。
+
+#### 4. 底层 DNS 接口
+有时候需要启动能够比从 evdns_getaddrinfo()获取的 DNS 请求进行更精细控制的特别的DNS 请求，libevent 也为此提供了接口。
+
+**缺少的特征**
+
+当前 libevent 的 DNS 支持缺少其他底层 DNS 系统所具有的一些特征，如支持任意请求类型和 TCP 请求。如果需要 evdns 所不具有的特征，欢迎贡献一个补丁。也可以看看其他全特征的 DNS 库，如 c-ares。 
+
+**接口**
+
+```c
+#define DNS_QUERY_NO_SEARCH /* ... */
+
+#define DNS_IPv4_A         /* ... */
+#define DNS_PTR            /* ... */
+#define DNS_IPv6_AAAA      /* ... */
+
+typedef void (*evdns_callback_type)(int result, char type, int count,
+    int ttl, void *addresses, void *arg);
+
+struct evdns_request *evdns_base_resolve_ipv4(struct evdns_base *base,
+    const char *name, int flags, evdns_callback_type callback, void *ptr);
+struct evdns_request *evdns_base_resolve_ipv6(struct evdns_base *base,
+    const char *name, int flags, evdns_callback_type callback, void *ptr);
+struct evdns_request *evdns_base_resolve_reverse(struct evdns_base *base,
+    const struct in_addr *in, int flags, evdns_callback_type callback,
+    void *ptr);
+struct evdns_request *evdns_base_resolve_reverse_ipv6(
+    struct evdns_base *base, const struct in6_addr *in, int flags,
+    evdns_callback_type callback, void *ptr);
+```
+
+这些解析函数为一个特别的记录发起 DNS 请求。每个函数要求一个 evdns_base 用于发起请求、一个要查询的资源（正向查询时的主机名，或者反向查询时的地址）、一组用以确定如何进行查询的标志、一个查询完成时调用的回调函数，以及一个用户提供的传给回调函数的指针。
+
+flags 参数可以是0，也可以用 DNS_QUERY_NO_SEARCH 明确禁止原始查询失败时在搜索列表中进行搜索。DNS_QUERY_NO_SEARCH 对反向查询无效，因为反向查询不进行搜索。
+
+请求完成（不论是否成功）时回调函数会被调用。回调函数的参数是指示成功或者错误码（参看下面的 DNS 错误表）的 result、一个记录类型（DNS_IPv4_A、DNS_IPv6_AAAA，或者 DNS_PTR）、addresses 中的记录数、以秒为单位的存活时间、地址（查询结果），以及用户提供的指针。
+
+发生错误时传给回调函数的 addresses 参数为 NULL。没有错误时：对于 PTR 记录，addresses 是空字符结束的字符串；对于 IPv4记录，则是网络字节序的四字节地址值数组；对于 IPv6记录，则是网络字节序的16字节记录数组。（注意：即使没有错误，addresses 的个数也可能是0。名字存在，但是没有请求类型的记录时就会出现这种情况）
+
+可能传递给回调函数的错误码如下：
+
+| Code                 | Meaning                                                 |
+| -------------------- | ------------------------------------------------------- |
+| DNS_ERR_NONE         | 没有错误                                                |
+| DNS_ERR_FORMAT       | 服务器不识别查询请求DNS_ERR_SERVERFAILED 服务器内部错误 |
+| DNS_ERR_SERVERFAILED | 服务器报告内部错误                                      |
+| DNS_ERR_NOTEXIST     | 没有给定名字的记录                                      |
+| DNS_ERR_NOTIMPL      | 服务器不识别这种类型的查询                              |
+| DNS_ERR_REFUSED      | 因为策略设置，服务器拒绝查询                            |
+| DNS_ERR_TRUNCATED    | DNS 记录不适合 UDP 分组                                 |
+| DNS_ERR_UNKNOWN      | 未知的内部错误                                          |
+| DNS_ERR_TIMEOUT      | 等待超时                                                |
+| DNS_ERR_SHUTDOWN     | 用户请求关闭 evdns 系统                                 |
+| DNS_ERR_CANCEL       | 用户请求取消查询                                        |
+| DNS_ERR_NODATA       | 相应回复了，但没有答案                                  |
+
+（DNS_ERR_NODATA是2.0.15稳定的新版本。）
+
+您可以使用以下命令将这些错误代码解码为人类可读的字符串：
+
+**接口**
+
+```c
+const char *evdns_err_to_string(int err);
+```
+
+每个解析函数都返回不透明的 evdns_request 结构体指针。回调函数被调用前的任何时候都可以用这个指针来取消请求： 
+
+**接口**  
+
+```c
+void evdns_cancel_request(struct evdns_base *base,
+    struct evdns_request *req);
+```
+
+用这个函数取消请求将使得回调函数被调用，带有错误码 DNS_ERR_CANCEL
+
+**挂起DNS客户端操作，更换名字服务器** 
+
+有时候需要重新配置或者关闭 DNS 子系统，但不能影响进行中的 DNS 请求。 
+
+**接口**
+
+```c
+int evdns_base_clear_nameservers_and_suspend(struct evdns_base *base);
+int evdns_base_resume(struct evdns_base *base);
+```
+
+evdns_base_clear_nameservers_and_suspend()会移除所有名字服务器，但未决的请求会被保留，直到随后重新添加名字服务器，调用 evdns_base_resume()。 
+
+这些函数成功时返回0，失败时返回-1。它们在2.0.1-alpha 版本引入。  
+
+#### 5. DNS 服务器接口
+libevent 为实现不重要的 DNS 服务器，响应通过 UDP 传输的 DNS 请求提供了简单机制。
+
+本节要求读者对 DNS 协议有一定的了解。
+
+##### 5.1 创建和关闭 DNS 服务器
+
+**接口**
+
+```c
+struct evdns_server_port *evdns_add_server_port_with_base(
+    struct event_base *base,
+    evutil_socket_t socket,
+    int flags,
+    evdns_request_callback_fn_type callback,
+    void *user_data);
+
+typedef void (*evdns_request_callback_fn_type)(
+    struct evdns_server_request *request,
+    void *user_data);
+
+void evdns_close_server_port(struct evdns_server_port *port);
+```
+
+要开始监听 DNS 请求，调用 evdns_add_server_port_with_base()。函数要求用于事件处理的 event_base、用于监听的 UDP 套接字、可用的标志（现在总是0）、一个收到 DNS查询时要调用的回调函数 ，以及要传递给回调函数的用户数据指针 。函数返回 evdns_server_port 对象。 
+
+使用 DNS 服务器完成工作后，需要调用 evdns_close_server_port()。 
+
+evdns_add_server_port_with_base() 是 2.0.1-alpha 版本引入的 ，而evdns_close_server_port()则由1.3版本引入。 
+
+##### 5.2 检测 DNS 请求
+
+不幸的是，当前 libevent 没有提供较好的获取 DNS 请求的编程接口，用户需要包含 
+
+event2/dns_struct.h 文件，查看 evdns_server_request 结构体。 
+
+未来版本的 libevent 应该会提供更好的方法。 
+
+**接口**
+
+```c
+struct evdns_server_request {
+        int flags;
+        int nquestions;
+        struct evdns_server_question **questions;
+};
+#define EVDNS_QTYPE_AXFR 252
+#define EVDNS_QTYPE_ALL  255
+struct evdns_server_question {
+        int type;
+        int dns_question_class;
+        char name[1];
+};
+```
+
+flags 字段包含请求中设置的 DNS 标志；nquestions 字段是请求中的问题数；questions 是evdns_server_question 结构体指针数组。每个 evdns_server_question 包含请求的资源类型（请看下面的 EVDNS_*_TYPE 宏列表）、请求类别（通常为 EVDNS_CLASS_INET），以及请求的主机名。
+
+这些结构体在1.3版本中引入，但是1.4版之前的名字是 dns_question_class。名字中的“class”会让 C++用户迷惑。仍然使用原来的“class”名字的 C 程序将不能在未来发布版本中正确工作。
+
+**接口**
+
+```c
+int evdns_server_request_get_requesting_addr(struct evdns_server_request *req,
+        struct sockaddr *sa, int addr_len);
+```
+
+有时想知道哪个地址发出了特定的DNS请求。可以通过在其上调用evdns_server_request_get_requesting_addr（）进行检查。 您应该传入一个具有足够存储空间的sockaddr来保存该地址：建议使用struct sockaddr_storage。
+
+此功能在Libevent 1.3c中引入。
+
+##### 5.3 响应 DNS 请求
+
+DNS 服务器收到每个请求后，会将请求传递给用户提供的回调函数，还带有用户数据指针。 
+
+回调函数必须响应请求或者忽略请求，或者确保请求最终会被回答或者忽略。回应请求前可以向回应中添加一个或者多个答案： 
+
+**接口**
+
+```c
+int evdns_server_request_add_a_reply(struct evdns_server_request *req,
+    const char *name, int n, const void *addrs, int ttl);
+int evdns_server_request_add_aaaa_reply(struct evdns_server_request *req,
+    const char *name, int n, const void *addrs, int ttl);
+int evdns_server_request_add_cname_reply(struct evdns_server_request *req,
+    const char *name, const char *cname, int ttl);
+```
+
+上述函数为请求 req 的 DNS 回应的结果节添加一个 RR（类型分别为 A、AAAA 和 CNAME）。 各个函数中，name 是要为之添加结果的主机名，ttl 是以秒为单位的存活时间。对于 A 和 AAAA 记录，n 是要添加的地址个数，addrs 是到原始地址的指针：对于 A 记录，是以 n*4 字节序列格式给出的 IPv4地址；对于 AAAA 记录，是以 n*16字节序列格式给出的 IPv6地址。 
+
+成功时函数返回0，失败时返回-1。 
+
+**接口**
+
+```c
+int evdns_server_request_add_ptr_reply(struct evdns_server_request *req,
+    struct in_addr *in, const char *inaddr_name, const char *hostname,
+    int ttl);
+```
+
+这个函数为请求的结果节添加一个 PTR 记录。参数 req 和 ttl 跟上面的函数相同。必须提供 in（一个 IPv4地址）和 inaddr_name(一个 arpa 域的地址）中的一个，而且只能提供一个， 以指示为回应提供哪种地址。hostname 是 PTR 查询的答案。 
+
+**接口**
+
+```c
+#define EVDNS_ANSWER_SECTION 0
+#define EVDNS_AUTHORITY_SECTION 1
+#define EVDNS_ADDITIONAL_SECTION 2
+
+#define EVDNS_TYPE_A       1
+#define EVDNS_TYPE_NS      2
+#define EVDNS_TYPE_CNAME   5
+#define EVDNS_TYPE_SOA     6
+#define EVDNS_TYPE_PTR    12
+#define EVDNS_TYPE_MX     15
+#define EVDNS_TYPE_TXT    16
+#define EVDNS_TYPE_AAAA   28
+
+#define EVDNS_CLASS_INET   1
+
+int evdns_server_request_add_reply(struct evdns_server_request *req,
+    int section, const char *name, int type, int dns_class, int ttl,
+    int datalen, int is_name, const char *data);
+```
+
+这个函数为请求 req 的 DNS 回应添加任意 RR。section 字段指示添加到哪一节，其值应该是某个 EVDNS_*_SECTION。name 参数是 RR 的名字字段。type 参数是 RR 的类型字段，其值应该是某个 EVDNS_TYPE_*。dns_class 参数是 RR 的类别字段。RR 的 rdata 和 rdlength 字段将从 data 处的 datalen 字节中产生。如果 is_name 为 true，data 将被编码成 DNS 名字（例如，使用 DNS 名字压缩）。否则，data 将被直接包含到 RR 中。 
+
+**接口**
+
+```c
+int evdns_server_request_respond(struct evdns_server_request *req, int err);
+int evdns_server_request_drop(struct evdns_server_request *req);
+```
+
+evdns_server_request_respond()函数为请求发送 DNS 回应，带有用户添加的所有 RR，以及错误码 err。如果不想回应某个请求，可以调用 evdns_server_request_drop()来忽略请求，释放请求关联的内存和结构体。  
+
+**接口**
+
+```c
+#define EVDNS_FLAGS_AA  0x400
+#define EVDNS_FLAGS_RD  0x080
+
+void evdns_server_request_set_flags(struct evdns_server_request *req,
+                                    int flags);
+```
+
+如果要为回应消息设置任何标志，可以在发送回应前的任何时候调用这个函数。
+
+除了evdns_server_request_set_flags()首次在2.0.1-alpha 版本中出现外，本节描述的所有 函数都在1.3版本中引入。 
+
+##### 5.4 DNS 服务器示例
+
+示例：普通的DNS响应器
+
+```c
+#include <event2/dns.h>
+#include <event2/dns_struct.h>
+#include <event2/util.h>
+#include <event2/event.h>
+
+#include <sys/socket.h>
+
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+
+/* Let's try binding to 5353.  Port 53 is more traditional, but on most
+   operating systems it requires root privileges. */
+#define LISTEN_PORT 5353
+
+#define LOCALHOST_IPV4_ARPA "1.0.0.127.in-addr.arpa"
+#define LOCALHOST_IPV6_ARPA ("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0."         \
+                             "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa")
+
+const ev_uint8_t LOCALHOST_IPV4[] = { 127, 0, 0, 1 };
+const ev_uint8_t LOCALHOST_IPV6[] = { 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1 };
+
+#define TTL 4242
+
+/* This toy DNS server callback answers requests for localhost (mapping it to
+   127.0.0.1 or ::1) and for 127.0.0.1 or ::1 (mapping them to localhost).
+ */
+void server_callback(struct evdns_server_request *request, void *data)
+{
+    int i;
+    int error=DNS_ERR_NONE;
+    /* We should try to answer all the questions.  Some DNS servers don't do
+       this reliably, though, so you should think hard before putting two
+       questions in one request yourself. */
+    for (i=0; i < request->nquestions; ++i) {
+        const struct evdns_server_question *q = request->questions[i];
+        int ok=-1;
+        /* We don't use regular strcasecmp here, since we want a locale-
+           independent comparison. */
+        if (0 == evutil_ascii_strcasecmp(q->name, "localhost")) {
+            if (q->type == EVDNS_TYPE_A)
+                ok = evdns_server_request_add_a_reply(
+                       request, q->name, 1, LOCALHOST_IPV4, TTL);
+            else if (q->type == EVDNS_TYPE_AAAA)
+                ok = evdns_server_request_add_aaaa_reply(
+                       request, q->name, 1, LOCALHOST_IPV6, TTL);
+        } else if (0 == evutil_ascii_strcasecmp(q->name, LOCALHOST_IPV4_ARPA)) {
+            if (q->type == EVDNS_TYPE_PTR)
+                ok = evdns_server_request_add_ptr_reply(
+                       request, NULL, q->name, "LOCALHOST", TTL);
+        } else if (0 == evutil_ascii_strcasecmp(q->name, LOCALHOST_IPV6_ARPA)) {
+            if (q->type == EVDNS_TYPE_PTR)
+                ok = evdns_server_request_add_ptr_reply(
+                       request, NULL, q->name, "LOCALHOST", TTL);
+        } else {
+            error = DNS_ERR_NOTEXIST;
+        }
+        if (ok<0 && error==DNS_ERR_NONE)
+            error = DNS_ERR_SERVERFAILED;
+    }
+    /* Now send the reply. */
+    evdns_server_request_respond(request, error);
+}
+
+int main(int argc, char **argv)
+{
+    struct event_base *base;
+    struct evdns_server_port *server;
+    evutil_socket_t server_fd;
+    struct sockaddr_in listenaddr;
+
+    base = event_base_new();
+    if (!base)
+        return 1;
+
+    server_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (server_fd < 0)
+        return 2;
+    memset(&listenaddr, 0, sizeof(listenaddr));
+    listenaddr.sin_family = AF_INET;
+    listenaddr.sin_port = htons(LISTEN_PORT);
+    listenaddr.sin_addr.s_addr = INADDR_ANY;
+    if (bind(server_fd, (struct sockaddr*)&listenaddr, sizeof(listenaddr))<0)
+        return 3;
+    /*The server will hijack the event loop after receiving the first request if the socket is blocking*/
+    if(evutil_make_socket_nonblocking(server_fd)<0)
+        return 4;
+    server = evdns_add_server_port_with_base(base, server_fd, 0,
+                                             server_callback, NULL);
+
+    event_base_dispatch(base);
+
+    evdns_close_server_port(server);
+    event_base_free(base);
+
+    return 0;
+}
+```
 
 ## 示例
 
@@ -4204,106 +5386,172 @@ int main(int argc, char **argv)
 }
 ```
 
-
+实现了一个Timer定时器，添加了2个event，ev_now_timeout立即执行一次，然后按3s周期执行；ev_timeout以1.5s周期执行。
 
 ### TCP
 
 #### Server
 
 ```c
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 #include <event2/event.h>
-#include <event2/util.h>
+#include <event2/listener.h>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h> 
-
-void read_cb(struct bufferevent *bev, void *arg)
+// 读缓冲区回调
+static void read_cb(struct bufferevent *bev, void *arg)
 {
-    char buf[1024] = {0}; 
+	//读到buff
+    char buf[1024] = {0};   
     bufferevent_read(bev, buf, sizeof(buf));
-	printf("[client]rece server data\n");
-    printf("[client]server say: %s\n", buf);
+
+	//读取evbuffer
+	//struct evbuffer *input = bufferevent_get_input(bev);
+	//size_t size = evbuffer_get_length(input);
+	//
+	//char *buf = (char *)malloc(size);   
+	//evbuffer_remove(input, buf, size);
+
+	printf("[server]rece client data\n");
+	printf("[server]client say: %s\n", buf);
+ 
 }
  
-void write_cb(struct bufferevent *bev, void *arg)
+// 写缓冲区回调
+static void write_cb(struct bufferevent *bev, void *arg)
 {
-   printf("[client]write_cb\n"); 
+    printf("[server]write_cb\n"); 
 }
  
-void event_cb(struct bufferevent *bev, short events, void *arg)
+// 事件
+static void event_cb(struct bufferevent *bev, short events, void *arg)
 {
     if (events & BEV_EVENT_EOF)
     {
-        printf("[client]connection close\n");  
+        printf("[server]connection close\n");  
     }
     else if(events & BEV_EVENT_ERROR)   
     {
-        printf("[client]connection error\n");
-    }
-    else if(events & BEV_EVENT_CONNECTED)
+        printf("[server]connection error\n");
+    }else if(events & BEV_EVENT_CONNECTED)
     {
-        printf("[client]connection success\n");
+        printf("[server]connection success\n");
         return;
     }
     
-    bufferevent_free(bev);
-    printf("[client]bufferevent free\n");
+    bufferevent_free(bev);    
+    printf("[server]bufferevent free\n"); 
 }
  
-void send_cb(evutil_socket_t fd, short what, void *arg)
+static void send_cb(evutil_socket_t fd, short what, void *arg)
 {
     char buf[1024] = {0}; 
     struct bufferevent* bev = (struct bufferevent*)arg;
+	
     read(fd, buf, sizeof(buf));
+
+	//struct evbuffer *output = bufferevent_get_output(bev);
+	//evbuffer_add(output, buf, strlen(buf)+1);
+
     bufferevent_write(bev, buf, strlen(buf)+1);
 }
 
-int main(int argc, const char* argv[])
+static void cb_listener(
+        struct evconnlistener *listener, 
+        evutil_socket_t fd, 
+        struct sockaddr *addr, 
+        int len, void *ptr)
 {
-	struct event_base *base;
-	struct bufferevent* bev;
-	struct sockaddr_in serv;
-	struct event* ev;
-
-	base = event_base_new();
-
-	if (!base) {
-		printf("[client]Couldn't open event base\n");
-		return 1;
+   printf("[server]connect new client\n");
+ 
+   struct event_base* base = (struct event_base*)ptr;
+   // 通信操作
+   // 添加新事件
+   struct bufferevent *bev;
+   bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
+ 
+   if (!bev) {
+		fprintf(stderr, "[server]error constructing bufferevent!");
+		event_base_loopbreak(base);
+		return;
 	}
 
-	bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+   // 给bufferevent缓冲区设置回调
+   bufferevent_setcb(bev, read_cb, write_cb, event_cb, NULL);
 
-	//连接服务器
+   bufferevent_enable(bev, EV_READ);
+   
+   // 创建一个事件
+   struct event* ev = event_new(base, STDIN_FILENO, 
+                                 EV_READ | EV_PERSIST, 
+                                 send_cb, bev);
+   event_add(ev, NULL);
+   
+}
+
+static void accept_error_cb(struct evconnlistener *listener, void *ctx)
+{
+	struct event_base *base = evconnlistener_get_base(listener);
+	int err = EVUTIL_SOCKET_ERROR();
+	printf("[Server]Got an error %d (%s) on the listener.Shutting down.\n", 
+		err, evutil_socket_error_to_string(err));
+	event_base_loopexit(base, NULL);
+}
+
+ 
+int main(int argc, const char* argv[])
+{
+    struct sockaddr_in serv;
+	struct event_base* base;
+	struct evconnlistener* listener;
+
+	// init server 
     memset(&serv, 0, sizeof(serv));
     serv.sin_family = AF_INET;
     serv.sin_port = htons(6666);
-	//解析 IP 地址
-    evutil_inet_pton(AF_INET, "127.0.0.1", &serv.sin_addr.s_addr);
-	//连接
-    bufferevent_socket_connect(bev, (struct sockaddr*)&serv, sizeof(serv));
-	//设置回调
-    bufferevent_setcb(bev, read_cb, write_cb, event_cb, NULL);
-    bufferevent_enable(bev, EV_READ);
-
-	// 创建一个事件
-	//STDIN_FILENO：接收键盘的输入
-    ev = event_new(base, STDIN_FILENO, EV_READ | EV_PERSIST, 
-                                 send_cb, bev);
-	event_add(ev, NULL);
+    serv.sin_addr.s_addr = htonl(INADDR_ANY);
     
+    base = event_base_new();
+
+	if (!base) {
+		printf("[server]Couldn't open event base\n");
+		return 1;
+	}
+
+    // 创建套接字
+    // 绑定
+    // 接收连接请求  
+	//LEV_OPT_CLOSE_ON_FREE 如果设置了这个选项，释放连接监听器会关闭底层套接字。 
+	//LEV_OPT_REUSEABLE 某些平台在默认情况下，关闭某监听套接字后，要过一会儿其他套接字才可以绑定到同一个端口。
+	//设置这个标志会让 libevent 标记套接字是可重用的，这样一旦关闭，可以立即打开其他套接字，在相同端口进行监听。
+    listener = evconnlistener_new_bind(base, cb_listener, base, 
+                                  LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, 
+                                  36, (struct sockaddr*)&serv, sizeof(serv));
+ 
+	if (!listener) {
+		perror("[server]Couldn't create listener");
+		return 1;
+	}
+
+	//error处理
+	evconnlistener_set_error_cb(listener, accept_error_cb);
+
     event_base_dispatch(base);
-
+ 
 	//释放
-	bufferevent_free(bev);
-	event_free(ev);
-	event_base_free(base);
-
+    evconnlistener_free(listener);
+    event_base_free(base);
+ 
+    return 0;
 }
 ```
 
+实现了一个TCP server，监听6666端口，与客户端建立连接，以后可以互相发送消息。
+
 #### Client
+
+实现了一个TCP client，连接本地6666端口，与客户端建立连接，以后可以互相发送消息。
 
 ```c
 #include <unistd.h>
