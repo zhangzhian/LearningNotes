@@ -3860,7 +3860,238 @@ int evbuffer_unfreeze(struct evbuffer *buf, int at_front);
 
 evbuffer_freeze()函数是2.0.1-alpha 版本引入的。  
 
+### 八、连接监听器：接受TCP连接
 
+evconnlistener 机制提供了监听和接受 TCP 连接的方法。 
+
+本章的所有函数和类型都在 event2/listener.h 中声明，除非特别说明，它们都在2.0.2-alpha 版本中首次出现。
+
+#### 1. 创建和释放 evconnlistener
+**接口**
+
+```c
+struct evconnlistener *evconnlistener_new(struct event_base *base,
+    evconnlistener_cb cb, void *ptr, unsigned flags, int backlog,
+    evutil_socket_t fd);
+struct evconnlistener *evconnlistener_new_bind(struct event_base *base,
+    evconnlistener_cb cb, void *ptr, unsigned flags, int backlog,
+    const struct sockaddr *sa, int socklen);
+void evconnlistener_free(struct evconnlistener *lev);
+```
+
+两个 evconnlistener_new*()函数都分配和返回一个新的连接监听器对象。连接监听器使用event_base 来得知什么时候在给定的监听套接字上有新的 TCP 连接。新连接到达时，监听器调用你给出的回调函数。 
+
+两个函数中，base 参数都是监听器用于监听连接的 event_base。cb 是收到新连接时要调用的回调函数；如果 cb 为 NULL，则监听器是禁用的，直到设置了回调函数为止。ptr 指针将传递给回调函数。flags 参数控制回调函数的行为，下面会更详细论述。backlog 是任何时刻网络栈允许处于还未接受状态的最大未决连接数。更多细节请查看系统的 listen()函数文档。如果 backlog 是负的，libevent 会试图挑选一个较好的值；如果为0，libevent 认为已 经对提供的套接字调用了 listen()。 
+
+两个函数的不同在于如何建立监听套接字。evconnlistener_new()函数假定已经将套接字绑定到要监听的端口，然后通过 fd 传入这个套接字。如果要 libevent 分配和绑定套接字，可以调用 evconnlistener_new_bind()，传输要绑定到的地址和地址长度。
+
+> 提示: 使用evconnlistener_new时，通过使用evutil_make_socket_nonblocking或手动设置正确的套接字选项，确保侦听套接字处于非阻止模式。 当侦听套接字处于阻塞模式时，可能会发生未定义的行为。
+
+要释放连接监听器，调用 evconnlistener_free()。 
+
+**可识别的标志** 
+
+可以给 evconnlistener_new()函数的 flags 参数传入一些标志。可以用或(OR)运算任意连接 
+
+下述标志：
+
+- LEV_OPT_LEAVE_SOCKETS_BLOCKING 
+
+  默认情况下，连接监听器接收新套接字后，会将其设置为非阻塞的，以便将其用于 libevent。如果不想要这种行为，可以设置这个标志。 
+
+- LEV_OPT_CLOSE_ON_FREE 
+
+  如果设置了这个选项，释放连接监听器会关闭底层套接字。 
+
+- LEV_OPT_CLOSE_ON_EXEC 
+
+  如果设置了这个选项，连接监听器会为底层套接字设置 close-on-exec 标志。更多信息请查看 fcntl 和 FD_CLOEXEC 的平台文档。 
+
+- LEV_OPT_REUSEABLE 
+
+  某些平台在默认情况下，关闭某监听套接字后，要过一会儿其他套接字才可以绑定到同一个端口。设置这个标志会让 libevent 标记套接字是可重用的，这样一旦关闭，可以立即打开其他套接字，在相同端口进行监听。 
+
+- LEV_OPT_THREADSAFE 
+
+  为监听器分配锁，这样就可以在多个线程中安全地使用了。这是2.0.8-rc 的新功能。
+
+- LEV_OPT_DISABLED
+  初始化监听器以将其禁用，而不是启用。 您可以使用evconnlistener_enable（）手动将其打开。 Libevent 2.1.1-alpha中的新功能。
+
+- LEV_OPT_DEFERRED_ACCEPT
+  如果可能的话，告诉内核在接收到套接字上的某些数据并且可以读取之前，不要宣布套接字已被接受。 如果您的协议不是从客户端传输数据开始的，则不要使用此选项，因为在这种情况下，此选项有时会导致内核从不告诉您有关连接的信息。 并非所有操作系统都支持此选项：在不支持的操作系统上，此选项无效。 Libevent 2.1.1-alpha中的新功能。
+
+**连接监听器回调** 
+
+**接口**
+
+```c
+typedef void (*evconnlistener_cb)(struct evconnlistener *listener,
+    evutil_socket_t sock, struct sockaddr *addr, int len, void *ptr);
+```
+
+接收到新连接会调用提供的回调函数。listener 参数是接收连接的连接监听器。sock 参数是新接收的套接字 。 addr 和 len 参数是接收连接的地址和地址长度 。ptr是调用evconnlistener_new()时用户提供的指针。  
+
+#### 2. 启用和禁用 evconnlistener
+**接口**
+
+```c
+int evconnlistener_disable(struct evconnlistener *lev);
+int evconnlistener_enable(struct evconnlistener *lev);
+```
+
+这两个函数暂时禁止或者重新允许监听新连接。
+
+#### 3.  调整 evconnlistener 的回调函数
+**接口**
+
+```c
+void evconnlistener_set_cb(struct evconnlistener *lev,
+    evconnlistener_cb cb, void *arg);
+```
+
+函数调整 evconnlistener 的回调函数和其参数。它是2.0.9-rc 版本引入的。
+
+#### 4. 检测 evconnlistener 
+
+**接口** 
+
+```c
+evutil_socket_t evconnlistener_get_fd(struct evconnlistener *lev);
+struct event_base *evconnlistener_get_base(struct evconnlistener *lev);
+```
+
+这些函数分别返回监听器关联的套接字和 event_base。 
+
+evconnlistener_get_fd()函数首次出现在2.0.3-alpha 版本。  
+
+#### 5. 侦测错误 
+
+可以设置一个一旦监听器上的 accept()调用失败就被调用的错误回调函数。对于一个不解决就会锁定进程的错误条件，这很重要。 
+
+**接口** 
+
+```c
+typedef void (*evconnlistener_errorcb)(struct evconnlistener *lis, void *ptr);
+void evconnlistener_set_error_cb(struct evconnlistener *lev,
+    evconnlistener_errorcb errorcb);
+```
+
+如果使用 evconnlistener_set_error_cb()为监听器设置了错误回调函数，则监听器发生错误时回调函数就会被调用。第一个参数是监听器，第二个参数是调用 evconnlistener_new() 时传入的 ptr。 
+
+这个函数在2.0.8-rc 版本引入。
+
+#### 6. 示例代码：回显服务器 
+
+**示例**
+
+```c
+#include <event2/listener.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
+
+#include <arpa/inet.h>
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+
+static void
+echo_read_cb(struct bufferevent *bev, void *ctx)
+{
+        /* This callback is invoked when there is data to read on bev. */
+        struct evbuffer *input = bufferevent_get_input(bev);
+        struct evbuffer *output = bufferevent_get_output(bev);
+
+        /* Copy all the data from the input buffer to the output buffer. */
+        evbuffer_add_buffer(output, input);
+}
+
+static void
+echo_event_cb(struct bufferevent *bev, short events, void *ctx)
+{
+        if (events & BEV_EVENT_ERROR)
+                perror("Error from bufferevent");
+        if (events & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
+                bufferevent_free(bev);
+        }
+}
+
+static void
+accept_conn_cb(struct evconnlistener *listener,
+    evutil_socket_t fd, struct sockaddr *address, int socklen,
+    void *ctx)
+{
+        /* We got a new connection! Set up a bufferevent for it. */
+        struct event_base *base = evconnlistener_get_base(listener);
+        struct bufferevent *bev = bufferevent_socket_new(
+                base, fd, BEV_OPT_CLOSE_ON_FREE);
+
+        bufferevent_setcb(bev, echo_read_cb, NULL, echo_event_cb, NULL);
+
+        bufferevent_enable(bev, EV_READ|EV_WRITE);
+}
+
+static void
+accept_error_cb(struct evconnlistener *listener, void *ctx)
+{
+        struct event_base *base = evconnlistener_get_base(listener);
+        int err = EVUTIL_SOCKET_ERROR();
+        fprintf(stderr, "Got an error %d (%s) on the listener. "
+                "Shutting down.\n", err, evutil_socket_error_to_string(err));
+
+        event_base_loopexit(base, NULL);
+}
+
+int
+main(int argc, char **argv)
+{
+        struct event_base *base;
+        struct evconnlistener *listener;
+        struct sockaddr_in sin;
+
+        int port = 9876;
+
+        if (argc > 1) {
+                port = atoi(argv[1]);
+        }
+        if (port<=0 || port>65535) {
+                puts("Invalid port");
+                return 1;
+        }
+
+        base = event_base_new();
+        if (!base) {
+                puts("Couldn't open event base");
+                return 1;
+        }
+
+        /* Clear the sockaddr before using it, in case there are extra
+         * platform-specific fields that can mess us up. */
+        memset(&sin, 0, sizeof(sin));
+        /* This is an INET address */
+        sin.sin_family = AF_INET;
+        /* Listen on 0.0.0.0 */
+        sin.sin_addr.s_addr = htonl(0);
+        /* Listen on the given port. */
+        sin.sin_port = htons(port);
+
+        listener = evconnlistener_new_bind(base, accept_conn_cb, NULL,
+            LEV_OPT_CLOSE_ON_FREE|LEV_OPT_REUSEABLE, -1,
+            (struct sockaddr*)&sin, sizeof(sin));
+        if (!listener) {
+                perror("Couldn't create listener");
+                return 1;
+        }
+        evconnlistener_set_error_cb(listener, accept_error_cb);
+
+        event_base_dispatch(base);
+        return 0;
+}
+```
+
+### 九、使用 libevent **的** DNS：高层和底层功能
 
 
 
