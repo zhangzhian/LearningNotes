@@ -150,30 +150,6 @@ Libevent提供了一个创建RPC服务器和客户端的框架。它负责对所
 
 [event2/watch.h](https://libevent.org/doc/watch_8h.html)  ：“准备”和“检查”观察者
 
-| ![-](https://libevent.org/doc/ftv2folderopen.png)[event2](https://libevent.org/doc/dir_db160b4728e6067cf5f9cc14ec42c79d.html) |                                                              |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/buffer_8h_source.html)[buffer.h](https://libevent.org/doc/buffer_8h.html) | Functions for buffering data for network sending or receiving |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/buffer__compat_8h_source.html)[buffer_compat.h](https://libevent.org/doc/buffer__compat_8h.html) | Obsolete and deprecated versions of the functions in [buffer.h](https://libevent.org/doc/buffer_8h.html): provided only for backward compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent_8h_source.html)[bufferevent.h](https://libevent.org/doc/bufferevent_8h.html) | Functions for buffering data for network sending or receiving |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent__compat_8h_source.html)[bufferevent_compat.h](https://libevent.org/doc/bufferevent__compat_8h.html) | Deprecated versions of the functions in [bufferevent.h](https://libevent.org/doc/bufferevent_8h.html): provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/bufferevent__ssl_8h_source.html)[bufferevent_ssl.h](https://libevent.org/doc/bufferevent__ssl_8h.html) | OpenSSL support for bufferevents                             |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/dns_8h_source.html)[dns.h](https://libevent.org/doc/dns_8h.html) | Provides a few APIs to use for resolving DNS names, and a facility for implementing simple DNS servers |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/dns__compat_8h_source.html)[dns_compat.h](https://libevent.org/doc/dns__compat_8h.html) | Potentially non-threadsafe versions of the functions in [dns.h](https://libevent.org/doc/dns_8h.html): provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/event_8h_source.html)[event.h](https://libevent.org/doc/event_8h.html) | Core functions for waiting for and receiving events, and using event bases |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/event__compat_8h_source.html)[event_compat.h](https://libevent.org/doc/event__compat_8h.html) | Potentially non-threadsafe versions of the functions in [event.h](https://libevent.org/doc/event_8h.html): provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/http_8h_source.html)[http.h](https://libevent.org/doc/http_8h.html) | Basic support for HTTP serving                               |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/http__compat_8h_source.html)[http_compat.h](https://libevent.org/doc/http__compat_8h.html) | Potentially non-threadsafe versions of the functions in [http.h](https://libevent.org/doc/http_8h.html): provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/listener_8h_source.html)[listener.h](https://libevent.org/doc/listener_8h.html) | A callback that we invoke when a listener has a new connection |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/rpc_8h_source.html)[rpc.h](https://libevent.org/doc/rpc_8h.html) | This header files provides basic support for an RPC server and client |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/rpc__compat_8h_source.html)[rpc_compat.h](https://libevent.org/doc/rpc__compat_8h.html) | Deprecated versions of the functions in [rpc.h](https://libevent.org/doc/rpc_8h.html): provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/tag_8h_source.html)[tag.h](https://libevent.org/doc/tag_8h.html) | Helper functions for reading and writing tagged data onto buffers |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/tag__compat_8h_source.html)[tag_compat.h](https://libevent.org/doc/tag__compat_8h.html) | Obsolete/deprecated functions from [tag.h](https://libevent.org/doc/tag_8h.html); provided only for backwards compatibility |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/thread_8h_source.html)[thread.h](https://libevent.org/doc/thread_8h.html) | Functions for multi-threaded applications using Libevent     |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![o](https://libevent.org/doc/ftv2node.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/util_8h_source.html)[util.h](https://libevent.org/doc/util_8h.html) | Common convenience functions for cross-platform portability and related socket manipulations |
-| ![ ](https://libevent.org/doc/ftv2blank.png)![*](https://libevent.org/doc/ftv2lastnode.png)[![*](https://libevent.org/doc/ftv2doc.png)](https://libevent.org/doc/watch_8h_source.html)[watch.h](https://libevent.org/doc/watch_8h.html) | "Prepare" and "check" watchers                               |
-
-
-
 ## 详细说明
 
 基于Libevent 2.0+，在C语言中编写快速可移植的异步网络IO程序。
@@ -5648,9 +5624,605 @@ int main(int argc, const char* argv[])
 
 ### HTTP
 
+#### Server
 
+实现了一个http server。
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+
+#include <signal.h>
+
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/listener.h>
+#include <event2/buffer.h>
+#include <event2/util.h>
+#include <event2/keyvalq_struct.h>
+
+char uri_root[512];
+
+static const struct table_entry {
+	const char *extension;
+	const char *content_type;
+} content_type_table[] = {
+	{ "txt", "text/plain" },
+	{ "c", "text/plain" },
+	{ "h", "text/plain" },
+	{ "html", "text/html" },
+	{ "htm", "text/htm" },
+	{ "css", "text/css" },
+	{ "gif", "image/gif" },
+	{ "jpg", "image/jpeg" },
+	{ "jpeg", "image/jpeg" },
+	{ "png", "image/png" },
+	{ "pdf", "application/pdf" },
+	{ "ps", "application/postscript" },
+	{ NULL, NULL },
+};
+
+/* 尝试猜测“path”的内容类型 */
+static const char *
+guess_content_type(const char *path)
+{
+	const char *last_period, *extension;
+	const struct table_entry *ent;
+	last_period = strrchr(path, '.');
+	if (!last_period || strchr(last_period, '/'))
+		goto not_found; /* no exension */
+	extension = last_period + 1;
+	for (ent = &content_type_table[0]; ent->extension; ++ent) {
+		if (!evutil_ascii_strcasecmp(ent->extension, extension))
+			return ent->content_type;
+	}
+
+not_found:
+	return "application/misc";
+}
+
+/* 用于/test URI请求的回调 */
+static void
+dump_request_cb(struct evhttp_request *req, void *arg)
+{
+	const char *cmdtype;
+	struct evkeyvalq *headers;
+	struct evkeyval *header;
+	struct evbuffer *buf_in;
+	struct evbuffer *buf_out;
+	struct evhttp_uri *decoded = NULL;
+    struct evkeyvalq params;
+	char *decoded_path;
+	const char *path;
+	char cbuf[1024] = {0};
+	const char *uri = evhttp_request_get_uri(req);
+
+	switch (evhttp_request_get_command(req)) {
+	case EVHTTP_REQ_GET: cmdtype = "GET"; break;
+	case EVHTTP_REQ_POST: cmdtype = "POST"; break;
+	case EVHTTP_REQ_HEAD: cmdtype = "HEAD"; break;
+	case EVHTTP_REQ_PUT: cmdtype = "PUT"; break;
+	case EVHTTP_REQ_DELETE: cmdtype = "DELETE"; break;
+	case EVHTTP_REQ_OPTIONS: cmdtype = "OPTIONS"; break;
+	case EVHTTP_REQ_TRACE: cmdtype = "TRACE"; break;
+	case EVHTTP_REQ_CONNECT: cmdtype = "CONNECT"; break;
+	case EVHTTP_REQ_PATCH: cmdtype = "PATCH"; break;
+	default: cmdtype = "unknown"; break;
+	}
+
+	printf("Received a %s request for %s\nHeaders:\n",
+	    cmdtype, uri);
+
+	headers = evhttp_request_get_input_headers(req);
+
+	for (header = headers->tqh_first; header;
+	    header = header->next.tqe_next) {
+		printf("  %s: %s\n", header->key, header->value);
+	}
+
+	/*********************************/
+	/* 解析 URI */
+	decoded = evhttp_uri_parse(uri);
+	if (!decoded) {
+		printf("It's not a good URI. Sending BADREQUEST\n");
+		evhttp_send_error(req, HTTP_BADREQUEST, 0);
+		return;
+	}
+
+	/* 获取path */
+	path = evhttp_uri_get_path(decoded);
+	if (!path){
+		evhttp_send_error(req, HTTP_BADREQUEST, 0);
+        return;
+	}
+	printf("path: %s\n", path);
+
+	
+    //解析URI的参数
+    //将URL数据封装成key-value格式,q=value1, s=value2
+    evhttp_parse_query(uri, &params);
+	//得到a所对应的value
+	const char *a_data = evhttp_find_header(&params, "a");
+
+    printf("a=%s\n",a_data);
+	/*********************************/
+	if (strcmp(cmdtype,"POST") == 0)
+	{
+		//获取POST方法的数据
+		buf_in = evhttp_request_get_input_buffer(req);
+
+		if (buf_in==NULL)
+		{
+			printf("evBuf null, err\n");
+			goto err;
+		}
+		//获取长度
+		int buf_in_len = evbuffer_get_length(buf_in);
+	
+		printf("evBuf len:%d\n",buf_in_len);
+    
+		if(buf_in_len <= 0)
+		{
+			goto err;
+		}
+		//将数据从evbuff中移动到char *
+		int str_len = evbuffer_remove(buf_in,cbuf,sizeof(cbuf));
+
+		if (str_len <= 0)
+		{
+			printf("post parameter null err\n");
+			goto err;
+		}
+		printf("str_len:%d cbuf:%s\n",str_len,cbuf);
+	}
+	/*********************************/
+	buf_out = evbuffer_new();
+	if(!buf_out)
+    {
+        puts("failed to create response buffer \n");
+        return;
+    }
+	evbuffer_add_printf(buf_out,"%s","success");
+	evhttp_send_reply(req, 200, "OK", buf_out);
+	return;
+err:
+    evhttp_send_error(req, HTTP_INTERNAL, 0);
+}
+
+static void
+send_document_cb(struct evhttp_request *req, void *arg)
+{
+	evhttp_send_error(req, 404, "url was not found");
+}
+
+static void
+do_term(int sig, short events, void *arg)
+{
+	struct event_base *base = (struct event_base *)arg;
+	event_base_loopbreak(base);
+	fprintf(stderr, "Got %i, Terminating\n", sig);
+}
+
+static int
+display_listen_sock(struct evhttp_bound_socket *handle)
+{
+	struct sockaddr_storage ss;
+	evutil_socket_t fd;
+	ev_socklen_t socklen = sizeof(ss);
+	char addrbuf[128];
+	void *inaddr;
+	const char *addr;
+	int got_port = -1;
+
+	fd = evhttp_bound_socket_get_fd(handle);
+	memset(&ss, 0, sizeof(ss));
+	if (getsockname(fd, (struct sockaddr *)&ss, &socklen)) {
+		perror("getsockname() failed");
+		return 1;
+	}
+
+	if (ss.ss_family == AF_INET) {
+		got_port = ntohs(((struct sockaddr_in*)&ss)->sin_port);
+		inaddr = &((struct sockaddr_in*)&ss)->sin_addr;
+	} else if (ss.ss_family == AF_INET6) {
+		got_port = ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
+		inaddr = &((struct sockaddr_in6*)&ss)->sin6_addr;
+	}
+	else {
+		fprintf(stderr, "Weird address family %d\n",
+		    ss.ss_family);
+		return 1;
+	}
+
+	addr = evutil_inet_ntop(ss.ss_family, inaddr, addrbuf,
+	    sizeof(addrbuf));
+	if (addr) {
+		printf("Listening on %s:%d\n", addr, got_port);
+		evutil_snprintf(uri_root, sizeof(uri_root),
+		    "http://%s:%d",addr,got_port);
+	} else {
+		fprintf(stderr, "evutil_inet_ntop failed\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int
+main(int argc, char **argv)
+{
+
+	struct event_base *base = NULL;
+	struct evhttp *http = NULL;
+	struct evhttp_bound_socket *handle = NULL;
+	struct evconnlistener *lev = NULL;
+	struct event *term = NULL;
+	int ret = 0;
+
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+		ret = 1;
+		goto err;
+	}
+
+	//event_base
+	base = event_base_new();
+
+	if (!base) {
+		fprintf(stderr, "Couldn't create an event_base: exiting\n");
+		ret = 1;
+	}
+
+	/* 创建一个新的evhttp对象来处理请求。 */
+	http = evhttp_new(base);
+	if (!http) {
+		fprintf(stderr, "couldn't create evhttp. Exiting.\n");
+		ret = 1;
+	}
+
+	/* / test URI将所有请求转储到stdout并说200 OK。 */
+	evhttp_set_cb(http, "/test", dump_request_cb, NULL);
+
+	/*要接受任意请求，需要设置一个“通用”cb。 还可以为特定路径添加回调。 */
+	evhttp_set_gencb(http, send_document_cb, NULL);
+
+	//绑定socket
+	handle = evhttp_bind_socket_with_handle(http, "0.0.0.0", 8888);
+
+	if (!handle) {
+		fprintf(stderr, "couldn't bind to port %d. Exiting.\n", 8888);
+		ret = 1;
+		goto err;
+	}
+	
+	//监听socket
+	if (display_listen_sock(handle)) {
+		ret = 1;
+		goto err;
+	}
+
+	//终止信号
+	term = evsignal_new(base, SIGINT, do_term, base);
+	if (!term)
+		goto err;
+	if (event_add(term, NULL))
+		goto err;
+
+	//事件分发
+	event_base_dispatch(base);
+
+err:
+
+	if (http)
+		evhttp_free(http);
+	if (term)
+		event_free(term);
+	if (base)
+		event_base_free(base);
+
+	return ret;
+}
+```
+
+#### Client
+
+实现了一个http client。
+
+```c
+#include <stdio.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
+#include <event2/listener.h>
+#include <event2/util.h>
+#include <event2/http.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h> 
+
+static int ignore_cert = 0;
+
+static void
+http_request_done(struct evhttp_request *req, void *ctx)
+{
+	char buffer[256];
+	int nread;
+	struct evbuffer *buf_in;
+	char cbuf[1024] = {0};
+
+	//错误处理，打印
+	if (!req || !evhttp_request_get_response_code(req)) {
+		
+		struct bufferevent *bev = (struct bufferevent *) ctx;
+		unsigned long oslerr;
+		int printed_err = 0;
+		int errcode = EVUTIL_SOCKET_ERROR();
+		fprintf(stderr, "some request failed - no idea which one though!\n");
+
+		/* 尝试打印 */
+		if (! printed_err)
+			fprintf(stderr, "socket error = %s (%d)\n",
+				evutil_socket_error_to_string(errcode),
+				errcode);
+		return;
+	}
+
+	fprintf(stderr, "Response line: %d %s\n",
+	    evhttp_request_get_response_code(req),
+	    evhttp_request_get_response_code_line(req));
+
+	//获取数据
+	buf_in = evhttp_request_get_input_buffer(req);
+
+	if (buf_in==NULL)
+	{
+		printf("evBuf null, err\n");
+	}
+	//获取长度
+	int buf_in_len = evbuffer_get_length(buf_in);
+	
+	printf("evBuf len:%d\n",buf_in_len);
+    
+	if(buf_in_len <= 0)
+	{
+	}
+	//将数据从evbuff中移动到char *
+	int str_len = evbuffer_remove(buf_in,cbuf,sizeof(cbuf));
+
+	if (str_len <= 0)
+	{
+		printf("post parameter null err\n");
+	}
+	printf("str_len:%d cbuf:%s\n",str_len,cbuf);
+}
+
+static void
+err(const char *msg)
+{
+	fputs(msg, stderr);
+}
+
+int
+main(int argc, char **argv)
+{
+	int r;
+	struct event_base *base = NULL;
+	struct evhttp_uri *http_uri = NULL;
+	const char *url = NULL, *data_file = NULL;
+	const char *scheme, *host, *path, *query;
+	char uri[256];
+	int port;
+	int retries = 0;
+	int timeout = -1;
+
+	struct bufferevent *bev;
+	struct evhttp_connection *evcon = NULL;
+	struct evhttp_request *req;
+	struct evkeyvalq *output_headers;
+	struct evbuffer *output_buffer;
+
+	int i;
+	int ret = 0;
+	
+	//初始化url
+	url = "http://127.0.0.1:8888/test?a=123";
+	if (!url) {
+		goto error;
+	}
+
+	http_uri = evhttp_uri_parse(url);
+	if (http_uri == NULL) {
+		err("malformed url");
+		goto error;
+	}
+
+	scheme = evhttp_uri_get_scheme(http_uri);
+	//忽略大小写比较字符串
+	if (scheme == NULL || strcasecmp(scheme, "http") != 0) {
+		err("url must be http");
+		goto error;
+	}
+
+	host = evhttp_uri_get_host(http_uri);
+	if (host == NULL) {
+		err("url must have a host");
+		goto error;
+	}
+
+	port = evhttp_uri_get_port(http_uri);
+
+	if (port == -1) {
+		port = 80;
+	}
+
+	path = evhttp_uri_get_path(http_uri);
+	if (strlen(path) == 0) {
+		path = "/";
+	}
+
+	query = evhttp_uri_get_query(http_uri);
+
+	if (query == NULL) {
+		//将可变参数 “…” 按照format的格式格式化为字符串，然后再将其拷贝至str中。
+		snprintf(uri, sizeof(uri) - 1, "%s", path);
+	} else {
+		snprintf(uri, sizeof(uri) - 1, "%s?%s", path, query);
+	}
+
+	uri[sizeof(uri) - 1] = '\0';
+
+	// 创建 event base
+	base = event_base_new();
+	if (!base) {
+		perror("event_base_new()");
+		goto error;
+	}
+
+	if (strcasecmp(scheme, "http") == 0) {
+		bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+	} 
+
+	if (bev == NULL) {
+		fprintf(stderr, "bufferevent_socket_new() failed\n");
+		goto error;
+	}
+
+	evcon = evhttp_connection_base_bufferevent_new(base, NULL, bev, host, port);
+	if (evcon == NULL) {
+		fprintf(stderr, "evhttp_connection_base_bufferevent_new() failed\n");
+		goto error;
+	}
+
+	//重试
+	if (retries > 0) {
+		evhttp_connection_set_retries(evcon, retries);
+	}
+
+	//超时
+	if (timeout >= 0) {
+		evhttp_connection_set_timeout(evcon, timeout);
+	}
+
+	//回调
+	req = evhttp_request_new(http_request_done, bev);
+
+	if (req == NULL) {
+		fprintf(stderr, "evhttp_request_new() failed\n");
+		goto error;
+	}
+
+	output_headers = evhttp_request_get_output_headers(req);
+	evhttp_add_header(output_headers, "Host", host);
+	evhttp_add_header(output_headers, "Connection", "close");
+
+	//文件路径
+	data_file = "/home/zza/libevent/demo/test.txt";
+
+	if (data_file) {
+
+		char buf[1024];
+		output_buffer = evhttp_request_get_output_buffer(req);
+
+		//post file传统复制
+		//FILE* f = fopen(data_file, "rb");		
+		//size_t s;
+		//size_t bytes = 0;
+		//if (!f) {
+		//	goto error;
+		//}		
+		//
+		//while ((s = fread(buf, 1, sizeof(buf), f)) > 0) {
+		//	evbuffer_add(output_buffer, buf, s);
+		//	bytes += s;
+		//}
+		//evutil_snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long)bytes);
+		//evhttp_add_header(output_headers, "Content-Length", buf);
+		//fclose(f);
+
+		//************************************************************
+		//post file使用evbuffer_add_file（）或 
+		//evbuffer_add_file_segment（），以避免不必要的复制
+		//int fd = open(data_file, O_RDONLY);
+
+		//if (fd == -1)
+		//{
+		//	fprintf(stderr, "open %s failed\n", data_file);
+		//	goto error;
+		//}
+
+		//evbuffer_add_file(output_buffer,fd,0,-1);
+		//ev_ssize_t size =  evbuffer_copyout(output_buffer, buf, sizeof(buf));		
+		//evhttp_add_header(output_headers, "Content-Length", buf);
+
+		//************************************************************
+		//http post json
+		//sprintf(buf,"%s","{\"a\":\"b\"}");
+		//evbuffer_add(output_buffer, buf, strlen(buf));
+		//
+		//evhttp_add_header(output_headers, "Content-Type", "application/json;charset=UTF-8");
+
+		//************************************************************
+		//http post format
+		sprintf(buf,"%s\r\n%s\r\n\r\n%s\r\n%s\r\n",
+			"--------------------------123",
+			"Content-Disposition: form-data; name=\"hello\"",
+			"world!!!!",
+			"--------------------------123");
+		evbuffer_add(output_buffer, buf, strlen(buf));
+		
+		evhttp_add_header(output_headers, "Content-Type", 
+			"multipart/form-data; boundary=--------------------------123");
+		//************************************************************
+	}
+	//文件路径为NULL时为get请求，非空post
+	//请求
+	r = evhttp_make_request(evcon, req, data_file ? EVHTTP_REQ_POST : EVHTTP_REQ_GET, uri);
+
+	if (r != 0) {
+		fprintf(stderr, "evhttp_make_request() failed\n");
+		goto error;
+	}
+
+	event_base_dispatch(base);
+
+	goto cleanup;
+
+error:
+	printf("error stop");
+	ret = 1;
+cleanup:
+	if (evcon)
+		evhttp_connection_free(evcon);
+	if (http_uri)
+		evhttp_uri_free(http_uri);
+	if (base)
+		event_base_free(base);
+
+	return ret;
+}
+```
 
 ### HTTPS
+
+#### Client
+
+
+
+#### Server
 
 
 
