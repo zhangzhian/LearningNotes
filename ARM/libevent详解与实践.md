@@ -6220,9 +6220,583 @@ cleanup:
 
 #### Client
 
+```c
+/*
+  This is an example of how to hook up evhttp with bufferevent_ssl
+
+  It just GETs an https URL given on the command-line and prints the response
+  body to stdout.
+
+  Actually, it also accepts plain http URLs to make it easy to compare http vs
+  https code paths.
+
+  Loosely based on le-proxy.c.
+ */
+
+#include <stdio.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include <event2/bufferevent_ssl.h>
+#include <event2/bufferevent.h>
+#include <event2/buffer.h>
+#include <event2/listener.h>
+#include <event2/util.h>
+#include <event2/http.h>
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+
+static int ignore_cert = 0;
+
+static void
+http_request_done(struct evhttp_request *req, void *ctx)
+{
+	char buffer[256];
+	int nread;
+
+	if (!req || !evhttp_request_get_response_code(req)) {
+		/* If req is NULL, it means an error occurred, but
+		 * sadly we are mostly left guessing what the error
+		 * might have been.  We'll do our best... */
+		struct bufferevent *bev = (struct bufferevent *) ctx;
+		unsigned long oslerr;
+		int printed_err = 0;
+		int errcode = EVUTIL_SOCKET_ERROR();
+		fprintf(stderr, "some request failed - no idea which one though!\n");
+		/* Print out the OpenSSL error queue that libevent
+		 * squirreled away for us, if any. */
+		while ((oslerr = bufferevent_get_openssl_error(bev))) {
+			ERR_error_string_n(oslerr, buffer, sizeof(buffer));
+			fprintf(stderr, "%s\n", buffer);
+			printed_err = 1;
+		}
+		/* If the OpenSSL error queue was empty, maybe it was a
+		 * socket error; let's try printing that. */
+		if (! printed_err)
+			fprintf(stderr, "socket error = %s (%d)\n",
+				evutil_socket_error_to_string(errcode),
+				errcode);
+		return;
+	}
+
+	fprintf(stderr, "Response line: %d %s\n",
+	    evhttp_request_get_response_code(req),
+	    evhttp_request_get_response_code_line(req));
+
+	while ((nread = evbuffer_remove(evhttp_request_get_input_buffer(req),
+		    buffer, sizeof(buffer)))
+	       > 0) {
+		/* These are just arbitrary chunks of 256 bytes.
+		 * They are not lines, so we can't treat them as such. */
+		fwrite(buffer, nread, 1, stdout);
+	}
+}
+
+static void
+err(const char *msg)
+{
+	fputs(msg, stderr);
+}
+
+static void
+err_openssl(const char *func)
+{
+	fprintf (stderr, "%s failed:\n", func);
+
+	/* This is the OpenSSL function that prints the contents of the
+	 * error stack to the specified file handle. */
+	ERR_print_errors_fp (stderr);
+
+	exit(1);
+}
+
+int
+main(int argc, char **argv)
+{
+	int r;
+	struct event_base *base = NULL;
+	struct evhttp_uri *http_uri = NULL;
+	const char *url = NULL, *data_file = NULL;
+	const char *crt = NULL;
+	const char *scheme, *host, *path, *query;
+	char uri[256];
+	int port;
+	int retries = 0;
+	int timeout = -1;
+
+	SSL_CTX *ssl_ctx = NULL;
+	SSL *ssl = NULL;
+	struct bufferevent *bev;
+	struct evhttp_connection *evcon = NULL;
+	struct evhttp_request *req;
+	struct evkeyvalq *output_headers;
+	struct evbuffer *output_buffer;
+
+	int i;
+	int ret = 0;
+	enum { HTTP, HTTPS } type = HTTP;
+		
+	//初始化url
+	url = "https://127.0.0.1:8888/login";
+
+	if (!url) {
+		goto error;
+	}
+
+	http_uri = evhttp_uri_parse(url);
+	if (http_uri == NULL) {
+		err("malformed url");
+		goto error;
+	}
+
+	scheme = evhttp_uri_get_scheme(http_uri);
+	if (scheme == NULL || (strcasecmp(scheme, "https") != 0 &&
+	                       strcasecmp(scheme, "http") != 0)) {
+		err("url must be http or https");
+		goto error;
+	}
+
+	host = evhttp_uri_get_host(http_uri);
+	if (host == NULL) {
+		err("url must have a host");
+		goto error;
+	}
+
+	port = evhttp_uri_get_port(http_uri);
+	if (port == -1) {
+		port = (strcasecmp(scheme, "http") == 0) ? 80 : 443;
+	}
+
+	path = evhttp_uri_get_path(http_uri);
+	if (strlen(path) == 0) {
+		path = "/";
+	}
+
+	query = evhttp_uri_get_query(http_uri);
+	if (query == NULL) {
+		snprintf(uri, sizeof(uri) - 1, "%s", path);
+	} else {
+		snprintf(uri, sizeof(uri) - 1, "%s?%s", path, query);
+	}
+	uri[sizeof(uri) - 1] = '\0';
+
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+	(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+	// Initialize OpenSSL
+	SSL_library_init();
+	ERR_load_crypto_strings();
+	SSL_load_error_strings();
+	OpenSSL_add_all_algorithms();
+#endif
+
+	/* This isn't strictly necessary... OpenSSL performs RAND_poll
+	 * automatically on first use of random number generator. */
+	r = RAND_poll();
+	if (r == 0) {
+		err_openssl("RAND_poll");
+		goto error;
+	}
+
+	/* Create a new OpenSSL context */
+	ssl_ctx = SSL_CTX_new(SSLv23_method());
+	if (!ssl_ctx) {
+		err_openssl("SSL_CTX_new");
+		goto error;
+	}
+	// Create event base
+	base = event_base_new();
+	if (!base) {
+		perror("event_base_new()");
+		goto error;
+	}
+
+	// Create OpenSSL bufferevent and stack evhttp on top of it
+	ssl = SSL_new(ssl_ctx);
+	if (ssl == NULL) {
+		err_openssl("SSL_new()");
+		goto error;
+	}
+
+	#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+	// Set hostname for SNI extension
+	SSL_set_tlsext_host_name(ssl, host);
+	#endif
+
+	if (strcasecmp(scheme, "http") == 0) {
+		bev = bufferevent_socket_new(base, -1, BEV_OPT_CLOSE_ON_FREE);
+	} else {
+		type = HTTPS;
+		bev = bufferevent_openssl_socket_new(base, -1, ssl,
+			BUFFEREVENT_SSL_CONNECTING,
+			BEV_OPT_CLOSE_ON_FREE|BEV_OPT_DEFER_CALLBACKS);
+	}
+
+	if (bev == NULL) {
+		fprintf(stderr, "bufferevent_openssl_socket_new() failed\n");
+		goto error;
+	}
+
+	bufferevent_openssl_set_allow_dirty_shutdown(bev, 1);
+
+	// For simplicity, we let DNS resolution block. Everything else should be
+	// asynchronous though.
+	evcon = evhttp_connection_base_bufferevent_new(base, NULL, bev,
+		host, port);
+	if (evcon == NULL) {
+		fprintf(stderr, "evhttp_connection_base_bufferevent_new() failed\n");
+		goto error;
+	}
+
+	if (retries > 0) {
+		evhttp_connection_set_retries(evcon, retries);
+	}
+	if (timeout >= 0) {
+		evhttp_connection_set_timeout(evcon, timeout);
+	}
+
+	// Fire off the request
+	req = evhttp_request_new(http_request_done, bev);
+	if (req == NULL) {
+		fprintf(stderr, "evhttp_request_new() failed\n");
+		goto error;
+	}
+
+	output_headers = evhttp_request_get_output_headers(req);
+	evhttp_add_header(output_headers, "Host", host);
+	evhttp_add_header(output_headers, "Connection", "close");
+
+	if (data_file) {
+		/* NOTE: In production code, you'd probably want to use
+		 * evbuffer_add_file() or evbuffer_add_file_segment(), to
+		 * avoid needless copying. */
+		FILE * f = fopen(data_file, "rb");
+		char buf[1024];
+		size_t s;
+		size_t bytes = 0;
+
+		if (!f) {
+			goto error;
+		}
+
+		output_buffer = evhttp_request_get_output_buffer(req);
+		while ((s = fread(buf, 1, sizeof(buf), f)) > 0) {
+			evbuffer_add(output_buffer, buf, s);
+			bytes += s;
+		}
+		evutil_snprintf(buf, sizeof(buf)-1, "%lu", (unsigned long)bytes);
+		evhttp_add_header(output_headers, "Content-Length", buf);
+		fclose(f);
+	}
+
+	r = evhttp_make_request(evcon, req, data_file ? EVHTTP_REQ_POST : EVHTTP_REQ_GET, uri);
+	if (r != 0) {
+		fprintf(stderr, "evhttp_make_request() failed\n");
+		goto error;
+	}
+
+	event_base_dispatch(base);
+	goto cleanup;
+
+error:
+	ret = 1;
+cleanup:
+	if (evcon)
+		evhttp_connection_free(evcon);
+	if (http_uri)
+		evhttp_uri_free(http_uri);
+	if (base)
+		event_base_free(base);
+
+	if (ssl_ctx)
+		SSL_CTX_free(ssl_ctx);
+	if (type == HTTP && ssl)
+		SSL_free(ssl);
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+	(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L)
+	EVP_cleanup();
+	ERR_free_strings();
+
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+	ERR_remove_state(0);
+#else
+	ERR_remove_thread_state(NULL);
+#endif
+
+	CRYPTO_cleanup_all_ex_data();
+
+	sk_SSL_COMP_free(SSL_COMP_get_compression_methods());
+#endif /* (OPENSSL_VERSION_NUMBER < 0x10100000L) || \
+	(defined(LIBRESSL_VERSION_NUMBER) && LIBRESSL_VERSION_NUMBER < 0x20700000L) */
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
+	return ret;
+}
+```
+
 
 
 #### Server
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+#include <signal.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+ 
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <netinet/in.h>
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+ 
+#include <event2/bufferevent.h>
+#include <event2/bufferevent_ssl.h>
+#include <event2/event.h>
+#include <event2/http.h>
+#include <event2/buffer.h>
+#include <event2/util.h>
+#include <event2/keyvalq_struct.h>
+ 
+unsigned short serverPort = 8888;
+
+void die_most_horribly_from_openssl_error (const char *func)
+{ 
+	fprintf (stderr, "%s failed:\n", func);
+
+	/* This is the OpenSSL function that prints the contents of the
+	* error stack to the specified file handle. */
+	ERR_print_errors_fp (stderr);
+
+	exit (EXIT_FAILURE);
+}
+
+/* This callback gets invoked when we get any http request that doesn't match
+ * any other callback.  Like any evhttp server callback, it has a simple job:
+ * it must eventually call evhttp_send_error() or evhttp_send_reply().
+ */
+static void
+login_cb (struct evhttp_request *req, void *arg)
+{ 
+    struct evbuffer *evb = NULL;
+    const char *uri = evhttp_request_get_uri (req);
+    struct evhttp_uri *decoded = NULL;
+ 
+    /* 判断 req 是否是GET 请求 */
+    if (evhttp_request_get_command (req) == EVHTTP_REQ_GET)
+    {
+        struct evbuffer *buf = evbuffer_new();
+        if (buf == NULL) return;
+        evbuffer_add_printf(buf, "Requested: %s\n", uri);
+        evhttp_send_reply(req, HTTP_OK, "OK", buf);
+        return;
+    }
+ 
+    /* Get请求，直接return 200 OK  */
+    if (evhttp_request_get_command (req) != EVHTTP_REQ_POST)
+    { 
+        evhttp_send_reply (req, 200, "OK", NULL);
+        return;
+    }
+
+}
+ 
+/**
+ *	该回调负责创建新的SSL连接并将其包装在OpenSSL bufferevent中。
+ *	这是我们实现https服务器而不是普通的http服务器的方式。
+ */
+static struct bufferevent* bevcb(struct event_base *base, void *arg)
+{ 
+    struct bufferevent* r;
+    SSL_CTX *ctx = (SSL_CTX *) arg;
+ 
+    r = bufferevent_openssl_socket_new (base,
+            -1,
+            SSL_new (ctx),
+            BUFFEREVENT_SSL_ACCEPTING,
+            BEV_OPT_CLOSE_ON_FREE);
+    return r;
+}
+ 
+static void server_setup_certs (SSL_CTX *ctx,
+        const char *certificate_chain,
+        const char *private_key)
+{ 
+    printf ("Loading certificate chain from '%s'\n"
+            "and private key from '%s'\n",
+            certificate_chain, private_key);
+ 
+    if (1 != SSL_CTX_use_certificate_chain_file (ctx, certificate_chain))
+        die_most_horribly_from_openssl_error ("SSL_CTX_use_certificate_chain_file");
+ 
+    if (1 != SSL_CTX_use_PrivateKey_file (ctx, private_key, SSL_FILETYPE_PEM))
+        die_most_horribly_from_openssl_error ("SSL_CTX_use_PrivateKey_file");
+ 
+    if (1 != SSL_CTX_check_private_key (ctx))
+        die_most_horribly_from_openssl_error ("SSL_CTX_check_private_key");
+}
+ 
+
+static int
+display_listen_sock(struct evhttp_bound_socket *handle)
+{
+	struct sockaddr_storage ss;
+	evutil_socket_t fd;
+	ev_socklen_t socklen = sizeof(ss);
+	char addrbuf[128];
+	void *inaddr;
+	const char *addr;
+	int got_port = -1;
+
+	fd = evhttp_bound_socket_get_fd(handle);
+	memset(&ss, 0, sizeof(ss));
+	if (getsockname(fd, (struct sockaddr *)&ss, &socklen)) {
+		perror("getsockname() failed");
+		return 1;
+	}
+
+	if (ss.ss_family == AF_INET) {
+		got_port = ntohs(((struct sockaddr_in*)&ss)->sin_port);
+		inaddr = &((struct sockaddr_in*)&ss)->sin_addr;
+	} else if (ss.ss_family == AF_INET6) {
+		got_port = ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
+		inaddr = &((struct sockaddr_in6*)&ss)->sin6_addr;
+	}
+	else {
+		fprintf(stderr, "Weird address family %d\n",
+		    ss.ss_family);
+		return 1;
+	}
+
+	addr = evutil_inet_ntop(ss.ss_family, inaddr, addrbuf,
+	    sizeof(addrbuf));
+	if (addr) {
+		printf("Listening on %s:%d\n", addr, got_port);
+	} else {
+		fprintf(stderr, "evutil_inet_ntop failed\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+
+static int serve_some_http (void)
+{ 
+    struct event_base *base;
+    struct evhttp *http;
+    struct evhttp_bound_socket *handle;
+ 
+	//创建event_base
+    base = event_base_new ();
+    if (! base)
+    { 
+        fprintf (stderr, "Couldn't create an event_base: exiting\n");
+        return 1;
+    }
+ 
+    /* 创建一个 evhttp 句柄，去处理用户端的requests请求 */
+    http = evhttp_new (base);
+    if (! http)
+    {
+		fprintf (stderr, "couldn't create evhttp. Exiting.\n");
+        return 1;
+    }
+	/******************************************/
+    /* 创建SSL上下文环境 ，可以理解为 SSL句柄 */
+    SSL_CTX *ctx = SSL_CTX_new (SSLv23_server_method ());
+    SSL_CTX_set_options (ctx,
+            SSL_OP_SINGLE_DH_USE |
+            SSL_OP_SINGLE_ECDH_USE |
+            SSL_OP_NO_SSLv2);
+ 
+    /* Cheesily pick an elliptic curve to use with elliptic curve ciphersuites.
+     * We just hardcode a single curve which is reasonably decent.
+     * See http://www.mail-archive.com/openssl-dev@openssl.org/msg30957.html */
+    EC_KEY *ecdh = EC_KEY_new_by_curve_name (NID_X9_62_prime256v1);
+    if (! ecdh)
+        die_most_horribly_from_openssl_error ("EC_KEY_new_by_curve_name");
+    if (1 != SSL_CTX_set_tmp_ecdh (ctx, ecdh))
+        die_most_horribly_from_openssl_error ("SSL_CTX_set_tmp_ecdh");
+ 
+    /* 选择服务器证书 和 服务器私钥. */
+    const char *certificate_chain = "server-certificate-chain.pem";
+    const char *private_key = "server-private-key.pem";
+    /* 设置服务器证书 和 服务器私钥 到 
+     OPENSSL ctx上下文句柄中 */
+    server_setup_certs (ctx, certificate_chain, private_key);
+	
+    /* 
+        使我们创建好的evhttp句柄 支持 SSL加密
+        实际上，加密的动作和解密的动作都已经帮
+        我们自动完成，我们拿到的数据就已经解密之后的
+
+		设置用于为与给定evhttp对象的连接创建新的bufferevent的回调。
+		您可以使用它来覆盖默认的bufferevent类型，
+		例如，使此evhttp对象使用SSL缓冲区事件而不是未加密的事件。
+		新的缓冲区事件必须在未设置fd的情况下进行分配。
+	*/
+    evhttp_set_bevcb (http, bevcb, ctx);
+	/******************************************/
+    /* 设置http回调函数 */
+    //默认回调
+    //evhttp_set_gencb (http, send_document_cb, NULL);
+    //专属uri路径回调
+    evhttp_set_cb(http, "/login", login_cb, NULL);
+ 
+    /* 设置监听IP和端口 */
+    handle = evhttp_bind_socket_with_handle (http, "0.0.0.0", serverPort);
+    if (! handle)
+    { 
+        fprintf (stderr, "couldn't bind to port %d. Exiting.\n",(int) serverPort);
+        return 1;
+    }
+
+ 	//监听socket
+	if (display_listen_sock(handle)) {
+		return 1;
+	}
+ 
+    /* 开始阻塞监听 (永久执行) */
+    event_base_dispatch (base);
+ 
+ 
+    return 0;
+}
+ 
+int main (int argc, char **argv)
+{ 
+    /*OpenSSL 初始化 */
+	signal (SIGPIPE, SIG_IGN);
+
+	SSL_library_init ();
+	SSL_load_error_strings ();
+	OpenSSL_add_all_algorithms ();
+
+	printf ("Using OpenSSL version \"%s\"\nand libevent version \"%s\"\n",
+			SSLeay_version (SSLEAY_VERSION),
+			event_get_version ());
+    /* now run http server (never returns) */
+    return serve_some_http ();
+}
+```
 
 
 
