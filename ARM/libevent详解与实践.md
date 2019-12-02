@@ -4295,7 +4295,7 @@ int evbuffer_unfreeze(struct evbuffer *buf, int at_front);
 
 evbuffer_freeze()函数是2.0.1-alpha 版本引入的。  
 
-### 八、连接监听器：接受TCP连接
+### 九、连接监听器：接受TCP连接
 
 evconnlistener 机制提供了监听和接受 TCP 连接的方法。 
 
@@ -4526,7 +4526,7 @@ main(int argc, char **argv)
 }
 ```
 
-### 九、使用 libevent **的** DNS：高层和底层功能
+### 十、使用 libevent **的** DNS：高层和底层功能
 
 libevent 提供了少量用于解析 DNS 名字的 API，以及用于实现简单 DNS 服务器的机制。
 
