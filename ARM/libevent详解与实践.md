@@ -10,7 +10,7 @@ libevent文档
 
 ## 前言
 
-Libevent是用于开发可伸缩网络服务器的事件通知库。Libevent API提供了一种机制，在文件描述符上发生特定事件或达到超时后执行回调函数。此外，Libevent还支持由于信号或定期超时而进行的回调。make
+Libevent是用于开发可伸缩网络服务器的事件通知库。Libevent API提供了一种机制，在文件描述符上发生特定事件或达到超时后执行回调函数。此外，Libevent还支持由于信号或定期超时而进行的回调。
 
 Libevent用于取代在事件驱动的网络服务器中的事件的循环。应用程序只需调用[event_base_dispatch（）](https://libevent.org/doc/event_8h.html#a19d60cb72a1af398247f40e92cf07056)，然后动态添加或删除事件，而无需更改事件循环。
 
@@ -62,7 +62,7 @@ $ sudo make install
 
 创建 libevent 时，默认安装下列库： 
 
-- ibevent_core：所有核心的事件和缓冲功能，包含了所有的 event_base、evbuffer、 bufferevent 和工具函数。 
+- libevent_core：所有核心的事件和缓冲功能，包含了所有的 event_base、evbuffer、 bufferevent 和工具函数。 
 
 - ibevent_extra：定义了程序可能需要，也可能不需要的协议特定功能，包括 HTTP、 DNS 和 RPC。 
 
@@ -153,8 +153,6 @@ Libevent提供了一个创建RPC服务器和客户端的框架。它负责对所
 ## 详细说明
 
 基于Libevent 2.0+，在C语言中编写快速可移植的异步网络IO程序。
-
-设计目标是：
 
 ### 一、设置libevent库
 
