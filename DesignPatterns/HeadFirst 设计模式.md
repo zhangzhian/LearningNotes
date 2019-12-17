@@ -10,9 +10,69 @@
 
 设计原则：多用组合，少用继承。
 
-良好的OO设计必须具备：可复用，可扩充，可维护三个特性。 你把   你弄            
+良好的OO设计必须具备：可复用，可扩充，可维护三个特性。           
 
 策略模式：定义了算法族，分别封装起来，让它们之间可以互相替换，此模式让那个算法的变化独立于使用算法的客户。
+
+![](https://img-blog.csdnimg.cn/2019030212151566.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3R1Z2FuZ2thaQ==,size_16,color_FFFFFF,t_70)
+
+```java
+
+//策略接口
+public interface IStrategy {
+    //定义的抽象算法方法 来约束具体的算法实现方法
+    public void algorithmMethod();
+}
+
+// 具体的策略实现
+public class ConcreteStrategy implements IStrategy {
+    //具体的算法实现
+    @Override
+    public void algorithmMethod() {
+        System.out.println("this is ConcreteStrategy method...");
+    }
+}
+
+// 具体的策略实现2
+public class ConcreteStrategy2 implements IStrategy {
+     //具体的算法实现
+    @Override
+    public void algorithmMethod() {
+        System.out.println("this is ConcreteStrategy2 method...");
+    }
+}
+
+/**
+ * 策略上下文
+ */
+public class StrategyContext {
+    //持有一个策略实现的引用
+    private IStrategy strategy;
+    //使用构造器注入具体的策略类
+    public StrategyContext(IStrategy strategy) {
+        this.strategy = strategy;
+    }
+ 
+    public void contextMethod(){
+        //调用策略实现的方法
+        strategy.algorithmMethod();
+    }
+}
+
+//外部客户端
+public class Client {
+    public static void main(String[] args) {
+        //1.创建具体测策略实现
+        IStrategy strategy = new ConcreteStrategy2();
+        //2.在创建策略上下文的同时，将具体的策略实现对象注入到策略上下文当中
+        StrategyContext ctx = new StrategyContext(strategy);
+        //3.调用上下文对象的方法来完成对具体策略实现的回调
+        ctx.contextMethod();
+    }
+}
+```
+
+
 
 ## 一、观察者模式
 
@@ -285,6 +345,155 @@ Model 2是MVC在Web上的应用。
 用途：适合使用载需要跨越多个平台的图形和窗口系统上；当需要用于不同的方式改变接口和实现时
 
 缺点：增加了复杂度
+
+![](https://img2018.cnblogs.com/blog/1475571/201901/1475571-20190112180526113-1204626425.png)
+
+
+
+```java
+public interface Implementor
+{
+    public void operationImpl();
+} 
+
+public abstract class Abstraction
+{
+    protected Implementor impl;
+    
+    public void setImpl(Implementor impl)
+    {
+        this.impl=impl;
+    }
+    
+    public abstract void operation();
+}
+
+public class RefinedAbstraction extends Abstraction
+{
+    public void operation()
+    {
+        //代码
+        impl.operationImpl();
+        //代码
+    }
+}
+```
+
+![](https://img2018.cnblogs.com/blog/1475571/201901/1475571-20190112180712208-505786819.png)
+
+
+
+```java
+//抽象类
+public abstract class Pen
+{
+    protected Color color;
+    public void setColor(Color color)
+    {
+        this.color=color;
+    }
+    public abstract void draw(String name);
+} 
+
+//扩充抽象类
+public class SmallPen extends Pen
+{
+    public void draw(String name)
+    {
+        String penType="小号毛笔绘制";
+        this.color.bepaint(penType,name);            
+    }    
+}
+
+//扩充抽象类
+public class MiddlePen extends Pen
+{
+    public void draw(String name)
+    {
+        String penType="中号毛笔绘制";
+        this.color.bepaint(penType,name);            
+    }    
+}
+
+//扩充抽象类
+public class BigPen extends Pen
+{
+    public void draw(String name)
+    {
+        String penType="大号毛笔绘制";
+        this.color.bepaint(penType,name);            
+    }    
+}
+
+//实现类接口
+public interface Color
+{
+    void bepaint(String penType,String name);
+}
+
+//扩充实现类
+public class Red implements Color
+{
+    public void bepaint(String penType,String name)
+    {
+        System.out.println(penType + "红色的"+ name + ".");
+    }
+}
+
+//扩充实现类
+public class Green implements Color
+{
+    public void bepaint(String penType,String name)
+    {
+        System.out.println(penType + "绿色的"+ name + ".");
+    }
+}
+
+//扩充实现类
+public class Blue implements Color
+{
+    public void bepaint(String penType,String name)
+    {
+        System.out.println(penType + "蓝色的"+ name + ".");
+    }
+}
+
+//扩充实现类
+public class White implements Color
+{
+    public void bepaint(String penType,String name)
+    {
+        System.out.println(penType + "白色的"+ name + ".");
+    }
+}
+
+//扩充实现类
+public class Black implements Color
+{
+    public void bepaint(String penType,String name)
+    {
+        System.out.println(penType + "黑色的"+ name + ".");
+    }
+}
+
+//客户端
+public class Client
+{
+    public static void main(String a[])
+    {
+        Color color;
+        Pen pen;
+        
+        color = new Blue();
+        pen = new SmallPen();
+        
+        pen.setColor(color);
+        pen.draw("鲜花");
+    }
+}
+```
+
+
 
 ### 2. 生成器模式
 
