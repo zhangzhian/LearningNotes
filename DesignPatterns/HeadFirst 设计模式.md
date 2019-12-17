@@ -92,6 +92,97 @@ public class Client {
 
 observable有多个观察者时，不可以依赖特定的通知顺序，observable实现采用的是继承，存在一些问题
 
+![](http://c.biancheng.net/uploads/allimg/181116/3-1Q1161A6221S.gif)
+
+
+
+```java
+public interface Subject {
+		void attach(Observer observer);
+		void detach(Observer observer);
+		void notifyObserver(String newState);
+}
+
+public class ConcreteSubject implements Subject {
+    //保存注册的观察者对象
+		private List<Observer> mObervers = new ArrayList<>();
+
+		//注册观察者对象
+		public void attach(Observer observer) {
+				mObervers.add(observer);
+		}
+
+		//注销观察者对象
+		public void detach(Observer observer) {
+				mObervers.remove(observer);
+		}
+
+		//通知所有注册的观察者对象
+		public void notifyObserver(String newState) {
+				for (Observer observer : mObervers) {
+						observer.update(newState);
+				}
+		}
+}
+
+public interface Observer {
+    void update(String newState);
+}
+
+public class ObserverA implements Observer {
+
+    //观察者状态
+    private String observerState;
+
+    @Override
+    public void update(String newState) {
+        //更新观察者状态，让它与目标状态一致
+        observerState = newState;
+        System.out.println("接收到消息：" + newState + "；我是A模块！！");
+    }
+}
+
+public class ObserverB implements Observer {
+    //观察者状态
+    private String observerState;
+
+    @Override
+    public void update(String newState) {
+        //更新观察者状态，让它与目标状态一致
+        observerState = newState;
+        System.out.println("接收到消息：" + newState + "；我是B模块！！");
+    }
+}
+
+public class ObserverC implements Observer {
+    //观察者状态
+    private String observerState;
+
+    @Override
+    public void update(String newState) {
+        //更新观察者状态，让它与目标状态一致
+        observerState = newState;
+        System.out.println("接收到消息：" + newState + "；我是C模块！！");
+    }
+}
+
+public class ObserverTest
+{
+    public static void main(String[] args)
+    {
+        Subject subject=new ConcreteSubject();
+        Observer obs1=new ObserverA();
+        Observer obs2=new ObserverB();
+        Observer obs3=new ObserverC();
+        subject.attach(obs1);
+        subject.attach(obs2);
+        subject.attach(obs3);
+        subject.notifyObserver("123");
+    }
+}
+
+```
+
 
 
 ## 二、装饰者模式
