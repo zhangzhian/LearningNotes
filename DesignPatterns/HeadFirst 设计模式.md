@@ -588,6 +588,104 @@ public class Client
 
 ### 2. 生成器模式
 
+使用生成器模式封装一个产品的构造过程，并允许按步骤构造
+
+优点：将一个复杂对象的创建过程封装起来；允许对象通过多个步骤创建，并且可以改变过程；向客户隐藏产品内部的表现；产品的实现可以被替换，因为客户只看到一个抽象的接口
+
+用途：经常被用来创建组合结构
+
+缺点：与工厂模式相比，采用生成器创建对象的客户，需要更多的领域知识
+
+![](https://img-blog.csdnimg.cn/20190603112106513.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3Rhbmd5dXpoaWRhbw==,size_16,color_FFFFFF,t_70)
+
+```java
+//抽象类或接口
+public abstract class Builder {
+
+    public abstract void buildPartA();
+    public abstract void buildPartB();
+    public abstract Product getBuildResult();
+    
+}
+//指挥者类，用来指挥建造过程
+public class Director {
+    public void construct(Builder builder) {
+	    builder.buildPartA();
+	    builder.buildPartB();
+    }
+}
+//具体建造者类
+public class ConcreteBuilder1 extends Builder {
+    private Product product = new Product();
+
+    @Override
+    public void buildPartA() {
+	    product.add("部件A");
+    }
+
+    @Override
+    public void buildPartB() {
+	    product.add("部件B");
+    }
+
+    @Override
+    public Product getBuildResult() {
+	    return product;
+    }
+}
+// 具体建造者类，建造的对象时Product，通过build使Product完善
+public class ConcreteBuilder2 extends Builder {
+    private Product product = new Product();
+
+    @Override
+    public void buildPartA() {
+	    product.add("部件X");
+    }
+
+    @Override
+    public void buildPartB() {
+	    product.add("部件Y");
+    }
+
+    @Override
+    public Product getBuildResult() {
+	   return product;
+    }
+}
+//产品类，由多个部件组成
+public class Product {
+    List<String> parts = new ArrayList<String>();
+
+    // 添加产品部件
+    public void add(String part) {
+	    parts.add(part);
+    }
+
+    // 列举所有的产品部件
+    public void show() {
+	    System.out.println("---产品 创建---");
+
+		for (String part : parts) {
+		    System.out.println(part);
+		}
+    }
+}
+//建造客户端
+public class BuilderClient {
+
+    public static void main(String[] args) {
+	    Director director = new Director();
+	    Builder builder1 = new ConcreteBuilder1();
+	    Builder builder2 = new ConcreteBuilder2();
+
+      director.construct(builder1);
+      Product product = builder1.getBuildResult();
+      product.show();
+      
+    }
+}
+```
+
 ### 3. 责任链模式
 
 ### 4. 蝇量模式模式
