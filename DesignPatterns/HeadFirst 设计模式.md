@@ -209,11 +209,118 @@ public class ObserverTest
 
 设计原则：类应该对扩展开放，对修改关闭
 
+![](https://img-blog.csdn.net/20140818201029976?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvemhzaHVsaW4=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center)
+
+```java
+// 男人
+public interface Man {
+    public void getManDesc();
+}
+
+// 普通男人
+public class NormalMan implements Man{
+    private String name = null;
+    
+    public NormalMan(String name) {
+        this.name = name;
+    }
+    
+    @Override
+    public void getManDesc() {
+        System.out.print(name + ": ");
+    }
+}
+
+// 附加属性装饰者
+public abstract class AttachedPropertiesDecorator implements Man{
+    private Man man;
+    
+    public AttachedPropertiesDecorator(Man man) {
+        this.man = man;
+    }
+    
+    public void getManDesc() {
+        man.getManDesc();
+    }
+}
+
+// 小车装饰者
+public class CarDecorator extends AttachedPropertiesDecorator{
+    private String car = "有车";
+    
+    public CarDecoratorImpl(Man man) {
+        super(man);
+    }
+    
+    public void addCar() {
+        System.out.print(car + " ");
+    }
+    
+    @Override
+    public void getManDesc() {
+        super.getManDesc();
+        addCar();
+    }
+}
+
+// 房子装饰者
+public class HouseDecorator extends AttachedPropertiesDecorator{
+    private String house = "有房";
+    
+    public HouseDecoratorImpl(Man man) {
+        super(man);
+    }
+    
+    public void addHouse() {
+        System.out.print(house + " ");
+    }
+    
+    @Override
+    public void getManDesc() {
+        super.getManDesc();
+        addHouse();
+    }
+}
+
+// 存款装饰者
+public class DepositDecorator extends AttachedPropertiesDecorator{
+    private String deposit = "有存款";
+    
+    public DepositDecoratorImpl(Man man) {
+        super(man);
+    }
+    
+    public void addDeposit() {
+        System.out.print(deposit + " ");
+    }
+    
+    @Override
+    public void getManDesc() {
+        super.getManDesc();
+        addDeposit();
+    }
+}
+
+public class DecoratorTest {
+
+    public static void main(String[] args) {
+        Man man = new NormalMan("张三");
+        man = new CarDecorator(man);
+        man = new HouseDecorator(man);
+        man = new DepositDecorator(man);
+        System.out.println("层层装饰:");
+        man.getManDesc();
+    }
+}
+```
+
+
+
 ## 三、工厂模式
 
 分为：简单工厂模式，工厂模式和抽象工厂模式
 
-简单工厂模式其实不是一种设计模式，反而比较像是一种编程习惯，但仍可以将客户程序从具体实现解耦
+6简单工厂模式其实不是一种设计模式，反而比较像是一种编程习惯，但仍可以将客户程序从具体实现解耦
 
 工厂方法用来处理对象的创建，并将这样的行为封装在子类，客户程序中关于超类的代码就和子类对象创建代码解耦类
 
@@ -237,7 +344,7 @@ public class ObserverTest
 
 抽象工厂使用对象耦合：对象的创建被实现在工厂接口所暴露出来的方法中
 
-
+https://segmentfault.com/a/1190000019485423?utm_source=tag-newest
 
 ## 四、单例模式
 
