@@ -354,6 +354,21 @@ https://segmentfault.com/a/1190000019485423?utm_source=tag-newest
 
 - 如果`getInstance()`的性能对应用不是很关键，就什么也别做
 - 使用“饿汉式”创建实例，而不用“懒汉式”实例化的做法
+
+```java
+public class Singleton {
+	private static Singleton uniqueInstance = new Singleton();
+
+  private Singleton() {}
+
+  public static Singleton getInstance() {
+    return uniqueInstance;
+  }
+}
+```
+
+
+
 - 用“双重检查锁”，在`getInstance()`中减少使用同步
 
 ```java
@@ -395,6 +410,141 @@ public class Singleton {
 调用者可以接受命令当做参数，甚至可以在运行时动态进行
 
 实际操作时，直接实现请求，而非将工作直接委托给接收者
+
+![](http://c.biancheng.net/uploads/allimg/181116/3-1Q11611335E44.gif)
+
+```java
+public class CommandPattern
+{
+    public static void main(String[] args)
+    {
+        Command cmd=new ConcreteCommand();
+        Invoker ir=new Invoker(cmd);
+        System.out.println("客户访问调用者的call()方法...");
+        ir.call();
+    }
+}
+//调用者
+class Invoker
+{
+    private Command command;
+    public Invoker(Command command)
+    {
+        this.command=command;
+    }
+    public void setCommand(Command command)
+    {
+        this.command=command;
+    }
+    public void call()
+    {
+        System.out.println("调用者执行命令command...");
+        command.execute();
+    }
+}
+//抽象命令
+interface Command
+{
+    public abstract void execute();
+}
+//具体命令
+class ConcreteCommand implements Command
+{
+    private Receiver receiver;
+    ConcreteCommand()
+    {
+        receiver=new Receiver();
+    }
+    public void execute()
+    {
+        receiver.action();
+    }
+}
+//接收者
+class Receiver
+{
+    public void action()
+    {
+        System.out.println("接收者的action()方法被调用...");
+    }
+}
+```
+
+
+
+![](https://www.runoob.com/wp-content/uploads/2014/08/command_pattern_uml_diagram.jpg)
+
+```java
+public interface Order {
+   void execute();
+}
+public class Stock {
+   
+   private String name = "ABC";
+   private int quantity = 10;
+ 
+   public void buy(){
+      System.out.println("Stock [ Name: "+name+", 
+         Quantity: " + quantity +" ] bought");
+   }
+   public void sell(){
+      System.out.println("Stock [ Name: "+name+", 
+         Quantity: " + quantity +" ] sold");
+   }
+}
+public class BuyStock implements Order {
+   private Stock abcStock;
+ 
+   public BuyStock(Stock abcStock){
+      this.abcStock = abcStock;
+   }
+ 
+   public void execute() {
+      abcStock.buy();
+   }
+}
+public class SellStock implements Order {
+   private Stock abcStock;
+ 
+   public SellStock(Stock abcStock){
+      this.abcStock = abcStock;
+   }
+ 
+   public void execute() {
+      abcStock.sell();
+   }
+}
+ 
+public class Broker {
+   private List<Order> orderList = new ArrayList<Order>(); 
+ 
+   public void takeOrder(Order order){
+      orderList.add(order);      
+   }
+ 
+   public void placeOrders(){
+      for (Order order : orderList) {
+         order.execute();
+      }
+      orderList.clear();
+   }
+}
+                         
+public class CommandPatternDemo {
+   public static void main(String[] args) {
+      Stock abcStock = new Stock();
+ 
+      BuyStock buyStockOrder = new BuyStock(abcStock);
+      SellStock sellStockOrder = new SellStock(abcStock);
+ 
+      Broker broker = new Broker();
+      broker.takeOrder(buyStockOrder);
+      broker.takeOrder(sellStockOrder);
+ 
+      broker.placeOrders();
+   }
+}                         
+```
 
 
 
@@ -794,6 +944,171 @@ public class BuilderClient {
 ```
 
 ### 3. 责任链模式
+
+当你想要让一个以上的对象有机会能够处理某个请求的时候，就使用责任链模式。
+
+优点：将请求的发送者和接受者解耦；可以简化你的对象，因为不需要知道链的机构；通过改变链内的成员或调动它们的次序，允许动态地新增或者删除责任
+
+用途：经常被使用在窗口系统中，处理鼠标和键盘之类的事件；
+
+缺点：并不保证请求一定被执行；如果哪有任何对象处理它的话，可能落到链尾短之外；可能不容易观察运行时的特征，有碍于除错
+
+![](https://upload-images.jianshu.io/upload_images/4807654-f9ce0fd7b19be529.png?imageMogr2/auto-orient/strip|imageView2/2/w/994)
+
+```java
+/**
+ * 抽象处理器
+ */
+public abstract class Handler {
+    //下一个处理器
+    private Handler nextHandler;
+
+    //处理方法
+    public abstract void handleRequest();
+
+    public Handler getNextHandler() {
+        return nextHandler;
+    }
+    public void setNextHandler(Handler nextHandler) {
+        this.nextHandler = nextHandler;
+    }
+}
+
+/**
+ * 具体处理器.
+ */
+public class ConcreteHandler extends Handler {
+
+    @Override
+    public void handleRequest() {
+        System.out.println(this.toString()+"处理器处理");
+        if (getNextHandler()!=null){   //判断是否存在下一个处理器
+            getNextHandler().handleRequest();   //存在则调用下一个处理器
+        }
+    }
+
+}
+
+/**
+ * 测试
+ */
+public class Client {
+    public static void main(String[] args) {
+        Handler h1 = new ConcreteHandler();
+        Handler h2 = new ConcreteHandler();
+        h1.setNextHandler(h2);   //h1的下一个处理器是h2
+        h1.handleRequest();
+    }
+}
+```
+
+
+
+![](https://www.runoob.com/wp-content/uploads/2014/08/chain_pattern_uml_diagram.jpg)
+
+```java
+/**
+ * 抽象处理器.
+ */
+public abstract class AbstractLogger {
+    public static final int INFO = 1;    //一级日志
+    public static final int DEBUG = 2;   //二级日志包括一级
+    public static final int ERROR = 3;   //三级包括前两个
+
+    protected int level;
+    //责任链下一个元素
+    protected AbstractLogger nextLogger ;
+    public void setNextLogger(AbstractLogger nextLogger){
+        this.nextLogger = nextLogger;
+    }
+
+    //不同级别的记录方法不一样,这里给一个抽象的记录方法
+    abstract protected void write(String message);
+
+    //调用责任链处理器的记录方法.并且判断下一个责任链元素是否存在,若存在,则执行下一个方法.
+    public void logMessage(int level,String message){
+        if (this.level <= level){    //根据传进来的日志等级,判断哪些责任链元素要去记录
+            write(message);
+        }
+        if (nextLogger != null){
+            nextLogger.logMessage(level,message);   //进行下一个责任链元素处理
+        }
+    }
+}
+
+/**
+ * 控制台处理器.
+ */
+public class ConsoleLogger extends AbstractLogger {
+    public ConsoleLogger(int level) {
+        this.level = level;
+    }
+
+    @Override
+    protected void write(String message) {
+        System.out.println("Standard Console::Logger :"+message);
+    }
+}
+
+/**
+ * 文件处理器.
+ */
+public class FileLogger extends AbstractLogger {
+    public FileLogger(int level) {
+        this.level = level;
+    }
+
+    @Override
+    protected void write(String message) {
+        System.out.println("File Console::Logger"+message);
+    }
+}
+
+/**
+ * error日志处理器.
+ */
+public class ErrorLogger extends AbstractLogger {
+    public ErrorLogger(int level) {
+        this.level = level;
+    }
+
+    @Override
+    protected void write(String message) {
+        System.out.println("Error Console::Logger: " + message);
+    }
+}
+
+/**
+ * 处理链.
+ */
+public class ChainPatternDemo {
+
+    public static AbstractLogger getChainOfLoggers() {
+
+        AbstractLogger errorLogger = new ErrorLogger(AbstractLogger.ERROR);
+        AbstractLogger fileLogger = new FileLogger(AbstractLogger.DEBUG);
+        AbstractLogger consoleLogger = new ConsoleLogger(AbstractLogger.INFO);
+
+        errorLogger.setNextLogger(fileLogger);
+        fileLogger.setNextLogger(consoleLogger);
+
+        return  errorLogger;
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        AbstractLogger logger = ChainPatternDemo.getChainOfLoggers();
+        logger.logMessage(1,"一级日志记录");
+        System.out.println("--------------------------------");
+        logger.logMessage(2,"二级日志记录");
+        System.out.println("--------------------------------");
+        logger.logMessage(3,"三级日志记录");
+    }
+}
+```
+
+
 
 ### 4. 蝇量模式模式
 
