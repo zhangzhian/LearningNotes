@@ -1108,11 +1108,311 @@ public class Main {
 }
 ```
 
+### 4. 蝇量模式（享元模式）
+
+如果相让某个类的一个实例能用来提供许多“虚拟实例”，就使用蝇量模式
+
+优点：减少运行时对象实例的个数，节省内存；将需多“虚拟”对象的状态集中管理
+
+用途：当一个类游许多的实例，而这些实例能被同一方法控制的时候，我们就可以使用蝇量模式
+
+缺点：一旦实现了它，单个逻辑实例将无法拥有独立而不同的行为
+
+![](http://c.biancheng.net/uploads/allimg/181115/3-1Q115161342242.gif)
+
+```java
+public class FlyweightPattern
+{
+    public static void main(String[] args)
+    {
+        FlyweightFactory factory=new FlyweightFactory();
+        Flyweight f01=factory.getFlyweight("a");
+        Flyweight f02=factory.getFlyweight("a");
+        Flyweight f03=factory.getFlyweight("a");
+        Flyweight f11=factory.getFlyweight("b");
+        Flyweight f12=factory.getFlyweight("b");       
+        f01.operation(new UnsharedConcreteFlyweight("第1次调用a。"));       
+        f02.operation(new UnsharedConcreteFlyweight("第2次调用a。"));       
+        f03.operation(new UnsharedConcreteFlyweight("第3次调用a。"));       
+        f11.operation(new UnsharedConcreteFlyweight("第1次调用b。"));       
+        f12.operation(new UnsharedConcreteFlyweight("第2次调用b。"));
+    }
+}
+//非享元角色
+class UnsharedConcreteFlyweight
+{
+    private String info;
+    UnsharedConcreteFlyweight(String info)
+    {
+        this.info=info;
+    }
+    public String getInfo()
+    {
+        return info;
+    }
+    public void setInfo(String info)
+    {
+        this.info=info;
+    }
+}
+//抽象享元角色
+interface Flyweight
+{
+    public void operation(UnsharedConcreteFlyweight state);
+}
+//具体享元角色
+class ConcreteFlyweight implements Flyweight
+{
+    private String key;
+    ConcreteFlyweight(String key)
+    {
+        this.key=key;
+        System.out.println("具体享元"+key+"被创建！");
+    }
+    public void operation(UnsharedConcreteFlyweight outState)
+    {
+        System.out.print("具体享元"+key+"被调用，");
+        System.out.println("非享元信息是:"+outState.getInfo());
+    }
+}
+//享元工厂角色
+class FlyweightFactory
+{
+    private HashMap<String, Flyweight> flyweights=new HashMap<String, Flyweight>();
+    public Flyweight getFlyweight(String key)
+    {
+        Flyweight flyweight=(Flyweight)flyweights.get(key);
+        if(flyweight!=null)
+        {
+            System.out.println("具体享元"+key+"已经存在，被成功获取！");
+        }
+        else
+        {
+            flyweight=new ConcreteFlyweight(key);
+            flyweights.put(key, flyweight);
+        }
+        return flyweight;
+    }
+}
+```
+
+![](https://www.runoob.com/wp-content/uploads/2014/08/flyweight_pattern_uml_diagram-1.jpg)
+
+```java
+public interface Shape {
+   void draw();
+}
+
+public class Circle implements Shape {
+   private String color;
+   private int x;
+   private int y;
+   private int radius;
+ 
+   public Circle(String color){
+      this.color = color;     
+   }
+ 
+   public void setX(int x) {
+      this.x = x;
+   }
+ 
+   public void setY(int y) {
+      this.y = y;
+   }
+ 
+   public void setRadius(int radius) {
+      this.radius = radius;
+   }
+ 
+   @Override
+   public void draw() {
+      System.out.println("Circle: Draw() [Color : " + color 
+         +", x : " + x +", y :" + y +", radius :" + radius);
+   }
+}
+
+public class ShapeFactory {
+   private static final HashMap<String, Shape> circleMap = new HashMap<>();
+ 
+   public static Shape getCircle(String color) {
+      Circle circle = (Circle)circleMap.get(color);
+ 
+      if(circle == null) {
+         circle = new Circle(color);
+         circleMap.put(color, circle);
+         System.out.println("Creating circle of color : " + color);
+      }
+      return circle;
+   }
+}
+
+public class FlyweightPatternDemo {
+   private static final String colors[] = 
+      { "Red", "Green", "Blue", "White", "Black" };
+   public static void main(String[] args) {
+ 
+      for(int i=0; i < 20; ++i) {
+         Circle circle = 
+            (Circle)ShapeFactory.getCircle(getRandomColor());
+         circle.setX(getRandomX());
+         circle.setY(getRandomY());
+         circle.setRadius(100);
+         circle.draw();
+      }
+   }
+   private static String getRandomColor() {
+      return colors[(int)(Math.random()*colors.length)];
+   }
+   private static int getRandomX() {
+      return (int)(Math.random()*100 );
+   }
+   private static int getRandomY() {
+      return (int)(Math.random()*100);
+   }
+}
+```
 
 
-### 4. 蝇量模式模式
 
 ### 5. 解释器模式
+
+使用解释器模式为语言创建解释器
+
+优点：将每一个语法规则表示成一个类，方便实现语言；因为语法由许多类表示，所以可以轻松改变或扩展此语言；通过在类的结构中加入新的方法，可以在解释的同时增加新的行为，例如打印格式的美化或者进行复杂的程序验证
+
+用途：实现一个简单语言；有一个简单语法，而且简单比效率重要；可以处理脚本语言和编程语言
+
+缺点：语法规则的数目太大时，这个模式可能会变得非常繁杂。在这种情况下，使用解析器/编译器的产生器可能更适合。
+
+![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119150626422.gif)
+
+```java
+//抽象表达式类
+interface AbstractExpression
+{
+    public Object interpret(String info);    //解释方法
+}
+//终结符表达式类
+class TerminalExpression implements AbstractExpression
+{
+    public Object interpret(String info)
+    {
+        //对终结符表达式的处理
+    }
+}
+//非终结符表达式类
+class NonterminalExpression implements AbstractExpression
+{
+    private AbstractExpression exp1;
+    private AbstractExpression exp2;
+    public Object interpret(String info)
+    {
+        //非对终结符表达式的处理
+    }
+}
+//环境类
+class Context
+{
+    private AbstractExpression exp;
+    public Context()
+    {
+        //数据初始化
+    }
+    public void operation(String info)
+    {
+        //调用相关表达式类的解释方法
+    }
+}
+```
+
+【例】用解释器模式设计一个“韶粵通”公交车卡的读卡器程序。
+说明：假如“韶粵通”公交车读卡器可以判断乘客的身份，如果是“韶关”或者“广州”的“老人” “妇女”“儿童”就可以免费乘车，其他人员乘车一次扣 2 元。
+
+```
+<expression> ::= <city>的<person>
+<city> ::= 韶关|广州
+<person> ::= 老人|妇女|儿童
+```
+
+![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119150Q6401.gif)
+
+```java
+/*文法规则
+  <expression> ::= <city>的<person>
+  <city> ::= 韶关|广州
+  <person> ::= 老人|妇女|儿童
+*/
+public class InterpreterPatternDemo
+{
+    public static void main(String[] args)
+    {
+        Context bus=new Context();
+        bus.freeRide("韶关的老人");
+        bus.freeRide("韶关的年轻人");
+        bus.freeRide("广州的妇女");
+        bus.freeRide("广州的儿童");
+        bus.freeRide("山东的儿童");
+    }
+}
+//抽象表达式类
+interface Expression
+{
+    public boolean interpret(String info);
+}
+//终结符表达式类
+class TerminalExpression implements Expression
+{
+    private Set<String> set= new HashSet<String>();
+    public TerminalExpression(String[] data)
+    {
+        for(int i=0;i<data.length;i++)set.add(data[i]);
+    }
+    public boolean interpret(String info)
+    {
+        if(set.contains(info))
+        {
+            return true;
+        }
+        return false;
+    }
+}
+//非终结符表达式类
+class AndExpression implements Expression
+{
+    private Expression city=null;    
+    private Expression person=null;
+    public AndExpression(Expression city,Expression person)
+    {
+        this.city=city;
+        this.person=person;
+    }
+    public boolean interpret(String info)
+    {
+        String s[]=info.split("的");       
+        return city.interpret(s[0])&&person.interpret(s[1]);
+    }
+}
+//环境类
+class Context
+{
+    private String[] citys={"韶关","广州"};
+    private String[] persons={"老人","妇女","儿童"};
+    private Expression cityPerson;
+    public Context()
+    {
+        Expression city=new TerminalExpression(citys);
+        Expression person=new TerminalExpression(persons);
+        cityPerson=new AndExpression(city,person);
+    }
+    public void freeRide(String info)
+    {
+        boolean ok=cityPerson.interpret(info);
+        if(ok) System.out.println("您是"+info+"，您本次乘车免费！");
+        else System.out.println(info+"，您不是免费人员，本次乘车扣费2元！");   
+    }
+}
+```
 
 ### 6. 中介者模式
 
