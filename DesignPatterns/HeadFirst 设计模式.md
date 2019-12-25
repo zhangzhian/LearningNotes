@@ -566,9 +566,132 @@ public class CommandPatternDemo {
 
 最少知识原则：只和你的“密友”谈话。设计一个系统，不管是任何对象，都需要注意交互的类有哪些，是如何交互的，不要让太多的类耦合在一起，减少对象之间的交互。
 
-适配器模式有两种形态：对象适配器和类适配器。类适配器用到多重继承（不适用于Java）。
+适配器模式有两种形态：对象适配器和类适配器。类适配器用到多重继承（不适用于Java，但可以定义一个适配器类来实现当前系统的业务接口，同时又继承现有组件库中已经存在的组件）。
 
+类适配器模式的结构图:
 
+![类适配器模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q1151045351c.gif)
+
+对象适配器模式的结构图:
+
+![对象适配器模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q1151046105A.gif)
+
+类适配器模式的代码如下:
+
+```java
+//目标接口
+interface Target
+{
+    public void request();
+}
+//适配者接口
+class Adaptee
+{
+    public void specificRequest()
+    {       
+        System.out.println("适配者中的业务代码被调用！");
+    }
+}
+//类适配器类
+class ClassAdapter extends Adaptee implements Target
+{
+    public void request()
+    {
+        specificRequest();
+    }
+}
+//客户端代码
+public class ClassAdapterTest
+{
+    public static void main(String[] args)
+    {
+        System.out.println("类适配器模式测试：");
+        Target target = new ClassAdapter();
+        target.request();
+    }
+}
+```
+
+对象适配器模式的代码:
+
+```java
+//对象适配器类
+class ObjectAdapter implements Target
+{
+    private Adaptee adaptee;
+    public ObjectAdapter(Adaptee adaptee)
+    {
+        this.adaptee=adaptee;
+    }
+    public void request()
+    {
+        adaptee.specificRequest();
+    }
+}
+//客户端代码
+public class ObjectAdapterTest
+{
+    public static void main(String[] args)
+    {
+        System.out.println("对象适配器模式测试：");
+        Adaptee adaptee = new Adaptee();
+        Target target = new ObjectAdapter(adaptee);
+        target.request();
+    }
+}
+```
+
+外观模式的结构图:
+
+![外观模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q115152143509.gif)
+
+```java
+public class FacadePattern
+{
+    public static void main(String[] args)
+    {
+        Facade f=new Facade();
+        f.method();
+    }
+}
+//外观角色
+class Facade
+{
+    private SubSystem01 obj1=new SubSystem01();
+    private SubSystem02 obj2=new SubSystem02();
+    private SubSystem03 obj3=new SubSystem03();
+    public void method()
+    {
+        obj1.method1();
+        obj2.method2();
+        obj3.method3();
+    }
+}
+//子系统角色
+class SubSystem01
+{
+    public  void method1()
+    {
+        System.out.println("子系统01的method1()被调用！");
+    }   
+}
+//子系统角色
+class SubSystem02
+{
+    public  void method2()
+    {
+        System.out.println("子系统02的method2()被调用！");
+    }   
+}
+//子系统角色
+class SubSystem03
+{
+    public  void method3()
+    {
+        System.out.println("子系统03的method3()被调用！");
+    }   
+}
+```
 
 ##七、模版方法模式
 
