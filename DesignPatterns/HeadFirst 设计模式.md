@@ -1416,7 +1416,185 @@ class Context
 
 ### 6. 中介者模式
 
+使用中介者模式来集中相关对象之间复杂的沟通和控制方式
+
+优点：通过将对象彼此解耦，可以增加对象的复用性；通过将控制逻辑集中，可以简化系统维护；可以让对象之间所传递的消息变得简单而且大幅度减少
+
+用途：中介者常常被用来协调相关的GUI组件
+
+缺点：如果设计不当，中介者对象本身会变得过于复杂
+
+![](http://c.biancheng.net/uploads/allimg/181116/3-1Q1161I532V0.gif)
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class MediatorPattern
+{
+    public static void main(String[] args)
+    {
+        Mediator md=new ConcreteMediator();
+        Colleague c1,c2;
+        c1=new ConcreteColleague1();
+        c2=new ConcreteColleague2();
+        md.register(c1);
+        md.register(c2);
+        c1.send();
+        System.out.println("-------------");
+        c2.send();
+    }
+}
+//抽象中介者
+abstract class Mediator
+{
+    public abstract void register(Colleague colleague);
+    public abstract void relay(Colleague cl); //转发
+}
+//具体中介者
+class ConcreteMediator extends Mediator
+{
+    private List<Colleague> colleagues=new ArrayList<Colleague>();
+    public void register(Colleague colleague)
+    {
+        if(!colleagues.contains(colleague))
+        {
+            colleagues.add(colleague);
+            colleague.setMediator(this);
+        }
+    }
+    public void relay(Colleague cl)
+    {
+        for(Colleague ob:colleagues)
+        {
+            if(!ob.equals(cl))
+            {
+                ((Colleague)ob).receive();
+            }
+        }
+    }
+}
+//抽象同事类
+abstract class Colleague
+{
+    protected Mediator mediator;
+    public void setMediator(Mediator mediator)
+    {
+        this.mediator=mediator;
+    }
+    public abstract void receive();
+    public abstract void send();
+}
+//具体同事类
+class ConcreteColleague1 extends Colleague
+{
+    public void receive()
+    {
+        System.out.println("具体同事类1收到请求。");
+    }
+    public void send()
+    {
+        System.out.println("具体同事类1发出请求。");
+        mediator.relay(this); //请中介者转发
+    }
+}
+//具体同事类
+class ConcreteColleague2 extends Colleague
+{
+    public void receive()
+    {
+        System.out.println("具体同事类2收到请求。");
+    }
+    public void send()
+    {
+        System.out.println("具体同事类2发出请求。");
+        mediator.relay(this); //请中介者转发
+    }
+}
+```
+
 ### 7. 备忘录模式
+
+当你需要让对象返回之前的状态时，就使用备忘录模式
+
+优点：将被存储的状态放在外面，不要和关键对象混在一起，这样可以帮助维护内聚；保持关键对象的数据封装；提供了容易实现的恢复能力
+
+用途：备忘录用户存储状态
+
+缺点：使用备忘录时，存储和恢复状态的过程可能相当耗时；在Java系统中可以考虑使用序列化机制存储系统状态
+
+![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119130413927.gif)
+
+
+
+```java
+public class MementoPattern
+{
+    public static void main(String[] args)
+    {
+        Originator or=new Originator();
+        Caretaker cr=new Caretaker();       
+        or.setState("S0"); 
+        System.out.println("初始状态:"+or.getState());           
+        cr.setMemento(or.createMemento()); //保存状态      
+        or.setState("S1"); 
+        System.out.println("新的状态:"+or.getState());        
+        or.restoreMemento(cr.getMemento()); //恢复状态
+        System.out.println("恢复状态:"+or.getState());
+    }
+}
+//备忘录
+class Memento
+{ 
+    private String state; 
+    public Memento(String state)
+    { 
+        this.state=state; 
+    }     
+    public void setState(String state)
+    { 
+        this.state=state; 
+    }
+    public String getState()
+    { 
+        return state; 
+    }
+}
+//发起人
+class Originator
+{ 
+    private String state;     
+    public void setState(String state)
+    { 
+        this.state=state; 
+    }
+    public String getState()
+    { 
+        return state; 
+    }
+    public Memento createMemento()
+    { 
+        return new Memento(state); 
+    } 
+    public void restoreMemento(Memento m)
+    { 
+        this.setState(m.getState()); 
+    } 
+}
+//管理者
+class Caretaker
+{ 
+    private Memento memento;       
+    public void setMemento(Memento m)
+    { 
+        memento=m; 
+    }
+    public Memento getMemento()
+    { 
+        return memento; 
+    }
+}
+```
 
 ### 8. 原型模式
 
