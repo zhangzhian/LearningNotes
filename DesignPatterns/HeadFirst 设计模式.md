@@ -709,9 +709,50 @@ class SubSystem03
 
 为了防止子类改变模版方法中的算法，可以将模版发放声明final。
 
-策略模式和模版方法模式都封装算法，一个用组合，一个基础。
+策略模式和模版方法模式都封装算法，一个用组合，一个用继承。
 
 工厂方法是版模版方法的一种特殊版本。
+
+![模板方法模式的结构图](http://c.biancheng.net/uploads/allimg/181116/3-1Q116095405308.gif)
+
+```java
+public class TemplateMethodPattern
+{
+    public static void main(String[] args)
+    {
+        AbstractClass tm=new ConcreteClass();
+        tm.TemplateMethod();
+    }
+}
+//抽象类
+abstract class AbstractClass
+{
+    public void TemplateMethod() //模板方法
+    {
+        SpecificMethod();
+        abstractMethod1();          
+        abstractMethod2();
+    }  
+    public void SpecificMethod() //具体方法
+    {
+        System.out.println("抽象类中的具体方法被调用...");
+    }   
+    public abstract void abstractMethod1(); //抽象方法1
+    public abstract void abstractMethod2(); //抽象方法2
+}
+//具体子类
+class ConcreteClass extends AbstractClass
+{
+    public void abstractMethod1()
+    {
+        System.out.println("抽象方法1的实现被调用...");
+    }   
+    public void abstractMethod2()
+    {
+        System.out.println("抽象方法2的实现被调用...");
+    }
+}
+```
 
 
 
