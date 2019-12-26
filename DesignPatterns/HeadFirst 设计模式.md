@@ -774,6 +774,8 @@ class ConcreteClass extends AbstractClass
 
 组合结构内的任意对象成为组件，组件可以时组合也可以时叶节点。
 
+
+
 ## 九、状态模式
 
 状态模式：允许对象在内部状态改变时改变它的行为，对象看起来好像修改了它的类。
@@ -1762,13 +1764,156 @@ class Caretaker
 
 ### 8. 原型模式
 
+当创建给定类的实例过程很昂贵或很复杂时，就使用原型模式
+
+优点：向客户隐藏制造新实例的复杂性；提供让客户能够产生未知类型对象的选项；在某些环境下，复杂对象比创建新对象更有效
+
+用途：在一个复杂的类层次中，当系统必须从其中的许多类型创建新对象时，可以考虑原型。
+
+缺点：对象的复制有时有点复杂
+
+![原型模式的结构图](http://c.biancheng.net/uploads/allimg/181114/3-1Q114101Fa22.gif)
+
+原型模式的克隆分为浅克隆和深克隆，Java 中的 Object 类提供了浅克隆的 clone() 方法，具体原型类只要实现 Cloneable 接口就可实现对象的浅克隆，这里的 Cloneable 接口就是抽象原型类。
+
+```java
+//具体原型类
+class Realizetype implements Cloneable
+{
+    Realizetype()
+    {
+        System.out.println("具体原型创建成功！");
+    }
+    public Object clone() throws CloneNotSupportedException
+    {
+        System.out.println("具体原型复制成功！");
+        return (Realizetype)super.clone();
+    }
+}
+//原型模式的测试类
+public class PrototypeTest
+{
+    public static void main(String[] args)throws CloneNotSupportedException
+    {
+        Realizetype obj1=new Realizetype();
+        Realizetype obj2=(Realizetype)obj1.clone();
+        System.out.println("obj1==obj2?"+(obj1==obj2));//false
+    }
+}
+```
+
+
+
 ### 9. 访问者模式
 
+当你想要为一个对象的组合增加新的能力，且封装并不重要时，就使用访问者模式
+
+优点：允许你对组合结构加入新的操作，而无需改变结构本身；想要加入新的操作，相对容易；访问者所进行的操作，其代码是集中在一起的
+
+缺点：当采用访问者模式的时候，就会打破组合类的封装；对组合结构的改变更加困难
+
+![image-20191226225444468](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191226225444468.png)
 
 
 
 
 
+```java
+public class VisitorPattern
+{
+    public static void main(String[] args)
+    {
+        ObjectStructure os=new ObjectStructure();
+        os.add(new ConcreteElementA());
+        os.add(new ConcreteElementB());
+        Visitor visitor=new ConcreteVisitorA();
+        os.accept(visitor);
+        System.out.println("------------------------");
+        visitor=new ConcreteVisitorB();
+        os.accept(visitor);
+    }
+}
+//抽象访问者
+interface Visitor
+{
+    void visit(ConcreteElementA element);
+    void visit(ConcreteElementB element);
+}
+//具体访问者A类
+class ConcreteVisitorA implements Visitor
+{
+    public void visit(ConcreteElementA element)
+    {
+        System.out.println("具体访问者A访问-->"+element.operationA());
+    }
+    public void visit(ConcreteElementB element)
+    {
+        System.out.println("具体访问者A访问-->"+element.operationB());
+    }
+}
+//具体访问者B类
+class ConcreteVisitorB implements Visitor
+{
+    public void visit(ConcreteElementA element)
+    {
+        System.out.println("具体访问者B访问-->"+element.operationA());
+    }
+    public void visit(ConcreteElementB element)
+    {
+        System.out.println("具体访问者B访问-->"+element.operationB());
+    }
+}
+//抽象元素类
+interface Element
+{
+    void accept(Visitor visitor);
+}
+//具体元素A类
+class ConcreteElementA implements Element
+{
+    public void accept(Visitor visitor)
+    {
+        visitor.visit(this);
+    }
+    public String operationA()
+    {
+        return "具体元素A的操作。";
+    }
+}
+//具体元素B类
+class ConcreteElementB implements Element
+{
+    public void accept(Visitor visitor)
+    {
+        visitor.visit(this);
+    }
+    public String operationB()
+    {
+        return "具体元素B的操作。";
+    }
+}
+//对象结构角色
+class ObjectStructure
+{   
+    private List<Element> list=new ArrayList<Element>();   
+    public void accept(Visitor visitor)
+    {
+        Iterator<Element> i=list.iterator();
+        while(i.hasNext())
+        {
+            ((Element) i.next()).accept(visitor);
+        }      
+    }
+    public void add(Element element)
+    {
+        list.add(element);
+    }
+    public void remove(Element element)
+    {
+        list.remove(element);
+    }
+}
+```
 
 
 
