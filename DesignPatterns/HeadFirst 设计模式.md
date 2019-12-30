@@ -959,6 +959,70 @@ context会将行为委托给当前状态对象。
 
 状态类可以被多Context实例共享。把每个状态都指定到静态的实例变量中。
 
+![image-20191230235129915](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235129915.png)
+
+```java
+public class StatePatternClient
+{
+    public static void main(String[] args)
+    {       
+        Context context=new Context();    //创建环境       
+        context.Handle();    //处理请求
+        context.Handle();
+        context.Handle();
+        context.Handle();
+    }
+}
+//环境类
+class Context
+{
+    private State state;
+    //定义环境类的初始状态
+    public Context()
+    {
+        this.state=new ConcreteStateA();
+    }
+    //设置新状态
+    public void setState(State state)
+    {
+        this.state=state;
+    }
+    //读取状态
+    public State getState()
+    {
+        return(state);
+    }
+    //对请求做处理
+    public void Handle()
+    {
+        state.Handle(this);
+    }
+}
+//抽象状态类
+abstract class State
+{
+    public abstract void Handle(Context context);
+}
+//具体状态A类
+class ConcreteStateA extends State
+{
+    public void Handle(Context context)
+    {
+        System.out.println("当前状态是 A.");
+        context.setState(new ConcreteStateB());
+    }
+}
+//具体状态B类
+class ConcreteStateB extends State
+{
+    public void Handle(Context context)
+    {
+        System.out.println("当前状态是 B.");
+        context.setState(new ConcreteStateA());
+    }
+}
+```
+
 
 
 ## 十、代理模式
@@ -988,6 +1052,57 @@ context会将行为委托给当前状态对象。
 复杂隐藏代理：用来隐藏一个类的复杂集合的复杂度，并进行访问控制。有时也称外观代理。
 
 写入时复杂代理：用来控制对象的复制，方法是延迟对象的复制，知道客户真的需要为止。这是虚拟代理的变体。
+
+![image-20191230235409481](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235409481.png)
+
+```java
+public class ProxyTest
+{
+    public static void main(String[] args)
+    {
+        Proxy proxy=new Proxy();
+        proxy.Request();
+    }
+}
+//抽象主题
+interface Subject
+{
+    void Request();
+}
+//真实主题
+class RealSubject implements Subject
+{
+    public void Request()
+    {
+        System.out.println("访问真实主题方法...");
+    }
+}
+//代理
+class Proxy implements Subject
+{
+    private RealSubject realSubject;
+    public void Request()
+    {
+        if (realSubject==null)
+        {
+            realSubject=new RealSubject();
+        }
+        preRequest();
+        realSubject.Request();
+        postRequest();
+    }
+    public void preRequest()
+    {
+        System.out.println("访问真实主题之前的预处理。");
+    }
+    public void postRequest()
+    {
+        System.out.println("访问真实主题之后的后续处理。");
+    }
+}
+```
+
+
 
 ##十一、复合模式
 
