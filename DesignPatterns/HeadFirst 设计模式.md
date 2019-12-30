@@ -1,4 +1,4 @@
-#设计模式
+#9可设计模式
 
 《Head First 设计模式》读书笔记。
 
@@ -774,7 +774,168 @@ class ConcreteClass extends AbstractClass
 
 组合结构内的任意对象成为组件，组件可以时组合也可以时叶节点。
 
+ ![image-20191230234548771](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230234548771.png)
 
+```c
+public class IteratorPattern
+{
+    public static void main(String[] args)
+    {
+        Aggregate ag=new ConcreteAggregate(); 
+        ag.add("中山大学"); 
+        ag.add("华南理工"); 
+        ag.add("韶关学院");
+        System.out.print("聚合的内容有：");
+        Iterator it=ag.getIterator(); 
+        while(it.hasNext())
+        { 
+            Object ob=it.next(); 
+            System.out.print(ob.toString()+"\t"); 
+        }
+        Object ob=it.first();
+        System.out.println("\nFirst："+ob.toString());
+    }
+}
+//抽象聚合
+interface Aggregate
+{ 
+    public void add(Object obj); 
+    public void remove(Object obj); 
+    public Iterator getIterator(); 
+}
+//具体聚合
+class ConcreteAggregate implements Aggregate
+{ 
+    private List<Object> list=new ArrayList<Object>(); 
+    public void add(Object obj)
+    { 
+        list.add(obj); 
+    }
+    public void remove(Object obj)
+    { 
+        list.remove(obj); 
+    }
+    public Iterator getIterator()
+    { 
+        return(new ConcreteIterator(list)); 
+    }     
+}
+//抽象迭代器
+interface Iterator
+{
+    Object first();
+    Object next();
+    boolean hasNext();
+}
+//具体迭代器
+class ConcreteIterator implements Iterator
+{ 
+    private List<Object> list=null; 
+    private int index=-1; 
+    public ConcreteIterator(List<Object> list)
+    { 
+        this.list=list; 
+    } 
+    public boolean hasNext()
+    { 
+        if(index<list.size()-1)
+        { 
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    public Object first()
+    {
+        index=0;
+        Object obj=list.get(index);;
+        return obj;
+    }
+    public Object next()
+    { 
+        Object obj=null; 
+        if(this.hasNext())
+        { 
+            obj=list.get(++index); 
+        } 
+        return obj; 
+    }   
+}
+```
+
+![image-20191230234826456](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230234826456.png)
+
+```java
+public class CompositePattern
+{
+    public static void main(String[] args)
+    {
+        Component c0=new Composite(); 
+        Component c1=new Composite(); 
+        Component leaf1=new Leaf("1"); 
+        Component leaf2=new Leaf("2"); 
+        Component leaf3=new Leaf("3");          
+        c0.add(leaf1); 
+        c0.add(c1);
+        c1.add(leaf2); 
+        c1.add(leaf3);          
+        c0.operation(); 
+    }
+}
+//抽象构件
+interface Component
+{
+    public void add(Component c);
+    public void remove(Component c);
+    public Component getChild(int i);
+    public void operation();
+}
+//树叶构件
+class Leaf implements Component
+{
+    private String name;
+    public Leaf(String name)
+    {
+        this.name=name;
+    }
+    public void add(Component c){ }           
+    public void remove(Component c){ }   
+    public Component getChild(int i)
+    {
+        return null;
+    }   
+    public void operation()
+    {
+        System.out.println("树叶"+name+"：被访问！"); 
+    }
+}
+//树枝构件
+class Composite implements Component
+{
+    private ArrayList<Component> children=new ArrayList<Component>();   
+    public void add(Component c)
+    {
+        children.add(c);
+    }   
+    public void remove(Component c)
+    {
+        children.remove(c);
+    }   
+    public Component getChild(int i)
+    {
+        return children.get(i);
+    }   
+    public void operation()
+    {
+        for(Object obj:children)
+        {
+            ((Component)obj).operation();
+        }
+    }    
+}
+```
 
 ## 九、状态模式
 
@@ -1818,104 +1979,7 @@ public class PrototypeTest
 
 
 
-```java
-public class VisitorPattern
-{
-    public static void main(String[] args)
-    {
-        ObjectStructure os=new ObjectStructure();
-        os.add(new ConcreteElementA());
-        os.add(new ConcreteElementB());
-        Visitor visitor=new ConcreteVisitorA();
-        os.accept(visitor);
-        System.out.println("------------------------");
-        visitor=new ConcreteVisitorB();
-        os.accept(visitor);
-    }
-}
-//抽象访问者
-interface Visitor
-{
-    void visit(ConcreteElementA element);
-    void visit(ConcreteElementB element);
-}
-//具体访问者A类
-class ConcreteVisitorA implements Visitor
-{
-    public void visit(ConcreteElementA element)
-    {
-        System.out.println("具体访问者A访问-->"+element.operationA());
-    }
-    public void visit(ConcreteElementB element)
-    {
-        System.out.println("具体访问者A访问-->"+element.operationB());
-    }
-}
-//具体访问者B类
-class ConcreteVisitorB implements Visitor
-{
-    public void visit(ConcreteElementA element)
-    {
-        System.out.println("具体访问者B访问-->"+element.operationA());
-    }
-    public void visit(ConcreteElementB element)
-    {
-        System.out.println("具体访问者B访问-->"+element.operationB());
-    }
-}
-//抽象元素类
-interface Element
-{
-    void accept(Visitor visitor);
-}
-//具体元素A类
-class ConcreteElementA implements Element
-{
-    public void accept(Visitor visitor)
-    {
-        visitor.visit(this);
-    }
-    public String operationA()
-    {
-        return "具体元素A的操作。";
-    }
-}
-//具体元素B类
-class ConcreteElementB implements Element
-{
-    public void accept(Visitor visitor)
-    {
-        visitor.visit(this);
-    }
-    public String operationB()
-    {
-        return "具体元素B的操作。";
-    }
-}
-//对象结构角色
-class ObjectStructure
-{   
-    private List<Element> list=new ArrayList<Element>();   
-    public void accept(Visitor visitor)
-    {
-        Iterator<Element> i=list.iterator();
-        while(i.hasNext())
-        {
-            ((Element) i.next()).accept(visitor);
-        }      
-    }
-    public void add(Element element)
-    {
-        list.add(element);
-    }
-    public void remove(Element element)
-    {
-        list.remove(element);
-    }
-}
 ```
-
-
 
 
 
