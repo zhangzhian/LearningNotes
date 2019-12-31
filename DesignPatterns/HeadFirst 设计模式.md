@@ -1,6 +1,6 @@
-#9可设计模式
+# 设计模式
 
-《Head First 设计模式》读书笔记。
+《Head First 设计模式》读书备忘笔记，整合了一些网上资料。过一段时间，复习的时候，再详细整合。
 
 ## 零、策略模式
 
@@ -17,7 +17,6 @@
 ![](https://img-blog.csdnimg.cn/2019030212151566.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3R1Z2FuZ2thaQ==,size_16,color_FFFFFF,t_70)
 
 ```java
-
 //策略接口
 public interface IStrategy {
     //定义的抽象算法方法 来约束具体的算法实现方法
@@ -92,7 +91,7 @@ public class Client {
 
 observable有多个观察者时，不可以依赖特定的通知顺序，observable实现采用的是继承，存在一些问题
 
-![](http://c.biancheng.net/uploads/allimg/181116/3-1Q1161A6221S.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjFBNjIyMVMuZ2lm)
 
 
 
@@ -411,7 +410,7 @@ public class Singleton {
 
 实际操作时，直接实现请求，而非将工作直接委托给接收者
 
-![](http://c.biancheng.net/uploads/allimg/181116/3-1Q11611335E44.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjExMzM1RTQ0LmdpZg)
 
 ```java
 public class CommandPattern
@@ -472,7 +471,7 @@ class Receiver
 
 
 
-![](https://www.runoob.com/wp-content/uploads/2014/08/command_pattern_uml_diagram.jpg)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9jb21tYW5kX3BhdHRlcm5fdW1sX2RpYWdyYW0uanBn?x-oss-process=image/format,png)
 
 ```java
 public interface Order {
@@ -570,11 +569,11 @@ public class CommandPatternDemo {
 
 类适配器模式的结构图:
 
-![类适配器模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q1151045351c.gif)
+![类适配器模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTEwNDUzNTFjLmdpZg)
 
 对象适配器模式的结构图:
 
-![对象适配器模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q1151046105A.gif)
+![对象适配器模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTEwNDYxMDVBLmdpZg)
 
 类适配器模式的代码如下:
 
@@ -643,7 +642,7 @@ public class ObjectAdapterTest
 
 外观模式的结构图:
 
-![外观模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q115152143509.gif)
+![外观模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTE1MjE0MzUwOS5naWY)
 
 ```java
 public class FacadePattern
@@ -693,7 +692,9 @@ class SubSystem03
 }
 ```
 
-##七、模版方法模式
+
+
+## 七、模版方法模式
 
 模版方法定义了一个算法的步骤，并允许字类为一个或多个步骤提供实现。
 
@@ -713,7 +714,7 @@ class SubSystem03
 
 工厂方法是版模版方法的一种特殊版本。
 
-![模板方法模式的结构图](http://c.biancheng.net/uploads/allimg/181116/3-1Q116095405308.gif)
+![模板方法模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjA5NTQwNTMwOC5naWY)
 
 ```java
 public class TemplateMethodPattern
@@ -774,7 +775,9 @@ class ConcreteClass extends AbstractClass
 
 组合结构内的任意对象成为组件，组件可以时组合也可以时叶节点。
 
- ![image-20191230234548771](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230234548771.png)
+![迭代器模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjFQVTk1MjguZ2lm)
+
+
 
 ```c
 public class IteratorPattern
@@ -865,7 +868,11 @@ class ConcreteIterator implements Iterator
 }
 ```
 
-![image-20191230234826456](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230234826456.png)
+![透明式的组合模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTFHNjJMMTcuZ2lm)
+
+![安全式的组合模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTFHRjUyMjEuZ2lm)
+
+
 
 ```java
 public class CompositePattern
@@ -959,7 +966,7 @@ context会将行为委托给当前状态对象。
 
 状态类可以被多Context实例共享。把每个状态都指定到静态的实例变量中。
 
-![image-20191230235129915](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235129915.png)
+[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-WO1ePMuN-1577756474840)(/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235129915.png)]
 
 ```java
 public class StatePatternClient
@@ -1053,7 +1060,7 @@ class ConcreteStateB extends State
 
 写入时复杂代理：用来控制对象的复制，方法是延迟对象的复制，知道客户真的需要为止。这是虚拟代理的变体。
 
-![image-20191230235409481](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235409481.png)
+[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-KSAqO4Xl-1577756474841)(/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235409481.png)]
 
 ```java
 public class ProxyTest
@@ -1104,7 +1111,7 @@ class Proxy implements Subject
 
 
 
-##十一、复合模式
+## 十一、复合模式
 
 模式通常被一起使用，并被组合在一个设计解决方案中
 
@@ -1122,7 +1129,7 @@ Model 2是MVC在Web上的应用。
 
 
 
-##十二、其他模式
+## 十二、其他模式
 
 ### 1. 桥接模式
 
@@ -1136,7 +1143,7 @@ Model 2是MVC在Web上的应用。
 
 缺点：增加了复杂度
 
-![](https://img2018.cnblogs.com/blog/1475571/201901/1475571-20190112180526113-1204626425.png)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9pbWcyMDE4LmNuYmxvZ3MuY29tL2Jsb2cvMTQ3NTU3MS8yMDE5MDEvMTQ3NTU3MS0yMDE5MDExMjE4MDUyNjExMy0xMjA0NjI2NDI1LnBuZw?x-oss-process=image/format,png)
 
 
 
@@ -1169,7 +1176,7 @@ public class RefinedAbstraction extends Abstraction
 }
 ```
 
-![](https://img2018.cnblogs.com/blog/1475571/201901/1475571-20190112180712208-505786819.png)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9pbWcyMDE4LmNuYmxvZ3MuY29tL2Jsb2cvMTQ3NTU3MS8yMDE5MDEvMTQ3NTU3MS0yMDE5MDExMjE4MDcxMjIwOC01MDU3ODY4MTkucG5n?x-oss-process=image/format,png)
 
 
 
@@ -1395,7 +1402,7 @@ public class BuilderClient {
 
 缺点：并不保证请求一定被执行；如果哪有任何对象处理它的话，可能落到链尾短之外；可能不容易观察运行时的特征，有碍于除错
 
-![](https://upload-images.jianshu.io/upload_images/4807654-f9ce0fd7b19be529.png?imageMogr2/auto-orient/strip|imageView2/2/w/994)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91cGxvYWQtaW1hZ2VzLmppYW5zaHUuaW8vdXBsb2FkX2ltYWdlcy80ODA3NjU0LWY5Y2UwZmQ3YjE5YmU1MjkucG5n?x-oss-process=image/format,png)
 
 ```java
 /**
@@ -1446,7 +1453,7 @@ public class Client {
 
 
 
-![](https://www.runoob.com/wp-content/uploads/2014/08/chain_pattern_uml_diagram.jpg)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9jaGFpbl9wYXR0ZXJuX3VtbF9kaWFncmFtLmpwZw?x-oss-process=image/format,png)
 
 ```java
 /**
@@ -1560,7 +1567,7 @@ public class Main {
 
 缺点：一旦实现了它，单个逻辑实例将无法拥有独立而不同的行为
 
-![](http://c.biancheng.net/uploads/allimg/181115/3-1Q115161342242.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTE2MTM0MjI0Mi5naWY)
 
 ```java
 public class FlyweightPattern
@@ -1638,7 +1645,7 @@ class FlyweightFactory
 }
 ```
 
-![](https://www.runoob.com/wp-content/uploads/2014/08/flyweight_pattern_uml_diagram-1.jpg)
+![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9mbHl3ZWlnaHRfcGF0dGVybl91bWxfZGlhZ3JhbS0xLmpwZw?x-oss-process=image/format,png)
 
 ```java
 public interface Shape {
@@ -1727,7 +1734,7 @@ public class FlyweightPatternDemo {
 
 缺点：语法规则的数目太大时，这个模式可能会变得非常繁杂。在这种情况下，使用解析器/编译器的产生器可能更适合。
 
-![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119150626422.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTE1MDYyNjQyMi5naWY)
 
 ```java
 //抽象表达式类
@@ -1777,7 +1784,7 @@ class Context
 <person> ::= 老人|妇女|儿童
 ```
 
-![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119150Q6401.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTE1MFE2NDAxLmdpZg)
 
 ```java
 /*文法规则
@@ -1866,7 +1873,7 @@ class Context
 
 缺点：如果设计不当，中介者对象本身会变得过于复杂
 
-![](http://c.biancheng.net/uploads/allimg/181116/3-1Q1161I532V0.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjFJNTMyVjAuZ2lm)
 
 ```java
 import java.util.ArrayList;
@@ -1965,7 +1972,7 @@ class ConcreteColleague2 extends Colleague
 
 缺点：使用备忘录时，存储和恢复状态的过程可能相当耗时；在Java系统中可以考虑使用序列化机制存储系统状态
 
-![](http://c.biancheng.net/uploads/allimg/181119/3-1Q119130413927.gif)
+![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTEzMDQxMzkyNy5naWY)
 
 
 
@@ -2048,7 +2055,7 @@ class Caretaker
 
 缺点：对象的复制有时有点复杂
 
-![原型模式的结构图](http://c.biancheng.net/uploads/allimg/181114/3-1Q114101Fa22.gif)
+![原型模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTQvMy0xUTExNDEwMUZhMjIuZ2lm)
 
 原型模式的克隆分为浅克隆和深克隆，Java 中的 Object 类提供了浅克隆的 clone() 方法，具体原型类只要实现 Cloneable 接口就可实现对象的浅克隆，这里的 Cloneable 接口就是抽象原型类。
 
@@ -2088,11 +2095,7 @@ public class PrototypeTest
 
 缺点：当采用访问者模式的时候，就会打破组合类的封装；对组合结构的改变更加困难
 
-![image-20191226225444468](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191226225444468.png)
-
-
-
-
+![访问者（Visitor）模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTEwMTM1WTI1LmdpZg)
 
 ```java
 public class VisitorPattern
@@ -2191,13 +2194,5 @@ class ObjectStructure
 }
 ```
 
-
-
-
-
-
-
-
-
-
-
+**欢迎关注我的公众号，持续分析优质技术文章**
+![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
