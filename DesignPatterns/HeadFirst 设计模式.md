@@ -966,7 +966,7 @@ context会将行为委托给当前状态对象。
 
 状态类可以被多Context实例共享。把每个状态都指定到静态的实例变量中。
 
-[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-WO1ePMuN-1577756474840)(/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235129915.png)]
+![状态模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjE1NDEyVTU1LmdpZg)
 
 ```java
 public class StatePatternClient
@@ -1060,7 +1060,7 @@ class ConcreteStateB extends State
 
 写入时复杂代理：用来控制对象的复制，方法是延迟对象的复制，知道客户真的需要为止。这是虚拟代理的变体。
 
-[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-KSAqO4Xl-1577756474841)(/Users/zhangzhian/Library/Application Support/typora-user-images/image-20191230235409481.png)]
+![代理模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTA5MzAxMTUyMy5naWY)
 
 ```java
 public class ProxyTest
