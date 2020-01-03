@@ -6,6 +6,8 @@ EventBus 3.0.0 API：http://greenrobot.org/files/eventbus/javadoc/3.0/
 
 EventBus是一种用于Android/Java的事件发布-订阅总线框架。
 
+![img](https://upload-images.jianshu.io/upload_images/3012005-7d20197cd887b0f7.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200)
+
 **特点：**
 
 - 简化组件之间的通信
