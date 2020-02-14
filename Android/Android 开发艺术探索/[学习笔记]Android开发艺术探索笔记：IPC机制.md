@@ -123,11 +123,263 @@ Parceable是Android中的序列化方式，使用起来麻烦，但是效率高�
 
 ### Binder
 
+#### Binder简介
+
+直观来说，Binder是Android中一个类，实现了IBinder接口；
+
+从IPC的角度来说，Binder是Android的一种跨进程的通讯方式；Binder还可以理解为一种虚拟的物理设备，设备驱动是/dev/binder；
+
+从Android Framework角度来说，Binder是ServiceManager连接各种Manager（ActivityManager、WindowManager、等等）和相应ManagerService的桥梁；
+
+从Android应用层来说，Binder是客户端与服务端通讯的媒介。在Android开发中，Binder主要用于Service中，包括AIDL和Messenger，其中普通的Service的Binder不涉及进程间通讯；而Messenger的底层其实就是AIDL。
+
+AIDL:
+
+```java
+Book.aidl:
+package com.zza.stardust.app.ui.androidart;
+
+parcelable Book;
+
+IBookManager.aidl
+package com.zza.stardust.app.ui.androidart;
+
+import com.zza.stardust.app.ui.androidart.Book;
+
+//  /build/generated/aidl_source_output_dir目录下的com.zza.stardust.app.ui.androidart包中
+interface IBookManager {
+     List<Book> getBookList();
+     void addBook(in Book book);
+}
+```
+
+生成的Java类:
+
+```java
+/*
+ * This file is auto-generated.  DO NOT MODIFY.
+ * Original file: /app/src/main/aidl/com/zza/stardust/app/ui/androidart/IBookManager.aidl
+ */
+package com.zza.stardust.app.ui.androidart;
+//gen目录下的com.zza.stardust.app.ui.androidart.aidl包中
+
+public interface IBookManager extends android.os.IInterface {
+    /**
+     * Local-side IPC implementation stub class.
+     */
+    public static abstract class Stub extends android.os.Binder implements com.zza.stardust.app.ui.androidart.IBookManager {
+        private static final java.lang.String DESCRIPTOR = "com.zza.stardust.app.ui.androidart.IBookManager";
+
+        /**
+         * Construct the stub at attach it to the interface.
+         */
+        public Stub() {
+            this.attachInterface(this, DESCRIPTOR);
+        }
+
+        /**
+         * Cast an IBinder object into an com.zza.stardust.app.ui.androidart.IBookManager interface,
+         * generating a proxy if needed.
+         */
+        public static com.zza.stardust.app.ui.androidart.IBookManager asInterface(android.os.IBinder obj) {
+            if ((obj == null)) {
+                return null;
+            }
+            android.os.IInterface iin = obj.queryLocalInterface(DESCRIPTOR);
+            if (((iin != null) && (iin instanceof com.zza.stardust.app.ui.androidart.IBookManager))) {
+                return ((com.zza.stardust.app.ui.androidart.IBookManager) iin);
+            }
+            return new com.zza.stardust.app.ui.androidart.IBookManager.Stub.Proxy(obj);
+        }
+
+        @Override
+        public android.os.IBinder asBinder() {
+            return this;
+        }
+
+        @Override
+        public boolean onTransact(int code, android.os.Parcel data, android.os.Parcel reply, int flags) throws android.os.RemoteException {
+            java.lang.String descriptor = DESCRIPTOR;
+            switch (code) {
+                case INTERFACE_TRANSACTION: {
+                    reply.writeString(descriptor);
+                    return true;
+                }
+                case TRANSACTION_getBookList: {
+                    data.enforceInterface(descriptor);
+                    java.util.List<com.zza.stardust.app.ui.androidart.Book> _result = this.getBookList();
+                    reply.writeNoException();
+                    reply.writeTypedList(_result);
+                    return true;
+                }
+                case TRANSACTION_addBook: {
+                    data.enforceInterface(descriptor);
+                    com.zza.stardust.app.ui.androidart.Book _arg0;
+                    if ((0 != data.readInt())) {
+                        _arg0 = com.zza.stardust.app.ui.androidart.Book.CREATOR.createFromParcel(data);
+                    } else {
+                        _arg0 = null;
+                    }
+                    this.addBook(_arg0);
+                    reply.writeNoException();
+                    return true;
+                }
+                default: {
+                    return super.onTransact(code, data, reply, flags);
+                }
+            }
+        }
+
+        private static class Proxy implements com.zza.stardust.app.ui.androidart.IBookManager {
+            private android.os.IBinder mRemote;
+
+            Proxy(android.os.IBinder remote) {
+                mRemote = remote;
+            }
+
+            @Override
+            public android.os.IBinder asBinder() {
+                return mRemote;
+            }
+
+            public java.lang.String getInterfaceDescriptor() {
+                return DESCRIPTOR;
+            }
+
+            @Override
+            public java.util.List<com.zza.stardust.app.ui.androidart.Book> getBookList() throws android.os.RemoteException {
+                android.os.Parcel _data = android.os.Parcel.obtain();
+                android.os.Parcel _reply = android.os.Parcel.obtain();
+                java.util.List<com.zza.stardust.app.ui.androidart.Book> _result;
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    mRemote.transact(Stub.TRANSACTION_getBookList, _data, _reply, 0);
+                    _reply.readException();
+                    _result = _reply.createTypedArrayList(com.zza.stardust.app.ui.androidart.Book.CREATOR);
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
+                return _result;
+            }
+
+            @Override
+            public void addBook(com.zza.stardust.app.ui.androidart.Book book) throws android.os.RemoteException {
+                android.os.Parcel _data = android.os.Parcel.obtain();
+                android.os.Parcel _reply = android.os.Parcel.obtain();
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    if ((book != null)) {
+                        _data.writeInt(1);
+                        book.writeToParcel(_data, 0);
+                    } else {
+                        _data.writeInt(0);
+                    }
+                    mRemote.transact(Stub.TRANSACTION_addBook, _data, _reply, 0);
+                    _reply.readException();
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
+            }
+        }
+
+        static final int TRANSACTION_getBookList = (android.os.IBinder.FIRST_CALL_TRANSACTION + 0);
+        static final int TRANSACTION_addBook = (android.os.IBinder.FIRST_CALL_TRANSACTION + 1);
+    }
+
+    public java.util.List<com.zza.stardust.app.ui.androidart.Book> getBookList() throws android.os.RemoteException;
+
+    public void addBook(com.zza.stardust.app.ui.androidart.Book book) throws android.os.RemoteException;
+
+}
+
+```
+
+系统会根据AIDL文件生成同名的.java类；首先声明与AIDL文件相对应的几个接口方法，还申明每个接口方法相对应的int id来做为标识，这几个id在transact过程中标识客户端请求的到底是什么方法。接着会声明一个内部类Stub，这个Stub就是一个Binder类，当客户端和服务端处于同一个进程的时候，方法调用不会走transact过程，处于不同进程时，方法调用会走transact过程，这个逻辑由Stub的内部代理类Proxy来完成。所以核心实现在于它的内部类Stub和Stub的内部代理类Proxy，下面分析其中的方法：
+
+**DESCRIPTOR**：Binder的唯一标识，一般用当前Binder的类名表示。
+
+**asInterface(android.os.IBinder obj)**：将服务端的Binder对象转换成客户端所需要的AIDL接口类型的对象；如果客户端和服务端位于相同进程，那么此方法返回的就是服务端Stub对象本身，否则返回系统封装后的Stub.proxy对象。
+
+**asBinder**：用于返回当前的Binder对象
+
+**onTransact**：运行在服务端的Binder线程池中，当客户端发起跨进程通讯时，远程请求会通过系统底层封装交由此方法处理。
+
+```java
+ public boolean onTransact(int code, android.os.Parcel data, android.os.Parcel reply, int flags) throws android.os.RemoteException 
+```
+
+- 服务端通过code确定客户端请求的目标方法是什么
+- 接着从data取出目标方法所需要的参数，然后执行目标方法
+- 执行后向reply写入返回值
+- 如果返回false，服务端请求会失败，可以做权限验证
+
+**Proxy#getBookList和Proxy#addBook**：
+
+- 运行在客户端，首先该方法所需要的输入型对象Parcel _data对象，输出对象Parcel _reply对象和返回值对象List
+- 然后把该方法的参数信息写入Parcel _data对象。
+- 接着调研transact方法发起RPC，同时当前线程挂起
+- 然后服务端的onTransact方法会被调用，直到RPC过程返回后，当前线程继续执行，并从_reply取出RPC的返回结果，最后返回 _reply中的数据
+
+Binder的两个重要方法**linkToDeath**和**unlinkToDeath**。通过linkToDeath可以给Binder设置一个死亡代理，当Binder死亡时，我们就会收到通知，然后就可以重新发起连接请求。声明一个DeathRecipient对象，DeathRecipient是一个接口，其内部只有一个方法binderDied，实现这个方法后就可以在Binder死亡的时候收到通知了。
+
+```java
+private IBinder.DeathRecipient mDeathRecipient = new IBinder.DeathRecipient(){
+    @Override
+    public void binderDied(){
+        if(mBookManager == null){
+            return;
+        }
+        mBookManager.asBinder().unlinkToDeath(mDeathRecipient,0);
+        mBookManager = null;
+        // TODO：接下来重新绑定远程Service
+    }
+}
+```
+
+在客户端绑定远程服务成功后，给Binder设置死亡代理：
+
+```undefined
+mService = IBookManager.Stub.asInterface(binder);
+binder.linkToDeath(mDeathRecipient,0);
+```
+
+## Android中的IPC方式
+
+### 使用Bundle
+
+
+
+### 使用文件共享
+
+
+
+### 使用Messenger
+
+
+
+### 使用AIDL
+
+
+
+### 使用ContentProvider
+
+
+
+### 使用Socket
 
 
 
 
 
+## Binder连接池
+
+
+
+
+
+## 选用合适的IPC方式
 
 
 
