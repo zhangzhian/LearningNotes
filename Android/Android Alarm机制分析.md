@@ -2,7 +2,7 @@
 
 从应用层到内核层，简单分析Android Alarm的工作流程。基于Android 4.4和Kernel 2.6.39。
 
-### 应用层
+## 应用层
 
  /packages/apps/DeskClock/目录下为Android的系统闹钟APP，可参考其闹钟实现。
 
@@ -170,6 +170,7 @@ asyncAddAlarm函数中是一个AsyncTask后台任务，主要关系doInBackgroun
     // Register instance to state manager
     AlarmStateManager.registerInstance(context, newInstance, true);
 ```
+
 然后我们来查看:
 
 /packages/apps/DeskClock/src/com/android/deskclock/alarms/AlarmStateManager.java
@@ -252,15 +253,16 @@ asyncAddAlarm函数中是一个AsyncTask后台任务，主要关系doInBackgroun
         am.set(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent);
     }
 ```
+
 这里是RTC_WAKEUP, 这就保证了即使系统睡眠了，都能唤醒，闹钟工作。
 
 综上，可以看出系统闹钟APPAlarmManager和开发应用层APP使用的是同样的AlarmManager。
 
 接下来具体分析AlarmManager的实现即可。
 
-### 框架层
+## 框架层
 
-#### Java层
+### Java层
 
 在/frameworks/base/core/java/android/app/AlarmManager.java中：
 
@@ -587,7 +589,7 @@ class AlarmManagerService extends IAlarmManager.Stub {
 
 AlarmManagerService  中 AlarmThread  会一直调用waitForAlarm轮询，会返回一个值 。如果打开失败就直接返回，成功就会做一些动作，通过执行triggerAlarmsLocked，把几种类型的闹钟列表中符合要求的 alarm 添加到 triggerList 中，然后用 alarm.operation.send 发送消息，调起小闹钟程序
 
-#### Native层
+### Native层
 
 /frameworks/base/services/jni/com_android_server_AlarmManagerService.cpp
 
@@ -683,7 +685,7 @@ int result = ioctl(fd, ANDROID_ALARM_SET(type), &ts);
 
 接下来我们需要查看内核层的处理方式，ANDROID_ALARM_SET为关键字查找。
 
-### 内核层
+## 内核层
 
 在/drivers/rtc/alarm-dev.c：
 
@@ -955,3 +957,7 @@ alarm.c  里面实现了 alarm_suspend  alarm_resume 函数。如果不需要唤
 
 当系统断电时，主板上的 rtc 芯片将继续维持系统的时间，这样保证再次开机后系统的时间不会错误。当系统开始时，内核从 RTC 中读取时间来初始化系统时间，关机时便又将系统时间写回到 rtc 中，关机阶段将有主板上另外的电池来供应 rtc 计时。Android 中的 Alarm在设备处于睡眠模式时仍保持活跃，它可以设置来唤醒设备。
 
+
+
+**欢迎关注我的公众号，持续分析优质技术文章**
+![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
