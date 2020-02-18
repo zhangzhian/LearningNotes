@@ -585,7 +585,7 @@ class AlarmManagerService extends IAlarmManager.Stub {
     }
 ```
 
-AlarmManagerService  中 AlarmThread  会一直调用waitForAlarm轮询，如果打开失败就直接返回，成功就会做一些动作，重新计算时间，发送广播等。
+AlarmManagerService  中 AlarmThread  会一直调用waitForAlarm轮询，会返回一个值 。如果打开失败就直接返回，成功就会做一些动作，通过执行triggerAlarmsLocked，把几种类型的闹钟列表中符合要求的 alarm 添加到 triggerList 中，然后用 alarm.operation.send 发送消息，调起小闹钟程序
 
 #### Native层
 
@@ -758,6 +758,7 @@ err1:
 ```
 
 调用了alarm_start_range  设置闹钟， alarm_set_rtc设置RTC
+
 这两个函数在 android_alarm.h 声明，在 alarm.c 里实现
 
 /include/linux/android_alarm.h:
@@ -897,7 +898,7 @@ static int alarm_resume(struct platform_device *pdev)
 
 ```
 
-xref: /drivers/rtc/interface.c:
+/drivers/rtc/interface.c:
 
 ```c
 int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
@@ -930,9 +931,27 @@ int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
 EXPORT_SYMBOL_GPL(rtc_set_time);
 ```
 
-在 rtc->ops->set_time(rtc->dev.parent, tm)中set_time 就看到具体的是那个RTC芯片，这里不再继续分析。
+在 rtc->ops->set_time(rtc->dev.parent, tm)中set_time 就看到具体的是那个RTC芯片，这里不再继续往下分析。
+
+- alarm.c 文件实现的是所有 alarm 设备的通用性操作，它创建了一个设备 class
+
+- alarm_dev.c 则创建具体的 alarm 设备，注册到该设备 class 中。
+
+- alarm.c 还实现了与 interface.c 的接口，即建立了与具体 rtc 驱动和 rtc 芯片的联系。
+
+- alarm_dev.c 在 alarm.c 基础包装了一层，主要是实现了标准的 miscdevice 接口，提供给应用层调用。
+
+可以这样概括：alarm.c 实现的是机制和框架，alarm_dev.c 则是实现符合这个框架的设备驱动，alarm_dev.c 相当于在底层硬件 rtc 闹钟功能的基础上虚拟了多个软件闹钟。
+
+
 
 alarm.c  里面实现了 alarm_suspend  alarm_resume 函数。如果不需要唤醒系统，设置闹钟并不会往rtc 芯片的寄存器上写数据，通过上层写到设备文件/dev/alarm 里面，AlarmThread 会不停的去轮寻下一个时间有没有闹钟，直接从设备文件 /dev/alarm 里面读取。
 
 如果需要唤醒系统，alarm 的alarm_suspend就会写到下层的rtc芯片的寄存器上去， 然后即使系统suspend之后，闹钟通过rtc 也能唤醒系统。
+
+
+
+综上：Alarm 闹钟是 android 系统中在标准 RTC 驱动上开发的一个新的驱动，提供了一个定时器，用于把设备从睡眠状态唤醒，当然因为它是依赖 RTC 驱动的，所以它同时还可以为系统提供一个掉电下还能运行的实时时钟。
+
+当系统断电时，主板上的 rtc 芯片将继续维持系统的时间，这样保证再次开机后系统的时间不会错误。当系统开始时，内核从 RTC 中读取时间来初始化系统时间，关机时便又将系统时间写回到 rtc 中，关机阶段将有主板上另外的电池来供应 rtc 计时。Android 中的 Alarm在设备处于睡眠模式时仍保持活跃，它可以设置来唤醒设备。
 
