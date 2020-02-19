@@ -349,19 +349,474 @@ binder.linkToDeath(mDeathRecipient,0);
 
 ### 使用Bundle
 
-
+由于Binder实现了Parcelable接口，所以可以方便的在不同进程中传输；Activity、Service和Receiver都支持在Intent中传递Bundle数据。
 
 ### 使用文件共享
 
+两个进程通过读/写一个文件来交换数据
 
+适合对数据同步要求性不高的场景，并要避免并发写这种场景或者处理好线程同步问题。
+
+SharedPreferences是个特例，虽然也是文件的一种，但系统在内存中有一份SharedPreferences文件的缓存，因此在多线程模式下，系统的读/写就变得不可靠，高并发读写SharedPreferences有一定几率会丢失数据，因此不建议在多进程通信中使用SharedPreferences。
 
 ### 使用Messenger
 
+可以在不同的进程之间传递Message对象。Messenger是轻量级的IPC方案，底层实现是AIDL，对AIDL进行了封装。Messenger 服务端是以串行的方式来处理客户端的请求的，不存在并发执行的情形。
 
+服务端：
+
+- 创建一个Service来处理客户端的连接请求
+- 创建一个Handler并通过它来创建一个Messager对象
+- 在Service的onBind中返回这个Messager对象底层的Binder即可
+
+```java
+
+public class MessengerService extends Service {
+    public MessengerService() {
+    }
+
+    private static class MessengerHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case 1:
+                    ToastUtil.show("receive msg from Client:" + msg.getData().getString("msg"));
+                    Messenger client = msg.replyTo;
+                    Message relpyMessage = Message.obtain(null, 1);
+                    Bundle bundle = new Bundle();
+                    bundle.putString("reply", "嗯，你的消息我已经收到，稍后会回复你。");
+                    relpyMessage.setData(bundle);
+                    try {
+                        client.send(relpyMessage);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+
+    private final Messenger mMessenger = new Messenger(new MessengerHandler());
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mMessenger.getBinder();
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return super.onStartCommand(intent, flags, startId);
+    }
+}
+```
+
+客户端
+
+- 绑定这个服务端的Server
+- 用服务端返回的IBinder对象创建一个Messager对象
+- 若需要回应客户端，需要创建一个Handler并创建一个新的Messager，并通过Messa的replyTo参数传递给服务端，服务端通过这个replyTo参数就可以回应客户端
+
+```java
+public class MessengerActivity extends Activity {
+
+    private Messenger mService;
+    private Messenger mGetReplyMessenger = new Messenger(new MessengerHandler());
+
+    private static class MessengerHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case 1:
+                    LogUtil.i("receive msg from Service:" + msg.getData().getString("reply"));
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            mService = new Messenger(service);
+            LogUtil.d("bind service");
+            Message msg = Message.obtain(null, 1);
+            Bundle data = new Bundle();
+            data.putString("msg", "hello, this is client.");
+            msg.setData(data);
+            msg.replyTo = mGetReplyMessenger;
+            try {
+                mService.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+        }
+    };
+
+    @Override
+    protected void onDestroy() {
+        unbindService(mConnection);
+        super.onDestroy();
+    }
+
+   @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_messenger);
+        findViewById(R.id.bt_start_service).setOnClickListener(v -> {
+            Intent intent = new Intent();
+            intent.setAction("com.zza.MessengerService.launch");
+            intent.setPackage(this.getPackageName());//需要添加包名
+            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        });
+    }
+}
+```
 
 ### 使用AIDL
 
+Messenger不适合处理大并发请求。Messenger主要作用传递消息，跨进程调用服务端方法，无法做到。
 
+**服务端**首先创建一个Service用来监听客户端的连接请求，然后创建一个AIDL文件，将暴露给客户端的接口在AIDL文件中声明，最后在Service中实现这个AIDL接口即可。
+
+**客户端**首先绑定服务端的Service，绑定成功后，将服务端返回的Binder对象转化成AIDL接口所属的类型，调用相对应的AIDL中的方法。
+
+AIDL支持的数据类型：
+
+- 基本数据类型；
+
+- String、CharSequence；
+
+- List： 只支持ArrayList,里面的元素必须都能被AIDL所支持；
+
+- Map： 只支持HashMap，里面的元素（key和value）必须都能被AIDL所支持；
+- Parcelable： 所有实现了Parcelable接口的对象；
+
+- AIDL： 所有AIDL接口本身也可以在AIDL文件中使用。
+
+自定义的Parcelable对象和AIDL对象必须显示的import进来（即使在同一个包）。
+
+如果ALDL文件中用到了自定义的Parcelable类型，必须新建一个和它同名ALDL文件，并在其中声明它为Parcelable类型。
+
+AIDL中除了基本数据类型，其他类型参数必须标上方向：in、out或inout。
+
+AIDL接口中只支持方法，不支持声明静态常量。
+
+为了方便AIDL开发，建议把所有和AIDL相关的类和文件都放在同一个包中，好处在于，当客户端是另一个应用的时候，我们可以直接把整个包复制到客户端工程中去。
+
+AIDL的包结构在服务端和客户端要保持一致，否则会运行出错。
+
+客户端的listener和服务端的listener不是同一个对象，RemoteCallbackList是系统专门提供用于删除跨进程listener的接口，RemoteCallbackList是泛型，支持管理任意的AIDL接口，因为所有AIDL接口都继承自android.os.IInterface接口。
+
+需注意AIDL客户端发起RPC过程的时候，客户端的线程会挂起，如果是UI线程发起的RPC过程，如果服务端处理事件过长，就会导致ANR。
+
+AIDL：
+
+```java
+package com.zza.stardust.app.ui.androidart.aidl;
+
+parcelable Book;
+
+
+
+package com.zza.stardust.app.ui.androidart.aidl;
+
+import com.zza.stardust.app.ui.androidart.aidl.Book;
+import com.zza.stardust.app.ui.androidart.aidl.IOnNewBookArrivedListener;
+
+//  /build/generated/aidl_source_output_dir目录下的com.zza.stardust.app.ui.androidart包中
+interface IBookManager {
+     List<Book> getBookList();
+     void addBook(in Book book);
+     void registerListener(IOnNewBookArrivedListener listener);
+     void unregisterListener(IOnNewBookArrivedListener listener);
+}
+
+
+
+package com.zza.stardust.app.ui.androidart.aidl;
+
+import com.zza.stardust.app.ui.androidart.aidl.Book;
+
+interface IOnNewBookArrivedListener {
+    void onNewBookArrived(in Book newBook);
+}
+
+```
+
+服务端：
+
+```java
+public class BookManagerService extends Service {
+
+    private AtomicBoolean mIsServiceDestoryed = new AtomicBoolean(false);
+
+    private CopyOnWriteArrayList<Book> mBookList = new CopyOnWriteArrayList<>();
+    // private CopyOnWriteArrayList<IOnNewBookArrivedListener> mListenerList =
+    // new CopyOnWriteArrayList<IOnNewBookArrivedListener>();
+
+    private RemoteCallbackList<IOnNewBookArrivedListener> mListenerList = new RemoteCallbackList<>();
+
+    private Binder mBinder = new IBookManager.Stub() {
+
+        @Override
+        public List<Book> getBookList() throws RemoteException {
+            //测试
+            //SystemClock.sleep(5000);
+            return mBookList;
+        }
+
+        @Override
+        public void addBook(Book book) throws RemoteException {
+            mBookList.add(book);
+        }
+
+        public boolean onTransact(int code, Parcel data, Parcel reply, int flags)
+                throws RemoteException {
+            int check = checkCallingOrSelfPermission("com.zza.permission.ACCESS_BOOK_SERVICE");
+            LogUtil.d("check=" + check);
+            if (check == PackageManager.PERMISSION_DENIED) {
+                return false;
+            }
+
+            String packageName = null;
+            String[] packages = getPackageManager().getPackagesForUid(
+                    getCallingUid());
+            if (packages != null && packages.length > 0) {
+                packageName = packages[0];
+            }
+            LogUtil.d("onTransact: " + packageName);
+            if (!packageName.startsWith("com.zza")) {
+                return false;
+            }
+
+            return super.onTransact(code, data, reply, flags);
+        }
+
+        @Override
+        public void registerListener(IOnNewBookArrivedListener listener)
+                throws RemoteException {
+            mListenerList.register(listener);
+
+            final int N = mListenerList.beginBroadcast();
+            mListenerList.finishBroadcast();
+            LogUtil.d("registerListener, current size:" + N);
+        }
+
+        @Override
+        public void unregisterListener(IOnNewBookArrivedListener listener)
+                throws RemoteException {
+            boolean success = mListenerList.unregister(listener);
+
+            if (success) {
+                LogUtil.d("unregister success.");
+            } else {
+                LogUtil.d("not found, can not unregister.");
+            }
+            final int N = mListenerList.beginBroadcast();
+            mListenerList.finishBroadcast();
+            LogUtil.d("unregisterListener, current size:" + N);
+        }
+
+        ;
+
+    };
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        mBookList.add(new Book(1, "Android"));
+        mBookList.add(new Book(2, "Ios"));
+        new Thread(new ServiceWorker()).start();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        int check = checkCallingOrSelfPermission("com.zza.permission.ACCESS_BOOK_SERVICE");
+        LogUtil.d("onbind check=" + check);
+        if (check == PackageManager.PERMISSION_DENIED) {
+            return null;
+        }
+        return mBinder;
+    }
+
+    @Override
+    public void onDestroy() {
+        mIsServiceDestoryed.set(true);
+        super.onDestroy();
+    }
+
+    private void onNewBookArrived(Book book) throws RemoteException {
+        mBookList.add(book);
+        final int N = mListenerList.beginBroadcast();
+        for (int i = 0; i < N; i++) {
+            IOnNewBookArrivedListener l = mListenerList.getBroadcastItem(i);
+            if (l != null) {
+                try {
+                    l.onNewBookArrived(book);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        mListenerList.finishBroadcast();
+    }
+
+    private class ServiceWorker implements Runnable {
+        @Override
+        public void run() {
+            // do background processing here.....
+            while (!mIsServiceDestoryed.get()) {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                int bookId = mBookList.size() + 1;
+                Book newBook = new Book(bookId, "new book#" + bookId);
+                try {
+                    onNewBookArrived(newBook);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}
+```
+
+客户端：
+
+```java
+public class BookManagerActivity extends MActivity {
+
+    private static final int MESSAGE_NEW_BOOK_ARRIVED = 1;
+
+    private IBookManager mRemoteBookManager;
+
+    @SuppressLint("HandlerLeak")
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_NEW_BOOK_ARRIVED:
+                    LogUtil.d("receive new book :" + msg.obj);
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    };
+
+    private IBinder.DeathRecipient mDeathRecipient = new IBinder.DeathRecipient() {
+        @Override
+        public void binderDied() {
+            LogUtil.d("binder died. tname:" + Thread.currentThread().getName());
+            if (mRemoteBookManager == null)
+                return;
+            mRemoteBookManager.asBinder().unlinkToDeath(mDeathRecipient, 0);
+            mRemoteBookManager = null;
+            // TODO:这里重新绑定远程Service
+        }
+    };
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            IBookManager bookManager = IBookManager.Stub.asInterface(service);
+            mRemoteBookManager = bookManager;
+            try {
+                mRemoteBookManager.asBinder().linkToDeath(mDeathRecipient, 0);
+                List<Book> list = bookManager.getBookList();
+                LogUtil.d("query book list, list type:"
+                        + list.getClass().getCanonicalName());
+                LogUtil.d("query book list:" + list.toString());
+                Book newBook = new Book(3, "Android进阶");
+                bookManager.addBook(newBook);
+                LogUtil.d("add book:" + newBook);
+                List<Book> newList = bookManager.getBookList();
+                LogUtil.d("query book list:" + newList.toString());
+                bookManager.registerListener(mOnNewBookArrivedListener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            mRemoteBookManager = null;
+            LogUtil.d("onServiceDisconnected. tname:" + Thread.currentThread().getName());
+        }
+    };
+
+    private IOnNewBookArrivedListener mOnNewBookArrivedListener = new IOnNewBookArrivedListener.Stub() {
+
+        @Override
+        public void onNewBookArrived(Book newBook) throws RemoteException {
+            mHandler.obtainMessage(MESSAGE_NEW_BOOK_ARRIVED, newBook)
+                    .sendToTarget();
+        }
+    };
+
+    @Override
+    protected void onInit(Bundle savedInstanceState) {
+        super.onInit(savedInstanceState);
+        Intent intent = new Intent(this, BookManagerService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    public void onButton1Click(View view) {
+        Toast.makeText(this, "click button1", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                if (mRemoteBookManager != null) {
+                    try {
+                        List<Book> newList = mRemoteBookManager.getBookList();
+                        runOnUiThread(() -> ToastUtil.show("size:" + newList.size()));
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }).start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mRemoteBookManager != null
+                && mRemoteBookManager.asBinder().isBinderAlive()) {
+            try {
+                LogUtil.d("unregister listener:" + mOnNewBookArrivedListener);
+                mRemoteBookManager
+                        .unregisterListener(mOnNewBookArrivedListener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+        unbindService(mConnection);
+        super.onDestroy();
+    }
+
+    @Override
+    protected BasePresenter createPresenter() {
+        return null;
+    }
+
+    @Override
+    protected int provideContentViewId() {
+        return R.layout.activity_book_manager;
+    }
+}
+```
 
 ### 使用ContentProvider
 
