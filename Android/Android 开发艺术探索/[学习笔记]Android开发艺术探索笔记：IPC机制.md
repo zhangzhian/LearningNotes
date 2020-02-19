@@ -820,6 +820,14 @@ public class BookManagerActivity extends MActivity {
 
 ### 使用ContentProvider
 
+ContentProvider是Android专门用于不同应用之间进行数据共享的方式，适合跨进程通信，底层采用Binder实现。
+
+ContentProvider主要以表格的形式来组织数据，可以包含多个表；ContentProvider支持普通文件，甚至可以采用内存中得一个对象来进行数据存储。
+
+通过ContentProvider的notifyChange方法来通知外界当前ContentProvider中的数据已经发生改变。
+
+query、update、insert、delete四大方法是存在多线程并发访问的，内部需要做好线程同步。
+
 
 
 ### 使用Socket
