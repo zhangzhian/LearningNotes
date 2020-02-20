@@ -828,23 +828,262 @@ ContentProvider主要以表格的形式来组织数据，可以包含多个表�
 
 query、update、insert、delete四大方法是存在多线程并发访问的，内部需要做好线程同步。
 
-
-
 ### 使用Socket
 
+Socket也被称为“套接字”，是网络通讯中得概念，分为流式套接字和用户数据报套接字两种，分别对应网络的传输控制层中得TCP和UDP协议。
 
+Service:
 
+```java
+public class TCPServerService extends Service {
+    private boolean mIsServiceDestoryed = false;
+    private String[] mDefinedMessages = new String[] {
+            "你好啊，哈哈",
+            "请问你叫什么名字呀？",
+            "今天北京天气不错啊，shy",
+            "你知道吗？我可是可以和多个人同时聊天的哦",
+            "给你讲个笑话吧：据说爱笑的人运气不会太差，不知道真假。"
+    };
 
+    @Override
+    public void onCreate() {
+        new Thread(new TcpServer()).start();
+        super.onCreate();
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        mIsServiceDestoryed = true;
+        super.onDestroy();
+    }
+
+    private class TcpServer implements Runnable {
+
+        @SuppressWarnings("resource")
+        @Override
+        public void run() {
+            ServerSocket serverSocket = null;
+            try {
+                serverSocket = new ServerSocket(8688);
+            } catch (IOException e) {
+                System.err.println("establish tcp server failed, port:8688");
+                e.printStackTrace();
+                return;
+            }
+
+            while (!mIsServiceDestoryed) {
+                try {
+                    // 接受客户端请求
+                    final Socket client = serverSocket.accept();
+                    System.out.println("accept");
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            try {
+                                responseClient(client);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        };
+                    }.start();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void responseClient(Socket client) throws IOException {
+        // 用于接收客户端消息
+        BufferedReader in = new BufferedReader(new InputStreamReader(
+                client.getInputStream()));
+        // 用于向客户端发送消息
+        PrintWriter out = new PrintWriter(new BufferedWriter(
+                new OutputStreamWriter(client.getOutputStream())), true);
+        out.println("欢迎来到聊天室！");
+        while (!mIsServiceDestoryed) {
+            String str = in.readLine();
+            System.out.println("msg from client:" + str);
+            if (str == null) {
+                break;
+            }
+            int i = new Random().nextInt(mDefinedMessages.length);
+            String msg = mDefinedMessages[i];
+            out.println(msg);
+            System.out.println("send :" + msg);
+        }
+        System.out.println("client quit.");
+        // 关闭流
+        out.close();
+        in.close();
+        client.close();
+    }
+}
+```
+
+Client:
+
+```java
+public class TCPClientActivity extends MActivity implements OnClickListener {
+
+    private static final int MESSAGE_RECEIVE_NEW_MSG = 1;
+    private static final int MESSAGE_SOCKET_CONNECTED = 2;
+
+    private Button mSendButton;
+    private TextView mMessageTextView;
+    private EditText mMessageEditText;
+
+    private PrintWriter mPrintWriter;
+    private Socket mClientSocket;
+
+    @SuppressLint("HandlerLeak")
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_RECEIVE_NEW_MSG: {
+                    mMessageTextView.setText(mMessageTextView.getText()
+                            + (String) msg.obj);
+                    break;
+                }
+                case MESSAGE_SOCKET_CONNECTED: {
+                    mSendButton.setEnabled(true);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    };
+
+    @Override
+    protected void onInit(Bundle savedInstanceState) {
+        super.onInit(savedInstanceState);
+        mMessageTextView = (TextView) findViewById(R.id.msg_container);
+        mSendButton = (Button) findViewById(R.id.send);
+        mSendButton.setOnClickListener(this);
+        mMessageEditText = (EditText) findViewById(R.id.msg);
+        Intent service = new Intent(this, TCPServerService.class);
+        startService(service);
+        new Thread() {
+            @Override
+            public void run() {
+                connectTCPServer();
+            }
+        }.start();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mClientSocket != null) {
+            try {
+                mClientSocket.shutdownInput();
+                mClientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    protected BasePresenter createPresenter() {
+        return null;
+    }
+
+    @Override
+    protected int provideContentViewId() {
+        return R.layout.activity_tcpclient;
+    }
+
+    @Override
+    public void onClick(View v) {
+        if (v == mSendButton) {
+            final String msg = mMessageEditText.getText().toString();
+            if (!TextUtils.isEmpty(msg) && mPrintWriter != null) {
+                //不能主线程   android.os.NetworkOnMainThreadException
+                //不应该这要做，这里为方便不做修改
+                new Thread(() -> mPrintWriter.println(msg)).start();
+                mMessageEditText.setText("");
+                String time = formatDateTime(System.currentTimeMillis());
+                final String showedMsg = "self " + time + ":" + msg + "\n";
+                mMessageTextView.setText(mMessageTextView.getText() + showedMsg);
+            }
+        }
+    }
+
+    @SuppressLint("SimpleDateFormat")
+    private String formatDateTime(long time) {
+        return new SimpleDateFormat("(HH:mm:ss)").format(new Date(time));
+    }
+
+    private void connectTCPServer() {
+        Socket socket = null;
+        while (socket == null) {
+            try {
+                socket = new Socket("localhost", 8688);
+                mClientSocket = socket;
+                mPrintWriter = new PrintWriter(new BufferedWriter(
+                        new OutputStreamWriter(socket.getOutputStream())), true);
+                mHandler.sendEmptyMessage(MESSAGE_SOCKET_CONNECTED);
+                System.out.println("connect server success");
+            } catch (IOException e) {
+                SystemClock.sleep(1000);
+                System.out.println("connect tcp server failed, retry...");
+            }
+        }
+
+        try {
+            // 接收服务器端的消息
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    socket.getInputStream()));
+            while (!TCPClientActivity.this.isFinishing()) {
+                String msg = br.readLine();
+                System.out.println("receive :" + msg);
+                if (msg != null) {
+                    String time = formatDateTime(System.currentTimeMillis());
+                    final String showedMsg = "server " + time + ":" + msg
+                            + "\n";
+                    mHandler.obtainMessage(MESSAGE_RECEIVE_NEW_MSG, showedMsg)
+                            .sendToTarget();
+                }
+            }
+            System.out.println("quit...");
+            mPrintWriter.close();
+            br.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+}
+```
 
 ## Binder连接池
 
+当项目越来越庞大后，需要使用到的AIDL接口文件也越来越多，但我们不能有多少个AIDL就添加多少个Service，Service是四大组件之一，是一种系统资源，太多的Service会让我们的App看起来很重量级；我们应该把所有AIDL放在一个Service中去管理。
 
+这时候不同业务模块之间是不能有耦合的，所有实现细节需要单独来开，然后向服务端提供一个queryBInder接口，这个接口根据业务模块的特征来返回Binder对象给它们，不同的业务模块拿到所需的Binder对象给它们，不同的业务模块拿到所需的Binder对象后就可以进行远程方法调用了；由此可见Binder连接池的**主要作用**就是将每个业务模块的Binder请求统一转发到远程Service中去执行。
 
-
+当新业务模块加入新的AIDL，那么在它实现自己的AIDL接口后，只需要修改BinderPoolImpl中的queryBinder方法，给自己添加一个新的binderCode并返回相对应的Binder对象即可，不需要添加新的Service。建议在AIDL开发过程中引入BinderPool机制。 
 
 ## 选用合适的IPC方式
 
-
+| 名称            | 优点                                                         | 缺点                                                         | 适用场景                                                     |
+| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Bundle          | 简单易用                                                     | 只能传输 Bundle 支持的数据类型                               | 四大组件的进程间通信                                         |
+| 文件共享        | 简单易用                                                     | 不适合高并发场景，并且无法做到进程间的即时通信               | 无开发访问情形，交换简单的数据实时性不高的场景。             |
+| AIDL            | 功能强大，支持一对多并发通信，支持实时通信。                 | 使用复杂，需要处理好线程同步                                 | 一对多通信，且有 RPC 需求。                                  |
+| Message         | 功能一般，支持一对多串行通信，支持实时通信。                 | 不能很好地处理高并发情形，不支持 RPC，数据通过 Message 进行传输，因此只能传输 Bundle 支持的数据类型 | 低并发的一对多即时通信，无RPC 需求，或者无需要返回结果的 RPC 请求。 |
+| ContentProvider | 在数据源访问方面数据强大，支持一对多并发数据共享，可通过 Call 方法扩展其他操作。 | 可以理解为受约束的 AIDL，主要提供数据的 CRUD 操作。          | 一对多的进程间数据共享。                                     |
+| Socket          | 功能强大，可以通过网络传输字节流，支持一对多并发实时通信。   | 实现细节稍微有点繁琐，不支持直接的 RPC.                      | 网络数据传输。                                               |
 
 
 
