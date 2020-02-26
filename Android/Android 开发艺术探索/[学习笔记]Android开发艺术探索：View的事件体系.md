@@ -73,15 +73,6 @@ mBtn.requestLayout();
 2. **动画**: 操作简单，适合没有交互的View和实现负责的动画效果
 3. **改变布局参数**：操作稍微复杂，适合有交互的View
 
-
-
-作者：HuDP
-链接：https://www.jianshu.com/p/7d2c88ca24fc
-来源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
-
-
-
 ## 弹性滑动
 
 **Scroller**不能直接完成View滑动，需要配合View的computeScroll方法才可以完成弹性滑动，它让View不断重绘，每一次重绘有一个时间间隔，通过这个时间间隔Scroller就可以得出View当前滑动的位置，知道了滑动位置就通过scrollTo来完成滑动。每一次滑动都会导致View小幅度滑动，多次小幅度滑动组成了弹性滑动，这就是Scroller的工作机制。 
@@ -138,11 +129,64 @@ startScroll() 把参数保存下来，然后invalidate()会调用，导致View�
 
 ```
 
-## View的时间分发机制
+## View的事件分发机制
+
+- dispatchTouchEvent(MotionEvent event) 用来处理事件的分发，返回结果受当前View的onTouchEvent和下级View的dispatchTouchEvent方法影响，表示是否消耗该事件。
+- onInterceptTouchEvent(MotionEvent event) 在dispatchTouchEvent方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那在同一个事件序列中，此方法不会再次调用，返回结果表示是否拦截当前事件。
+- onTouchEvent(MotionEvent event) 在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，在同一事件序列里，当前View无法再次接收到事件。
+- 三者关系可以用如下伪代码表示
+
+```java
+public boolean dispatchTouchEvent(MotionEvent ev){    
+    boolean consume = false;
+    if(onInterceptTouchEvent(ev)){
+        consume = onTouchEvent(ev);
+    }else{
+        consume = child.dispatchTouchEvent(ev);   
+    }
+    return consume;
+}
+```
 
 
 
+- 对于一个根ViewGroup，点击事件产生后，首先会传递给它，这时他的dispatchTouchEvent会调用，如果它的onInterceptTouchEvent返回true表示要拦截当前事件，接下来事件会交给这个ViewGroup处理，它的onTouchEvent就会被调用，如果这个ViewGroup的onInterceptTouchEvent返回false,则事件会继续传递给子元素，子元素的dispatchTouchEvent会调用，如此反复直到事件被处理。
 
+- 当一个View需要处理事件时，如果设置了OnTouchListener,那么OnTouchListener的onTouch方法会回调，如果onTouch返回false,则当前View的onTouchEvent方法会被调用；如果返回true,那么onTouchEvent方法将不会调用。由此可见，OnTouchListener优先级高于onTouchEvent。OnClickListener优先级处在事件传递的尾端。
+
+- 一个点击事件产生后，传递顺序：Activity->Window->View；如果一个View的onTouchEvent返回false,那么它的父容器的onTouchEvent会被调用，以此类推，所有元素都不处理该事件，最终将传递给Activity处理，即Activity的onTouchEvent会被调用。
+
+- 同一个事件序列是指从手指触摸屏幕那一刻开始，到手指离开屏幕那一刻（down->move...move->up)。
+
+- 一个事件序列只能被一个View拦截且消耗，同一个事件序列所有事件都会直接交给它处理，并且它的onInterceptTouchEvent不会再被调用。
+
+- 某个View一旦开始处理事件，如果它不消耗ACTION_DOWN（onTouchEvent返回了false），那么同一事件序列中其他事件都不会再交给它来处理，事件将重新交给他的父元素处理，即父元素的onTouchEvent会被调用。
+
+- 如果某个View不消耗除ACTION_DOWN以外的其他事件，那么这个点击事件会消失，此时父元素的onTouchEvent并不会被调用，并且当前View可以收到后续事件，最终这些消失的点击事件会传递给Activity处理。
+
+- ViewGroup默认不拦截任何事件，ViewGroup的onInterceptTouchEvent方法默认返回false。
+
+- View没有onInterceptTouchEvent方法，一旦有事件传递给它，那么它的onTouchEvent方法就会被调用。
+
+- View的onTouchEvent方法默认消耗事件（返回true）,除非他是不可点击的（clickable和longClickable同时为false）。View的longClickable属性默认都为false,clickable属性分情况，Button默认为true，TextView默认为false。
+
+- onClick发生的前提是View可点击，并且它收到了down和up事件。
+
+- 事件传递过程是由内而外，事件总是先传递给父元素，然后在由父元素分发给子View，通过requestDisallowInterceptTouchEvent方法可以在子元素干预父元素的事件分发过程，但ACTION_DOWN事件除外。
 
 ## View的滑动冲突
 
+1.常见滑动冲突场景
+
+- 场景1 —— 外部滑动方向与内部滑动方向不一致，比如ViewPager中包含ListView;
+- 场景2 —— 外部滑动方向与内部滑动方向一致，比如ScrollView中包含ListView;
+- 场景3 —— 上面两种情况的嵌套
+
+2.滑动冲突处理规则
+
+通过判断是水平滑动还是竖直滑动来判断到底应该谁来拦截事件；可以根据水平和竖直两个方向的距离差或速度差来做判断
+
+3.滑动冲突解决方式
+
+- 外部拦截法 —— 即点击事件先经过父容器的拦截处理，如果父容器需要此事件就拦截，不需要就不拦截，需要重写父容器的onInterceptTouchEvent方法；在onInterceptTouchEvent方法中，首先ACTION_DOWN这个事件，父容器必须返回false,即不拦截ACTION_DOWN事件，因为一旦父容器拦截了ACTION_DOWN,那么后续的ACTION_MOVE/ACTION_UP都会直接交给父容器处理；其次是ACTION_MOVE,根据需求来决定是否要拦截;最后ACTION_UP事件,这里必须要返回false,在这里没有多大意义。
+- 内部拦截法 —— 所有事件都传递给子元素,如果子元素需要就消耗掉,不需要就交给父元素处理,需要子元素配合requestDisallowInterceptTouchEvent方法才能正常工作;父元素需要默认拦截除ACTION_DOWN以外的事件,这样子元素调用parent.requestDisallowInterceptTouchEvent(false)方法时，父元素才能继续拦截需要的事件。（ACTION_DOWN事件不受requestDisallowInterceptTouchEvent方法影响,所以一旦父元素拦截ACTION_DOWN事件,那么所有元素都无法传递到子元素去）。
