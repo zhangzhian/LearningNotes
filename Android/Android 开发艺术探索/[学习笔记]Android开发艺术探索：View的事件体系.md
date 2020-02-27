@@ -184,9 +184,84 @@ public boolean dispatchTouchEvent(MotionEvent ev){
 
 2.滑动冲突处理规则
 
-通过判断是水平滑动还是竖直滑动来判断到底应该谁来拦截事件；可以根据水平和竖直两个方向的距离差或速度差来做判断
+通过判断是水平滑动还是竖直滑动来判断到底应该谁来拦截事件；可以根据水平和竖直两个方向的距离差或速度差来做判断。
+
+对于场景一，处理的规则是：当用户左右（上下）滑动时，需要让外部的View拦截点击 事件，当用户上下（左右）滑动的时候，需要让内部的View拦截点击事件。根据滑动的方向判断谁来拦截事件。
+
+对于场景二，由于滑动方向一致，这时候只能在业务上找到突破点，根据业务需求，规 定什么时候让外部View拦截事件，什么时候由内部View拦截事件。
+
+场景三的情况相对比较复杂，同样根据需求在业务上找到突破点。
 
 3.滑动冲突解决方式
 
 - 外部拦截法 —— 即点击事件先经过父容器的拦截处理，如果父容器需要此事件就拦截，不需要就不拦截，需要重写父容器的onInterceptTouchEvent方法；在onInterceptTouchEvent方法中，首先ACTION_DOWN这个事件，父容器必须返回false,即不拦截ACTION_DOWN事件，因为一旦父容器拦截了ACTION_DOWN,那么后续的ACTION_MOVE/ACTION_UP都会直接交给父容器处理；其次是ACTION_MOVE,根据需求来决定是否要拦截;最后ACTION_UP事件,这里必须要返回false,在这里没有多大意义。
-- 内部拦截法 —— 所有事件都传递给子元素,如果子元素需要就消耗掉,不需要就交给父元素处理,需要子元素配合requestDisallowInterceptTouchEvent方法才能正常工作;父元素需要默认拦截除ACTION_DOWN以外的事件,这样子元素调用parent.requestDisallowInterceptTouchEvent(false)方法时，父元素才能继续拦截需要的事件。（ACTION_DOWN事件不受requestDisallowInterceptTouchEvent方法影响,所以一旦父元素拦截ACTION_DOWN事件,那么所有元素都无法传递到子元素去）。
+
+```java
+public boolean onInterceptTouchEvent (MotionEvent event){
+      boolean intercepted = false;
+      int x = (int) event.getX();
+      int y = (int) event.getY();
+      switch (event.getAction()) {
+          case MotionEvent.ACTION_DOWN:
+          	intercepted = false;
+          break;
+          case MotionEvent.ACTION_MOVE:
+            if (父容器需要当前事件） {
+              intercepted = true;
+            } else {
+              intercepted = flase;
+            }
+          break;
+          case MotionEvent.ACTION_UP:
+          	intercepted = false;
+          break;
+          default : break;
+      }
+      mLastXIntercept = x;
+      mLastYIntercept = y;
+      return intercepted;
+}
+```
+
+- 内部拦截法 —— 内部拦截法是指父容器不拦截任何事件，所有的事件都传递给子元素，如果子元素需要此事件就直接消耗，否则就交由父容器进行处理。这种方法与Android事件分发机制不一致，需要配合requestDisallowInterceptTouchEvent方法才能正常工作。
+
+```java
+public boolean dispatchTouchEvent ( MotionEvent event ) {
+      int x = (int) event.getX();
+      int y = (int) event.getY();
+      switch (event.getAction) {
+          case MotionEvent.ACTION_DOWN:
+          		parent.requestDisallowInterceptTouchEvent(true);
+          break;
+          case MotionEvent.ACTION_MOVE:
+              int deltaX = x - mLastX;
+              int deltaY = y - mLastY;
+              if (父容器需要此类点击事件) {
+              		parent.requestDisallowInterceptTouchEvent(false);
+              }
+          break;
+          case MotionEvent.ACTION_UP:
+          break;
+          default : break;
+      }
+      mLastX = x;
+      mLastY = y;
+      return super.dispatchTouchEvent(event);
+}
+```
+
+除了子元素需要做处理外，父元素也要默认拦截除了ACTION_DOWN以外的其他事件， 这样当子元素调用parent.requestDisallowInterceptTouchEvent(false)方法时，父元素才能继续拦截所需的事件。（ACTION_DOWN事件不受requestDisallowInterceptTouchEvent方法影响,所以一旦父元素拦截ACTION_DOWN事件,那么所有元素都无法传递到子元素去）因此，父元素要做以下修改：
+
+```java
+public boolean onInterceptTouchEvent (MotionEvent event) {
+    int action = event.getAction();
+    if(action == MotionEvent.ACTION_DOWN) {
+    		return false;
+    } else {
+    		return true;
+    }
+}
+```
+
+
+
