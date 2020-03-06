@@ -527,5 +527,134 @@ public int[] smallerNumbersThanCurrent(int[] nums) { // 8, 1, 2, 2, 3
 
 时间复杂度 O(nlog(n))，空间复杂度 O(n)
 
+### [0007]和为s的连续正数序列
+
+输入一个正整数 target ，输出所有和为 target 的连续正整数序列（至少含有两个数）。
+
+序列内的数字由小到大排列，不同序列按照首个数字从小到大排列。
+
+https://leetcode-cn.com/problems/he-wei-sde-lian-xu-zheng-shu-xu-lie-lcof/solution/mian-shi-ti-57-ii-he-wei-sde-lian-xu-zheng-shu-x-2/
+
+示例 1：
+
+```
+输入：target = 9
+输出：[[2,3,4],[4,5]]
+```
+
+
+示例 2：
+
+```
+输入：target = 15
+输出：[[1,2,3,4,5],[4,5,6],[7,8]]
+```
+
+限制：
+
+```
+1 <= target <= 10^5
+```
+
+**方法一：枚举 + 暴力**
+
+```java
+class Solution {
+    public int[][] findContinuousSequence(int target) {
+        List<int[]> list = new ArrayList<>();      
+        // (target - 1) / 2 等效于 target / 2 下取整
+        int sum = 0, limit = (target - 1) / 2; 
+        for (int i = 1; i <= limit; ++i) {
+            for (int j = i;; ++j) {
+                sum += j;
+                if (sum > target) {
+                    sum = 0;
+                    break;
+                }
+                else if (sum == target) {
+                    int[] arr = new int[j-i+1];
+                    for (int k = i; k <= j; k++) {
+                        arr[k-i] = k;
+                    }
+                    list.add(arr);
+                    sum = 0;
+                    break;
+                }
+            }
+        }
+        return list.toArray(new int[list.size()][]);
+    }
+}
+```
+
+**方法二：枚举 + 数学优化**
+
+```java
+class Solution {
+    public int[][] findContinuousSequence(int target) {
+        List<int[]> list = new ArrayList<>();  
+        // (target - 1) / 2 等效于 target / 2 下取整
+        int limit = (target - 1) / 2; 
+        for (int x = 1; x <= limit; ++x) {
+            long delta = 1 - 4 * (x - 1L * x * x - 2 * target);
+            if (delta < 0) continue;
+            int delta_sqrt = (int)Math.sqrt(delta + 0.5);
+            if (1L * delta_sqrt * delta_sqrt == delta 
+            && (delta_sqrt - 1) % 2 == 0){
+                // 另一个解(-1-delta_sqrt)/2必然小于0，不用考虑
+                int y = (-1 + delta_sqrt) / 2; 
+                if (x < y) {
+                    int[] arr = new int[y-x+1];
+                    for (int i = x; i <= y; i++){
+                        arr[i-x] = i; 
+                    } 
+                    list.add(arr);
+                }
+            }
+        }
+        return list.toArray(new int[list.size()][]);
+    }
+}
+```
+
+
+
+**方法三：双指针（滑动窗口）**
+
+https://leetcode-cn.com/problems/he-wei-sde-lian-xu-zheng-shu-xu-lie-lcof/solution/shi-yao-shi-hua-dong-chuang-kou-yi-ji-ru-he-yong-h/
+
+ ```java
+public int[][] findContinuousSequence(int target) {
+    int i = 1; // 滑动窗口的左边界
+    int j = 1; // 滑动窗口的右边界
+    int sum = 0; // 滑动窗口中数字的和
+    List<int[]> res = new ArrayList<>();
+
+    while (i <= target / 2) {
+        if (sum < target) {
+            // 右边界向右移动
+            sum += j;
+            j++;
+        } else if (sum > target) {
+            // 左边界向右移动
+            sum -= i;
+            i++;
+        } else {
+            // 记录结果
+            int[] arr = new int[j-i];
+            for (int k = i; k < j; k++) {
+                arr[k-i] = k;
+            }
+            res.add(arr);
+            // 右边界向右移动
+            sum -= i;
+            i++;
+        }
+    }
+
+    return res.toArray(new int[res.size()][]);
+}
+ ```
+
 
 
