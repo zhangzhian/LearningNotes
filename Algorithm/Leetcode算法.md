@@ -505,5 +505,27 @@ class Solution {
 
 空间复杂度：O(S) ，需要开一个值域大小的数组。
 
+**方法三：排序**
+
+```java
+public int[] smallerNumbersThanCurrent(int[] nums) { // 8, 1, 2, 2, 3
+    int len = nums.length;
+    Map<Integer, Set<Integer>> valueIndex = new HashMap<>(len); // 预存每个值与索引对应
+    for (int i = 0; i < len; i++) {
+        if (!valueIndex.containsKey(nums[i])) valueIndex.put(nums[i], new HashSet<>());
+        valueIndex.get(nums[i]).add(i);
+    }
+    int[] sortedArr = Arrays.copyOf(nums, len);
+    int[] res = new int[len];
+    Arrays.sort(sortedArr); // 1, 2, 2, 3, 8
+    for (int si = len - 1; si >= 0; si--) {
+        for (int i : valueIndex.get(sortedArr[si])) res[i] = si; // 同值的所有索引都更新
+    }
+    return res;
+}
+```
+
+时间复杂度 O(nlog(n))，空间复杂度 O(n)
+
 
 
