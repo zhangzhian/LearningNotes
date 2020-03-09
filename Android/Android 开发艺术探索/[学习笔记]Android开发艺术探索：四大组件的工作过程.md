@@ -1,4 +1,4 @@
-# [学习笔记]Android开发艺术探索：四大组件的工作过程
+# [学习笔记]Android开发艺术探索：四大组件的工作过程之Activity
 
 1. Activity是一种展示型组件，用于向用户直接地展示一个界面，并且可以接收用户的输入 信息从而进行交互，扮演的是一个前台界面的角色。
 
@@ -887,19 +887,3 @@ final void handleResumeActivity(IBinder token, boolean clearHide, boolean isForw
         return app;
     }
 ```
-
-
-
-## Service的工作过程
-
-
-
-
-
-##  BoradcastReceiver的工作过程
-
-
-
-
-
-## ContentProvider的工作过程
