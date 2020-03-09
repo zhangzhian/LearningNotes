@@ -892,3 +892,14 @@ final void handleResumeActivity(IBinder token, boolean clearHide, boolean isForw
 
 ## Service的工作过程
 
+
+
+
+
+##  BoradcastReceiver的工作过程
+
+
+
+
+
+## ContentProvider的工作过程
