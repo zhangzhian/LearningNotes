@@ -656,5 +656,147 @@ public int[][] findContinuousSequence(int target) {
 }
  ```
 
+### [0008]左旋转字符串
 
+字符串的左旋转操作是把字符串前面的若干个字符转移到字符串的尾部。请定义一个函数实现字符串左旋转操作的功能。比如，输入字符串"abcdefg"和数字2，该函数将返回左旋转两位得到的结果"cdefgab"。
+
+示例 1：
+
+```
+输入: s = "abcdefg", k = 2
+输出: "cdefgab"
+```
+
+
+示例 2：
+
+```
+输入: s = "lrloseumgh", k = 6
+输出: "umghlrlose"
+```
+
+限制：
+
+```
+1 <= k < s.length <= 10000
+```
+
+**方法一：**
+
+ ```java
+class Solution {
+    public String reverseLeftWords(String s, int n) {
+        return s.substring(n) + s.substring(0,n);
+    }
+}
+ ```
+
+ **方法二：翻转reverse**
+
+```java
+class Solution {
+     public String reverseLeftWords(String s, int n) {
+        char[] chars = s.toCharArray();
+        reverse(chars, 0, n-1);
+        reverse(chars, n, chars.length-1);
+        reverse(chars, 0, chars.length-1);
+        return new String(chars);
+    }
+    private void reverse(char[] arr, int i, int j) {
+        while(i < j) {
+            char x = arr[i];
+            arr[i] = arr[j];
+            arr[j] = x;
+            i++;
+            j--;
+        }
+    }
+}
+```
+
+- 时间：遍历数组，O(N)
+- 空间：新开辟数组，O(N)
+
+### [0009]将数字变成 0 的操作次数
+
+给你一个非负整数 `num` ，请你返回将它变成 0 所需要的步数。 如果当前数字是偶数，你需要把它除以 2 ；否则，减去 1 。
+
+示例 1：
+
+```
+输入：num = 14
+输出：6
+解释：
+步骤 1) 14 是偶数，除以 2 得到 7 。
+步骤 2） 7 是奇数，减 1 得到 6 。
+步骤 3） 6 是偶数，除以 2 得到 3 。
+步骤 4） 3 是奇数，减 1 得到 2 。
+步骤 5） 2 是偶数，除以 2 得到 1 。
+步骤 6） 1 是奇数，减 1 得到 0 。
+```
+
+
+示例 2：
+
+```
+输入：num = 8
+输出：4
+解释：
+步骤 1） 8 是偶数，除以 2 得到 4 。
+步骤 2） 4 是偶数，除以 2 得到 2 。
+步骤 3） 2 是偶数，除以 2 得到 1 。
+步骤 4） 1 是奇数，减 1 得到 0 。
+```
+
+
+示例 3：
+
+```
+输入：num = 123
+输出：12
+```
+
+- 奇偶判断。
+- 奇数自减1。
+  - 对`~1`按位与`&`
+  - 直接对`1`按位异或`^`
+
+**方法一：迭代**
+
+```java
+public int numberOfSteps(int num) {
+    int step = 0;            //记录步数
+    while (num > 0) {
+        if ((num & 1) == 0) {//num为偶数
+            num >>= 1;
+        }
+        else {               //num为奇数
+            num &= ~1;       //等价于 num ^= 1
+        }        
+        step++;
+    }
+    return step;
+}
+```
+
+- 时间复杂度：O(1)，num是个常数。
+- 空间复杂度：O(1)，使用常数级别的空间。
+
+**方法二：递归**
+
+```java
+public int numberOfSteps1(int num) {
+    if(num == 0) 
+        return 0;
+    if((num & 1) == 0) { // num为偶数
+        return numberOfSteps1(num >>> 1) + 1;
+    }
+    else {               // num为奇数       
+        return numberOfSteps1(num - 1) + 1;
+    }
+}
+```
+
+- 时间复杂度：O(1)
+- 空间复杂度：O(1)
 
