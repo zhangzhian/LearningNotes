@@ -800,3 +800,126 @@ public int numberOfSteps1(int num) {
 - 时间复杂度：O(1)
 - 空间复杂度：O(1)
 
+### [0010]解压缩编码列表
+
+给你一个以行程长度编码压缩的整数列表 nums 。
+
+考虑每对相邻的两个元素` freq, val] = [nums[2*i], nums[2*i+1]] `（其中 i >= 0 ），每一对都表示解压后子列表中有 freq 个值为 val 的元素，你需要从左到右连接所有子列表以生成解压后的列表。
+
+请你返回解压后的列表。 
+
+示例：
+
+```
+输入：nums = [1,2,3,4]
+输出：[2,4,4,4]
+解释：第一对 [1,2] 代表着 2 的出现频次为 1，所以生成数组 [2]。
+第二对 [3,4] 代表着 4 的出现频次为 3，所以生成数组 [4,4,4]。
+最后将它们串联到一起 [2] + [4,4,4] = [2,4,4,4]。
+```
+
+
+示例 2：
+
+```
+输入：nums = [1,1,2,3]
+输出：[1,3,3]
+```
+
+提示：
+
+```
+2 <= nums.length <= 100
+nums.length % 2 == 0
+1 <= nums[i] <= 100
+```
+
+
+
+```java
+class Solution {
+    public int[] decompressRLElist(int[] nums) {
+        int length = 0;
+        
+        for(int i=0;i<nums.length;i+=2){
+            length += nums[i];
+        }
+        int[] result = new int[length];
+        // 新数组角标
+        int index = 0;
+        for(int i = 0; i < nums.length; i+=2){
+            // 填充a个b,每填充一次,a-1,index+1
+            int a = nums[i];
+            while(a > 0){
+                result[index] = nums[i+1];
+                a--;
+                index++;
+            }
+        }
+
+        return result; 
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(1)
+
+### [0011]整数的各位积和之差
+
+给你一个整数 `n`，请你帮忙计算并返回该整数「各位数字之积」与「各位数字之和」的差。
+
+示例 1：
+
+```
+输入：n = 234
+输出：15 
+解释：
+各位数之积 = 2 * 3 * 4 = 24 
+各位数之和 = 2 + 3 + 4 = 9 
+结果 = 24 - 9 = 15
+```
+
+
+示例 2：
+
+```
+输入：n = 4421
+输出：21
+解释： 
+各位数之积 = 4 * 4 * 2 * 1 = 32 
+各位数之和 = 4 + 4 + 2 + 1 = 11 
+结果 = 32 - 11 = 21
+```
+
+解答：
+
+```java
+class Solution {
+    public int subtractProductAndSum(int n) {
+        int add = 0, mul = 1;
+        while (n > 0) {
+            int digit = n % 10;
+            n /= 10;
+            add += digit;
+            mul *= digit;
+        }
+        return mul - add;
+    }
+}
+```
+
+- 时间复杂度：O(log⁡N)
+
+- 空间复杂度：O(1)
+
+
+
+
+
+
+
+
+
+
+
