@@ -960,13 +960,204 @@ class Solution {
 }
 ```
 
+### [0013]统计位数为偶数的数字
+
+给你一个整数数组 nums，请你返回其中位数为 偶数 的数字的个数。 
+
+示例 1：
+
+```
+输入：nums = [12,345,2,6,7896]
+输出：2
+解释：
+12 是 2 位数字（位数为偶数） 
+345 是 3 位数字（位数为奇数）  
+2 是 1 位数字（位数为奇数） 
+6 是 1 位数字 位数为奇数） 
+7896 是 4 位数字（位数为偶数）  
+因此只有 12 和 7896 是位数为偶数的数字
+```
+
+示例 2：
+
+```
+输入：nums = [555,901,482,1771]
+输出：1 
+解释： 
+只有 1771 是位数为偶数的数字。
+```
+
+提示：
+
+```
+1 <= nums.length <= 500
+1 <= nums[i] <= 10^5
+```
+
+方法一：枚举 + 字符串
+
+```java
+class Solution {
+    public int findNumbers(int[] nums) {
+        int result = 0;
+        for(int i = 0; i<nums.length;i++){
+           result += String.valueOf(nums[i]).length() % 2 == 0 ? 1 : 0;
+        }
+        return result;
+    }
+}
+```
+
+时间复杂度：O(N)。这里假设将整数转换为字符串的时间复杂度为 O(1)。
+
+空间复杂度：O(1)
+
+ 方法二：范围已知
+
+```java
+class Solution {
+    public int findNumbers(int[] nums) {
+        int result = 0;
+        for(int i = 0; i<nums.length;i++){       
+           if((nums[i]>=10&&nums[i]<100)||(nums[i]>=1000&&nums[i]<10000))
+               result++;
+        }
+        return result;
+    }
+}
+```
+
+时间复杂度：O(N)
+
+空间复杂度：O(1)
+
+ 方法三：枚举 + 数学
+
+```java
+class Solution {
+    public int findNumbers(int[] nums) {
+        int result = 0;
+         for(int num:nums){
+             //logx(y) =loge(y) / loge(x)
+             if ((int)(Math.log(num)/Math.log(10) + 1) % 2 == 0) 
+                result++;
+        }
+        return result;
+    }
+}
+```
+
+时间复杂度：O(N)
+
+空间复杂度：O(1)
+
+### [0014]宝石与石头
+
+ 给定字符串J 代表石头中宝石的类型，和字符串 S代表你拥有的石头。 S 中每个字符代表了一种你拥有的石头的类型，你想知道你拥有的石头中有多少是宝石。
+
+J 中的字母不重复，J 和 S中的所有字符都是字母。字母区分大小写，因此"a"和"A"是不同类型的石头。
+
+示例 1:
+
+```
+输入: J = "aA", S = "aAAbbbb"
+输出: 3
+示例 2:
+
+输入: J = "z", S = "ZZ"
+输出: 0
+注意:
+```
+
+S 和 J 最多含有50个字母。
+ J 中的字符不重复。
+
+方法一： 暴力法 
+
+```java
+class Solution {
+    public int numJewelsInStones(String J, String S) {
+        int ans = 0;
+        for (char s: S.toCharArray()) // For each stone...
+            for (char j: J.toCharArray()) // For each jewel...
+                if (j == s) {  // If the stone is a jewel...
+                    ans++;
+                    break; // Stop searching whether this stone 's' is a jewel
+                }
+        return ans;
+    }
+}
+```
+
+时间复杂度：O(J.length * S.length))。
+
+空间复杂度：在 Java 实现中，空间复杂度为 O(J.length∗S.length))。
+
+方法二： 哈希集合
+
+```java
+class Solution {
+    public int numJewelsInStones(String J, String S) {
+         Set<Character> Jset = new HashSet();
+        for (char j: J.toCharArray())
+            Jset.add(j);
+
+        int ans = 0;
+        for (char s: S.toCharArray())
+            if (Jset.contains(s))
+                ans++;
+        return ans;
+    }
+}
+```
+
+时间复杂度：O(J.length + S.length))。
+
+空间复杂度：O(J.length)
+
+方法三：位运算
+
+解决类似 Set 或 boolean[] 的、表示有或无二选一情况时都可考虑
+
+注意共多少种情况，此处 int 的32位不够
+
+```java
+class Solution {
+    public int numJewelsInStones(String J, String S) {
+        long jewels = 0b0L;
+        for (char c : J.toCharArray()) jewels |= 1L << (c - 'A');
+
+        int count = 0;
+        for (char c : S.toCharArray()) count += (jewels >> (c - 'A')) & 1;
+        return count;
+    }
+}
+```
+
+方法四：byte
+
+```java
+class Solution {
+    public int numJewelsInStones(String J, String S) {
+        byte[] arr = new byte[58];
+        int count = 0;
+        for (char ch : J.toCharArray()) {
+            arr[ch - 65] = 1;
+        }
+        for (char ch : S.toCharArray()) {
+            if(arr[ch -65] == 1) {
+                count++;
+            };
+        }
+        return count;
+    }
+}
+```
 
 
 
-
-
-
-
-
-
+作者：lzhlyle
+链接：https://leetcode-cn.com/problems/jewels-and-stones/solution/hen-hao-de-wei-yun-suan-ru-men-lian-xi-dai-ma-pei-/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
