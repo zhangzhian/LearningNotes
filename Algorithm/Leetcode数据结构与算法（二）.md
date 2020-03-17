@@ -366,3 +366,63 @@ class Solution {
 时间复杂度：考虑每次循环变量的起始位置是单调不降的，所以起始位置最多移动m 次，时间复杂度 O(m)。
 空间复杂度：O(1)
 
+### [0021]返回倒数第 k 个节点
+
+实现一种算法，找出单向链表中倒数第 k 个节点。返回该节点的值。
+
+注意：本题相对原题稍作改动
+
+示例：
+
+```
+输入： 1->2->3->4->5 和 k = 2
+输出： 4
+```
+
+
+说明：
+
+给定的 k 保证是有效的。
+
+方法一：双指针
+
+```java
+class Solution {
+    public int kthToLast(ListNode head, int k) {
+
+        ListNode temp = head;
+
+        while(k-- != 0){
+            temp = temp.next;
+        }
+
+        while(temp != null){
+            temp = temp.next;
+            head = head.next;
+        }
+
+        return head.val;
+    }
+}
+```
+
+方法二：递归
+
+ ```java
+class Solution {
+    // 开始全局变量 K 保持不变
+    int pos = 0;
+    public int kthToLast(ListNode head, int k) {
+        // 当节点在最末尾时触发返回
+        if (head == null) return 0;
+        // 返回的值
+        int val = kthToLast(head.next, k);
+        pos++;
+        if (pos == k) {
+            return head.val;
+        }
+        return val;
+    }
+}
+ ```
+
