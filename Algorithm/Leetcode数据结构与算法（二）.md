@@ -426,3 +426,110 @@ class Solution {
 }
  ```
 
+### [0022]最小高度树
+
+给定一个有序整数数组，元素各不相同且按升序排列，编写一个算法，创建一棵高度最小的二叉搜索树。
+
+示例:
+
+给定有序数组: [-10,-3,0,5,9],
+
+一个可能的答案是：[0,-3,9,-10,null,5]，它可以表示下面这个高度平衡二叉搜索树：
+
+          0 
+         / \ 
+       -3   9 
+       /   / 
+     -10  5 
+
+ 方法：
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode sortedArrayToBST(int[] nums) {
+        if(nums.length == 0) return null;
+        TreeNode n = new TreeNode(nums[nums.length/2]);
+        n.left = sortedArrayToBST(Arrays.copyOfRange(nums,0,nums.length/2));
+        n.right = sortedArrayToBST(Arrays.copyOfRange(nums,nums.length/2+1,nums.length));
+        return n;
+    }
+}
+```
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode sortedArrayToBST(int[] nums) {
+        return helper(nums,0,nums.length-1);
+    }
+    private TreeNode helper(int[] nums,int left,int right){
+        if (left>right)
+            return null;
+        int mid=(left+right)/2;	//(left+right+1)/2;
+        TreeNode node=new TreeNode(nums[mid]);
+        node.left=helper(nums,left,mid-1);
+        node.right=helper(nums,mid+1,right);
+        return node;
+    }
+}
+```
+
+###[0023] 链表中倒数第k个节点(同0021)
+
+输入一个链表，输出该链表中倒数第k个节点。为了符合大多数人的习惯，本题从1开始计数，即链表的尾节点是倒数第1个节点。例如，一个链表有6个节点，从头节点开始，它们的值依次是1、2、3、4、5、6。这个链表的倒数第3个节点是值为4的节点。
+
+示例：
+
+```
+给定一个链表: 1->2->3->4->5, 和 k = 2.
+
+返回链表 4->5.
+```
+
+方法一
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public ListNode getKthFromEnd(ListNode head, int k) {
+        ListNode temp = head;
+        while(k-- != 0){
+            temp = temp.next;
+        }
+        while(temp != null){
+            temp = temp.next;
+            head = head.next;
+        }
+        return head;
+    }
+}
+```
+
+
+
+
+
