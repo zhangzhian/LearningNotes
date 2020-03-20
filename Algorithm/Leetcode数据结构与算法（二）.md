@@ -491,7 +491,7 @@ class Solution {
 }
 ```
 
-###[0023] 链表中倒数第k个节点(同0021)
+###[0023]链表中倒数第k个节点(同0021)
 
 输入一个链表，输出该链表中倒数第k个节点。为了符合大多数人的习惯，本题从1开始计数，即链表的尾节点是倒数第1个节点。例如，一个链表有6个节点，从头节点开始，它们的值依次是1、2、3、4、5、6。这个链表的倒数第3个节点是值为4的节点。
 
@@ -529,7 +529,333 @@ class Solution {
 }
 ```
 
+### [0024]二叉树的深度
 
+输入一棵二叉树的根节点，求该树的深度。从根节点到叶节点依次经过的节点（含根、叶节点）形成树的一条路径，最长路径的长度为树的深度。
 
+例如：
 
+给定二叉树 `[3,9,20,null,null,15,7]`，
+
+```
+    3
+   / \
+  9  20
+    /  \
+   15   7
+```
+
+返回它的最大深度 3 。
+
+提示：
+
+1. `节点总数 <= 10000`
+
+方法一：递归
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    
+    public int maxDepth(TreeNode root) {
+       return root==null ? 0:Math.max(maxDepth(root.left),maxDepth(root.right))+1;
+    }
+}
+```
+
+方法二：栈
+
+本质上是后序遍历
+
+非递归可以利用栈。
+
+把根节点root先压入栈，创建两个TreeNode节点，一个用于返回实时的栈顶元素，一个用于返回先前已访问过节点。对栈判空+循环，开始遍历，【若当前访问的节点为叶子即无子树，则弹出当前节点并返回至上一个节点并访问其另外的子树检查是否访问过，若没有则遍历一直到叶子为止】，重复这个操作，即可遍历整棵树得到深度
+
+```java
+class Solution {
+    
+    public int maxDepth(TreeNode root) {
+       
+        if(root == null) return 0;
+        Stack<TreeNode> stack = new Stack<>();
+        stack.push(root);
+        TreeNode top; //一个用于返回实时的栈顶元素
+        TreeNode lastVisit = root;//一个用于返回先前已访问过节点
+        int cnt = 0;
+        while(!stack.isEmpty()){
+            cnt = Math.max(cnt,stack.size());
+            top = stack.peek();
+            if(top.left != null && lastVisit != top.left && lastVisit != top.right){
+                stack.push(top.left);
+            }
+            else if(top.right != null && lastVisit != top.right){
+                stack.push(top.right);
+            }
+            else{
+                lastVisit = stack.pop();
+            }
+            
+        }
+
+        return cnt;
+    }
+}
+```
+
+方法3：双向队列Deque
+
+本质上是层次遍历，也可视为root数组的从左到右的遍历
+
+非递归还能利用双向队列
+
+把根节点放入队列后再取出接着对其左右子树判空，有则加入分别加入队尾，再依次对剩余节点子树进行判空操作，若为叶子节点则使得当前节点指向队尾（下一次循环则下一层），此时当前层次遍历完毕，深度+1。
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    
+    public int maxDepth(TreeNode root) {
+       
+        if(root == null) return 0;
+        
+        Deque<TreeNode> queue = new LinkedList<>();
+        queue.offer(root);
+        TreeNode queueLast = root;
+        TreeNode nowVisit;
+        int depth = 0;
+        
+        while(!queue.isEmpty()){
+            nowVisit = queue.poll();
+            if(nowVisit.left != null) queue.offer(nowVisit.left);
+            if(nowVisit.right != null) queue.offer(nowVisit.right);
+            if(nowVisit == queueLast){
+                queueLast = queue.peekLast();
+                depth++;
+            }
+        }
+        return depth;
+    }
+}
+```
+
+###[0025]二叉树的镜像  
+
+请完成一个函数，输入一个二叉树，该函数输出它的镜像。
+
+例如输入：
+
+```
+     4
+   /   \
+  2     7
+ / \   / \
+1   3 6   9
+```
+
+镜像输出：
+
+```
+     4
+   /   \
+  7     2
+ / \   / \
+9   6 3   1
+
+```
+
+**示例 1：**
+
+```
+输入：root = [4,2,7,1,3,6,9]
+输出：[4,7,2,9,6,3,1]
+```
+
+**限制：**
+
+```
+0 <= 节点个数 <= 1000
+```
+
+方法一：递归
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    TreeNode temp = null;
+    public TreeNode mirrorTree(TreeNode root) {        
+        if(root == null){
+            return root;
+        }
+        temp = root.left;
+        root.left = root.right;
+        root.right = temp;
+        mirrorTree(root.left);
+        mirrorTree(root.right);
+        return root;
+    }
+
+} 
+```
+
+时间复杂度：每个元素都必须访问一次，所以是O(n)
+空间复杂度：最坏的情况下，需要存放O(h)个函数调用(h是树的高度)，所以是O(h)
+
+方法二：迭代
+
+递归实现也就是深度优先遍历的方式，那么对应的就是广度优先遍历。
+广度优先遍历需要额外的数据结构--队列，来存放临时遍历到的元素。
+深度优先遍历的特点是一竿子插到底，不行了再退回来继续；而广度优先遍历的特点是层层扫荡。
+所以，我们需要先将根节点放入到队列中，然后不断的迭代队列中的元素。
+对当前元素调换其左右子树的位置，然后：
+
+- 判断其左子树是否为空，不为空就放入队列中
+- 判断其右子树是否为空，不为空就放入队列中
+
+动态图如下：
+
+![226_迭代.gif](https://pic.leetcode-cn.com/f9e06159617cbf8372b544daee37be70286c3d9b762c016664e225044fc4d479-226_%E8%BF%AD%E4%BB%A3.gif)
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode mirrorTree(TreeNode root) {        
+        if(root==null) {
+			return null;
+		}
+		//将二叉树中的节点逐层放入队列中，再迭代处理队列中的元素
+		LinkedList<TreeNode> queue = new LinkedList<TreeNode>();
+		queue.add(root);
+		while(!queue.isEmpty()) {
+			//每次都从队列中拿一个节点，并交换这个节点的左右子树
+			TreeNode tmp = queue.poll();
+			TreeNode left = tmp.left;
+			tmp.left = tmp.right;
+			tmp.right = left;
+			//如果当前节点的左子树不为空，则放入队列等待后续处理
+			if(tmp.left!=null) {
+				queue.add(tmp.left);
+			}
+			//如果当前节点的右子树不为空，则放入队列等待后续处理
+			if(tmp.right!=null) {
+				queue.add(tmp.right);
+			}
+			
+		}
+		//返回处理完的根节点
+		return root;
+    }
+
+}
+```
+
+###[0026]打印从1到最大的n位数
+
+输入数字 `n`，按顺序打印出从 1 到最大的 n 位十进制数。比如输入 3，则打印出 1、2、3 一直到最大的 3 位数 999。
+
+**示例 1:**
+
+```
+输入: n = 1
+输出: [1,2,3,4,5,6,7,8,9]
+```
+
+说明：
+
+- 用返回一个整数列表来代替打印
+- n 为正整数
+
+方法一：
+
+```java
+class Solution {
+    public int[] printNumbers(int n) {
+        int[] r = new int[(int)Math.pow(10,n) -1];
+        for(int i = 0; i < r.length;i++){
+            r[i] = i+1;
+        }
+        return r;
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    StringBuilder sb;
+    int idx = 0;
+    public boolean increment(int n){
+        boolean carry=false;
+        for(int i=0;i<sb.length();++i){
+            if(carry || i==0){
+                if(sb.charAt(i)=='9'){
+                    sb.setCharAt(i,'0');
+                    carry = true;
+                }else{
+                    sb.setCharAt(i,(char) (sb.charAt(i)+1));
+                    carry = false;
+                }
+            }else{
+                break; // no addition on last idx, no need to compute any more
+            }
+        }
+        if(carry){
+            sb.append("1");
+        }
+        return sb.length()<=n; // overflow!
+    }
+
+    public void save(int ans[]){
+        ans[idx] = Integer.parseInt(sb.reverse().toString());
+        sb.reverse();
+    }
+
+    public int[] printNumbers(int n) {
+        int[] ans = new int[(int) Math.pow(10,n) - 1];
+        sb = new StringBuilder("0");
+        while(increment(n)){
+            save(ans);
+            idx++;
+        }
+        return ans;
+    }
+}
+```
+
+**拓展**
+
+- 大数打印：可以设定一个阈值，例如`long`的最大值，当超过了这个最大值，将阈值转为字符数组`toCharArray()`，然后继续`+1`打印，这样可以提高时间效率，因为一部分的数仍是`O(1)`打印
+- 全排列：求从`1~pow(10,n)-1`实际上可以转化为`0-9`在`n`个位置上的全排列
 
