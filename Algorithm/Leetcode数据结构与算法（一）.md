@@ -1156,11 +1156,6 @@ class Solution {
 
 
 
-作者：lzhlyle
-链接：https://leetcode-cn.com/problems/jewels-and-stones/solution/hen-hao-de-wei-yun-suan-ru-men-lian-xi-dai-ma-pei-/
-来源：力扣（LeetCode）
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
-
 ### [0015]IP 地址无效化
 
 给你一个有效的 IPv4 地址 address，返回这个 IP 地址的无效化版本。
@@ -1356,11 +1351,7 @@ public class Codec {
 
 hashCode()对于不同的字符串不一定产生独一无二的加密后 URL。像这样对于不同输入产生相同输出的过程叫做冲突。因此，如果加密字符串的数目增加，冲突的概率也会增加，最终导致算法失效。
 
-下图展示了不同对象映射到相同的 hashcode，以及对象越多冲突概率越大。
-
-![image-20200313103812288](/Users/zhangzhian/Library/Application Support/typora-user-images/image-20200313103812288.png)
-
-因此，可能几个字符串加密后冲突就会发生，会远比 int 要小。这与生日悖论类似，也就是如果有23个人，存在 2 个人同一天生日的概率达到 50%，如果有 70 个人，这一概率会高达 99.9%。
+可能几个字符串加密后冲突就会发生，会远比 int 要小。这与生日悖论类似，也就是如果有23个人，存在 2 个人同一天生日的概率达到 50%，如果有 70 个人，这一概率会高达 99.9%。
 
 这种方法中，很难根据前面产生的 URL 结果预测后面加密 URL 的答案。
 
