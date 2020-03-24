@@ -859,3 +859,194 @@ class Solution {
 - 大数打印：可以设定一个阈值，例如`long`的最大值，当超过了这个最大值，将阈值转为字符数组`toCharArray()`，然后继续`+1`打印，这样可以提高时间效率，因为一部分的数仍是`O(1)`打印
 - 全排列：求从`1~pow(10,n)-1`实际上可以转化为`0-9`在`n`个位置上的全排列
 
+### [0027]替换空格
+
+请实现一个函数，把字符串 s 中的每个空格替换成"%20"。 
+
+示例 1：
+
+```
+输入：s = "We are happy."
+输出："We%20are%20happy."
+```
+
+
+限制：
+
+0 <= s 的长度 <= 10000
+
+方法一：
+
+```java
+class Solution {
+    public String replaceSpace(String s) {
+        return s.replace(" ","%20");
+    }
+}
+```
+
+方法二：
+
+```java
+
+class Solution {
+    public String replaceSpace(String s) {
+        int length = s.length();
+        char[] array = new char[length * 3];
+        int size = 0;
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            if (c == ' ') {
+                array[size++] = '%';
+                array[size++] = '2';
+                array[size++] = '0';
+            } else {
+                array[size++] = c;
+            }
+        }
+        String newStr = new String(array, 0, size);
+        return newStr;
+    }
+}
+
+```
+
+###[0028]删除中间节点
+
+实现一种算法，删除单向链表中间的某个节点（除了第一个和最后一个节点，不一定是中间节点），假定你只能访问该节点。
+
+示例：
+
+```
+输入：单向链表a->b->c->d->e->f中的节点c
+结果：不返回任何数据，但该链表变为a->b->d->e->f
+```
+
+方法：
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public void deleteNode(ListNode node) {
+        node.val = node.next.val; 
+        node.next = node.next.next; 
+    }
+}
+```
+
+### [0029]分割平衡字符串
+
+在一个「平衡字符串」中，'L' 和 'R' 字符的数量是相同的。
+
+给出一个平衡字符串 s，请你将它分割成尽可能多的平衡字符串。
+
+返回可以通过分割得到的平衡字符串的最大数量。
+
+
+
+示例 1：
+
+```
+输入：s = "RLRRLLRLRL"
+输出：4
+解释：s 可以分割为 "RL", "RRLL", "RL", "RL", 每个子字符串中都包含相同数量的 'L' 和 'R'。
+```
+
+示例 2：
+
+```
+输入：s = "RLLLLRRRLR"
+输出：3
+解释：s 可以分割为 "RL", "LLLRRR", "LR", 每个子字符串中都包含相同数量的 'L' 和 'R'。
+```
+
+
+示例 3：
+
+```
+输入：s = "LLLLRRRR"
+输出：1
+解释：s 只能保持原样 "LLLLRRRR".
+```
+
+提示：
+
+```
+1 <= s.length <= 1000
+s[i] = 'L' 或 'R'
+```
+
+
+
+方法一：数组模拟栈
+
+可以利用栈的FILO的特性解题。核心算法是通过取容器顶部的字母来甄别是否与未来要放入容器的字母是互异的。
+
+每次遇到不一样的，我们把当前字母擦除掉（通过指针位置移动就行）
+
+遇到一样的，就堆积在容器中。
+
+但每次擦除完，都检查容器的 size 是否等于 0，是则表明堆积的都被消灭了，找到了一个平衡字符串，计数器加 1。
+
+```java
+class Solution {
+    public int balancedStringSplit(String s) {
+        int count = 0;
+        int[] container = new int[s.length()];
+        int size = 0;
+
+        for (char c : s.toCharArray()) {
+            if (size == 0 || c == container[size-1]) 
+                container[size++] = c;              //放入容器
+            else if (c != container[size-1]){
+                size--;                             //匹配到了互异字母
+                if (size == 0)
+                    count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+时间复杂度：O(N)，N 为字符串 s 的长度。
+
+空间复杂度：O(N)，使用了大小为N 的数组作为容器。
+
+方法二：计数法
+
+首先以 R 为基准，设立一个 专门记录 R 的数量的计数器 counter_R。
+
+- 遍历字符串 s，是 'R' 计数器 couter_R 加 1
+
+- 遇到 'L' 则认为是消灭 R 的，counter_R 自减 1
+
+- 每次消灭 R，都遍历完一次，检查在这之前的 R 是否还有剩余
+
+- 没有剩余的话，该位置之前的算是一个由相同数量 L 与 R 组成的 「平衡字符串」
+
+```java
+public int balancedStringSplit1(String s) {
+    int count = 0;
+    int counter_R = 0;
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == 'R')
+            counter_R++;    //记录R
+        else 
+            counter_R--;    //消灭R
+        if (counter_R == 0)
+            count++;	    //证明在i位置之前的字符都有相同数量的L和R
+    }
+    return count;
+}
+```
+
+- 时间复杂度：O(N)，N为字符串 s的长度。
+- 空间复杂度：O(1)，只使用常数级别的空间。
