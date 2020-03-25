@@ -1118,6 +1118,176 @@ class Solution {
 }
 ```
 
+### [0031]按既定顺序创建目标数组
+
+给你两个整数数组 nums 和 index。你需要按照以下规则创建目标数组：
+
+目标数组 target 最初为空。
+按从左到右的顺序依次读取 nums[i] 和 index[i]，在 target 数组中的下标 index[i] 处插入值 nums[i] 。
+重复上一步，直到在 nums 和 index 中都没有要读取的元素。
+请你返回目标数组。
+
+题目保证数字插入位置总是存在。
+
+示例 1：
+
+```
+输入：nums = [0,1,2,3,4], index = [0,1,2,2,1]
+输出：[0,4,1,3,2]
+解释：
+nums       index     target
+0            0        [0]
+1            1        [0,1]
+2            2        [0,1,2]
+3            2        [0,1,3,2]
+4            1        [0,4,1,3,2]
+```
+
+
+示例 2：
+
+```
+输入：nums = [1,2,3,4,0], index = [0,1,2,3,0]
+输出：[0,1,2,3,4]
+解释：
+nums       index     target
+1            0        [1]
+2            1        [1,2]
+3            2        [1,2,3]
+4            3        [1,2,3,4]
+0            0        [0,1,2,3,4]
+```
+
+示例 3：
+
+```
+输入：nums = [1], index = [0]
+输出：[1]
+```
+
+
+提示：
+
+```
+1 <= nums.length, index.length <= 100
+nums.length == index.length
+0 <= nums[i] <= 100
+0 <= index[i] <= i
+```
+
+  方法一：List
+
+```java
+class Solution {
+    public int[] createTargetArray(int[] nums, int[] index) {
+        List<Integer> target = new ArrayList();
+        for(int i=0; i<index.length; i++){
+            target.add(index[i], nums[i]);
+        }
+        int[] ret = new int[target.size()];
+        for(int i = 0; i < target.size(); i++){
+            ret[i] = target.get(i);
+        }
+        return ret;
+    }
+}
+```
+
+ 方法二：数组
+
+```java
+class Solution {
+    public int[] createTargetArray(int[] nums, int[] index) {
+       int[] target = new int[nums.length];
+       int pos = -1;
+       for(int i=0; i<index.length; i++){
+           pos++;
+  
+        for(int j = pos; j > index[i] ; j--){
+            target[j] = target[j-1];
+        }
+                  
+        target[index[i]] = nums[i];
+        
+       }
+       return target;
+    }
+}
+```
+
+### [0032]
+
+
+
+给定二叉搜索树的根结点 root，返回 L 和 R（含）之间的所有结点的值的和。
+
+二叉搜索树保证具有唯一的值。
+
+示例 1：
+
+```
+输入：root = [10,5,15,3,7,null,18], L = 7, R = 15
+输出：32
+```
+
+
+示例 2：
+
+```
+输入：root = [10,5,15,3,7,13,18,1,null,6], L = 6, R = 10
+输出：23
+```
+
+提示：
+
+```
+树中的结点数量最多为 10000 个。
+最终的答案保证小于 2^31。
+```
+
+ 方法一：
+
+```java
+class Solution {
+    public int rangeSumBST(TreeNode root, int L, int R) {
+        if (root == null) {
+            return 0;
+        }
+        if (root.val < L) {
+            return rangeSumBST(root.right, L, R);
+        }
+        if (root.val > R) {
+            return rangeSumBST(root.left, L, R);
+        }
+        return root.val + rangeSumBST(root.left, L, R) + rangeSumBST(root.right, L, R);
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public int rangeSumBST(TreeNode root, int L, int R) {
+        int ans = 0;
+        Stack<TreeNode> stack = new Stack();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            TreeNode node = stack.pop();
+            if (node != null) {
+                if (L <= node.val && node.val <= R)
+                    ans += node.val;
+                if (L < node.val)
+                    stack.push(node.left);
+                if (node.val < R)
+                    stack.push(node.right);
+            }
+        }
+        return ans;
+    }
+}
+```
+
 
 
 
