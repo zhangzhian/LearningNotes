@@ -295,6 +295,210 @@ class Solution {
 }
 ```
 
+###[0036]6 和 9 组成的最大数字
+
+给你一个仅由数字 6 和 9 组成的正整数 `num`。
+
+你最多只能翻转一位数字，将 6 变成 9，或者把 9 变成 6 。
+
+请返回你可以得到的最大数字。
+
+示例 1：
+
+```
+输入：num = 9669
+输出：9969
+解释：
+改变第一位数字可以得到 6669 。
+改变第二位数字可以得到 9969 。
+改变第三位数字可以得到 9699 。
+改变第四位数字可以得到 9666 。
+其中最大的数字是 9969 。
+```
 
 
- 
+示例 2：
+
+```
+输入：num = 9996
+输出：9999
+解释：将最后一位从 6 变到 9，其结果 9999 是最大的数。
+```
+
+
+示例 3：
+
+```
+输入：num = 9999
+输出：9999
+解释：无需改变就已经是最大的数字了。
+```
+
+
+提示：
+
+```
+1 <= num <= 10^4
+num 每一位上的数字都是 6 或者 9 。
+```
+
+方法一：
+
+```java
+class Solution {
+    public int maximum69Number (int num) {
+        String s = num + "";
+        s = s.replaceFirst("6", "9");
+        return Integer.valueOf(s);
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public int maximum69Number (int num) {
+        StringBuilder sb = new StringBuilder(String.valueOf(num));
+        int index = sb.indexOf("6");
+        if (index != -1) {
+            sb.setCharAt(index, '9');
+        }
+        return Math.max(num, Integer.parseInt(sb.toString()));
+    }
+}
+```
+
+方法三：
+
+```java
+class Solution {
+    public int maximum69Number (int num) {
+        int res = num;
+        char[] chars = String.valueOf(num).toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            if (chars[i] == '6') {
+                chars[i] = '9';
+                res = Math.max(res, Integer.parseInt(String.valueOf(chars)));
+                break;
+            }
+        }
+        return res;
+    }
+}
+```
+
+###[0037]合并二叉树
+
+给定两个二叉树，想象当你将它们中的一个覆盖到另一个上时，两个二叉树的一些节点便会重叠。
+
+你需要将他们合并为一个新的二叉树。合并的规则是如果两个节点重叠，那么将他们的值相加作为节点合并后的新值，否则不为 NULL 的节点将直接作为新二叉树的节点。
+
+示例 1:
+
+输入: 
+
+```
+	Tree 1                     Tree 2                  
+          1                         2                             
+         / \                       / \                            
+        3   2                     1   3                        
+       /                           \   \                      
+      5                             4   7                  
+
+```
+
+输出: 
+合并后的树:
+
+```
+
+
+	     3
+	    / \
+	   4   5
+	  / \   \ 
+	 5   4   7
+```
+
+
+注意: 合并必须从两个树的根节点开始。
+
+方法一：递归
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+
+     public TreeNode mergeTrees(TreeNode t1, TreeNode t2) {
+        if (t1 == null)
+            return t2;
+        if (t2 == null)
+            return t1;
+        t1.val += t2.val;
+        t1.left = mergeTrees(t1.left, t2.left);
+        t1.right = mergeTrees(t1.right, t2.right);
+        return t1;
+    }
+}
+```
+
+复杂度分析
+
+时间复杂度：O(N)，其中N 是两棵树中节点个数的较小值。
+
+空间复杂度：O(N)，在最坏情况下，会递归 N 层，需要 O(N) 的栈空间。
+
+方法二：
+
+ ```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+
+     public TreeNode mergeTrees(TreeNode t1, TreeNode t2) {
+       if (t1 == null)
+            return t2;
+        Stack < TreeNode[] > stack = new Stack < > ();
+        stack.push(new TreeNode[] {t1, t2});
+        while (!stack.isEmpty()) {
+            TreeNode[] t = stack.pop();
+            if (t[0] == null || t[1] == null) {
+                continue;
+            }
+            t[0].val += t[1].val;
+            if (t[0].left == null) {
+                t[0].left = t[1].left;
+            } else {
+                stack.push(new TreeNode[] {t[0].left, t[1].left});
+            }
+            if (t[0].right == null) {
+                t[0].right = t[1].right;
+            } else {
+                stack.push(new TreeNode[] {t[0].right, t[1].right});
+            }
+        }
+        return t1;
+    }
+}
+ ```
+
+复杂度分析
+时间复杂度：O(N)，其中 N 是两棵树中节点个数的较小值。
+
+空间复杂度：O(N)，在最坏情况下，栈中会存放 N 个节点。
