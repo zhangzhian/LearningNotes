@@ -629,7 +629,158 @@ class Solution {
 }
 ```
 
+###[0039]转换成小写字母
+
+实现函数 ToLowerCase()，该函数接收一个字符串参数 str，并将该字符串中的大写字母转换成小写字母，之后返回新的字符串。 
+
+示例 1：
+
+```
+输入: "Hello"
+输出: "hello"
+```
 
 
+示例 2：
 
+```
+输入: "here"
+输出: "here"
+```
+
+
+示例 3：
+
+```
+输入: "LOVELY"
+输出: "lovely"
+```
+
+方法一：
+
+```java
+class Solution {
+    public String toLowerCase(String str) {
+        char[] arr = str.toCharArray();
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] >= 'A' && arr[i] <= 'Z') {
+                arr[i] += 'a' - 'A';
+            }
+        }
+        return String.valueOf(arr);
+    }
+}
+```
+
+ 方法二：
+
+```java
+class Solution {
+    public String toLowerCase(String str) {
+        StringBuilder s =  new StringBuilder();
+        for(char c:str.toCharArray()){  //增强for（）循环
+            if(c>=65 && c<=90)
+                c+=32;
+            s.append(c);
+        }
+        return s.toString();
+    }
+}
+```
+
+  方法三：
+
+```java
+class Solution {
+    public String toLowerCase(String str) {
+        return str.toLowerCase();     //也可以直接用函数实现
+    }
+}
+```
+
+###[0040]和为零的N个唯一整数
+
+给你一个整数 `n`，请你返回 **任意** 一个由 `n` 个 **各不相同** 的整数组成的数组，并且这 `n` 个数相加和为 `0` 。
+
+示例 1：
+
+```
+输入：n = 5
+输出：[-7,-1,1,3,4]
+解释：这些数组也是正确的 [-5,-1,1,2,3]，[-3,-1,2,-2,4]。
+```
+
+
+示例 2：
+
+```
+输入：n = 3
+输出：[-1,0,1]
+```
+
+
+示例 3：
+
+```
+输入：n = 1
+输出：[0]
+```
+
+提示：
+
+```
+1 <= n <= 1000
+```
+
+方法一：枚举
+
+```java
+public int[] sumZero(int n) {
+    int sum = 0;
+    int[] arr = new int[n];
+    int len = 0;
+    for (int i = 0; i <= n - 2; i++) {
+        arr[len++] = i;
+        sum += i;
+    }
+    arr[len] = -sum;
+    return arr;
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public int[] sumZero(int n) {
+        int[] arr = new int[n];
+        search(1, n-1 , 1, arr);
+        return arr;
+    }
+
+    private static void search(int l, int r, int val, int[] arr) {
+        if (l > r)
+            return;
+        arr[l-1] = val;
+        arr[r] = -val;
+        search(l + 1, r - 1, val + 1, arr);
+    }
+}
+```
+
+```java
+class Solution {
+    public int[] sumZero(int n) {
+        int[] arr = new int[n];
+        int l = 0, r = n-1;     //左边界与右边界
+        int i = 1;
+        while (l < r) {
+            arr[l++] = i;
+            arr[r--] = -i;
+            i++;
+        }
+        return arr;
+    }
+}
+```
 
