@@ -901,5 +901,233 @@ class Solution {
 }
 ```
 
+###[0044]上升下降字符串
 
+给你一个字符串 s ，请你根据下面的算法重新构造字符串：
+
+从 s 中选出 最小 的字符，将它 接在 结果字符串的后面。
+从 s 剩余字符中选出 最小 的字符，且该字符比上一个添加的字符大，将它 接在 结果字符串后面。
+重复步骤 2 ，直到你没法从 s 中选择字符。
+从 s 中选出 最大 的字符，将它 接在 结果字符串的后面。
+从 s 剩余字符中选出 最大 的字符，且该字符比上一个添加的字符小，将它 接在 结果字符串后面。
+重复步骤 5 ，直到你没法从 s 中选择字符。
+重复步骤 1 到 6 ，直到 s 中所有字符都已经被选过。
+在任何一步中，如果最小或者最大字符不止一个 ，你可以选择其中任意一个，并将其添加到结果字符串。
+
+请你返回将 s 中字符重新排序后的 结果字符串 。
+
+示例 1：
+
+```
+输入：s = "aaaabbbbcccc"
+输出："abccbaabccba"
+解释：第一轮的步骤 1，2，3 后，结果字符串为 result = "abc"
+第一轮的步骤 4，5，6 后，结果字符串为 result = "abccba"
+第一轮结束，现在 s = "aabbcc" ，我们再次回到步骤 1
+第二轮的步骤 1，2，3 后，结果字符串为 result = "abccbaabc"
+第二轮的步骤 4，5，6 后，结果字符串为 result = "abccbaabccba"
+```
+
+
+示例 2：
+
+```
+输入：s = "rat"
+输出："art"
+解释：单词 "rat" 在上述算法重排序以后变成 "art"
+```
+
+
+示例 3：
+
+```
+输入：s = "leetcode"
+输出："cdelotee"
+```
+
+
+示例 4：
+
+```
+输入：s = "ggggggg"
+输出："ggggggg"
+```
+
+
+示例 5：
+
+```
+输入：s = "spo"
+输出："ops"
+```
+
+提示：
+
+```
+1 <= s.length <= 500
+s 只包含小写英文字母。
+```
+
+方法一：
+
+```java
+class Solution {
+    public String sortString(String s) {
+        StringBuilder builder = new StringBuilder();
+        int[] map = new int[26];
+        for (char c : s.toCharArray()) map[c - 'a']++;
+        boolean flag;
+        do {
+            flag = false;
+            for (int i = 0; i < 26; i++) {
+                if (map[i] > 0) {
+                    builder.append((char) (i + 'a'));
+                    map[i]--;
+                    flag = true;
+                }
+            }
+            for (int i = 25; i >= 0; i--) {
+                if (map[i] > 0) {
+                    builder.append((char) (i + 'a'));
+                    map[i]--;
+                    flag = true;
+                }
+            }
+        } while (flag);
+        return builder.toString();
+    }
+}
+```
+
+
+
+###[0045]机器人能否返回原点
+
+在二维平面上，有一个机器人从原点 (0, 0) 开始。给出它的移动顺序，判断这个机器人在完成移动后是否在 (0, 0) 处结束。
+
+移动顺序由字符串表示。字符 move[i] 表示其第 i 次移动。机器人的有效动作有 R（右），L（左），U（上）和 D（下）。如果机器人在完成所有动作后返回原点，则返回 true。否则，返回 false。
+
+注意：机器人“面朝”的方向无关紧要。 “R” 将始终使机器人向右移动一次，“L” 将始终向左移动等。此外，假设每次移动机器人的移动幅度相同。
+
+ 示例 1:
+
+```
+输入: "UD"
+输出: true
+解释：机器人向上移动一次，然后向下移动一次。所有动作都具有相同的幅度，因此它最终回到它开始的原点。因此，我们返回 true。
+```
+
+
+示例 2:
+
+```
+输入: "LL"
+输出: false
+解释：机器人向左移动两次。它最终位于原点的左侧，距原点有两次 “移动” 的距离。我们返回 false，因为它在移动结束时没有返回原点。
+```
+
+方法一：
+
+```java
+class Solution {
+    public boolean judgeCircle(String moves) {
+        int sum = 0;
+        for (char c : moves.toCharArray()){
+            if(c == 'R' ) sum+=1;
+            if(c == 'L' ) sum-=1;
+            if(c == 'U' ) sum+=2;
+            if(c == 'D' ) sum-=2;
+        }
+        return sum == 0;
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public boolean judgeCircle(String moves) {
+        int x = 0, y = 0;
+        for (char move: moves.toCharArray()) {
+            if (move == 'U') y--;
+            else if (move == 'D') y++;
+            else if (move == 'L') x--;
+            else if (move == 'R') x++;
+        }
+        return x == 0 && y == 0;
+    }
+}
+```
+
+###[0046]解码字母到整数映射
+
+给你一个字符串 s，它由数字（'0' - '9'）和 '#' 组成。我们希望按下述规则将 s 映射为一些小写英文字符：
+
+字符（'a' - 'i'）分别用（'1' - '9'）表示。
+字符（'j' - 'z'）分别用（'10#' - '26#'）表示。 
+返回映射之后形成的新字符串。
+
+题目数据保证映射始终唯一。
+
+ 示例 1：
+
+```
+输入：s = "10#11#12"
+输出："jkab"
+解释："j" -> "10#" , "k" -> "11#" , "a" -> "1" , "b" -> "2".
+```
+
+
+示例 2：
+
+```
+输入：s = "1326#"
+输出："acz"
+```
+
+
+示例 3：
+
+```
+输入：s = "25#"
+输出："y"
+```
+
+
+示例 4：
+
+```
+输入：s = "12345678910#11#12#13#14#15#16#17#18#19#20#21#22#23#24#25#26#"
+输出："abcdefghijklmnopqrstuvwxyz"
+```
+
+提示：
+
+```
+1 <= s.length <= 1000
+s[i] 只包含数字（'0'-'9'）和 '#' 字符。
+s 是映射始终存在的有效字符串。
+```
+
+方法一：
+
+```java
+class Solution {
+    public String freqAlphabets(String s) {
+         // 1 - 9 只有一位数， 10 - 26 有 10# - 26# 三位数
+        StringBuilder sb = new StringBuilder();
+        for(int i = 0; i < s.length(); ){
+            if(i + 2 < s.length() && s.charAt(i + 2) == '#'){
+                sb.append((char) ('a' + Integer.parseInt(s.substring(i, i + 2)) - 1));
+                i += 3;
+            }else{
+                sb.append((char) ('a' + Integer.parseInt(s.substring(i, i + 1)) - 1));
+                i++;
+            }
+        }
+        return sb.toString();
+    }
+}
+```
 
