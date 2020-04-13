@@ -218,3 +218,137 @@ class Solution {
 }
 ```
 
+### [0052]二叉搜索树中的搜索
+
+给定二叉搜索树（BST）的根节点和一个值。 你需要在BST中找到节点值等于给定值的节点。 返回以该节点为根的子树。 如果节点不存在，则返回 NULL。
+
+例如，
+
+给定二叉搜索树:
+
+        4
+       / \
+      2   7
+     / \
+    1   3
+
+和值: 2
+你应该返回如下子树:
+
+      2     
+     / \   
+    1   3
+在上述示例中，如果要找的值是 5，但因为没有节点值为 5，我们应该返回 NULL。
+
+方法一：递归
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode searchBST(TreeNode root, int val) {
+        if (root == null || val == root.val) return root;
+        return val < root.val ? searchBST(root.left, val) : searchBST(root.right, val);
+    }
+}
+```
+
+时间复杂度：O(H)，其中 H 是树高。平均时间复杂度为 O(logN)，最坏时间复杂度为 O(N)。
+
+空间复杂度：O(H)，递归栈的深度为H。平均情况下深度为 O(logN)，最坏情况下深度为 O(N)。
+
+方法二：迭代
+
+```
+
+```
+
+时间复杂度：O(H)，其中 H 是树高。平均时间复杂度为 O(logN)，最坏时间复杂度为 O(N)。
+
+空间复杂度：O(1)，恒定的额外空间。
+
+###[0053]N叉树的后序遍历
+
+给定一个 N 叉树，返回其节点值的后序遍历。
+
+例如，给定一个 3叉树 :
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/12/narytreeexample.png)
+
+ 
+
+返回其后序遍历: [5,6,3,2,4,1].
+
+说明: 递归法很简单，你可以使用迭代法完成此题吗?
+
+方法一：
+
+```java
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public List<Node> children;
+
+    public Node() {}
+
+    public Node(int _val) {
+        val = _val;
+    }
+
+    public Node(int _val, List<Node> _children) {
+        val = _val;
+        children = _children;
+    }
+};
+*/
+
+class Solution {
+    List<Integer> res = new ArrayList<Integer>();
+    public List<Integer> postorder(Node root) {
+        dfs(root);
+        return res;
+    }
+    public void dfs(Node root) {
+        if(root == null)    return;
+        for(Node child : root.children)
+            dfs(child);
+        res.add(root.val);
+    }
+}
+```
+
+方法二：
+
+```java
+
+class Solution {
+    public List<Integer> postorder(Node root) {
+        LinkedList<Node> stack = new LinkedList<>();
+        LinkedList<Integer> output = new LinkedList<>();
+        if (root == null) {
+            return output;
+        }
+
+      stack.add(root);
+      while (!stack.isEmpty()) {
+          Node node = stack.pollLast();
+          output.addFirst(node.val);	//在第一个位置add
+          for (Node item : node.children) {
+              if (item != null) {
+                  stack.add(item);    
+              } 
+          }
+      }
+      return output;
+    }
+}
+```
+
