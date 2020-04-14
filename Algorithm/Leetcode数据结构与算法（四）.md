@@ -352,3 +352,236 @@ class Solution {
 }
 ```
 
+###[0054]二叉树的最大深度
+
+给定一个二叉树，找出其最大深度。
+
+二叉树的深度为根节点到最远叶子节点的最长路径上的节点数。
+
+说明: 叶子节点是指没有子节点的节点。
+
+示例：
+给定二叉树 [3,9,20,null,null,15,7]，
+
+    		3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回它的最大深度 3 。
+
+方法一：
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int maxDepth(TreeNode root) {
+        if (root == null) {
+            return 0;
+        } else {
+            int left_height = maxDepth(root.left);
+            int right_height = maxDepth(root.right);
+            return Math.max(left_height, right_height) + 1;
+        }
+    }
+}
+```
+
+方法二：
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int maxDepth(TreeNode root) {
+        if (root == null) {
+            return 0;
+        }
+        // bfs
+        Queue<TreeNode> queue = new LinkedList<>();
+        int depth = 0;
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            int size = queue.size();
+            depth++;
+            for (int i = 0; i < size; i++) {
+                TreeNode temp = queue.poll();
+                if (temp.left != null) {
+                    queue.add(temp.left);
+                }
+                if (temp.right != null) {
+                    queue.add(temp.right);
+                }
+            }
+        }
+        return depth;
+    }
+}
+```
+
+###[0055]N叉树的前序遍历
+
+给定一个 N 叉树，返回其节点值的*前序遍历*。
+
+例如，给定一个 `3叉树` :
+
+ 
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/12/narytreeexample.png)
+
+ 
+
+返回其前序遍历: `[1,3,5,6,2,4]`。
+
+方法一：
+
+```java
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public List<Node> children;
+
+    public Node() {}
+
+    public Node(int _val) {
+        val = _val;
+    }
+
+    public Node(int _val, List<Node> _children) {
+        val = _val;
+        children = _children;
+    }
+};
+*/
+
+class Solution {
+    List<Integer> res = new ArrayList<Integer>();
+    public List<Integer> preorder(Node root) {
+        dfs(root);
+        return res;
+    }
+
+    public void dfs(Node root) {
+        if(root == null)    return;
+        res.add(root.val);
+        for(Node child : root.children)
+            dfs(child);
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public List<Integer> preorder(Node root) {
+        LinkedList<Node> stack = new LinkedList<>();
+        LinkedList<Integer> output = new LinkedList<>();
+        if (root == null) {
+            return output;
+        }
+
+        stack.add(root);
+        while (!stack.isEmpty()) {
+            Node node = stack.pollLast();
+            output.add(node.val);
+            Collections.reverse(node.children);
+            for (Node item : node.children) {
+                stack.add(item);
+            }
+        }
+        return output;
+    }
+}
+```
+
+###[0056] 判定字符是否唯一
+
+实现一个算法，确定一个字符串 s 的所有字符是否全都不同。
+
+示例 1：
+
+```
+输入: s = "leetcode"
+输出: false 
+```
+
+
+示例 2：
+
+```
+输入: s = "abc"
+输出: true
+```
+
+限制：
+
+```
+0 <= len(s) <= 100
+如果你不使用额外的数据结构，会很加分。
+```
+
+方法一：
+
+```java
+class Solution {
+    public boolean isUnique(String astr) {
+        Set set = new HashSet();
+        for (int i = 0; i <astr.length() ; i++) {
+            set.add(astr.charAt(i));
+            if(set.size() < i +1 ) return false;
+        }
+        return set.size() == astr.length(); 
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public boolean isUnique(String astr) {
+        long low64 = 0;
+        long high64 = 0;
+
+        for (char c : astr.toCharArray()) {
+            if (c >= 64) {
+                long bitIndex = 1L << c - 64;
+                if ((high64 & bitIndex) != 0) {
+                    return false;
+                }
+
+                high64 |= bitIndex;
+            } else {
+                long bitIndex = 1L << c;
+                if ((low64 & bitIndex) != 0) {
+                    return false;
+                }
+
+                low64 |= bitIndex;
+            }
+
+        }
+
+        return true;
+    }
+}
+```
+
