@@ -585,3 +585,269 @@ class Solution {
 }
 ```
 
+###[0057]二叉搜索树的第k大节点
+
+给定一棵二叉搜索树，请找出其中第k大的节点。
+
+ 示例 1:
+
+```
+输入: root = [3,1,4,null,2], k = 1
+   3
+  / \
+ 1   4
+  \
+   2
+输出: 4
+```
+
+
+示例 2:
+
+```
+输入: root = [5,3,6,2,4,null,null,1], k = 3
+       5
+      / \
+     3   6
+    / \
+   2   4
+  /
+ 1
+输出: 4
+```
+
+
+限制：
+
+1 ≤ k ≤ 二叉搜索树元素个数
+
+方法一：递归
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    
+    int res, k;
+    public int kthLargest(TreeNode root, int k) {
+        this.k = k;
+        dfs(root);
+        return res;
+    }
+    void dfs(TreeNode root) {
+        if(root == null) return;
+        dfs(root.right);
+        if(k == 0) return;
+        if(--k == 0) res = root.val;
+        dfs(root.left);
+    }
+}
+```
+
+方法二：迭代
+
+```java
+class Solution {
+    public int kthLargest(TreeNode root, int k) {
+        int count = 1;
+        Stack<TreeNode> stack = new Stack<>();
+        while (Objects.nonNull(root) || !stack.empty()) {
+            while (Objects.nonNull(root)) {
+                stack.push(root);
+                root = root.right;
+            }
+            TreeNode pop = stack.pop();
+            if (count == k) {
+                return pop.val;
+            }
+            count++;
+            root = pop.left;
+        }
+        return 0;
+    }
+}
+```
+
+```java
+class Solution {
+    public int kthLargest(TreeNode root, int k) {
+        List<Integer> result = new LinkedList<>();
+        Stack<TreeNode> stack = new Stack<>();
+        TreeNode cur = root;
+        while (cur != null || !stack.isEmpty()) {
+            while (cur != null) {
+                stack.push(cur);
+                cur = cur.right;
+            }
+            cur = stack.pop();
+            result.add(cur.val);
+            if(result.size() == k){
+                return cur.val;
+            }
+            cur = cur.left;
+        }
+        return result.get(k - 1);
+    }
+}
+```
+
+### [0058] 用两个栈实现队列
+
+用两个栈实现一个队列。队列的声明如下，请实现它的两个函数 appendTail 和 deleteHead ，分别完成在队列尾部插入整数和在队列头部删除整数的功能。(若队列中没有元素，deleteHead 操作返回 -1 )
+
+ 示例 1：
+
+```
+输入：
+["CQueue","appendTail","deleteHead","deleteHead"]
+[[],[3],[],[]]
+输出：[null,null,3,-1]
+```
+
+
+示例 2：
+
+```
+输入：
+["CQueue","deleteHead","appendTail","appendTail","deleteHead","deleteHead"]
+[[],[],[5],[2],[],[]]
+输出：[null,-1,null,null,5,2]
+```
+
+
+提示：
+
+1 <= values <= 10000
+最多会对 appendTail、deleteHead 进行 10000 次调用
+
+方法一：
+
+```java
+class CQueue {
+    Stack<Integer> stack1;
+    Stack<Integer> stack2;
+    int size;
+
+    public CQueue() {
+        stack1 = new Stack<Integer>();
+        stack2 = new Stack<Integer>();
+        size = 0;
+    }
+    
+    public void appendTail(int value) {
+        while (!stack1.isEmpty()) {
+            stack2.push(stack1.pop());
+        }
+        stack1.push(value);
+        while (!stack2.isEmpty()) {
+            stack1.push(stack2.pop());
+        }
+        size++;
+    }
+    
+    public int deleteHead() {
+        if (size == 0) {
+            return -1;
+        }
+        size--;
+        return stack1.pop();
+    }
+}
+
+/**
+ * Your CQueue object will be instantiated and called as such:
+ * CQueue obj = new CQueue();
+ * obj.appendTail(value);
+ * int param_2 = obj.deleteHead();
+ */
+```
+
+###[0059]两个数组间的距离值
+
+给你两个整数数组 arr1 ， arr2 和一个整数 d ，请你返回两个数组之间的 距离值 。
+
+「距离值」 定义为符合此描述的元素数目：
+
+对于元素 arr1[i] ，不存在任何元素 arr2[j] 满足 |arr1[i]-arr2[j]| <= d 。
+
+示例 1：
+
+```
+输入：arr1 = [4,5,8], arr2 = [10,9,1,8], d = 2
+输出：2
+解释：
+对于 arr1[0]=4 我们有：
+|4-10|=6 > d=2 
+|4-9|=5 > d=2 
+|4-1|=3 > d=2 
+|4-8|=4 > d=2 
+对于 arr1[1]=5 我们有：
+|5-10|=5 > d=2 
+|5-9|=4 > d=2 
+|5-1|=4 > d=2 
+|5-8|=3 > d=2
+对于 arr1[2]=8 我们有：
+|8-10|=2 <= d=2
+|8-9|=1 <= d=2
+|8-1|=7 > d=2
+|8-8|=0 <= d=2
+```
+
+
+示例 2：
+
+```
+输入：arr1 = [1,4,2,3], arr2 = [-4,-3,6,10,20,30], d = 3
+输出：2
+```
+
+
+示例 3：
+
+```
+输入：arr1 = [2,1,100,3], arr2 = [-5,-2,10,-3,7], d = 6
+输出：1
+```
+
+提示：
+
+```
+1 <= arr1.length, arr2.length <= 500
+-10^3 <= arr1[i], arr2[j] <= 10^3
+0 <= d <= 100
+```
+
+方法一：暴力
+
+```java
+class Solution {
+     private int getCount(int num1, int[] arr2, int d) {
+        for (int num2 : arr2) {
+            if (Math.abs(num1 - num2) <= d) {
+                return 0;
+            }
+        }
+        return 1;
+    }
+
+    public int findTheDistanceValue(int[] arr1, int[] arr2, int d) {
+        int ans = 0;
+        for (int num1 : arr1) {
+            ans += getCount(num1, arr2, d);
+        }
+        return ans;
+    }
+}
+```
+
+其他题解：
+
+https://leetcode-cn.com/problems/find-the-distance-value-between-two-arrays/solution/1385java-liang-chong-fang-fa-er-fen-shuang-zhi-zhe/
+
