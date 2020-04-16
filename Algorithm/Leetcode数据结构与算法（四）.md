@@ -698,7 +698,7 @@ class Solution {
 }
 ```
 
-### [0058] 用两个栈实现队列
+### [0058]用两个栈实现队列
 
 用两个栈实现一个队列。队列的声明如下，请实现它的两个函数 appendTail 和 deleteHead ，分别完成在队列尾部插入整数和在队列头部删除整数的功能。(若队列中没有元素，deleteHead 操作返回 -1 )
 
@@ -850,4 +850,253 @@ class Solution {
 其他题解：
 
 https://leetcode-cn.com/problems/find-the-distance-value-between-two-arrays/solution/1385java-liang-chong-fang-fa-er-fen-shuang-zhi-zhe/
+
+###[0060]增减字符串匹配
+
+给定只含 "I"（增大）或 "D"（减小）的字符串 S ，令 N = S.length。
+
+返回 [0, 1, ..., N] 的任意排列 A 使得对于所有 i = 0, ..., N-1，都有：
+
+```
+如果 S[i] == "I"，那么 A[i] < A[i+1]
+如果 S[i] == "D"，那么 A[i] > A[i+1]
+```
+
+示例 1：
+
+```
+输出："IDID"
+输出：[0,4,1,3,2]
+```
+
+
+示例 2：
+
+```
+输出："III"
+输出：[0,1,2,3]
+```
+
+
+示例 3：
+
+```
+输出："DDI"
+输出：[3,2,0,1]
+```
+
+
+提示：
+
+1 <= S.length <= 10000
+S 只包含字符 "I" 或 "D"。
+
+方法一：
+
+```java
+class Solution {
+    public int[] diStringMatch(String S) {
+       int N = S.length();
+       int start = 0;
+       int end = N;
+       int[] res = new int[N+1]; 
+       for(int i = 0; i < N; ++i){
+           if (S.charAt(i) == 'I'){
+               res[i] = start++;
+           }else{
+               res[i] = end--;
+           }
+       }
+       res[N] = end;
+       return res;
+    }
+}
+```
+
+###[0061]有序数组的平方
+
+给定一个按非递减顺序排序的整数数组 A，返回每个数字的平方组成的新数组，要求也按非递减顺序排序。
+
+ 示例 1：
+
+```
+输入：[-4,-1,0,3,10]
+输出：[0,1,9,16,100]
+```
+
+
+示例 2：
+
+```
+输入：[-7,-3,2,3,11]
+输出：[4,9,9,49,121]
+```
+
+提示：
+
+```
+1 <= A.length <= 10000
+-10000 <= A[i] <= 10000
+A 已按非递减顺序排序。
+```
+
+方法一：
+
+```java
+class Solution {
+    public int[] sortedSquares(int[] A) {
+        int N = A.length;
+        int[] ans = new int[N];
+        for (int i = 0; i < N; ++i)
+            ans[i] = A[i] * A[i];
+
+        Arrays.sort(ans);
+        return ans;
+    }
+}
+```
+
+方法二：双指针
+
+```java
+class Solution {
+    public int[] sortedSquares(int[] A) {
+        int N = A.length;
+        int j = 0;      // j 正向读取非负数部分
+        while (j < N && A[j] < 0)
+            j++;
+        int i = j-1;    // i 反向读取负数部分
+
+        int[] ans = new int[N];
+        int t = 0;
+
+        while (i >= 0 && j < N) {
+            if (A[i] * A[i] < A[j] * A[j]) {
+                ans[t++] = A[i] * A[i];
+                i--;
+            } else {
+                ans[t++] = A[j] * A[j];
+                j++;
+            }
+        }
+
+        while (i >= 0) {
+            ans[t++] = A[i] * A[i];
+            i--;
+        }
+        while (j < N) {
+            ans[t++] = A[j] * A[j];
+            j++;
+        }
+
+        return ans;
+    }
+}
+```
+
+###[0062]矩阵中的幸运数
+
+给你一个 m * n 的矩阵，矩阵中的数字 各不相同 。请你按 任意 顺序返回矩阵中的所有幸运数。
+
+幸运数是指矩阵中满足同时下列两个条件的元素：
+
+在同一行的所有元素中最小
+在同一列的所有元素中最大
+
+示例 1：
+
+```
+输入：matrix = [[3,7,8],[9,11,13],[15,16,17]]
+输出：[15]
+解释：15 是唯一的幸运数，因为它是其所在行中的最小值，也是所在列中的最大值。
+```
+
+
+示例 2：
+
+```
+输入：matrix = [[1,10,4,2],[9,3,8,7],[15,16,17,12]]
+输出：[12]
+解释：12 是唯一的幸运数，因为它是其所在行中的最小值，也是所在列中的最大值。
+```
+
+
+示例 3：
+
+```
+输入：matrix = [[7,8],[1,2]]
+输出：[7]
+```
+
+提示：
+
+```
+m == mat.length
+n == mat[i].length
+1 <= n, m <= 50
+1 <= matrix[i][j] <= 10^5
+矩阵中的所有元素都是不同的
+```
+
+方法一：
+
+```java
+class Solution {
+    public List<Integer> luckyNumbers (int[][] matrix) {
+        List<Integer> res = new ArrayList<>();
+        for (int i = 0; i < matrix.length; i++) {
+            int min = Integer.MAX_VALUE;
+            int idx = -1;
+            for (int j = 0; j < matrix[0].length; j++) {
+                if (min > matrix[i][j]) {
+                    idx = j;
+                    min = matrix[i][j];
+                }
+            }
+            boolean flag = true;
+            for (int j = 0; j < matrix.length; j++) {
+                if (min < matrix[j][idx] && j != i) {
+                    flag = false;
+                    break;
+                }
+            }
+            if (flag) {
+                res.add(min);
+            }
+        }
+        return res;
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public List<Integer> luckyNumbers (int[][] matrix) {
+        int m = matrix.length;
+        int n = matrix[0].length;
+        int[] min = new int[m];
+        int[] max = new int[n];
+        Arrays.fill(min, Integer.MAX_VALUE);
+        Arrays.fill(max, Integer.MIN_VALUE);
+        for (int i = 0; i < m; i++){
+            for (int j = 0; j < n; j++){
+                min[i] = Math.min(min[i], matrix[i][j]);// 第i行最小值
+                max[j] = Math.max(max[j], matrix[i][j]);// 每一列最大值与当前值比较
+            }
+        }
+
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i < m; i++){
+            for (int j = 0; j < n; j++){
+                if (min[i] == max[j])
+                    list.add(min[i]);
+            }
+        }
+
+        return list;
+    }
+}
+```
 
