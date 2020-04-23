@@ -9,6 +9,7 @@ Mac系统默认磁盘，文件系统运行不区分大小写。Git 并不支持�
 由于AOSP比较大，但是我们存放在移动硬盘上，更大的空间能够更好地满足未来的需求，所以预留200G+的空间。
 可以通过 shell 使用以下命令创建磁盘映像：
 
+```shell
 hdiutil create -type SPARSE -fs 'Case-sensitive Journaled HFS+' -size 220g /Volumes/zza/aosp/android.dmg
 ```
 
