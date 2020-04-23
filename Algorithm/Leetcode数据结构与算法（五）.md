@@ -687,3 +687,231 @@ class Solution {
 }
 ```
 
+### [0075]拼写单词
+
+给你一份『词汇表』（字符串数组） words 和一张『字母表』（字符串） chars。
+
+假如你可以用 chars 中的『字母』（字符）拼写出 words 中的某个『单词』（字符串），那么我们就认为你掌握了这个单词。
+
+注意：每次拼写（指拼写词汇表中的一个单词）时，chars 中的每个字母都只能用一次。
+
+返回词汇表 words 中你掌握的所有单词的 长度之和。
+
+示例 1：
+
+```
+输入：words = ["cat","bt","hat","tree"], chars = "atach"
+输出：6
+解释： 
+可以形成字符串 "cat" 和 "hat"，所以答案是 3 + 3 = 6。
+```
+
+
+示例 2：
+
+```
+输入：words = ["hello","world","leetcode"], chars = "welldonehoneyr"
+输出：10
+解释：
+可以形成字符串 "hello" 和 "world"，所以答案是 5 + 5 = 10。
+```
+
+提示：
+
+```
+1 <= words.length <= 1000
+1 <= words[i].length, chars.length <= 100
+所有字符串中都仅包含小写英文字母
+```
+
+方法一：
+
+```java
+class Solution {
+    public int countCharacters(String[] words, String chars) {
+        int[] chars_count = count(chars); // 统计字母表的字母出现次数
+        int res = 0;
+        for (String word : words) {
+            int[] word_count = count(word); // 统计单词的字母出现次数
+            if (contains(chars_count, word_count)) {
+                res += word.length();
+            }
+        }
+        return res;
+    }
+
+    // 检查字母表的字母出现次数是否覆盖单词的字母出现次数
+    boolean contains(int[] chars_count, int[] word_count) {
+        for (int i = 0; i < 26; i++) {
+            if (chars_count[i] < word_count[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // 统计 26 个字母出现的次数
+    int[] count(String word) {
+        int[] counter = new int[26];
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            counter[c-'a']++;
+        }
+        return counter;
+    }
+}
+```
+
+### [0076]N叉树的最大深度
+
+给定一个 N 叉树，找到其最大深度。
+
+最大深度是指从根节点到最远叶子节点的最长路径上的节点总数。
+
+例如，给定一个 3叉树 :
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/12/narytreeexample.png)  
+
+我们应返回其最大深度，3。
+
+说明:
+
+树的深度不会超过 1000。
+树的节点总不会超过 5000。
+
+方法一：递归
+
+```java
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public List<Node> children;
+
+    public Node() {}
+
+    public Node(int _val) {
+        val = _val;
+    }
+
+    public Node(int _val, List<Node> _children) {
+        val = _val;
+        children = _children;
+    }
+};
+*/
+class Solution {
+  public int maxDepth(Node root) {
+    if (root == null) {
+      return 0;
+    } else if (root.children.isEmpty()) {
+      return 1;  
+    } else {
+      List<Integer> heights = new LinkedList<>();
+      for (Node item : root.children) {
+        heights.add(maxDepth(item)); 
+      }
+      return Collections.max(heights) + 1;
+    }
+  }
+}
+```
+
+方法二: 迭代
+
+```java
+class Solution {
+  public int maxDepth(Node root) {
+    Queue<Pair<Node, Integer>> stack = new LinkedList<>();
+    if (root != null) {
+      stack.add(new Pair(root, 1));
+    }
+
+    int depth = 0;
+    while (!stack.isEmpty()) {
+      Pair<Node, Integer> current = stack.poll();
+      root = current.getKey();
+      int current_depth = current.getValue();
+      if (root != null) {
+        depth = Math.max(depth, current_depth);
+        for (Node c : root.children) {
+          stack.add(new Pair(c, current_depth + 1));    
+        }
+      }
+    }
+    return depth;
+  }
+}
+```
+
+### [0077]删列造序
+
+给定由 N 个小写字母字符串组成的数组 A，其中每个字符串长度相等。
+
+你需要选出一组要删掉的列 D，对 A 执行删除操作，使 A 中剩余的每一列都是 非降序 排列的，然后请你返回 D.length 的最小可能值。
+
+删除 操作的定义是：选出一组要删掉的列，删去 A 中对应列中的所有字符，形式上，第 n 列为` [A[0][n], A[1][n], ..., A[A.length-1][n]]`。
+
+比如，有` A = ["abcdef", "uvwxyz"]`，
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2019/07/06/944_1.png)
+
+要删掉的列为 {0, 2, 3}，删除后 A 为["bef", "vyz"]， A 的列分别为["b","v"], ["e","y"], ["f","z"]。
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2019/07/06/944_2.png)
+
+示例 1：
+
+```
+输入：["cba", "daf", "ghi"]
+输出：1
+解释：
+当选择 D = {1}，删除后 A 的列为：["c","d","g"] 和 ["a","f","i"]，均为非降序排列。
+若选择 D = {}，那么 A 的列 ["b","a","h"] 就不是非降序排列了。
+```
+
+
+示例 2：
+
+```
+输入：["a", "b"]
+输出：0
+解释：D = {}
+```
+
+
+示例 3：
+
+```
+输入：["zyx", "wvu", "tsr"]
+输出：3
+解释：D = {0, 1, 2}
+```
+
+提示：
+
+```
+1 <= A.length <= 100
+1 <= A[i].length <= 1000
+```
+
+方法一：
+
+```java
+class Solution {
+    public int minDeletionSize(String[] A) {
+        int ans = 0;
+        for (int c = 0; c < A[0].length(); ++c)
+            for (int r = 0; r < A.length - 1; ++r)
+                if (A[r].charAt(c) > A[r+1].charAt(c)) {
+                    ans++;
+                    break;
+                }
+
+        return ans;
+    }
+}
+```
+
+
+
