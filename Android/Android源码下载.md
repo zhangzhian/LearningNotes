@@ -1,4 +1,4 @@
-# Android源码下载（Mac移动硬盘）
+# Android10源码下载与编译（Mac移动硬盘）
 
 ## 创建区分大小写的磁盘映像
 
@@ -53,11 +53,11 @@ export REPO_URL='https://mirrors.tuna.tsinghua.edu.cn/git/git-repo'
 1. sync的时候并发数不宜太高，否则会出现 503 错误，即`-j`后面的数字不能太大，建议选择4。
 2. 请尽量选择流量较小时错峰同步。
 
-### 使用每月更新的初始化包
+### 使用每月更新的初始化包（使用该方法）
 
 由于首次同步需要下载约 30GB 数据，过程中任何网络故障都可能造成同步失败，强烈建议使用初始化包进行初始化。
 
-下载 https://mirrors.tuna.tsinghua.edu.cn/aosp-monthly/aosp-latest.tar (可以使用三方工具下载)，下载完成后记得根据 checksum.txt 的内容校验一下。
+下载 https://mirrors.tuna.tsinghua.edu.cn/aosp-monthly/aosp-latest.tar (可以使用三方工具下载，支持断点续传)，下载完成后记得根据 checksum.txt 的内容校验一下。
 
 由于所有代码都是从隐藏的 `.repo` 目录中 checkout 出来的，所以我们只保留了 `.repo` 目录，下载后解压 再 `repo sync` 一遍即可得到完整的目录。
 
@@ -74,36 +74,74 @@ repo sync # 正常同步一遍即可得到完整目录
 
 此后，每次只需运行 `repo sync` 即可保持同步。 
 
+可以选择该命令同时发起四个并发请求，之所以选择4是因为清华的镜像的并发请求的限制的上限就是4个。
+
+```shell
+repo sync -j4
+```
+
+> 注意：出现奇奇怪怪得bug，可以重复执行一下，很多bug是由网络原因造成的。
+>
+> 也可以写个脚本，自动执行
+>
+> ``` shell
+> #!/bin/bash 
+> repo sync -j4
+> while [ $? = 1 ]; do 
+>    echo "================sync failed, re-sync again =====" 
+>    sleep 3 
+>    repo sync
+>    	done
+> ```
+
 ### 传统初始化方法
 
 建立工作目录:
 
-```
+```shell
 mkdir WORKING_DIRECTORY
 cd WORKING_DIRECTORY
 ```
 
 初始化仓库:
 
-```
+```shell
 repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest
 ```
 
 **如果提示无法连接到 gerrit.googlesource.com，请参照“更新 Repo”。**
 
-如果需要某个特定的 Android 版本：
-
-```
-repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-4.0.1_r1
-```
-
-列表：https://source.android.com/setup/start/build-numbers#source-code-tags-and-builds
-
 同步源码树（以后只需执行这条命令来同步）：
 
-```
+```shell
 repo sync
 ```
+
+### 切换版本
+
+如果需要某个特定的 Android 版本：
+
+```shell
+repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-10.0.0_r30
+```
+
+repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-4.0.1_r1
+
+默认是master，是android11版，我选择了Android10。我使用Android11
+
+
+
+#### 设置文件描述符限制
+
+在macOS中，默认限制的同时打开的文件数量很少，不能满足编译过程中的高并发需要，因此需要在shell中运行命令：
+
+```shell
+$ ulimit -S -n 2048
+```
+
+
+
+
 
 参考：
 
@@ -115,3 +153,4 @@ repo sync
 
 **欢迎关注我的公众号，持续分析优质技术文章**
 ![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
+
