@@ -913,5 +913,247 @@ class Solution {
 }
 ```
 
+###  [0078]两个数组的交集
 
+给定两个数组，编写一个函数来计算它们的交集。
+
+示例 1:
+
+```
+输入: nums1 = [1,2,2,1], nums2 = [2,2]
+输出: [2]
+```
+
+
+示例 2:
+
+```
+输入: nums1 = [4,9,5], nums2 = [9,4,9,8,4]
+输出: [9,4]
+```
+
+
+说明:
+
+输出结果中的每个元素一定是唯一的。
+我们可以不考虑输出结果的顺序。
+
+方法一：set
+
+```java
+class Solution {
+  public int[] set_intersection(HashSet<Integer> set1, HashSet<Integer> set2) {
+    int [] output = new int[set1.size()];
+    int idx = 0;
+    for (Integer s : set1)
+      if (set2.contains(s)) output[idx++] = s;
+
+    return Arrays.copyOf(output, idx);
+  }
+
+  public int[] intersection(int[] nums1, int[] nums2) {
+    HashSet<Integer> set1 = new HashSet<Integer>();
+    for (Integer n : nums1) set1.add(n);
+    HashSet<Integer> set2 = new HashSet<Integer>();
+    for (Integer n : nums2) set2.add(n);
+
+    if (set1.size() < set2.size()) return set_intersection(set1, set2);
+    else return set_intersection(set2, set1);
+  }
+}
+```
+
+方法二：内置函数
+
+```java
+class Solution {
+  public int[] intersection(int[] nums1, int[] nums2) {
+    HashSet<Integer> set1 = new HashSet<Integer>();
+    for (Integer n : nums1) set1.add(n);
+    HashSet<Integer> set2 = new HashSet<Integer>();
+    for (Integer n : nums2) set2.add(n);
+
+    set1.retainAll(set2);
+
+    int [] output = new int[set1.size()];
+    int idx = 0;
+    for (int s : set1) output[idx++] = s;
+    return output;
+  }
+}
+```
+
+
+
+### [0079]链表的中间结点
+
+给定一个带有头结点 head 的非空单链表，返回链表的中间结点。
+
+如果有两个中间结点，则返回第二个中间结点。
+
+示例 1：
+
+```
+输入：[1,2,3,4,5]
+输出：此列表中的结点 3 (序列化形式：[3,4,5])
+返回的结点值为 3 。 (测评系统对该结点序列化表述是 [3,4,5])。
+注意，我们返回了一个 ListNode 类型的对象 ans，这样：
+ans.val = 3, ans.next.val = 4, ans.next.next.val = 5, 以及 ans.next.next.next = NULL.
+```
+
+示例 2：
+
+```
+输入：[1,2,3,4,5,6]
+输出：此列表中的结点 4 (序列化形式：[4,5,6])
+由于该列表有两个中间结点，值分别为 3 和 4，我们返回第二个结点。
+```
+
+
+提示：
+
+给定链表的结点数介于 1 和 100 之间。
+
+方法一： 双指针
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public ListNode middleNode(ListNode head) {
+        ListNode slow = head, fast = head;
+        while (fast != null && fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        return slow;
+    }
+}
+```
+
+方法二：数组
+
+```java
+class Solution {
+    public ListNode middleNode(ListNode head) {
+        ListNode[] A = new ListNode[100];
+        int t = 0;
+        while (head != null) {
+            A[t++] = head;
+            head = head.next;
+        }
+        return A[t / 2];
+    }
+}
+```
+
+### [0080]键盘行
+
+给定一个单词列表，只返回可以使用在键盘同一行的字母打印出来的单词。键盘如下图所示。
+
+![](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/12/keyboard.png)
+
+示例：
+
+```
+输入: ["Hello", "Alaska", "Dad", "Peace"]
+输出: ["Alaska", "Dad"]
+```
+
+
+注意：
+
+你可以重复使用键盘上同一字符。
+你可以假设输入的字符串将只包含字母。
+
+方法一：
+
+```java
+class Solution {
+    public String[] findWords(String[] words) {
+		//首先把3行键盘表示出来
+		String[] lines= {
+				"qwertyuiopQWERTYUIOP",
+				"asdfghjklASDFGHJKL",
+				"zxcvbnmZXCVBNM"
+		};
+		//定义一个中间储存数组pre来储存满足条件的单词，长度就为输入数组的长度
+		String[] pre= new String[words.length];
+		//定义t来储存满足题目意思的单词数
+		//也为了pre的开始下标为0
+		int t=0;
+		//下面这个for循环用来一个个单词逐个判断
+		for(int i=0;i<words.length;i++) {
+			String temp="";//定义一个临时的字符串来存储这3行的某一行
+			int count=0;//定义一个count来储存当前单词满足的字母个数
+			//下面这个循环来遍历当前单词的每一个字母
+			for(int j=0;j<words[i].length();j++) {
+
+				//如果当前单词的首字母在第某行，临时字符串temp就等于第某行
+				if(lines[0].indexOf(words[i].charAt(0))!=-1) {
+					temp=lines[0];
+				}else if(lines[1].indexOf(words[i].charAt(0))!=-1) {
+					temp=lines[1];
+				}else {
+					temp=lines[2];
+				}
+				//前面已经知道这个单词是在第几行了，所以现在要遍历每个字母也是否在这一行
+				//并且满足的单词个数count也要+1
+				if(temp.indexOf(words[i].charAt(j))==-1){
+					break;
+				}else {
+					count++;
+				}
+				//如果满足的单词个数等于当前单词的长度
+				//所以用中间储存数组pre来存储此单词，并且t也要+1
+				//意味着现在长度为t ，也就是满足的单词个数为t
+				if(count==words[i].length()) {
+					pre[t]=words[i];
+					t++;
+				}
+			}	
+		}
+		//最后一步，定义一个数组res来储存pre中的元素
+		//并且长度为t
+		String[] res = new String[t];
+		for(int i=0;i<t;i++) {
+			res[i]=pre[i];
+		}
+		return res;
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public String[] findWords(String[] words) {
+        if(words==null||words.length==0) return new String[0];
+        //用长度为26的数组标识每个字母所在的行号
+        int[] map = {2,3,3,2,1,2,2,2,1,2,2,2,3,3,1,1,1,1,2,1,1,3,1,3,1,3};
+        List<String> list = new ArrayList<String>();
+        for(String word:words){
+            String tempWord = word.toUpperCase();
+            int temp = map[tempWord.charAt(0)-65];
+            boolean flag = true;
+            //通过与首字母比较行号确定是否在同一行
+            for(int i=1;i<tempWord.length();i++){
+                if(temp != map[tempWord.charAt(i)-65]){
+                    flag = false;
+                    break;
+                }
+            }
+            if(flag) list.add(word);
+        }
+        return list.toArray(new String[list.size()]);
+    }
+}
+```
 
