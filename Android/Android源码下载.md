@@ -82,6 +82,8 @@ repo sync -j4
 
 > 注意：出现奇奇怪怪得bug，可以重复执行一下，很多bug是由网络原因造成的。
 >
+> **一定要确保文件都下载成功，否则编译时会出现一些问题。**
+>
 > 也可以写个脚本，自动执行
 >
 > ``` shell
@@ -94,7 +96,7 @@ repo sync -j4
 >    	done
 > ```
 
-### 传统初始化方法
+### 传统初始化方法（不推荐）
 
 建立工作目录:
 
@@ -129,9 +131,9 @@ repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-4.0.
 
 默认是master，是android11版，我选择了Android10。我使用Android11
 
+## Android 编译
 
-
-#### 设置文件描述符限制
+### 设置文件描述符限制
 
 在macOS中，默认限制的同时打开的文件数量很少，不能满足编译过程中的高并发需要，因此需要在shell中运行命令：
 
@@ -139,7 +141,171 @@ repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-4.0.
 $ ulimit -S -n 2048
 ```
 
+### 环境设置
 
+在源码根目录下调用下面的命令：
+
+```shell
+$ source build/envsetup.sh
+```
+
+### 选择设备
+
+在命令行输入下面的命令选择打算编译的源码类型
+
+```shell
+$ lunch
+	
+	You're building on Darwin
+	
+	Lunch menu... pick a combo:
+	     1. aosp_arm-eng
+	     2. aosp_arm64-eng
+	     3. aosp_mips-eng
+	     4. aosp_mips64-eng
+	     5. aosp_x86-eng
+	     6. aosp_x86_64-eng
+	     7. full_fugu-userdebug
+	     8. aosp_fugu-userdebug
+	     9. mini_emulator_arm64-userdebug
+	     10. m_e_arm-userdebug
+	     11. m_e_mips-userdebug
+	     12. m_e_mips64-eng
+	     13. mini_emulator_x86-userdebug
+	     14. mini_emulator_x86_64-userdebug
+	     15. aosp_dragon-userdebug
+	     16. aosp_dragon-eng
+	     17. aosp_marlin-userdebug
+	     18. aosp_sailfish-userdebug
+	     19. aosp_flounder-userdebug
+	     20. aosp_angler-userdebug
+	     21. aosp_bullhead-userdebug
+	     22. hikey-userdebug
+	     23. aosp_shamu-userdebug
+	
+	Which would you like? [aosp_arm-eng]
+```
+
+根据后缀可以判断出使用的场景如下：
+
+|   类型    |                  用途                  |
+| :-------: | :------------------------------------: |
+|   user    |          权限少，用于刷机使用          |
+| userdebug | 和“user”类似，但可以root，并且可以调试 |
+|    eng    |   具有开发配置，并且有额外的调试工具   |
+
+根据需要选择对应的类型，比如我选择arm “1”。（推荐采用x86的，模拟器速度快一些）
+
+```shell
+============================================
+PLATFORM_VERSION_CODENAME=REL
+PLATFORM_VERSION=10
+TARGET_PRODUCT=aosp_arm
+TARGET_BUILD_VARIANT=eng
+TARGET_BUILD_TYPE=release
+TARGET_ARCH=arm
+TARGET_ARCH_VARIANT=armv7-a-neon
+TARGET_CPU_VARIANT=generic
+HOST_ARCH=x86_64
+HOST_OS=darwin
+HOST_OS_EXTRA=Darwin-17.7.0-x86_64-10.13.6
+HOST_BUILD_TYPE=release
+BUILD_ID=QQ2A.200305.002
+OUT_DIR=out
+============================================
+```
+
+### 开始编译
+
+为了加快编译的速度，最好并发来编译
+
+```shell
+$ make -j4
+```
+
+我的机器比较老，2线程，所以采用了-j4。
+
+编译结束以后，会显示下面的日志：
+
+```shell
+#### build completed successfully (11:16:35 (hh:mm:ss)) ####
+```
+
+### 启动模拟器
+
+```shell
+emulator
+```
+
+## Android Studio查看源码
+
+### 编译源码idegen模块
+
+```undefined
+mmm development/tools/idegen/
+```
+
+这行命令的意思是编译idegen这个模块项目，然后生成idegen.jar文件。
+
+编译结束以后，会显示下面的日志：
+
+```bash
+#### build completed successfully (27:28 (mm:ss)) ####
+```
+
+mmm指令就是用来编译指定目录。通常来说，每个目录只包含一个模块。
+
+```shell
+  - croot: Changes directory to the top of the tree.
+  - m: Makes from the top of the tree.
+  - mm: Builds all of the modules in the current directory.
+  - mmm: Builds all of the modules in the supplied directories.
+  - cgrep: Greps on all local C/C++ files.
+  - jgrep: Greps on all local Java files.
+  - resgrep: Greps on all local res/*.xml files.
+  - godir: Go to the directory containing a file.
+```
+
+### 生成AS配置文件
+
+接着执行如下脚本：
+
+```shell
+development/tools/idegen/idegen.sh
+```
+
+这行命令的意思是在根目录生成对应的android.ipr、android.iml IEDA工程配置文件。
+
+等待片刻得到类似如下信息说明OK：
+
+```shell
+Read excludes: 217ms
+Traversed tree: 3605277ms
+```
+
+警告1：
+
+```
+emulator: WARNING: Couldn't find crash service executable /Volumes/android/aosp/prebuilts/android-emulator/darwin-x86_64/emulator64-crash-service
+```
+
+这个警告一般没影响，是模拟器崩溃时进行处理的程序，对使用者意义不是很大。
+
+警告2：
+
+```
+emulator: WARNING: system partition size adjusted to match image file (3083 MB > 800 MB)
+```
+
+调整系统分区大小以匹配图像文件，执行命令：`emulator -partition-size 4096`。（可以不管）
+
+推荐采用x86的，模拟器速度快一些。我这个机器启动arm架构的模拟器花费很长时间。
+
+### 导入源码
+
+启动Android Studio，然后选择打开一个已存在的Android Studio工程，选择源码根目录的`android.ipr`，经过的加载过程以后，Android 源码就已经成功的加载到了Android Studio中。
+
+OK，至此我们就完成了在macOS上下载AOSP并编译导入Android Studio的完整过程。
 
 
 
@@ -150,6 +316,8 @@ $ ulimit -S -n 2048
 2.https://mirrors.tuna.tsinghua.edu.cn/help/git-repo/
 
 3.https://blog.csdn.net/YuDBL/article/details/86129195
+
+4.https://blog.csdn.net/YuDBL/article/details/86496890
 
 **欢迎关注我的公众号，持续分析优质技术文章**
 ![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
