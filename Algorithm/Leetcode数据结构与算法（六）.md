@@ -155,7 +155,7 @@ class Solution {
 
 
 
-### [0083] 拥有最多糖果的孩子
+### [0083]拥有最多糖果的孩子
 
 给你一个数组 candies 和一个整数 extraCandies ，其中 candies[i] 代表第 i 个孩子拥有的糖果数目。
 
@@ -292,4 +292,188 @@ class Solution {
     }
 }
 ```
+
+### [0085]拿硬币
+
+桌上有 n 堆力扣币，每堆的数量保存在数组 coins 中。我们每次可以选择任意一堆，拿走其中的一枚或者两枚，求拿完所有力扣币的最少次数。
+
+示例 1：
+
+```
+输入：[4,2,1]
+
+输出：4
+
+解释：第一堆力扣币最少需要拿 2 次，第二堆最少需要拿 1 次，第三堆最少需要拿 1 次，总共 4 次即可拿完。
+```
+
+示例 2：
+
+```
+输入：[2,3,10]
+
+输出：8
+```
+
+限制：
+
+```
+1 <= n <= 4
+1 <= coins[i] <= 10
+```
+
+方法一：
+
+```java
+class Solution {
+    public int minCount(int[] coins) {
+        int ret = 0;
+        for(int i = 0; i < coins.length ; i++ ){
+            ret += coins[i] % 2 == 0 ? coins[i] /2 : coins[i] /2 + 1 ;
+        }
+        return ret;
+    }
+}
+```
+
+### [0086]旅行终点站
+
+给你一份旅游线路图，该线路图中的旅行线路用数组 paths 表示，其中 paths[i] = [cityAi, cityBi] 表示该线路将会从 cityAi 直接前往 cityBi 。请你找出这次旅行的终点站，即没有任何可以通往其他城市的线路的城市。
+
+题目数据保证线路图会形成一条不存在循环的线路，因此只会有一个旅行终点站。
+
+示例 1：
+
+```
+输入：paths = [["London","New York"],["New York","Lima"],["Lima","Sao Paulo"]]
+输出："Sao Paulo" 
+解释：从 "London" 出发，最后抵达终点站 "Sao Paulo" 。本次旅行的路线是 "London" -> "New York" -> "Lima" -> "Sao Paulo" 。
+```
+
+
+示例 2：
+
+```
+输入：paths = [["B","C"],["D","B"],["C","A"]]
+输出："A"
+解释：所有可能的线路是：
+"D" -> "B" -> "C" -> "A". 
+"B" -> "C" -> "A". 
+"C" -> "A". 
+"A". 
+显然，旅行终点站是 "A" 。
+```
+
+
+示例 3：
+
+```
+输入：paths = [["A","Z"]]
+输出："Z"
+```
+
+方法一：
+
+```java
+class Solution {
+    public String destCity(List<List<String>> paths) {
+		Map<String, Integer> map = new HashMap<String, Integer>();
+		for (List<String> list : paths)
+			map.put(list.get(0), 1);
+		for (List<String> list : paths)
+			if (map.get(list.get(1)) == null)
+				return list.get(1);
+		return null;
+    }
+}
+```
+
+### [0087]通过翻转子数组使两个数组相等
+
+给你两个长度相同的整数数组 target 和 arr 。
+
+每一步中，你可以选择 arr 的任意 非空子数组 并将它翻转。你可以执行此过程任意次。
+
+如果你能让 arr 变得与 target 相同，返回 True；否则，返回 False 。
+
+示例 1：
+
+```
+输入：target = [1,2,3,4], arr = [2,4,1,3]
+输出：true
+解释：你可以按照如下步骤使 arr 变成 target：
+1- 翻转子数组 [2,4,1] ，arr 变成 [1,4,2,3]
+2- 翻转子数组 [4,2] ，arr 变成 [1,2,4,3]
+3- 翻转子数组 [4,3] ，arr 变成 [1,2,3,4]
+上述方法并不是唯一的，还存在多种将 arr 变成 target 的方法。
+```
+
+
+示例 2：
+
+```
+输入：target = [7], arr = [7]
+输出：true
+解释：arr 不需要做任何翻转已经与 target 相等。
+```
+
+
+示例 3：
+
+```
+输入：target = [1,12], arr = [12,1]
+输出：true
+```
+
+
+示例 4：
+
+```
+输入：target = [3,7,9], arr = [3,7,11]
+输出：false
+解释：arr 没有数字 9 ，所以无论如何也无法变成 target 。
+```
+
+
+示例 5：
+
+```
+输入：target = [1,1,1,1,1], arr = [1,1,1,1,1]
+输出：true
+```
+
+提示：
+
+```
+target.length == arr.length
+1 <= target.length <= 1000
+1 <= target[i] <= 1000
+1 <= arr[i] <= 1000
+```
+
+方法一：(实际上是比较两个数组是否相等，参考冒泡排序)
+
+```java
+class Solution {
+    public boolean canBeEqual(int[] target, int[] arr) {
+       if (target.length != arr.length) {
+            return false;
+        }
+        int[] tmp1 = new int[1001];
+        int[] tmp2 = new int[1001];
+        int len = target.length;
+        for(int i = 0; i < len ; i++)
+        {   tmp1[target[i]]++;
+            tmp2[arr[i]]++;
+        }
+        for(int i = 0; i < 1001 ; i++)
+        {
+            if(tmp1[i] != tmp2[i]) return false;
+        }
+        return true;
+    }
+}
+```
+
+
 
