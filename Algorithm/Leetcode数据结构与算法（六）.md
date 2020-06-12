@@ -660,3 +660,302 @@ class Solution {
 }
 ```
 
+### [0091]递增顺序查找树
+
+给你一个树，请你 按中序遍历 重新排列树，使树中最左边的结点现在是树的根，并且每个结点没有左子结点，只有一个右子结点。
+
+示例 ：
+
+    输入：[5,3,6,2,4,null,8,1,null,null,null,7,9]
+    		5
+          / \
+        3    6
+       / \    \
+      2   4    8
+     /        / \ 
+    1        7   9
+    
+    输出：[1,null,2,null,3,null,4,null,5,null,6,null,7,null,8,null,9]
+    
+     1
+      \
+       2
+        \
+         3
+          \
+           4
+            \
+             5
+              \
+               6
+                \
+                 7
+                  \
+                   8
+                    \
+                     9  
+
+提示：
+
+给定树中的结点数介于 1 和 100 之间。
+每个结点都有一个从 0 到 1000 范围内的唯一整数值。
+
+方法一：中序遍历 + 构造新的树
+
+我们在树上进行中序遍历，就可以从小到大得到树上的节点。我们把这些节点的对应的值存放在数组中，它们已经有序。接着我们直接根据数组构件题目要求的树即可。
+
+```java
+class Solution {    
+    public TreeNode increasingBST(TreeNode root) {
+        List<Integer> vals = new ArrayList();
+        inorder(root, vals);
+        TreeNode ans = new TreeNode(0), cur = ans;
+        for (int v: vals) {
+            cur.right = new TreeNode(v);
+            cur = cur.right;
+        }
+        return ans.right;
+    }
+
+    public void inorder(TreeNode node, List<Integer> vals) {
+        if (node == null) return;
+        inorder(node.left, vals);
+        vals.add(node.val);
+        inorder(node.right, vals);
+    }
+}
+```
+
+复杂度分析
+
+时间复杂度：O(N)O(N)，其中 NN 是树上的节点个数。
+
+空间复杂度：O(N)O(N)。
+
+方法二：中序遍历 + 更改树的连接方式
+
+和方法一类似，我们在树上进行中序遍历，但会将树中的节点之间重新连接而不使用额外的空间。具体地，当我们遍历到一个节点时，把它的左孩子设为空，并将其本身作为上一个遍历到的节点的右孩子。
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    TreeNode cur;
+    public TreeNode increasingBST(TreeNode root) {
+        TreeNode ans = new TreeNode(0);
+        cur = ans;
+        inorder(root);
+        return ans.right;
+    }
+
+    public void inorder(TreeNode node) {
+        if (node == null) return;
+        inorder(node.left);
+        node.left = null;
+        cur.right = node;
+        cur = node;
+        inorder(node.right);
+    }
+}
+```
+
+复杂度分析
+
+时间复杂度：O(N)O(N)，其中 NN 是树上的节点个数。
+
+空间复杂度：O(H)O(H)，其中 HH 是数的高度。
+
+### [0092]找出给定方程的正整数解
+
+给出一个函数  f(x, y) 和一个目标结果 z，请你计算方程 f(x,y) == z 所有可能的正整数 数对 x 和 y。
+
+给定函数是严格单调的，也就是说：
+
+```
+f(x, y) < f(x + 1, y)
+f(x, y) < f(x, y + 1)
+```
+
+函数接口定义如下：
+
+```
+interface CustomFunction {
+public:
+  // Returns positive integer f(x, y) for any given positive integer x and y.
+  int f(int x, int y);
+};
+```
+
+如果你想自定义测试，你可以输入整数 function_id 和一个目标结果 z 作为输入，其中 function_id 表示一个隐藏函数列表中的一个函数编号，题目只会告诉你列表中的 2 个函数。  
+
+你可以将满足条件的 结果数对 按任意顺序返回。
+
+示例 1：
+
+```
+输入：function_id = 1, z = 5
+输出：[[1,4],[2,3],[3,2],[4,1]]
+解释：function_id = 1 表示 f(x, y) = x + y
+```
+
+示例 2：
+
+```
+输入：function_id = 2, z = 5
+输出：[[1,5],[5,1]]
+解释：function_id = 2 表示 f(x, y) = x * y
+```
+
+
+提示：
+
+```
+1 <= function_id <= 9
+1 <= z <= 100
+题目保证 f(x, y) == z 的解处于 1 <= x, y <= 1000 的范围内。
+在 1 <= x, y <= 1000 的前提下，题目保证 f(x, y) 是一个 32 位有符号整数。
+```
+
+方法一：暴力法
+
+```java
+class Solution {
+    public List<List<Integer>> findSolution(CustomFunction customfunction, int z) {
+        List<List<Integer>> res = new ArrayList<>();
+        for (int i = 1; i <= 1000; i++) {
+            if (customfunction.f(i,1) > z) {
+                break;
+            }
+            for (int j = 1; j <= 1000; j++) {
+                if (customfunction.f(i,j) == z) {
+                    List<Integer> list = new ArrayList<>();
+                    list.add(i);
+                    list.add(j);
+                    res.add(list);
+                    break;
+                } else if(customfunction.f(i,j) > z){
+                    break;
+                }
+            }
+        }
+        return res;  
+    }
+}
+```
+
+时间复杂度：O(n^2)
+
+方法二：二分查找
+
+```java
+class Solution {
+    public List<List<Integer>> findSolution(CustomFunction customfunction, int z) {
+        List<List<Integer>> res = new ArrayList<>();
+        for (int i = 1; i <= 1000; i++) {
+            if (customfunction.f(i,1) > z) {
+                break;
+            }
+            int left = 1;
+            int right = 1000;
+            while (left <= right) {
+                int mid = (right + left) / 2;
+                int temp = customfunction.f(i,mid);
+                if (temp == z) {
+                    List<Integer> list = new ArrayList<>();
+                    list.add(i);
+                    list.add(mid);
+                    res.add(list);
+                    break;
+                } else if (temp > z) {
+                    right = mid - 1;
+                } else {
+                    left = mid + 1;
+                }
+            }
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度：O(nlogn)
+
+方法三：双指针法 (给定函数是严格单调的)
+
+```java
+class Solution {
+    public List<List<Integer>> findSolution(CustomFunction customfunction, int z) {
+        List<List<Integer>> res = new ArrayList<>();
+        int left = 1;
+        int right = 1000;
+        while (left <= 1000 && right >= 1) {
+            int temp = customfunction.f(left,right);
+            if (temp == z) {
+                List<Integer> list = new ArrayList<>();
+                list.add(left);
+                list.add(right);
+                res.add(list);
+                left++;
+            } else if (temp > z) {
+                right--;
+            } else {
+                left++;
+            }
+        }
+        return res;
+    }
+}
+
+```
+
+时间复杂度：O(n)
+
+### [0093]只出现一次的数字
+
+给定一个非空整数数组，除了某个元素只出现一次以外，其余每个元素均出现两次。找出那个只出现了一次的元素。
+
+说明：
+
+你的算法应该具**有线性时间复杂度**。 你可以**不使用额外空间**来实现吗？
+
+```
+示例 1:
+
+输入: [2,2,1]
+输出: 1
+
+示例 2:
+
+输入: [4,1,2,1,2]
+输出: 4
+```
+
+方法一：
+
+异或运算有以下三个性质。
+
+- 任何数和 0 做异或运算，结果仍然是原来的数。
+- 任何数和其自身做异或运算，结果是 0。
+- 异或运算满足交换律和结合律。
+
+```java
+class Solution {
+    public int singleNumber(int[] nums) {
+        int single = 0;
+        for (int num : nums) {
+            single ^= num;
+        }
+        return single;
+    }
+}
+```
+
+- 时间复杂度：O(n)，其中 n 是数组长度。只需要对数组遍历一次。
+- 空间复杂度：O(1)。
