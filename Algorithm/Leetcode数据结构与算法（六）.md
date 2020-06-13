@@ -959,3 +959,159 @@ class Solution {
 
 - 时间复杂度：O(n)，其中 n 是数组长度。只需要对数组遍历一次。
 - 空间复杂度：O(1)。
+
+### [0094]特殊等价字符串组
+
+你将得到一个字符串数组 A。
+
+如果经过任意次数的移动，S == T，那么两个字符串 S 和 T 是特殊等价的。
+
+一次移动包括选择两个索引 i 和 j，且 i ％ 2 == j ％ 2，交换 S[j] 和 S [i]。
+
+现在规定，A 中的特殊等价字符串组是 A 的非空子集 S，这样不在 S 中的任何字符串与 S 中的任何字符串都不是特殊等价的。
+
+返回 A 中特殊等价字符串组的数量。 
+
+```
+示例 1：
+输入：["a","b","c","a","c","c"]
+输出：3
+解释：3 组 ["a","a"]，["b"]，["c","c","c"]
+
+示例 2：
+输入：["aa","bb","ab","ba"]
+输出：4
+解释：4 组 ["aa"]，["bb"]，["ab"]，["ba"]
+
+示例 3：
+输入：["abc","acb","bac","bca","cab","cba"]
+输出：3
+解释：3 组 ["abc","cba"]，["acb","bca"]，["bac","cab"]
+
+示例 4：
+输入：["abcd","cdab","adcb","cbad"]
+输出：1
+解释：1 组 ["abcd","cdab","adcb","cbad"]
+
+
+提示：
+1 <= A.length <= 1000
+1 <= A[i].length <= 20
+所有 A[i] 都具有相同的长度。
+所有 A[i] 都只由小写字母组成。
+```
+
+
+
+https://leetcode-cn.com/problems/groups-of-special-equivalent-strings/solution/te-shu-deng-jie-zi-fu-chuan-zu-by-leetcode/
+
+方法一：
+
+```java
+class Solution {
+    public int numSpecialEquivGroups(String[] A) {
+        Set<String> seen = new HashSet();
+        for (String S: A) {
+            int[] count = new int[52];
+            for (int i = 0; i < S.length(); ++i)
+                count[S.charAt(i) - 'a' + 26 * (i % 2)]++;
+            seen.add(Arrays.toString(count));
+        }
+        return seen.size();
+    }
+}
+```
+
+### [0095]数字的补数
+
+给定一个正整数，输出它的补数。补数是对该数的二进制表示取反。
+
+ 示例 1:
+
+```
+输入: 5
+输出: 2
+解释: 5 的二进制表示为 101（没有前导零位），其补数为 010。所以你需要输出 2 。
+```
+
+示例 2:
+
+```
+输入: 1
+输出: 0
+解释: 1 的二进制表示为 1（没有前导零位），其补数为 0。所以你需要输出 0 。
+```
+
+
+注意:
+
+```
+给定的整数保证在 32 位带符号整数的范围内。
+你可以假定二进制数不包含前导零位。
+本题与 1009 https://leetcode-cn.com/problems/complement-of-base-10-integer/ 相同
+```
+
+方法一：
+
+```java
+class Solution {
+    public int findComplement(int num) {
+        int temp = num, c = 0;
+        while(temp > 0){
+            temp >>= 1;
+            c =  (c << 1) + 1;
+        }
+        return num ^ c;       
+    }
+}
+```
+
+### [0096]最小差值 I
+
+给你一个整数数组 A，对于每个整数 A[i]，我们可以选择处于区间 [-K, K] 中的任意数 x ，将 x 与 A[i] 相加，结果存入 A[i] 。
+
+在此过程之后，我们得到一些数组 B。
+
+返回 B 的最大值和 B 的最小值之间可能存在的最小差值。
+
+ ```
+示例 1：
+输入：A = [1], K = 0
+输出：0
+解释：B = [1]
+
+示例 2：
+输入：A = [0,10], K = 2
+输出：6
+解释：B = [2,8]
+
+示例 3：
+输入：A = [1,3,6], K = 3
+输出：0
+解释：B = [3,3,3] 或 B = [4,4,4]
+ ```
+
+
+提示：
+
+```
+1 <= A.length <= 10000
+0 <= A[i] <= 10000
+0 <= K <= 10000
+```
+
+方法一：
+
+```java
+class Solution {
+    public int smallestRangeI(int[] A, int K) {
+        int min = A[0], max = A[0];
+        for (int x: A) {
+            min = Math.min(min, x);
+            max = Math.max(max, x);
+        }
+        return Math.max(0, max - min - 2*K);
+    }
+}
+```
+
