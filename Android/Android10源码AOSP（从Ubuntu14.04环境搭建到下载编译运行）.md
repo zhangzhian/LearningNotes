@@ -41,6 +41,9 @@ AOSP比较大，安装虚拟机的时候预留250G+的空间，8G内存。具体
 
   参考“python3.6.8 安装”
 
+- 分区工具，可以给虚拟机多分配些内存。现在系统安装号默认是12G的物理内存加8G虚拟内存。在编译过程中发现内存不够用（出现堆溢出，内存溢出），增加了6G虚拟内存，总共12G+14G内存。（推测和make -j8相关，如果内存不够的话j后面的数字小些）
+  sudo apt-get install gparted
+
 ### 镜像替换国内阿里
 
 用你熟悉的编辑器打开：
@@ -76,7 +79,7 @@ deb-src https://mirrors.aliyun.com/ubuntu/ trusty-backports main restricted univ
 # deb-src https://mirrors.aliyun.com/ubuntu/ trusty-proposed main restricted universe multiv
 ```
 
-### Python3.6.8 安装
+### Python3.8.3 安装
 
 安装SSL：
 
@@ -88,9 +91,9 @@ apt-get install libssl-dev
 安装Python3.6
 
 ```
-wget https://www.python.org/ftp/python/3.6.8/Python-3.6.8.tgz
-tar -zxvf Python-3.6.8.tgz
-cd Python-3.6.8
+wget https://www.python.org/ftp/python/3.8.3/Python-3.8.3.tgz
+tar -zxvf Python-3.8.3.tgz
+cd Python-3.8.3
 ```
 
 修改Moudles/Setup (该目录在Python-3.6.8目录下)，把以下行的注释去掉
@@ -122,7 +125,7 @@ sudo update-alternatives --config python
 ```
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.4 2
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
-sudo update-alternatives --install /usrl/bin/python python /usr/local/bin/python3.6 3
+sudo update-alternatives --install /usr/bin/python python /usr/local/bin/python3.8 3
 ```
 
 > 注意：自行编译安装的Python是在/usr/local/bin/目录下
@@ -194,7 +197,9 @@ repo sync -j4
 
 > 注意：出现奇奇怪怪得bug，可以重复执行一下，很多bug是由网络原因造成的。
 >
-> **一定要确保文件都下载成功，否则编译时会出现一些问题。**（可以多同步几次，确保同步没有错误）
+> **一定要确保文件都下载成功，否则编译时会出现一些问题。**
+>
+> （强烈多同步几次，确保同步没有错误。在第一次同步完成后再进行一次同步，如果第一次没问题的话速度会很快的）
 >
 > 也可以写个脚本，自动执行
 >
@@ -202,10 +207,10 @@ repo sync -j4
 > #!/bin/bash 
 > repo sync -j4
 > while [ $? = 1 ]; do 
->    echo "================sync failed, re-sync again =====" 
->    sleep 3 
->    repo sync
->    	done
+> echo "================sync failed, re-sync again =====" 
+> sleep 3 
+> repo sync
+> 	done
 > ```
 
 ### 传统初始化方法（不推荐）
@@ -236,25 +241,40 @@ repo sync
 如果需要某个特定的 Android 版本：
 
 ```shell
-repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-10.0.0_r30
-repo sync -j4
+repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-10.0.0_r10
 ```
 
-repo init -u https://aosp.tuna.tsinghua.edu.cn/platform/manifest -b android-4.0.1_r1
+默认是master，是android11版，我选择了Android10。我使用Android10
 
-默认是master，是android11版，我选择了Android10。我使用Android11
-
-查看版本：`git branch -a`
+查看版本：`cd .repo/manifests && git branch -a`
 
 ## Android 编译
 
 ### 设置文件描述符限制
+
+先用`$ ulimit `查看，如果是无限制就不需要修改
 
 可能默认限制的同时打开的文件数量很少，不能满足编译过程中的高并发需要，因此需要在shell中运行命令：
 
 ```shell
 $ ulimit -S -n 2048
 ```
+
+### 避免OutOfMemoryError（内存足够的话不会出现）
+
+Android10之前的解决方案：OutOfMemoryError: Java heap space解决方案
+
+```shell
+export JACK_SERVER_VM_ARGUMENTS="-Dfile.encoding=UTF-8 -XX:+TieredCompilation -Xmx4096m"
+```
+
+Android10以后：
+
+```shell
+export _JAVA_OPTIONS="-Xmx4096m"
+```
+
+或者增加虚拟机内存或是swp空间
 
 ### 环境设置
 
@@ -269,10 +289,6 @@ $ source build/envsetup.sh
 在命令行输入下面的命令选择打算编译的源码类型
 
 ```shell
-$ lunch
-	
-You're building on Linux
-
 Lunch menu... pick a combo:
      1. aosp_arm-eng
      2. aosp_arm64-eng
@@ -287,37 +303,34 @@ Lunch menu... pick a combo:
      11. aosp_cf_x86_auto-userdebug
      12. aosp_cf_x86_phone-userdebug
      13. aosp_cf_x86_tv-userdebug
-     14. aosp_coral-userdebug
-     15. aosp_crosshatch-userdebug
-     16. aosp_flame-userdebug
-     17. aosp_marlin-userdebug
-     18. aosp_sailfish-userdebug
-     19. aosp_sargo-userdebug
-     20. aosp_taimen-userdebug
-     21. aosp_walleye-userdebug
-     22. aosp_walleye_test-userdebug
-     23. aosp_x86-eng
-     24. aosp_x86_64-eng
-     25. beagle_x15-userdebug
-     26. car_x86_64-userdebug
-     27. fuchsia_arm64-eng
-     28. fuchsia_x86_64-eng
-     29. hikey-userdebug
-     30. hikey64_only-userdebug
-     31. hikey960-userdebug
-     32. hikey960_tv-userdebug
-     33. hikey_tv-userdebug
-     34. m_e_arm-userdebug
-     35. mini_emulator_arm64-userdebug
-     36. mini_emulator_x86-userdebug
-     37. mini_emulator_x86_64-userdebug
-     38. poplar-eng
-     39. poplar-user
-     40. poplar-userdebug
-     41. qemu_trusty_arm64-userdebug
-     42. uml-userdebug
+     14. aosp_crosshatch-userdebug
+     15. aosp_marlin-userdebug
+     16. aosp_sailfish-userdebug
+     17. aosp_sargo-userdebug
+     18. aosp_taimen-userdebug
+     19. aosp_walleye-userdebug
+     20. aosp_walleye_test-userdebug
+     21. aosp_x86-eng
+     22. aosp_x86_64-eng
+     23. beagle_x15-userdebug
+     24. fuchsia_arm64-eng
+     25. fuchsia_x86_64-eng
+     26. hikey-userdebug
+     27. hikey64_only-userdebug
+     28. hikey960-userdebug
+     29. hikey960_tv-userdebug
+     30. hikey_tv-userdebug
+     31. m_e_arm-userdebug
+     32. mini_emulator_arm64-userdebug
+     33. mini_emulator_x86-userdebug
+     34. mini_emulator_x86_64-userdebug
+     35. poplar-eng
+     36. poplar-user
+     37. poplar-userdebug
+     38. qemu_trusty_arm64-userdebug
+     39. uml-userdebug
 
-Which would you like? [aosp_arm-eng] 24
+Which would you like? [aosp_arm-eng] 21
 ```
 
 根据后缀可以判断出使用的场景如下：
@@ -328,19 +341,17 @@ Which would you like? [aosp_arm-eng] 24
 | userdebug | 和“user”类似，但可以root，并且可以调试 |
 |    eng    |   具有开发配置，并且有额外的调试工具   |
 
-根据需要选择对应的类型，比如我选择“24”。（推荐采用x86的，模拟器速度快一些）
+根据需要选择对应的类型，比如我选择“21”。（推荐采用x86的，模拟器速度快一些）
 
 ```shell
 ============================================
 PLATFORM_VERSION_CODENAME=REL
 PLATFORM_VERSION=10
-TARGET_PRODUCT=aosp_x86_64
+TARGET_PRODUCT=aosp_x86
 TARGET_BUILD_VARIANT=eng
 TARGET_BUILD_TYPE=release
-TARGET_ARCH=x86_64
-TARGET_ARCH_VARIANT=x86_64
-TARGET_2ND_ARCH=x86
-TARGET_2ND_ARCH_VARIANT=x86_64
+TARGET_ARCH=x86
+TARGET_ARCH_VARIANT=x86
 HOST_ARCH=x86_64
 HOST_2ND_ARCH=x86
 HOST_OS=linux
@@ -349,14 +360,14 @@ HOST_CROSS_OS=windows
 HOST_CROSS_ARCH=x86
 HOST_CROSS_2ND_ARCH=x86_64
 HOST_BUILD_TYPE=release
-BUILD_ID=QQ2A.200305.002
+BUILD_ID=QP1A.191105.003
 OUT_DIR=out
 ============================================
 ```
 
 ### 开始编译
 
-清理
+清理msk
 
 ```shell
 make clobber
@@ -365,20 +376,89 @@ make clobber
 为了加快编译的速度，最好并发来编译（并发数不建议太高，可能会造成内存不足，磁盘不足等问题）
 
 ```shell
-$ make -j8
+make -j8
 ```
 
 编译结束以后，会显示下面的日志：
 
 ```shell
-#### build completed successfully (11:16:35 (hh:mm:ss)) ####
+#### build completed successfully (02:00:35 (hh:mm:ss)) ####
 ```
+
+错误FAILED: system-qemu.img
+
+```
+============================================
+wildcard(out/target/product/generic_x86/clean_steps.mk) was changed, regenerating...
+[ 99% 11311/11312] Create system-qemu.img now
+FAILED: out/target/product/generic_x86/system-qemu.img
+/bin/bash -c "(export SGDISK=out/host/linux-x86/bin/sgdisk SIMG2IMG=out/host/linux-x86/bin/simg2img;      device/generic/goldfish/tools/mk_combined_img.py -i out/target/product/generic_x86/system-qemu-config.txt -o out/target/product/generic_x86/system-qemu.img)"
+  File "device/generic/goldfish/tools/mk_combined_img.py", line 48
+    print "'%s' cannot be converted to int" % (line[2])
+          ^
+SyntaxError: invalid syntax
+
+```
+
+若出现该错误，切换python2.7：` sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 10`
 
 ### 启动模拟器
 
 ```shell
 emulator
 ```
+
+KVM错误
+
+```
+emulator: ERROR: x86 emulation currently requires hardware acceleration!
+Please ensure KVM is properly installed and usable.
+
+CPU acceleration status: KVM is not installed on this machine (/dev/kvm is missing).
+```
+
+```
+egrep -c '(vmx|svm)' /proc/cpuinfo
+```
+
+先使用该指令查看是否支持虚拟话，如果不支持的话在虚拟机的CPU选项中打开即可。
+
+```shell
+sudo apt-get install qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
+sudo adduser `id -un` libvirtd
+sudo adduser `id -un` kvm
+
+#检查是否安装成功
+sudo kvm-ok
+```
+
+模拟器黑屏
+
+```
+emulator -partition-size 4096 -kernel ./prebuilts/qemu-kernel/x86/4.9/kernel-qemu2
+```
+
+通过使用kernel-qemu-armv7内核 解决模拟器等待黑屏问题.而-partition-size 4096则是解决警告: system partion siez adjusted to match image file (3083 MB > 800 MB)
+
+### 模拟器启动后崩溃
+
+```
+VMware: vmw_ioctl_command error Invalid argument.
+Aborted (core dumped)
+```
+
+关闭硬件加速
+
+```
+export SVGA_VGPU10=0
+```
+
+```
+echo "export SVGA_VGPU10=0" >> ~/.bashrc
+source ~/.bashrc
+```
+
+
 
 ## Android Studio查看源码
 
@@ -393,7 +473,9 @@ mmm development/tools/idegen/
 编译结束以后，会显示下面的日志：
 
 ```bash
-#### build completed successfully (27:28 (mm:ss)) ####
+[100% 11109/11109] Install: out/host/linux-x86/framework/idegen.jar
+
+#### build completed successfully (01:26 (mm:ss)) ####
 ```
 
 mmm指令就是用来编译指定目录。通常来说，每个目录只包含一个模块。
@@ -422,8 +504,8 @@ development/tools/idegen/idegen.sh
 等待片刻得到类似如下信息说明OK：
 
 ```shell
-Read excludes: 217ms
-Traversed tree: 3605277ms
+Read excludes: 16ms
+Traversed tree: 61259ms
 ```
 
 警告1：
@@ -448,7 +530,7 @@ emulator: WARNING: system partition size adjusted to match image file (3083 MB >
 
 启动Android Studio，然后选择打开一个已存在的Android Studio工程，选择源码根目录的`android.ipr`，经过的加载过程以后，Android 源码就已经成功的加载到了Android Studio中。
 
-OK，至此我们就完成了在macOS上下载AOSP并编译导入Android Studio的完整过程。
+OK，至此我们就完成了下载AOSP并编译导入Android Studio的完整过程。
 
 
 
