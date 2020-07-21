@@ -195,7 +195,7 @@ repo sync # 正常同步一遍即可得到完整目录
 repo sync -j4
 ```
 
-> 注意：出现奇奇怪怪得bug，可以重复执行一下，很多bug是由网络原因造成的。
+> 注意：出现奇奇怪怪的bug，可以重复执行一下，很多bug是由网络原因造成的。
 >
 > **一定要确保文件都下载成功，否则编译时会出现一些问题。**
 >
@@ -421,7 +421,7 @@ CPU acceleration status: KVM is not installed on this machine (/dev/kvm is missi
 egrep -c '(vmx|svm)' /proc/cpuinfo
 ```
 
-先使用该指令查看是否支持虚拟话，如果不支持的话在虚拟机的CPU选项中打开即可。
+先使用该指令查看是否支持虚拟化，如果不支持的话在虚拟机的CPU选项中打开即可。
 
 ```shell
 sudo apt-get install qemu-kvm libvirt-bin ubuntu-vm-builder bridge-utils
