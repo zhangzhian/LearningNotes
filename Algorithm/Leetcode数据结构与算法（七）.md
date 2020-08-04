@@ -391,31 +391,226 @@ class Solution {
 }
 ```
 
+### [0102] 除数博弈
+
+爱丽丝和鲍勃一起玩游戏，他们轮流行动。爱丽丝先手开局。
+
+最初，黑板上有一个数字 N 。在每个玩家的回合，玩家需要执行以下操作：
+
+选出任一 x，满足 0 < x < N 且 N % x == 0 。
+
+用 N - x 替换黑板上的数字 N 。
+
+如果玩家无法执行这些操作，就会输掉游戏。
+
+只有在爱丽丝在游戏中取得胜利时才返回 True，否则返回 False。假设两个玩家都以最佳状态参与游戏。
+
+示例 1：
+
+```
+输入：2
+输出：true
+解释：爱丽丝选择 1，鲍勃无法进行操作。
+```
+
+示例 2：
+
+```
+输入：3
+输出：false
+解释：爱丽丝选择 1，鲍勃也选择 1，然后爱丽丝无法进行操作。
+```
 
 
+提示：
+
+```
+1 <= N <= 1000
+```
+
+方法一：找规律
+
+N = 1 的时候，区间 (0, 1)(0,1) 中没有整数是 n 的因数，所以此时 Alice 败。
+N = 2 的时候，Alice 只能拿 1，N 变成 1，Bob 无法继续操作，故 Alice 胜。
+N = 3 的时候，Alice 只能拿 1，N 变成 2，根据 N = 2 的结论，我们知道此时 Bob 会获胜，Alice 败。
+N = 4 的时候，Alice 能拿 1 或 2，如果 Alice 拿 1，根据 N = 3 的结论，Bob 会失败，Alice 会获胜。
+N = 5 的时候，Alice 只能拿 1，根据 N = 4 的结论，Alice 会失败。
+......
+N 为奇数的时候 Alice（先手）必败，N 为偶数的时候 Alice 必胜。下面想办法证明它。
+
+证明:
+
+N=1 和 N = 2 时结论成立。
+
+N > 2时，假设 N≤k 时该结论成立，则 N = k + 1 时：
+
+如果 k 为偶数，则 k + 1为奇数，x 是 k+1 的因数，只可能是奇数，而奇数减去奇数等于偶数，且 kk+1−x≤k，故轮到 Bob 的时候都是偶数。而根据我们的猜想假设 N≤k 的时候偶数的时候先手必胜，故此时无论 Alice 拿走什么，Bob 都会处于必胜态，所以 Alice 处于必败态。
+如果 k 为奇数，则k+1 为偶数，x 可以是奇数也可以是偶数，若 Alice 减去一个奇数，那么 k + 1 - x 是一个小于等于 k 的奇数，此时 Bob 占有它，处于必败态，则 Alice 处于必胜态。
+
+综上所述，这个猜想是正确的。
+
+```java
+class Solution {
+    public boolean divisorGame(int N) {
+        return N % 2 == 0;
+    }
+}
+```
+
+方法二：递推
+
+Alice 处在 N = k 的状态时，他（她）做一步操作，必然使得 Bob 处于 N = m (m < k) 的状态。因此我们只要看是否存在一个 m 是必败的状态，那么 Alice 直接执行对应的操作让当前的数字变成 m，Alice 就必胜了，如果没有任何一个是必败的状态的话，说明 Alice 无论怎么进行操作，最后都会让 Bob 处于必胜的状态，此时 Alice 是必败的。
+
+结合以上我们定义 f[i] 表示当前数字 ii 的时候先手是处于必胜态还是必败态，true 表示先手必胜，false 表示先手必败，从前往后递推，根据我们上文的分析，枚举 i 在 (0, i) 中 i 的因数 j，看是否存在 f[i−j] 为必败态即可。
+
+```java
+class Solution {
+    public boolean divisorGame(int N) {
+        boolean[] f = new boolean[N + 5];
+
+        f[1] = false;
+        f[2] = true;
+        for (int i = 3; i <= N; ++i) {
+            for (int j = 1; j < i; ++j) {
+                if ((i % j) == 0 && !f[i - j]) {
+                    f[i] = true;
+                    break;
+                }
+            }
+        }
+
+        return f[N];
+    }
+}
+```
+
+### [0103] 移除重复节点
+
+编写代码，移除未排序链表中的重复节点。保留最开始出现的节点。
+
+示例1:
+
+```
+ 输入：[1, 2, 3, 3, 2, 1]
+ 输出：[1, 2, 3]
+```
+
+示例2:
+
+```
+ 输入：[1, 1, 1, 1, 2]
+ 输出：[1, 2]
+```
 
 
+提示：
+
+```
+链表长度在[0, 20000]范围内。
+链表元素在[0, 20000]范围内。
+```
+
+进阶：
+
+```
+如果不得使用临时缓冲区，该怎么解决？
+```
+
+方法一：哈希表
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public ListNode removeDuplicateNodes(ListNode head) {
+        if (head == null) {
+            return head;
+        }
+        Set<Integer> occurred = new HashSet<Integer>();
+        occurred.add(head.val);
+        ListNode pos = head;
+        // 枚举前驱节点
+        while (pos.next != null) {
+            // 当前待删除节点
+            ListNode cur = pos.next;
+            if (occurred.add(cur.val)) {
+                pos = pos.next;
+            } else {
+                pos.next = pos.next.next;
+            }
+        }
+        pos.next = null;
+        return head;
+    }
+}
+```
+
+方法二：两重循环(不得使用临时缓冲区)
+
+```java
+class Solution {
+    public ListNode removeDuplicateNodes(ListNode head) {
+        ListNode ob = head;
+        while (ob != null) {
+            ListNode oc = ob;
+            while (oc.next != null) {
+                if (oc.next.val == ob.val) {
+                    oc.next = oc.next.next;
+                } else {
+                    oc = oc.next;
+                }
+            }
+            ob = ob.next;
+        }
+        return head;
+    }
+}
+```
+
+### [0104] 配对交换
+
+配对交换。编写程序，交换某个整数的奇数位和偶数位，尽量使用较少的指令（也就是说，位0与位1交换，位2与位3交换，以此类推）。
+
+示例1:
+
+```
+ 输入：num = 2（或者0b10）
+ 输出 1 (或者 0b01)
+```
+
+示例2:
+
+```
+ 输入：num = 3
+ 输出：3
+```
 
 
+提示:
 
+```
+num的范围在[0, 2^30 - 1]之间，不会发生整数溢出。
+```
 
+方法一：
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```java
+class Solution {
+    public int exchangeBits(int num) {
+        //取奇数位
+        int odd = num & 0x55555555;	//0x55555555 = 0b0101_0101_0101_0101_0101_0101_0101_0101
+        //取偶数位
+        int even = num & 0xaaaaaaaa;//0xaaaaaaaa = 0b1010_1010_1010_1010_1010_1010_1010_1010
+        odd = odd << 1;		// 左移一位			
+        even = even >>> 1; 	// 右移一位 >>> 无符号右移，高位补0
+        return odd | even;
+    }
+}
+```
 
