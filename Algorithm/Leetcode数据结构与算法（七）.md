@@ -614,3 +614,246 @@ class Solution {
 }
 ```
 
+### [0105] 位1的个数
+
+编写一个函数，输入是一个无符号整数，返回其二进制表达式中数字位数为 ‘1’ 的个数（也被称为汉明重量）。 
+
+示例 1：
+
+```
+输入：00000000000000000000000000001011
+输出：3
+解释：输入的二进制串 00000000000000000000000000001011 中，共有三位为 '1'。
+```
+
+示例 2：
+
+```
+输入：00000000000000000000000010000000
+输出：1
+解释：输入的二进制串 00000000000000000000000010000000 中，共有一位为 '1'。
+```
+
+示例 3：
+
+```
+输入：11111111111111111111111111111101
+输出：31
+解释：输入的二进制串 11111111111111111111111111111101 中，共有 31 位为 '1'。
+```
+
+
+提示：
+
+```
+请注意，在某些语言（如 Java）中，没有无符号整数类型。在这种情况下，输入和输出都将被指定为有符号整数类型，并且不应影响您的实现，因为无论整数是有符号的还是无符号的，其内部的二进制表示形式都是相同的。
+在 Java 中，编译器使用二进制补码记法来表示有符号整数。因此，在上面的 示例 3 中，输入表示有符号整数 -3。
+```
+
+方法一：
+
+```java
+public class Solution {
+    public int hammingWeight(int n) {
+        int bits = 0;
+        int mask = 1;
+        for (int i = 0; i < 32; i++) {
+            if ((n & mask) != 0) {
+                bits++;
+            }
+            mask <<= 1;
+        }
+        return bits;
+    }
+}
+```
+
+方法二：
+
+不断把数字最后一个 11 反转，并把答案加一。当数字变成 00 的时候偶，我们就知道它没有 11 的位了，此时返回答案。
+
+对于任意数字 n ，将 n和 n - 1 做与运算，会把最后一个 1 的位变成 0 。
+
+![image.png](https://pic.leetcode-cn.com/abfd6109e7482d70d20cb8fc1d632f90eacf1b5e89dfecb2e523da1bcb562f66-image.png)
+
+```java
+public class Solution {
+    public int hammingWeight(int n) {
+        int sum = 0;
+        while (n != 0) {
+            sum++;
+            n &= (n - 1);
+        }
+        return sum;
+    }
+}
+```
+
+### [0106] 二叉树的最近公共祖先
+
+给定一个二叉树, 找到该树中两个指定节点的最近公共祖先。
+
+百度百科中最近公共祖先的定义为：“对于有根树 T 的两个结点 p、q，最近公共祖先表示为一个结点 x，满足 x 是 p、q 的祖先且 x 的深度尽可能大（一个节点也可以是它自己的祖先）。”
+
+例如，给定如下二叉树:  root = [3,5,1,6,2,0,8,null,null,7,4]
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/15/binarytree.png)
+
+示例 1:
+
+```
+输入: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 1
+输出: 3
+解释: 节点 5 和节点 1 的最近公共祖先是节点 3。
+```
+
+示例 2:
+
+```
+输入: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4
+输出: 5
+解释: 节点 5 和节点 4 的最近公共祖先是节点 5。因为根据定义最近公共祖先节点可以为节点本身。
+```
+
+
+说明:
+
+```
+所有节点的值都是唯一的。
+p、q 为不同节点且均存在于给定的二叉树中。
+```
+
+方法一：后序遍历 DFS 
+
+[分析详情](https://leetcode-cn.com/problems/er-cha-shu-de-zui-jin-gong-gong-zu-xian-lcof/solution/mian-shi-ti-68-ii-er-cha-shu-de-zui-jin-gong-gon-7/)
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(root == null || root == p || root == q) return root;
+        TreeNode left = lowestCommonAncestor(root.left, p, q);
+        TreeNode right = lowestCommonAncestor(root.right, p, q);
+        if(left == null) return right;
+        if(right == null) return left;
+        return root;
+    }
+}
+```
+
+### [0107] 最长特殊序列 Ⅰ
+
+给你两个字符串，请你从这两个字符串中找出最长的特殊序列。
+
+「最长特殊序列」定义如下：该序列为某字符串独有的最长子序列（即不能是其他字符串的子序列）。
+
+子序列 可以通过删去字符串中的某些字符实现，但不能改变剩余字符的相对顺序。空序列为所有字符串的子序列，任何字符串为其自身的子序列。
+
+输入为两个字符串，输出最长特殊序列的长度。如果不存在，则返回 -1。
+
+ 示例 1：
+
+```
+输入: "aba", "cdc"
+输出: 3
+解释: 最长特殊序列可为 "aba" (或 "cdc")，两者均为自身的子序列且不是对方的子序列。
+```
+
+示例 2：
+
+```
+输入：a = "aaa", b = "bbb"
+输出：3
+```
+
+示例 3：
+
+```
+输入：a = "aaa", b = "aaa"
+输出：-1
+```
+
+
+提示：
+
+```
+两个字符串长度均处于区间 [1 - 100] 。
+字符串中的字符仅含有 'a'~'z' 。
+```
+
+方法一：简单解法 
+
+字符串 a 和 b 共有 3 种情况：
+
+- a=b。如果两个字符串相同，则没有特殊子序列，返回 -1。
+
+- length(a) = length(b)且 a!=b。例如：abc 和 abd。这种情况下，一个字符串一定不会是另外一个字符串的子序列，因此可以将任意一个字符串看作是特殊子序列，返回 length(a) 或 length(b)。
+
+- length(a) != length(b)。例如：abcd 和 abc。这种情况下，长的字符串一定不会是短字符串的子序列，因此可以将长字符串看作是特殊子序列，返回 max(length(a),length(b))。
+
+```java
+public class Solution {
+    public int findLUSlength(String a, String b) {
+        if (a.equals(b))
+            return -1;
+        return Math.max(a.length(), b.length());
+    }
+}。
+```
+
+### [0108] 玩筹码
+
+数轴上放置了一些筹码，每个筹码的位置存在数组 chips 当中。
+
+你可以对 任何筹码 执行下面两种操作之一（不限操作次数，0 次也可以）：
+
+将第 i 个筹码向左或者右移动 2 个单位，代价为 0。
+将第 i 个筹码向左或者右移动 1 个单位，代价为 1。
+最开始的时候，同一位置上也可能放着两个或者更多的筹码。
+
+返回将所有筹码移动到同一位置（任意位置）上所需要的最小代价。
+
+ 示例 1：
+
+```
+输入：chips = [1,2,3]
+输出：1
+解释：第二个筹码移动到位置三的代价是 1，第一个筹码移动到位置三的代价是 0，总代价为 1。
+```
+
+示例 2：
+
+```
+输入：chips = [2,2,2,3,3]
+输出：2
+解释：第四和第五个筹码移动到位置二的代价都是 1，所以最小总代价为 2。
+```
+
+方法一：
+
+因为移动2个位置不需要代价，那么奇数位置移到奇数位置不用代价，偶数位置移到偶数位置不用代价，那就分别统计奇数位置和偶数位置的个数，相当于把所有奇数放一起，所有偶数的放一起，然后比较奇数的少还是偶数的少，将少的个数移到多的个数位置上去就可以了。
+
+````java
+class Solution {
+    public int minCostToMoveChips(int[] chips) {
+        int odd = 0, even = 0;
+        for (int i = 0; i < chips.length; i++) {
+            if (chips[i] % 2 == 0) {
+                even++;
+            } else {
+                odd++;
+            }
+        }
+        return Math.min(even, odd);
+    }
+}
+````
+
