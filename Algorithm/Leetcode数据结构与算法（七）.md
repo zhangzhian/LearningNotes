@@ -857,3 +857,311 @@ class Solution {
 }
 ````
 
+### [0109] 二叉搜索树的最近公共祖先
+
+给定一个二叉搜索树, 找到该树中两个指定节点的最近公共祖先。
+
+最近公共祖先的定义为：“对于有根树 T 的两个结点 p、q，最近公共祖先表示为一个结点 x，满足 x 是 p、q 的祖先且 x 的深度尽可能大（一个节点也可以是它自己的祖先）。”
+
+例如，给定如下二叉搜索树:  root = [6,2,8,0,4,7,9,null,null,3,5]
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/binarysearchtree_improved.png)
+
+示例 1:
+
+```
+输入: root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8
+输出: 6 
+解释: 节点 2 和节点 8 的最近公共祖先是 6。
+```
+
+示例 2:
+
+```
+输入: root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 4
+输出: 2
+解释: 节点 2 和节点 4 的最近公共祖先是 2, 因为根据定义最近公共祖先节点可以为节点本身。
+```
+
+
+说明:
+
+```
+所有节点的值都是唯一的。
+p、q 为不同节点且均存在于给定的二叉搜索树中。
+```
+
+https://leetcode-cn.com/problems/er-cha-sou-suo-shu-de-zui-jin-gong-gong-zu-xian-lcof/solution/mian-shi-ti-68-i-er-cha-sou-suo-shu-de-zui-jin-g-7/
+
+方法一：迭代
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        while(root != null) {
+            if(root.val < p.val && root.val < q.val) // p,q 都在 root 的右子树中
+                root = root.right; // 遍历至右子节点
+            else if(root.val > p.val && root.val > q.val) // p,q 都在 root 的左子树中
+                root = root.left; // 遍历至左子节点
+            else break;
+        }
+        return root;
+    }
+}、
+```
+
+时间复杂度 O(N)： 其中 N 为二叉树节点数；每循环一轮排除一层，二叉搜索树的层数最小为 NlogN （满二叉树），最大为 N（退化为链表）。
+空间复杂度 O(1)： 使用常数大小的额外空间。
+
+方法二：递归
+
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(root.val < p.val && root.val < q.val)
+            return lowestCommonAncestor(root.right, p, q);
+        if(root.val > p.val && root.val > q.val)
+            return lowestCommonAncestor(root.left, p, q);
+        return root;
+    }
+}
+```
+
+时间复杂度 O(N) ： 其中 N 为二叉树节点数；每循环一轮排除一层，二叉搜索树的层数最小为NlogN （满二叉树），最大为 N （退化为链表）。
+空间复杂度 O(N)： 最差情况下，即树退化为链表时，递归深度达到树的层数 N 。
+
+### [0110] 魔术索引
+
+魔术索引。 在数组A[0...n-1]中，有所谓的魔术索引，满足条件A[i] = i。给定一个有序整数数组，编写一种方法找出魔术索引，若有的话，在数组A中找出一个魔术索引，如果没有，则返回-1。若有多个魔术索引，返回索引值最小的一个。
+
+示例1:
+
+```
+ 输入：nums = [0, 2, 3, 4, 5]
+ 输出：0
+ 说明: 0下标的元素为0
+```
+
+示例2:
+
+```
+ 输入：nums = [1, 1, 1]
+ 输出：1
+```
+
+说明:
+
+```
+nums长度在[1, 1000000]之间
+此题为原书中的 Follow-up，即数组中可能包含重复元素的版本
+```
+
+方法一：
+
+```java
+class Solution {
+    public int findMagicIndex(int[] nums) {
+        for (int i = 0, length = nums.length; i < length; i++) {
+            if (i == nums[i])
+                return i;
+        }
+        return -1;
+    }
+}
+```
+
+方法二：逐个查找优化
+
+```java
+class Solution {
+    public int findMagicIndex(int[] nums) {
+        for (int i = 0, length = nums.length; i < length; i++) {
+            if (i == nums[i])
+                return i;
+            if (nums[i] > i + 1) {
+                //如果nums[i]大于i+1,我们就让i加上nums[i] - 1，
+                // 这里减1的目的是为了抵消上面for循环中的i++。
+                //这里判断的时候为什么是nums[i] > i + 1而不是
+                //nums[i] > i ,因为如果num[i]只比i大1的话，
+                //直接执行上面的i++就可以了，没必要再执行下面的计算
+                i = nums[i] - 1;
+            }
+        }
+        return -1;
+    }
+}
+```
+
+方法三：递归
+
+```java
+class Solution {
+    public int findMagicIndex(int[] nums) {
+        return helper(nums, 0, nums.length - 1);
+    }
+
+    public int helper(int[] nums, int lo, int hi) {
+        if (lo > hi)
+            return -1;
+        int mid = lo + (hi - lo) / 2;
+        int res = helper(nums, lo, mid - 1);
+        if (res != -1) {
+            return res;
+        } else if (nums[mid] == mid) {
+            return mid;
+        } else {
+            return helper(nums, mid + 1, hi);
+        }
+    }
+}
+```
+
+### [0111] 查找常用字符
+
+给定仅有小写字母组成的字符串数组 A，返回列表中的每个字符串中都显示的全部字符（包括重复字符）组成的列表。例如，如果一个字符在每个字符串中出现 3 次，但不是 4 次，则需要在最终答案中包含该字符 3 次。
+
+你可以按任意顺序返回答案。
+
+示例 1：
+
+```
+输入：["bella","label","roller"]
+输出：["e","l","l"]
+```
+
+示例 2：
+
+```
+输入：["cool","lock","cook"]
+输出：["c","o"]
+```
+
+
+提示：
+
+```
+1 <= A.length <= 100
+1 <= A[i].length <= 100
+A[i][j] 是小写字母
+```
+
+方法一：
+
+```java
+class Solution {
+    public List<String> commonChars(String[] A) {
+        List<String> list = new ArrayList<>();
+        int[] res = new int[26];
+        for (char c : A[0].toCharArray()) {
+            res[c - 'a']++;
+        }
+        for (int i = 1; i < A.length; i++) {
+            int[] temp = new int[26];
+            for (char c : A[i].toCharArray()) {
+                temp[c - 'a']++;
+            }
+            for (int j = 0; j < 26; j++) {
+                res[j] = Math.min(res[j], temp[j]);
+            }
+        }
+        for (int i = 0; i < res.length; i++) {
+            if (res[i] > 0) {
+                for (int j = 0; j < res[i]; j++) {
+                    list.add(((char) ('a' + i) + ""));
+                }
+            }
+        }
+        return list;
+    }
+}
+```
+
+### [00112] 去掉最低工资和最高工资后的工资平均值
+
+给你一个整数数组 salary ，数组里每个数都是 唯一 的，其中 salary[i] 是第 i 个员工的工资。
+
+请你返回去掉最低工资和最高工资以后，剩下员工工资的平均值。
+
+ 示例 1：
+
+```
+输入：salary = [4000,3000,1000,2000]
+输出：2500.00000
+解释：最低工资和最高工资分别是 1000 和 4000 。
+去掉最低工资和最高工资以后的平均工资是 (2000+3000)/2= 2500
+```
+
+示例 2：
+
+```
+输入：salary = [1000,2000,3000]
+输出：2000.00000
+解释：最低工资和最高工资分别是 1000 和 3000 。
+去掉最低工资和最高工资以后的平均工资是 (2000)/1= 2000
+```
+
+示例 3：
+
+```
+输入：salary = [6000,5000,4000,3000,2000,1000]
+输出：3500.00000
+```
+
+示例 4：
+
+```
+输入：salary = [8000,9000,2000,3000,6000,1000]
+输出：4750.00000
+```
+
+
+提示：
+
+```
+3 <= salary.length <= 100
+10^3 <= salary[i] <= 10^6
+salary[i] 是唯一的。
+与真实值误差在 10^-5 以内的结果都将视为正确答案。
+```
+
+方法一：
+
+```java
+class Solution {
+    public double average(int[] salary) {
+        double sum = 0;
+        double maxValue = Integer.MIN_VALUE, minValue = Integer.MAX_VALUE;
+        for (int num : salary) {
+            sum += num;
+            maxValue = Math.max(maxValue, num);
+            minValue = Math.min(minValue, num);
+        }
+        return (sum - maxValue - minValue) / (salary.length - 2);
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public double average(int[] salary) {
+        double sum=0;
+        Arrays.sort(salary);
+        for(int i=1;i<salary.length-1;i++){
+            sum+=salary[i];
+        }
+        return sum/(salary.length-2);
+    }
+}
+```
+
