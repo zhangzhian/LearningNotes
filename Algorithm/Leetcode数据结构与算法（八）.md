@@ -315,3 +315,436 @@ class Solution {
 }
 ```
 
+### [0118]  存在连续三个奇数的数组
+
+给你一个整数数组 arr，请你判断数组中是否存在连续三个元素都是奇数的情况：如果存在，请返回 true ；否则，返回 false 。 
+
+示例 1：
+
+```
+输入：arr = [2,6,4,1]
+输出：false
+解释：不存在连续三个元素都是奇数的情况。
+```
+
+示例 2：
+
+```
+输入：arr = [1,2,34,3,4,5,7,23,12]
+输出：true
+解释：存在连续三个元素都是奇数的情况，即 [5,7,23] 。
+```
+
+
+提示：
+
+```
+1 <= arr.length <= 1000
+1 <= arr[i] <= 1000
+```
+
+方法一：
+
+```java
+class Solution {
+    public boolean threeConsecutiveOdds(int[] arr) {
+       int n = arr.length;
+        for (int i = 0; i <= n - 3; ++i) {
+            if ((arr[i] & 1) != 0 && (arr[i + 1] & 1) != 0 && (arr[i + 2] & 1) != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+```
+
+### [0119] 二叉树的层平均值
+
+给定一个非空二叉树, 返回一个由每层节点平均值组成的数组。
+
+```
+示例 1：
+
+输入：
+    3
+   / \
+  9  20
+    /  \
+   15   7
+输出：[3, 14.5, 11]
+解释：
+第 0 层的平均值是 3 ,  第1层是 14.5 , 第2层是 11 。因此返回 [3, 14.5, 11] 。
+```
+
+
+提示：
+
+节点值的范围在32位有符号整数范围内。
+
+方法一：深度优先搜索
+
+```java
+class Solution {
+    public List<Double> averageOfLevels(TreeNode root) {
+        List<Integer> counts = new ArrayList<Integer>();
+        List<Double> sums = new ArrayList<Double>();
+        dfs(root, 0, counts, sums);
+        List<Double> averages = new ArrayList<Double>();
+        int size = sums.size();
+        for (int i = 0; i < size; i++) {
+            averages.add(sums.get(i) / counts.get(i));
+        }
+        return averages;
+    }
+
+    public void dfs(TreeNode root, int level, List<Integer> counts, List<Double> sums) {
+        if (root == null) {
+            return;
+        }
+        if (level < sums.size()) {
+            sums.set(level, sums.get(level) + root.val);
+            counts.set(level, counts.get(level) + 1);
+        } else {
+            sums.add(1.0 * root.val);
+            counts.add(1);
+        }
+        dfs(root.left, level + 1, counts, sums);
+        dfs(root.right, level + 1, counts, sums);
+    }
+}
+```
+
+复杂度分析
+
+时间复杂度：O(n)，其中 n 是二叉树中的节点个数。
+
+空间复杂度：O(n)，其中 n 是二叉树中的节点个数。
+
+方法二：广度优先搜索
+
+```java
+class Solution {
+    public List<Double> averageOfLevels(TreeNode root) {
+        List<Double> averages = new ArrayList<Double>();
+        Queue<TreeNode> queue = new LinkedList<TreeNode>();
+        queue.offer(root);
+        while (!queue.isEmpty()) {
+            double sum = 0;
+            int size = queue.size();
+            for (int i = 0; i < size; i++) {
+                TreeNode node = queue.poll();
+                sum += node.val;
+                TreeNode left = node.left, right = node.right;
+                if (left != null) {
+                    queue.offer(left);
+                }
+                if (right != null) {
+                    queue.offer(right);
+                }
+            }
+            averages.add(sum / size);
+        }
+        return averages;
+    }
+}
+```
+
+### [0120] 按奇偶排序数组 II
+
+给定一个非负整数数组 A， A 中一半整数是奇数，一半整数是偶数。
+
+对数组进行排序，以便当 A[i] 为奇数时，i 也是奇数；当 A[i] 为偶数时， i 也是偶数。
+
+你可以返回任何满足上述条件的数组作为答案。
+
+ 示例：
+
+```
+输入：[4,2,5,7]
+输出：[4,5,2,7]
+解释：[4,7,2,5]，[2,5,4,7]，[2,7,4,5] 也会被接受。
+```
+
+
+提示：
+
+```
+2 <= A.length <= 20000
+A.length % 2 == 0
+0 <= A[i] <= 1000
+```
+
+方法一： 两次遍历
+
+```java
+class Solution {
+    public int[] sortArrayByParityII(int[] A) {
+        int N = A.length;
+        int[] ans = new int[N];
+
+        int t = 0;
+        for (int x: A) if (x % 2 == 0) {
+            ans[t] = x;
+            t += 2;
+        }
+
+        t = 1;
+        for (int x: A) if (x % 2 == 1) {
+            ans[t] = x;
+            t += 2;
+        }
+
+        return ans;
+    }
+}
+```
+
+时间复杂度： O(N)，其中 NN 是 A 的长度。
+
+空间复杂度： O(N)。
+
+方法二： 双指针
+
+```java
+class Solution {
+    public int[] sortArrayByParityII(int[] A) {
+        int j = 1;
+        for (int i = 0; i < A.length; i += 2)
+            if (A[i] % 2 == 1) {
+                while (A[j] % 2 == 1)
+                    j += 2;
+
+                // Swap A[i] and A[j]
+                int tmp = A[i];
+                A[i] = A[j];
+                A[j] = tmp;
+            }
+
+        return A;
+    }
+}
+```
+
+时间复杂度： O(N)，其中 N 是 A 的长度。
+
+空间复杂度： O(1)。
+
+### [0121] 岛屿的周长
+
+给定一个包含 0 和 1 的二维网格地图，其中 1 表示陆地 0 表示水域。
+
+网格中的格子水平和垂直方向相连（对角线方向不相连）。整个网格被水完全包围，但其中恰好有一个岛屿（或者说，一个或多个表示陆地的格子相连组成的岛屿）。
+
+岛屿中没有“湖”（“湖” 指水域在岛屿内部且不和岛屿周围的水相连）。格子是边长为 1 的正方形。网格为长方形，且宽度和高度均不超过 100 。计算这个岛屿的周长。
+
+示例 :
+
+```
+输入:
+[[0,1,0,0],
+ [1,1,1,0],
+ [0,1,0,0],
+ [1,1,0,0]]
+
+输出: 16
+
+解释: 它的周长是下面图片中的 16 个黄色的边：
+```
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/10/12/island.png)
+
+方法一：
+
+```java
+public int islandPerimeter(int[][] grid) {
+    for (int r = 0; r < grid.length; r++) {
+        for (int c = 0; c < grid[0].length; c++) {
+            if (grid[r][c] == 1) {
+                // 题目限制只有一个岛屿，计算一个即可
+                return dfs(grid, r, c);
+            }
+        }
+    }
+    return 0;
+}
+
+int dfs(int[][] grid, int r, int c) {
+    if (!(0 <= r && r < grid.length && 0 <= c && c < grid[0].length)) {
+        return 1;
+    }
+    if (grid[r][c] == 0) {
+        return 1;
+    }
+    if (grid[r][c] != 1) {
+        return 0;
+    }
+    grid[r][c] = 2;
+    return dfs(grid, r - 1, c)
+        + dfs(grid, r + 1, c)
+        + dfs(grid, r, c - 1)
+        + dfs(grid, r, c + 1);
+}
+```
+
+https://leetcode-cn.com/problems/island-perimeter/solution/tu-jie-jian-ji-er-qiao-miao-de-dfs-fang-fa-java-by/
+
+方法二：
+
+```java
+class Solution {
+    public int islandPerimeter(int[][] grid) {
+        int res = 0;
+
+        for (int row = 0; row <= grid.length - 1; row++)
+        {
+            for (int col = 0; col <= grid[0].length - 1; col++)
+            {
+                if (grid[row][col] == 1)
+                {
+                    if (0 == row || 0 == grid[row - 1][col]) // 前一个不是
+                    {
+                        res += 2;
+                    }
+
+                    if (0 == col || 0 == grid[row][col - 1]) // 上一行不是
+                    {
+                        res += 2;
+                    }
+                }
+            }
+        }
+        return res;
+    }
+}
+```
+
+### [0122] Excel表列序号
+
+给定一个Excel表格中的列名称，返回其相应的列序号。
+
+例如，
+
+    A -> 1
+    B -> 2
+    C -> 3
+    ...
+    Z -> 26
+    AA -> 27
+    AB -> 28 
+    ...
+示例 1:
+
+```
+输入: "A"
+输出: 1
+```
+
+示例 2:
+
+```
+输入: "AB"
+输出: 28
+```
+
+示例 3:
+
+```
+输入: "ZY"
+输出: 701
+```
+
+方法一：
+
+```java
+class Solution {
+    public int titleToNumber(String s) {
+        int ans = 0;
+        for(int i=0;i<s.length();i++) {
+            int num = s.charAt(i) - 'A' + 1;
+            ans = ans * 26 + num;
+        }
+        return ans;
+    }
+}
+```
+
+### [0123] 棒球比赛
+
+你现在是棒球比赛记录员。
+给定一个字符串列表，每个字符串可以是以下四种类型之一：
+1.整数（一轮的得分）：直接表示您在本轮中获得的积分数。
+2. "+"（一轮的得分）：表示本轮获得的得分是前两轮有效 回合得分的总和。
+3. "D"（一轮的得分）：表示本轮获得的得分是前一轮有效 回合得分的两倍。
+4. "C"（一个操作，这不是一个回合的分数）：表示您获得的最后一个有效 回合的分数是无效的，应该被移除。
+
+每一轮的操作都是永久性的，可能会对前一轮和后一轮产生影响。
+你需要返回你在所有回合中得分的总和。
+
+示例 1:
+
+输入: ["5","2","C","D","+"]
+
+```
+输出: 30
+解释: 
+第1轮：你可以得到5分。总和是：5。
+第2轮：你可以得到2分。总和是：7。
+操作1：第2轮的数据无效。总和是：5。
+第3轮：你可以得到10分（第2轮的数据已被删除）。总数是：15。
+第4轮：你可以得到5 + 10 = 15分。总数是：30。
+```
+
+示例 2:
+
+```
+输入: ["5","-2","4","C","D","9","+","+"]
+输出: 27
+解释: 
+第1轮：你可以得到5分。总和是：5。
+第2轮：你可以得到-2分。总数是：3。
+第3轮：你可以得到4分。总和是：7。
+操作1：第3轮的数据无效。总数是：3。
+第4轮：你可以得到-4分（第三轮的数据已被删除）。总和是：-1。
+第5轮：你可以得到9分。总数是：8。
+第6轮：你可以得到-4 + 9 = 5分。总数是13。
+第7轮：你可以得到9 + 5 = 14分。总数是27。
+```
+
+注意：
+
+- 输入列表的大小将介于1和1000之间。
+- 列表中的每个整数都将介于-30000和30000之间。
+
+方法一：
+
+```java
+class Solution {
+    public int calPoints(String[] ops) {
+        Stack<Integer> stack = new Stack();
+
+        for(String op : ops) {
+            if (op.equals("+")) {
+                int top = stack.pop();
+                int newtop = top + stack.peek();
+                stack.push(top);
+                stack.push(newtop);
+            } else if (op.equals("C")) {
+                stack.pop();
+            } else if (op.equals("D")) {
+                stack.push(2 * stack.peek());
+            } else {
+                stack.push(Integer.valueOf(op));
+            }
+        }
+
+        int ans = 0;
+        for(int score : stack) ans += score;
+        return ans;
+    }
+}
+```
+
+复杂度分析：O(N)，其中 N 是 ops 的长度。我们解析给定数组中的每个元素，然后每个元素执行 O(1)的工作。
+
+空间复杂度：O(N)，用于存储 stack 的空间。
