@@ -633,6 +633,7 @@ class Solution {
     AA -> 27
     AB -> 28 
     ...
+
 示例 1:
 
 ```
@@ -674,6 +675,7 @@ class Solution {
 你现在是棒球比赛记录员。
 给定一个字符串列表，每个字符串可以是以下四种类型之一：
 1.整数（一轮的得分）：直接表示您在本轮中获得的积分数。
+
 2. "+"（一轮的得分）：表示本轮获得的得分是前两轮有效 回合得分的总和。
 3. "D"（一轮的得分）：表示本轮获得的得分是前一轮有效 回合得分的两倍。
 4. "C"（一个操作，这不是一个回合的分数）：表示您获得的最后一个有效 回合的分数是无效的，应该被移除。
@@ -748,3 +750,294 @@ class Solution {
 复杂度分析：O(N)，其中 N 是 ops 的长度。我们解析给定数组中的每个元素，然后每个元素执行 O(1)的工作。
 
 空间复杂度：O(N)，用于存储 stack 的空间。
+
+### [0124] 单值二叉树
+
+如果二叉树每个节点都具有相同的值，那么该二叉树就是单值二叉树。
+
+只有给定的树是单值二叉树时，才返回 true；否则返回 false。
+
+ 
+
+示例 1：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/29/screen-shot-2018-12-25-at-50104-pm.png)
+
+```
+输入：[1,1,1,1,1,null,1]
+输出：true
+```
+
+**示例 2：**
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/29/screen-shot-2018-12-25-at-50050-pm.png)
+
+```
+输入：[2,2,2,5,2]
+输出：false
+```
+
+**提示：**
+
+1. 给定树的节点数范围是 `[1, 100]`。
+2. 每个节点的值都是整数，范围为 `[0, 99]` 。
+
+方法一：深度优先搜索
+
+```java
+class Solution {
+    List<Integer> vals;
+    public boolean isUnivalTree(TreeNode root) {
+        vals = new ArrayList();
+        dfs(root);
+        for (int v: vals)
+            if (v != vals.get(0))
+                return false;
+        return true;
+    }
+
+    public void dfs(TreeNode node) {
+        if (node != null) {
+            vals.add(node.val);
+            dfs(node.left);
+            dfs(node.right);
+        }
+    }
+}
+```
+
+- 时间复杂度：O(N)，其中 N是给定树中节点的数量。
+- 空间复杂度：O(N)。
+
+方法二：递归
+
+一颗树是单值的，当且仅当根节点的子节点所在的子树也是单值的，同时根节点的值与子节点的值相同。
+
+我们可以使用递归实现这个判断的过程。left_correct 表示当前节点的左孩子是正确的，也就是说：左孩子所在的子树是单值的，并且当前节点的值等于左孩子的值。right_correct 对当前节点的右孩子表示同样的事情。递归处理之后，当根节点的这两种属性都为真的时候，我们就可以判定这颗二叉树是单值的。
+
+```java
+class Solution {
+    public boolean isUnivalTree(TreeNode root) {
+        boolean left_correct = (root.left == null ||
+                (root.val == root.left.val && isUnivalTree(root.left)));
+        boolean right_correct = (root.right == null ||
+                (root.val == root.right.val && isUnivalTree(root.right)));
+        return left_correct && right_correct;
+    }
+}
+```
+
+时间复杂度：O(N)，其中 N是给定树中节点的数量。
+
+空间复杂度：O(H)，其中 H是给定树的高度。
+
+### [0125] 各位相加
+
+给定一个非负整数 num，反复将各个位上的数字相加，直到结果为一位数。
+
+示例:
+
+```
+输入: 38
+输出: 2 
+解释: 各位相加的过程为：3 + 8 = 11, 1 + 1 = 2。 由于 2 是一位数，所以返回 2。
+```
+
+进阶:
+你可以不使用循环或者递归，且在 O(1) 时间复杂度内解决这个问题吗？
+
+方法一：
+
+```
+原理：x*100+y*10+z=x*99+y*9+x+y+z
+```
+
+```
+class Solution {
+    public int addDigits(int num) {
+        return (num - 1) % 9 + 1;
+    }
+}
+```
+
+方法二：
+
+```java
+public int addDigits(int num) {
+    if (num < 10) {
+        return num;
+    }
+    int next = 0;
+    while (num != 0) {
+        next = next + num % 10;
+        num /= 10;
+    }
+    return addDigits(next);
+}
+```
+
+方法三：
+
+```java
+public int addDigits(int num) {
+    while (num >= 10) {
+        int next = 0;
+        while (num != 0) {
+            next = next + num % 10;
+            num /= 10;
+        }
+        num = next;
+    }
+    return num;
+}
+```
+
+### [0126] 数组中出现次数超过一半的数字
+
+数组中有一个数字出现的次数超过数组长度的一半，请找出这个数字。
+
+你可以假设数组是非空的，并且给定的数组总是存在多数元素。
+
+示例 1:
+
+```
+输入: [1, 2, 3, 2, 2, 2, 5, 4, 2]
+输出: 2
+```
+
+
+限制：
+
+1 <= 数组长度 <= 50000
+
+**哈希表统计法**： 遍历数组 nums ，用 HashMap 统计各数字的数量，最终超过数组长度一半的数字则为众数。此方法时间和空间复杂度均为 O(N) 。
+
+**数组排序法**： 将数组 nums 排序，由于众数的数量超过数组长度一半，因此数组中点的元素 一定为众数。此方法时间复杂度 O(N log2 N)
+
+**摩尔投票法**： 核心理念为 “正负抵消” ；时间和空间复杂度分别为 O(N)和 O(1)；是本题的最佳解法
+
+核心就是对拼消耗。玩一个诸侯争霸的游戏，假设你方人口超过总人口一半以上，并且能保证每个人口出去干仗都能一对一同归于尽。最后还有人活下来的国家就是胜利。那就大混战呗，最差所有人都联合起来对付你（对应你每次选择作为计数器的数都是众数），或者其他国家也会相互攻击（会选择其他数作为计数器的数），但是只要你们不要内斗，最后肯定你赢。最后能剩下的必定是自己人。
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        int x = 0, votes = 0;
+        for(int num : nums){
+            if(votes == 0) x = num;
+            votes += num == x ? 1 : -1;
+        }
+        return x;
+    }
+}
+```
+
+### [0127] 字符的最短距离
+
+给定一个字符串 S 和一个字符 C。返回一个代表字符串 S 中每个字符到字符串 S 中的字符 C 的最短距离的数组。
+
+示例 1:
+
+```
+输入: S = "loveleetcode", C = 'e'
+输出: [3, 2, 1, 0, 1, 0, 0, 1, 2, 2, 1, 0]
+```
+
+说明:
+
+1.字符串 S 的长度范围为 [1, 10000]。
+2.C 是一个单字符，且保证是字符串 S 里的字符。
+3.S 和 C 中的所有字母均为小写字母。
+
+方法一：最小数组
+
+从左向右遍历，记录上一个字符 `C` 出现的位置 `prev`，那么答案就是 `i - prev`。
+
+从右向左遍历，记录上一个字符 `C` 出现的位置 `prev`，那么答案就是 `prev - i`。
+
+这两个值取最小就是答案。
+
+```java
+class Solution {
+    public int[] shortestToChar(String S, char C) {
+        int N = S.length();
+        int[] ans = new int[N];
+        int prev = Integer.MIN_VALUE / 2;
+
+        for (int i = 0; i < N; ++i) {
+            if (S.charAt(i) == C) prev = i;
+            ans[i] = i - prev;
+        }
+
+        prev = Integer.MAX_VALUE / 2;
+        for (int i = N-1; i >= 0; --i) {
+            if (S.charAt(i) == C) prev = i;
+            ans[i] = Math.min(ans[i], prev - i);
+        }
+
+        return ans;
+    }
+}
+```
+
+### [0128] 分糖果
+
+给定一个偶数长度的数组，其中不同的数字代表着不同种类的糖果，每一个数字代表一个糖果。你需要把这些糖果平均分给一个弟弟和一个妹妹。返回妹妹可以获得的最大糖果的种类数。
+
+示例 1:
+
+```
+输入: candies = [1,1,2,2,3,3]
+输出: 3
+解析: 一共有三种种类的糖果，每一种都有两个。
+     最优分配方案：妹妹获得[1,2,3],弟弟也获得[1,2,3]。这样使妹妹获得糖果的种类数最多。
+```
+
+示例 2 :
+
+```
+输入: candies = [1,1,2,3]
+输出: 2
+解析: 妹妹获得糖果[2,3],弟弟获得糖果[1,1]，妹妹有两种不同的糖果，弟弟只有一种。这样使得妹妹可以获得的糖果种类数最多。
+```
+
+注意:
+
+数组的长度为[2, 10,000]，并且确定为偶数。
+数组中数字的大小在范围[-100,000, 100,000]内。
+
+方法一：排序
+
+我们可以对给定的数组进行排序，并通过比较排序数组的相邻元素来找出唯一的元素。
+
+```java
+public class Solution {
+    public int distributeCandies(int[] candies) {
+        Arrays.sort(candies);
+        int count = 1;
+        for (int i = 1; i < candies.length && count < candies.length / 2; i++)
+            if (candies[i] > candies[i - 1])
+                count++;
+        return count;
+    }
+}
+```
+
+时间复杂度：O(nlogn)。排序需要O(nlogn) 的时间。
+空间复杂度：O(1)。
+
+方法二：集合set
+
+```java
+public class Solution {
+    public int distributeCandies(int[] candies) {
+        HashSet < Integer > set = new HashSet < > ();
+        for (int candy: candies) {
+            set.add(candy);
+        }
+        return Math.min(set.size(), candies.length / 2);
+    }
+}
+```
+
+时间复杂度：O(n)。整个数组只遍历一次。n表示数组的大小。
+空间复杂度：O(n), 在最坏的情况下，set 的大小为 n。
