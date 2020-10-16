@@ -900,3 +900,444 @@ class Solution {
 }
 ```
 
+### [0139] 重复 N 次的元素
+
+在大小为 2N 的数组 A 中有 N+1 个不同的元素，其中有一个元素重复了 N 次。
+
+返回重复了 N 次的那个元素。
+
+示例 1：
+
+```
+输入：[1,2,3,3]
+输出：3
+```
+
+示例 2：
+
+```
+输入：[2,1,2,5,3,2]
+输出：2
+```
+
+
+示例 3：
+
+```
+输入：[5,1,5,2,5,3,5,4]
+输出：5
+```
+
+
+提示：
+
+- 4 <= A.length <= 10000
+- 0 <= A[i] < 10000
+- A.length 为偶数
+
+方法一：计数
+
+```java
+class Solution {
+    public int repeatedNTimes(int[] A) {
+        Map<Integer, Integer> count = new HashMap();
+        for (int x: A) {
+            count.put(x, count.getOrDefault(x, 0) + 1);
+        }
+
+        for (int k: count.keySet())
+            if (count.get(k) > 1)
+                return k;
+
+        throw null;
+    }
+}
+```
+
+- 时间复杂度：O(N)
+- 空间复杂度：O(N)
+
+方法二：比较
+
+```java
+class Solution {
+    public int repeatedNTimes(int[] A) {
+        for (int k = 1; k <= 3; ++k)
+            for (int i = 0; i < A.length - k; ++i)
+                if (A[i] == A[i+k])
+                    return A[i];
+
+        throw null;
+    }
+}
+```
+
+- 时间复杂度：O(N)
+- 空间复杂度：O(1)
+
+### [0140] 找出数组中的幸运数
+
+在整数数组中，如果一个整数的出现频次和它的数值大小相等，我们就称这个整数为「幸运数」。
+
+给你一个整数数组 arr，请你从中找出并返回一个幸运数。
+
+如果数组中存在多个幸运数，只需返回 最大 的那个。
+如果数组中不含幸运数，则返回 -1 。
+
+
+示例 1：
+
+```
+输入：arr = [2,2,3,4]
+输出：2
+解释：数组中唯一的幸运数是 2 ，因为数值 2 的出现频次也是 2 。
+```
+
+示例 2：
+
+```
+输入：arr = [1,2,2,3,3,3]
+输出：3
+解释：1、2 以及 3 都是幸运数，只需要返回其中最大的 3 。
+```
+
+示例 3：
+
+```
+输入：arr = [2,2,2,3,3]
+输出：-1
+解释：数组中不存在幸运数。
+```
+
+示例 4：
+
+```
+输入：arr = [5]
+输出：-1
+```
+
+示例 5：
+
+```
+输入：arr = [7,7,7,7,7,7,7]
+输出：7
+```
+
+
+提示：
+
+1 <= arr.length <= 500
+1 <= arr[i] <= 500
+
+方法一：
+
+```java
+class Solution {
+    public int findLucky(int[] arr) {
+        int n = arr.length;
+        int[] map = new int[501];
+        for(int num : arr) map[num]++;
+        for(int i=500; i>0; i--) 
+            if(i==map[i])
+                return i;
+
+        return -1;
+    }
+}
+```
+
+### [0141] 托普利茨矩阵
+
+如果矩阵上每一条由左上到右下的对角线上的元素都相同，那么这个矩阵是 托普利茨矩阵 。
+
+给定一个 M x N 的矩阵，当且仅当它是托普利茨矩阵时返回 True。
+
+示例 1:
+
+```
+输入: 
+matrix = [
+  [1,2,3,4],
+  [5,1,2,3],
+  [9,5,1,2]
+]
+输出: True
+解释:
+在上述矩阵中, 其对角线为:
+"[9]", "[5, 5]", "[1, 1, 1]", "[2, 2, 2]", "[3, 3]", "[4]"。
+各条对角线上的所有元素均相同, 因此答案是True。
+```
+
+示例 2:
+
+```
+输入:
+matrix = [
+  [1,2],
+  [2,2]
+]
+输出: False
+解释: 
+对角线"[1, 2]"上的元素不同。
+```
+
+说明:
+
+- matrix 是一个包含整数的二维数组。
+- matrix 的行数和列数均在 [1, 20]范围内。
+- matrix[i][j] 包含的整数在 [0, 99]范围内。
+
+进阶:
+
+1. 如果矩阵存储在磁盘上，并且磁盘内存是有限的，因此一次最多只能将一行矩阵加载到内存中，该怎么办？
+2. 如果矩阵太大以至于只能一次将部分行加载到内存中，该怎么办？
+
+方法一：对角线法
+
+首先要想明白的是怎么判断 (r1, c1 和 (r2, c2) 这两个点属于一条对角线。通过观察可以发现，在满足 r1 - c1 == r2 - c2 的情况下，这两个点属于同一条对角线。
+
+`groups[r-c]` 存储每条对角线上遇到的第一个元素的值，如果之后遇到的任何一个值不等于之前存储的值，那么这个矩阵就不是托普利茨矩阵，否则就是。
+
+```java
+class Solution {
+    public boolean isToeplitzMatrix(int[][] matrix) {
+        Map<Integer, Integer> groups = new HashMap();
+        for (int r = 0; r < matrix.length; ++r) {
+            for (int c = 0; c < matrix[0].length; ++c) {
+                if (!groups.containsKey(r-c))
+                    groups.put(r-c, matrix[r][c]);
+                else if (groups.get(r-c) != matrix[r][c])
+                    return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+- 时间复杂度: O(M*N)，即矩阵大小
+- 空间复杂度: O(M+N)
+
+方法二： 检查左上邻居
+
+```java
+class Solution {
+    public boolean isToeplitzMatrix(int[][] matrix) {
+        for (int r = 0; r < matrix.length; ++r)
+            for (int c = 0; c < matrix[0].length; ++c)
+                if (r > 0 && c > 0 && matrix[r-1][c-1] != matrix[r][c])
+                    return false;
+        return true;
+    }
+}
+```
+
+- 时间复杂度: O(M*N)
+- 空间复杂度: O(1)
+
+### [0142] 三维形体投影面积
+
+在 N * N 的网格中，我们放置了一些与 x，y，z 三轴对齐的 1 * 1 * 1 立方体。
+
+每个值 v = grid[i][j] 表示 v 个正方体叠放在单元格 (i, j) 上。
+
+现在，我们查看这些立方体在 xy、yz 和 zx 平面上的投影。
+
+投影就像影子，将三维形体映射到一个二维平面上。
+
+在这里，从顶部、前面和侧面看立方体时，我们会看到“影子”。
+
+返回所有三个投影的总面积。
+
+ 示例 1：
+
+```
+输入：[[2]]
+输出：5
+```
+
+示例 2：
+
+```
+输入：[[1,2],[3,4]]
+输出：17
+解释：
+这里有该形体在三个轴对齐平面上的三个投影(“阴影部分”)。
+```
+
+![img](https://s3-lc-upload.s3.amazonaws.com/uploads/2018/08/02/shadow.png)
+
+示例 3：
+
+```
+输入：[[1,0],[0,2]]
+输出：8
+```
+
+示例 4：
+
+```
+输入：[[1,1,1],[1,0,1],[1,1,1]]
+输出：14
+```
+
+
+示例 5：
+
+```
+输入：[[2,2,2],[2,1,2],[2,2,2]]
+输出：21
+```
+
+
+提示：
+
+- 1 <= grid.length = grid[0].length <= 50
+- 0 <= grid[i][j] <= 50
+
+方法一：数学
+
+从顶部看，由该形状生成的阴影将是网格中非零值的数目。
+
+从侧面看，由该形状生成的阴影将是网格中每一行的最大值。
+
+从前面看，由该形状生成的阴影将是网格中每一列的最大值。
+
+```java
+class Solution {
+    public int projectionArea(int[][] grid) {
+        int N = grid.length;
+        int ans = 0;
+
+        for (int i = 0; i < N;  ++i) {
+            int bestRow = 0;  // largest of grid[i][j]
+            int bestCol = 0;  // largest of grid[j][i]
+            for (int j = 0; j < N; ++j) {
+                if (grid[i][j] > 0) ans++;  // top shadow
+                bestRow = Math.max(bestRow, grid[i][j]);
+                bestCol = Math.max(bestCol, grid[j][i]);
+            }
+            ans += bestRow + bestCol;
+        }
+
+        return ans;
+    }
+}
+```
+
+- 时间复杂度：O(N^2)，其中 N 是 `grid` 的长度
+- 空间复杂度：O(1)
+
+### [0143] 删除回文子序列
+
+给你一个字符串 s，它仅由字母 'a' 和 'b' 组成。每一次删除操作都可以从 s 中删除一个回文 子序列。
+
+返回删除给定字符串中所有字符（字符串为空）的最小删除次数。
+
+「子序列」定义：如果一个字符串可以通过删除原字符串某些字符而不改变原字符顺序得到，那么这个字符串就是原字符串的一个子序列。
+
+「回文」定义：如果一个字符串向后和向前读是一致的，那么这个字符串就是一个回文。
+
+ 示例 1：
+
+```
+输入：s = "ababa"
+输出：1
+解释：字符串本身就是回文序列，只需要删除一次。
+```
+
+示例 2：
+
+```
+输入：s = "abb"
+输出：2
+解释："abb" -> "bb" -> "". 
+先删除回文子序列 "a"，然后再删除 "bb"。
+```
+
+
+示例 3：
+
+```
+输入：s = "baabb"
+输出：2
+解释："baabb" -> "b" -> "". 
+先删除回文子序列 "baab"，然后再删除 "b"。
+```
+
+示例 4：
+
+```
+输入：s = ""
+输出：0
+```
+
+
+提示：
+
+```
+0 <= s.length <= 1000
+s 仅包含字母 'a'  和 'b'
+```
+
+方法一：
+
+- 原始字符串本身为空，次数就是 0
+- 原始字符串本身就是一个回文字符串，那么我们需要的次数就是 1
+- 其他字符串就是需要2次即可
+
+```java
+class Solution {
+    public int removePalindromeSub(String s) {
+        if ("".equals(s)) return 0;
+        if (s.equals(new StringBuilder(s).reverse().toString())) return 1;
+        return 2;
+    }
+}
+```
+
+### [0144] 判定是否互为字符重排
+
+给定两个字符串 s1 和 s2，请编写一个程序，确定其中一个字符串的字符重新排列后，能否变成另一个字符串。
+
+示例 1：
+
+```
+输入: s1 = "abc", s2 = "bca"
+输出: true 
+```
+
+示例 2：
+
+```
+输入: s1 = "abc", s2 = "bad"
+输出: false
+```
+
+说明：
+
+```
+0 <= len(s1) <= 100
+0 <= len(s2) <= 100
+```
+
+方法一：
+
+```java
+class Solution {
+    public boolean CheckPermutation(String s1, String s2) {
+        if(s1.length()!=s2.length()) return false;
+        int[] nums = new int[26];
+        int len = s1.length();
+        for (int i = 0; i < len; i++) {
+            nums[s1.charAt(i)-97]++;
+            nums[s2.charAt(i)-97]--;
+        }
+        for (int num : nums) {
+            if (num != 0) return false;
+        }
+        return true;
+    }
+}
+```
+
