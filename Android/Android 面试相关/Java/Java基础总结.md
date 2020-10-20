@@ -1262,19 +1262,1052 @@ System.out.println(c1==c2);
 
 **在静态方法、静态初始化块或者静态变量的声明和初始化中不允许使用类型形参。由于系统中并不会真正生成泛型类，所以instanceof运算符后不能使用泛型类。**
 
-
-
 ## 三、Java反射
 
+### 1. 概述
 
+**Java反射机制定义**
+
+Java反射机制是在运行状态中，对于任意一个类，都能够知道这个类中的所有属性和方法；对于任意一个对象，都能够调用它的任意一个方法和属性；这种动态获取的信息以及动态调用对象的方法的功能称为java语言的反射机制。
+
+**Java 反射机制的功能**
+
+- 在运行时判断任意一个对象所属的类。
+
+- 在运行时构造任意一个类的对象。
+
+- 在运行时判断任意一个类所具有的成员变量和方法。
+
+- 在运行时调用任意一个对象的方法。
+
+- 生成动态代理。
+
+**Java 反射机制的应用场景**
+
+- 逆向代码 ，例如反编译
+
+- 与注解相结合的框架 例如Retrofit
+
+- 单纯的反射机制应用框架 例如EventBus
+
+- 动态生成类框架 例如Gson
+
+### 2. 通过Java反射查看类信息
+
+**获得Class对象**
+
+每个类被加载之后，系统就会为该类生成一个对应的Class对象。通过该Class对象就可以访问到JVM中的这个类。
+
+在Java程序中获得Class对象通常有如下三种方式：
+
+- 使用Class类的forName(String clazzName)静态方法。该方法需要传入字符串参数，该字符串参数的值是某个类的全限定名（必须添加完整包名）。
+
+- 调用某个类的class属性来获取该类对应的Class对象。
+
+- 调用某个对象的getClass()方法。该方法是java.lang.Object类中的一个方法。
+
+```java
+//第一种方式 通过Class类的静态方法——forName()来实现
+class1 = Class.forName("com.lvr.reflection.Person");
+//第二种方式 通过类的class属性
+class1 = Person.class;
+//第三种方式 通过对象getClass方法
+Person person = new Person();
+Class<?> class1 = person.getClass();
+```
+
+**获取class对象的属性、方法、构造函数等**
+
+1).获取class对象的成员变量
+
+```java
+Field[] allFields = class1.getDeclaredFields();//获取class对象的所有属性
+Field[] publicFields = class1.getFields();//获取class对象的public属性
+Field ageField = class1.getDeclaredField("age");//获取class指定属性
+Field desField = class1.getField("des");//获取class指定的public属性
+```
+
+2).获取class对象的方法
+
+```java
+Method[] methods = class1.getDeclaredMethods();//获取class对象的所有声明方法
+Method[] allMethods = class1.getMethods();//获取class对象的所有public方法 包括父类的方法
+Method method = class1.getMethod("info", String.class);//返回次Class对象对应类的、带指定形参列表的public方法
+Method declaredMethod = class1.getDeclaredMethod("info", String.class);//返回次Class对象对应类的、带指定形参列表的方法
+```
+
+3).获取class对象的构造函数
+
+```java
+Constructor<?>[] allConstructors = class1.getDeclaredConstructors();//获取class对象的所有声明构造函数
+Constructor<?>[] publicConstructors = class1.getConstructors();//获取class对象public构造函数
+Constructor<?> constructor = class1.getDeclaredConstructor(String.class);//获取指定声明构造函数
+Constructor publicConstructor = class1.getConstructor(String.class);//获取指定声明的public构造函数
+```
+
+4).其他方法
+
+```java
+Annotation[] annotations = (Annotation[]) class1.getAnnotations();//获取class对象的所有注解
+Annotation annotation = (Annotation) class1.getAnnotation(Deprecated.class);//获取class对象指定注解
+Type genericSuperclass = class1.getGenericSuperclass();//获取class对象的直接超类的 Type
+Type[] interfaceTypes = class1.getGenericInterfaces();//获取class对象的所有接口的type集合
+```
+
+**获取class对象的信息**
+
+比较多。
+
+```java
+boolean isPrimitive = class1.isPrimitive();//判断是否是基础类型
+boolean isArray = class1.isArray();//判断是否是集合类
+boolean isAnnotation = class1.isAnnotation();//判断是否是注解类
+boolean isInterface = class1.isInterface();//判断是否是接口类
+boolean isEnum = class1.isEnum();//判断是否是枚举类
+boolean isAnonymousClass = class1.isAnonymousClass();//判断是否是匿名内部类
+boolean isAnnotationPresent = class1.isAnnotationPresent(Deprecated.class);//判断是否被某个注解类修饰
+String className = class1.getName();//获取class名字 包含包名路径
+Package aPackage = class1.getPackage();//获取class的包信息
+String simpleName = class1.getSimpleName();//获取class类名
+int modifiers = class1.getModifiers();//获取class访问权限
+Class<?>[] declaredClasses = class1.getDeclaredClasses();//内部类
+Class<?> declaringClass = class1.getDeclaringClass();//外部类
+```
+
+### 3. 通过Java反射生成并操作对象
+
+**生成类的实例对象**
+
+1).使用Class对象的newInstance()方法来创建该Class对象对应类的实例。这种方式要求该Class对象的对应类有默认构造器，而执行newInstance()方法时实际上是利用默认构造器来创建该类的实例。
+
+2).先使用Class对象获取指定的Constructor对象，再调用Constructor对象的newInstance()方法来创建该Class对象对应类的实例。通过这种方式可以选择使用指定的构造器来创建实例。
+
+```java
+//第一种方式 Class对象调用newInstance()方法生成
+Object obj = class1.newInstance();
+//第二种方式 对象获得对应的Constructor对象，再通过该Constructor对象的newInstance()方法生成
+Constructor<?> constructor = class1.getDeclaredConstructor(String.class);//获取指定声明构造函数
+obj = constructor.newInstance("hello");
+```
+
+**调用类的方法**
+
+1).通过Class对象的getMethods()方法或者getMethod()方法获得指定方法，返回Method数组或对象。
+
+2).调用Method对象中的`Object invoke(Object obj, Object... args)`方法。第一个参数对应调用该方法的实例对象，第二个参数对应该方法的参数。
+
+```java
+ // 生成新的对象：用newInstance()方法
+ Object obj = class1.newInstance();
+//首先需要获得与该方法对应的Method对象
+Method method = class1.getDeclaredMethod("setAge", int.class);
+//调用指定的函数并传递参数
+method.invoke(obj, 28);
+```
+
+当通过Method的invoke()方法来调用对应的方法时，Java会要求程序必须有调用该方法的权限。如果程序确实需要调用某个对象的private方法，则可以先调用Method对象的如下方法。
+setAccessible(boolean flag)：将Method对象的acessible设置为指定的布尔值。值为true，指示该Method在使用时应该取消Java语言的访问权限检查；值为false，则知识该Method在使用时要实施Java语言的访问权限检查。
+
+**访问成员变量值**
+
+1).通过Class对象的getFields()方法或者getField()方法获得指定方法，返回Field数组或对象。
+
+2).Field提供了两组方法来读取或设置成员变量的值：
+getXXX(Object obj):获取obj对象的该成员变量的值。此处的XXX对应8种基本类型。如果该成员变量的类型是引用类型，则取消get后面的XXX。
+setXXX(Object obj,XXX val)：将obj对象的该成员变量设置成val值。
+
+```java
+//生成新的对象：用newInstance()方法 
+Object obj = class1.newInstance();
+//获取age成员变量
+Field field = class1.getField("age");
+//将obj对象的age的值设置为10
+field.setInt(obj, 10);
+//获取obj对象的age的值
+field.getInt(obj);
+```
+
+### 4. 代理模式
+
+> 定义：给某个对象提供一个代理对象，并由代理对象控制对于原对象的访问，即客户不直接操控原对象，而是通过代理对象间接地操控原对象。
+
+#### 代理模式的理解
+
+代理模式使用代理对象完成用户请求，屏蔽用户对真实对象的访问。现实世界的代理人被授权执行当事人的一些事宜，无需当事人出面，从第三方的角度看，似乎当事人并不存在，因为他只和代理人通信。而事实上代理人是要有当事人的授权，并且在核心问题上还需要请示当事人。
+在软件设计中，使用代理模式的意图也很多，比如因为安全原因需要屏蔽客户端直接访问真实对象，或者在远程调用中需要使用代理类处理远程方法调用的技术细节，也可能为了提升系统性能，对真实对象进行封装，从而达到延迟加载的目的。
+
+#### 代理模式的参与者
+
+代理模式的角色分四种：
+
+[![img](https://camo.githubusercontent.com/1dab04df36af09afb1d73542f9ba66dccc444e8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d663464333339613639613862396539322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/1dab04df36af09afb1d73542f9ba66dccc444e8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d663464333339613639613862396539322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**主题接口：**Subject 是委托对象和代理对象都共同实现的接口，即代理类的所实现的行为接口。Request() 是委托对象和代理对象共同拥有的方法。
+**目标对象：**RealSubject 是原对象，也就是被代理的对象。
+**代理对象：**Proxy 是代理对象，用来封装真是主题类的代理类。
+**客户端 ：**使用代理类和主题接口完成一些工作。
+
+#### 代理模式的分类
+
+**静态代理：**代理类是在编译时就实现好的。也就是说 Java 编译完成后代理类是一个实际的 class 文件。
+**动态代理：**代理类是在运行时生成的。也就是说 Java 编译完之后并没有实际的 class 文件，而是在运行时动态生成的类字节码，并加载到JVM中。
+
+#### 代理模式的实现思路
+
+- 代理对象和目标对象均实现同一个行为接口。
+
+- 代理类和目标类分别具体实现接口逻辑。
+
+- 在代理类的构造函数中实例化一个目标对象。
+
+- 在代理类中调用目标对象的行为接口。
+
+- 客户端想要调用目标对象的行为接口，只能通过代理类来操作。
+
+#### 静态代理模式的简单实现
+
+```java
+public class ProxyDemo {
+    public static void main(String args[]){
+        RealSubject subject = new RealSubject();
+        Proxy p = new Proxy(subject);
+        p.request();
+    }
+}
+
+interface Subject{
+    void request();
+}
+
+class RealSubject implements Subject{
+    public void request(){
+        System.out.println("request");
+    }
+}
+
+class Proxy implements Subject{
+    private Subject subject;
+    public Proxy(Subject subject){
+        this.subject = subject;
+    }
+    public void request(){
+        System.out.println("PreProcess");
+        subject.request();
+        System.out.println("PostProcess");
+    }
+}
+```
+
+目标对象(RealSubject )以及代理对象（Proxy）都实现了主题接口（Subject）。在代理对象（Proxy）中，通过构造函数传入目标对象(RealSubject )，然后重写主题接口（Subject）的request()方法，在该方法中调用目标对象(RealSubject )的request()方法，并可以添加一些额外的处理工作在目标对象(RealSubject )的request()方法的前后。
+
+好处：可以在被调用方法前后加上自己的操作，而不需要更改被调用类的源码，大大地降低了模块之间的耦合性，体现了极大的优势。
+
+静态代理比较简单，上面的简单实例就是静态代理的应用方式
+
+### 5. Java反射机制与动态代理
+
+动态代理的思路和上述思路一致，下面主要讲解如何实现。
+
+#### 动态代理介绍
+
+动态代理是指在运行时动态生成代理类。即，代理类的字节码将在运行时生成并载入当前代理的 ClassLoader。与静态处理类相比，动态类有诸多好处。
+
+①不需要为(RealSubject )写一个形式上完全一样的封装类，假如主题接口（Subject）中的方法很多，为每一个接口写一个代理方法也很麻烦。如果接口有变动，则目标对象和代理类都要修改，不利于系统维护；
+
+②使用一些动态代理的生成方法甚至可以在运行时制定代理类的执行逻辑，从而大大提升系统的灵活性。
+
+#### 动态代理涉及的主要类
+
+主要涉及两个类，这两个类都是java.lang.reflect包下的类，内部主要通过反射来实现的。
+
+**java.lang.reflect.Proxy:**这是生成代理类的主类，通过 Proxy 类生成的代理类都继承了 Proxy 类。
+Proxy提供了用户创建动态代理类和代理对象的静态方法，它是所有动态代理类的父类。
+
+**java.lang.reflect.InvocationHandler:**这里称他为"调用处理器"，它是一个接口。当调用动态代理类中的方法时，将会直接转接到执行自定义的InvocationHandler中的invoke()方法。即我们动态生成的代理类需要完成的具体内容需要自己定义一个类，而这个类必须实现 InvocationHandler 接口，通过重写invoke()方法来执行具体内容。
+
+Proxy提供了如下两个方法来创建动态代理类和动态代理实例。
+
+> static Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) 返回代理类的java.lang.Class对象。第一个参数是类加载器对象（即哪个类加载器来加载这个代理类到 JVM 的方法区），第二个参数是接口（表明你这个代理类需要实现哪些接口），第三个参数是调用处理器类实例（指定代理类中具体要干什么），该代理类将实现interfaces所指定的所有接口，执行代理对象的每个方法时都会被替换执行InvocationHandler对象的invoke方法。
+>
+> static Object newProxyInstance(ClassLoader loader, Class<?>[] interfaces, InvocationHandler h) 返回代理类实例。参数与上述方法一致。
+
+对应上述两种方法创建动态代理对象的方式：
+
+```java
+        //创建一个InvocationHandler对象
+        InvocationHandler handler = new MyInvocationHandler(.args..);
+        //使用Proxy生成一个动态代理类
+        Class proxyClass = Proxy.getProxyClass(RealSubject.class.getClassLoader(),RealSubject.class.getInterfaces(), handler);
+        //获取proxyClass类中一个带InvocationHandler参数的构造器
+        Constructor constructor = proxyClass.getConstructor(InvocationHandler.class);
+        //调用constructor的newInstance方法来创建动态实例
+        RealSubject real = (RealSubject)constructor.newInstance(handler);
+```
+
+```java
+        //创建一个InvocationHandler对象
+        InvocationHandler handler = new MyInvocationHandler(.args..);
+        //使用Proxy直接生成一个动态代理对象
+        RealSubject real =Proxy.newProxyInstance(RealSubject.class.getClassLoader(),RealSubject.class.getInterfaces(), handler);
+```
+
+**newProxyInstance这个方法实际上做了两件事：**
+
+**第一，创建了一个新的类【代理类】，这个类实现了Class[] interfaces中的所有接口，并通过你指定的ClassLoader将生成的类的字节码加载到JVM中，创建Class对象；**
+
+**第二，以你传入的InvocationHandler作为参数创建一个代理类的实例并返回。**
+
+Proxy 类还有一些静态方法，比如：
+
+`InvocationHandler getInvocationHandler(Object proxy):`获得代理对象对应的调用处理器对象。
+
+`Class getProxyClass(ClassLoader loader, Class[] interfaces):`根据类加载器和实现的接口获得代理类。
+
+InvocationHandler 接口中有方法：
+
+`invoke(Object proxy, Method method, Object[] args)`
+这个函数是在代理对象调用任何一个方法时都会调用的，方法不同会导致第二个参数method不同，第一个参数是代理对象（表示哪个代理对象调用了method方法），第二个参数是 Method 对象（表示哪个方法被调用了），第三个参数是指定调用方法的参数。
+
+#### 动态代理模式的简单实现
+
+```java
+public class DynamicProxyDemo {
+    public static void main(String[] args) {
+        //1.创建目标对象
+        RealSubject realSubject = new RealSubject();    
+        //2.创建调用处理器对象
+        ProxyHandler handler = new ProxyHandler(realSubject);    
+       //3.动态生成代理对象
+        Subject proxySubject = (Subject)Proxy.newProxyInstance(RealSubject.class.getClassLoader(),
+                                                        RealSubject.class.getInterfaces(), handler);   
+        //4.通过代理对象调用方法   
+        proxySubject.request();    
+    }
+}
+
+/**
+ * 主题接口
+ */
+interface Subject{
+    void request();
+}
+
+/**
+ * 目标对象类
+ */
+class RealSubject implements Subject{
+    public void request(){
+        System.out.println("====RealSubject Request====");
+    }
+}
+/**
+ * 代理类的调用处理器
+ */
+class ProxyHandler implements InvocationHandler{
+    private Subject subject;
+    public ProxyHandler(Subject subject){
+        this.subject = subject;
+    }
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args)
+            throws Throwable {
+        //定义预处理的工作，当然你也可以根据 method 的不同进行不同的预处理工作
+        System.out.println("====before====");
+       //调用RealSubject中的方法
+        Object result = method.invoke(subject, args);
+        System.out.println("====after====");
+        return result;
+    }
+}
+```
+
+可以看到，我们通过newProxyInstance就产生了一个Subject 的实例，即代理类的实例，然后就可以通过Subject .request()，就会调用InvocationHandler中的invoke()方法，传入方法Method对象，以及调用方法的参数，通过Method.invoke调用RealSubject中的方法的request()方法。同时可以在InvocationHandler中的invoke()方法加入其他执行逻辑。
+
+### 6. 泛型和Class类
+
+从JDK 1.5 后，Java中引入泛型机制，Class类也增加了泛型功能，从而允许使用泛型来限制Class类，例如：String.class的类型实际上是Class<String>。如果Class对应的类暂时未知，则使用Class<?>(?是通配符)。通过反射中使用泛型，可以避免使用反射生成的对象需要强制类型转换。
+
+泛型的好处众多，最主要的一点就是避免类型转换，防止出现ClassCastException，即类型转换异常。以下面程序为例：
+
+```java
+public class ObjectFactory {
+    public static Object getInstance(String name){
+        try {
+            //创建指定类对应的Class对象
+            Class cls = Class.forName(name);
+            //返回使用该Class对象创建的实例
+            return cls.newInstance();
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}
+```
+
+上面程序是个工厂类，通过指定的字符串创建Class对象并创建一个类的实例对象返回。但是这个对象的类型是Object对象，取出实例后需要强制类型转换。
+如下例：
+
+```java
+Date date = (Date) ObjectFactory.getInstance("java.util.Date");
+```
+
+或者如下：
+
+```java
+String string = (String) ObjectFactory.getInstance("java.util.Date");
+```
+
+上面代码在编译时不会有任何问题，但是运行时将抛出ClassCastException异常，因为程序试图将一个Date对象转换成String对象。
+
+但是泛型的出现后，就可以避免这种情况。
+
+```java
+public class ObjectFactory {
+    public static <T> T getInstance(Class<T> cls) {
+        try {
+            // 返回使用该Class对象创建的实例
+            return cls.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+}
+```
+
+在上面程序的getInstance()方法中传入一个Class<T>参数，这是一个泛型化的Class对象，调用该Class对象的newInstance()方法将返回一个T对象。
+
+```java
+String instance = ObjectFactory.getInstance(String.class);
+```
+
+通过传入`String.class`便知道T代表String，所以返回的对象是String类型的，避免强制类型转换。
+
+当然Class类引入泛型的好处不止这一点，在以后的实际应用中会更加能体会到。
+
+### 7. 使用反射来获取泛型信息
+
+通过指定类对应的 Class 对象，可以获得该类里包含的所有 Field，不管该 Field 是使用 private 修饰，还是使用 public 修饰。获得了 Field 对象后，就可以很容易地获得该 Field 的数据类型，即使用如下代码即可获得指定 Field 的类型。
+
+```java
+// 获取 Field 对象 f 的类型
+Class<?> a = f.getType();
+```
+
+但这种方式只对普通类型的 Field 有效。如果该 Field 的类型是有泛型限制的类型，如 Map<String, Integer> 类型，则不能准确地得到该 Field 的泛型参数。
+
+为了获得指定 Field 的泛型类型，应先使用如下方法来获取指定 Field 的类型。
+
+```java
+// 获得 Field 实例的泛型类型
+Type type = f.getGenericType();
+```
+
+然后将 Type 对象强制类型转换为 ParameterizedType 对象，ParameterizedType 代表被参数化的类型，也就是增加了泛型限制的类型。ParameterizedType 类提供了如下两个方法。
+
+**getRawType()：**返回没有泛型信息的原始类型。
+
+**getActualTypeArguments()：**返回泛型参数的类型。
+
+下面是一个获取泛型类型的完整程序。
+
+```java
+public class GenericTest
+{
+    private Map<String , Integer> score;
+    public static void main(String[] args)
+        throws Exception
+    {
+        Class<GenericTest> clazz = GenericTest.class;
+        Field f = clazz.getDeclaredField("score");
+        // 直接使用getType()取出Field类型只对普通类型的Field有效
+        Class<?> a = f.getType();
+        // 下面将看到仅输出java.util.Map
+        System.out.println("score的类型是:" + a);
+        // 获得Field实例f的泛型类型
+        Type gType = f.getGenericType();
+        // 如果gType类型是ParameterizedType对象
+        if(gType instanceof ParameterizedType)
+        {
+            // 强制类型转换
+            ParameterizedType pType = (ParameterizedType)gType;
+            // 获取原始类型
+            Type rType = pType.getRawType();
+            System.out.println("原始类型是：" + rType);
+            // 取得泛型类型的泛型参数
+            Type[] tArgs = pType.getActualTypeArguments();
+            System.out.println("泛型类型是:");
+            for (int i = 0; i < tArgs.length; i++) 
+            {
+                System.out.println("第" + i + "个泛型类型是：" + tArgs[i]);
+            }
+        }
+        else
+        {
+            System.out.println("获取泛型类型出错！");
+        }
+    }
+}
+```
+
+输出结果：
+
+> score 的类型是: interface java.util.Map
+> 原始类型是: interface java.util.Map
+> 泛型类型是:
+> 第 0 个泛型类型是: class java.lang.String
+> 第 1 个泛型类型是：class java.lang.Integer
+
+从上面的运行结果可以看出，直接使用 Field 的 getType() 方法只能获取普通类型的 Field 的数据类型：对于增加了泛型参数的类型的 Field，应该使用 getGenericType() 方法来取得其类型。
+
+Type 也是 java.lang.reflect 包下的一个接口，该接口代表所有类型的公共高级接口，Class 是 Type 接口的实现类。Type 包括原始类型、参数化类型、数组类型、类型变量和基本类型等。
 
 ## 四、Java注解
+
+### 1. 元数据
+
+要想理解注解（Annotation）的作用，就要先理解Java中元数据的概念。
+
+**元数据概念**
+
+元数据是关于数据的数据。在编程语言上下文中，元数据是添加到程序元素如方法、字段、类和包上的额外信息。对数据进行说明描述的数据。
+
+**元数据的作用**
+
+一般来说，元数据可以用于创建文档（根据程序元素上的注释创建文档），跟踪代码中的依赖性（可声明方法是重载，依赖父类的方法），执行编译时检查（可声明是否编译期检测），代码分析。
+如下：
+1） 编写文档：通过代码里标识的元数据生成文档　　
+2）代码分析：通过代码里标识的元数据对代码进行分析　　
+3）编译检查：通过代码里标识的元数据让编译器能实现基本的编译检查
+
+**Java平台元数据**
+
+注解Annotation就是java平台的元数据，是 J2SE5.0新增加的功能，该机制允许在Java 代码中添加自定义注释，并允许通过反射（reflection），以编程方式访问元数据注释。通过提供为程序元素（类、方法等）附加额外数据的标准方法，元数据功能具有简化和改进许多应用程序开发领域的潜在能力，其中包括配置管理、框架实现和代码生成。
+
+### 2. 注解（Annotation）
+
+#### 注解的概念
+
+注解(Annotation)在JDK1.5之后增加的一个新特性，注解的引入意义很大，有很多非常有名的框架，比如Hibernate、Spring等框架中都大量使用注解。注解作为程序的元数据嵌入到程序。注解可以被解析工具或编译工具解析。
+
+关于注解（Annotation）的作用，其实就是上述元数据的作用。
+
+**注意：Annotation能被用来为程序元素（类、方法、成员变量等）设置元素据。Annotaion不影响程序代码的执行，无论增加、删除Annotation，代码都始终如一地执行。如果希望让程序中的Annotation起一定的作用，只有通过解析工具或编译工具对Annotation中的信息进行解析和处理。**
+
+#### 内建注解
+
+Java提供了多种内建的注解，下面接下几个比较常用的注解：@Override、@Deprecated、@SuppressWarnings以及@FunctionalInterface这4个注解。内建注解主要实现了元数据的第二个作用：**编译检查**。
+
+**@Override**
+
+用途：用于告知编译器，我们需要覆写超类的当前方法。如果某个方法带有该注解但并没有覆写超类相应的方法，则编译器会生成一条错误信息。如果父类没有这个要覆写的方法，则编译器也会生成一条错误信息。
+
+@Override可适用元素为方法，仅仅保留在java源文件中。
+
+**@Deprecated**
+
+用途：使用这个注解，用于告知编译器，某一程序元素(比如方法，成员变量)不建议使用了（即过时了）。
+例如：
+Person类中的info()方法使用`@Deprecated`表示该方法过时了。
+
+```java
+public class Person {
+    @Deprecated
+    public void info(){
+    }
+}
+```
+
+调用info()方法会编译器会出现警告，告知该方法已过时。
+
+[![img](https://camo.githubusercontent.com/3ab81e3b51b21075ee969638be8baea68914cc93/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d346563326439633062303233333065652e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/3ab81e3b51b21075ee969638be8baea68914cc93/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d346563326439633062303233333065652e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+注解类型分析：` @Deprecated`可适合用于除注解类型声明之外的所有元素，保留时长为运行时。
+
+**@SuppressWarnings**
+用途：用于告知编译器忽略特定的警告信息，例在泛型中使用原生数据类型，编译器会发出警告，当使用该注解后，则不会发出警告。
+
+注解类型分析： `@SuppressWarnings`可适合用于除注解类型声明和包名之外的所有元素，仅仅保留在java源文件中。
+
+该注解有方法value(）,可支持多个字符串参数，用户指定忽略哪种警告，例如：
+
+```java
+@SupressWarning(value={"uncheck","deprecation"})
+```
+
+[![img](https://camo.githubusercontent.com/bd0738100994d5221b0ae2783ae2db6851d0591f/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d323465333963646166306436326337352e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/bd0738100994d5221b0ae2783ae2db6851d0591f/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d323465333963646166306436326337352e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**@FunctionalInterface**
+用途：用户告知编译器，检查这个接口，保证该接口是函数式接口，即只能包含一个抽象方法，否则就会编译出错。
+
+注解类型分析： `@FunctionalInterface`可适合用于注解类型声明，保留时长为运行时。
+
+#### 元Annotation
+
+JDK除了在java.lang提供了上述内建注解外，还在java.lang.annotation包下提供了6个Meta Annotation(元Annotataion)，其中有5个元Annotation都用于修饰其他的Annotation定义。其中@Repeatable专门用户定义Java 8 新增的可重复注解。
+
+我们先介绍其中4个常用的修饰其他Annotation的元Annotation。在此之前，我们先了解如何自定义Annotation。
+
+**当一个接口直接继承java.lang.annotation.Annotation接口时，仍是接口，而并非注解。要想自定义注解类型，只能通过@interface关键字的方式，其实通过该方式会隐含地继承.Annotation接口。**
+
+**@Documented**
+
+`@Documented`用户指定被该元Annotation修饰的Annotation类将会被javadoc工具提取成文档，如果定义Annotation类时使用了`@Documented`修饰，则所有使用该Annotation修饰的程序元素的API文档中将会包含该Annotation说明。
+
+例如：
+
+```
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value={CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE})
+public @interface Deprecated {
+}
+```
+
+定义`@Deprecated`时使用了`@Documented`，则任何元素使用@Deprecated修饰时，在生成API文档时，将会包含`@Deprecated`的说明
+以下是String的一个过时的构造方法：
+
+```
+@Deprecated
+public String(byte[] ascii,int hibyte,int offset, int count)
+```
+
+该注解实现了元数据的第一个功能：**编写文档**。
+
+**@Inherited**
+
+`@Inherited`指定被它修饰的Annotation将具有继承性——如果某个类使用了@Xxx注解（定义该Annotation时使用了`@Inherited`修饰）修饰，则其子类将自动被@Xxx修饰。
+
+**@Retention**
+
+`@Retention`：表示该注解类型的注解保留的时长。当注解类型声明中没有`@Retention`元注解，则默认保留策略为RetentionPolicy.CLASS。关于保留策略(RetentionPolicy)是枚举类型，共定义3种保留策略，如下表：
+[![img](https://camo.githubusercontent.com/6ed7adc069270fc38dc3975727e7c52eb0ef6f05/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d383238666536386663646638333462342e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/6ed7adc069270fc38dc3975727e7c52eb0ef6f05/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d383238666536386663646638333462342e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**@Target**
+
+`@Target`：表示该注解类型的所适用的程序元素类型。当注解类型声明中没有`@Target`元注解，则默认为可适用所有的程序元素。如果存在指定的`@Target`元注解，则编译器强制实施相应的使用限制。关于程序元素(ElementType)是枚举类型，共定义8种程序元素，如下表：
+[![img](https://camo.githubusercontent.com/9dec3ec2d382a6c13ed4f7742e9abf9b8a653c11/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d376234353764663231343366613564642e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/9dec3ec2d382a6c13ed4f7742e9abf9b8a653c11/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d376234353764663231343366613564642e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+### 3. 自定义注解（Annotation）
+
+创建自定义注解，与创建接口有几分相似，但注解需要以@开头。
+
+```java
+@Documented
+@Target(ElementType.METHOD)
+@Inherited
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyAnnotataion{
+    String name();
+    String website() default "hello";
+    int revision() default 1;
+}
+```
+
+**自定义注解中定义成员变量的规则：**
+
+其定义是以无形参的方法形式来声明的。即：
+注解方法不带参数，比如name()，website()；
+注解方法返回值类型：基本类型、String、Enums、Annotation以及前面这些类型的数组类型
+注解方法可有默认值，比如default "hello"，默认website=”hello”
+
+**当然注解中也可以不存在成员变量，在使用解析注解进行操作时，仅以是否包含该注解来进行操作。当注解中有成员变量时，若没有默认值，需要在使用注解时，指定成员变量的值。**
+
+```java
+public class AnnotationDemo {
+    @MyAnnotataion(name="lvr", website="hello", revision=1)
+    public static void main(String[] args) {
+        System.out.println("I am main method");
+    }
+
+    @SuppressWarnings({ "unchecked", "deprecation" })
+    @MyAnnotataion(name="lvr", website="hello", revision=2)
+    public void demo(){
+        System.out.println("I am demo method");
+    }
+}
+```
+
+由于该注解的保留策略为`RetentionPolicy.RUNTIME`，故可在运行期通过反射机制来使用，否则无法通过反射机制来获取。这时候注解实现的就是元数据的第二个作用：**代码分析**。
+下面来具体介绍如何通过反射机制来进行注解解析。
+
+### 4. 注解解析
+
+接下来，通过反射技术来解析自定义注解。关于反射类位于包java.lang.reflect，其中有一个接口AnnotatedElement，该接口主要有如下几个实现类：Class，Constructor，Field，Method，Package。除此之外，该接口定义了注释相关的几个核心方法，如下：
+
+| 返回值       | 方法                                                         | 解释                                                     |
+| ------------ | ------------------------------------------------------------ | -------------------------------------------------------- |
+| T            | getAnnotation(Class annotationClass)                         | 当存在该元素的指定类型注解，则返回响应注释，否则返回null |
+| Annotation[] | getAnnotation()                                              | 返回此元素上存在的所有注释                               |
+| Annotation[] | getDeclaredAnnotation()                                      | 返回直接存在于此元素上存在的所有注释                     |
+| boolean      | isAnnotationPresent(Class<? extends Annotation> annotationClass) | 当存在该元素的指定类型注解，则返回true，否则返回false    |
+
+因此，当获取了某个类的Class对象，然后获取其Field,Method等对象，通过上述4个方法提取其中的注解，然后获得注解的详细信息。
+
+```java
+public class AnnotationParser {
+    public static void main(String[] args) throws SecurityException, ClassNotFoundException {
+        String clazz = "com.lvr.annotation.AnnotationDemo";
+        Method[]  demoMethod = AnnotationParser.class
+                .getClassLoader().loadClass(clazz).getMethods();
+
+        for (Method method : demoMethod) {
+            if (method.isAnnotationPresent(MyAnnotataion.class)) {
+                 MyAnnotataion annotationInfo = method.getAnnotation(MyAnnotataion.class);
+                 System.out.println("method: "+ method);
+                 System.out.println("name= "+ annotationInfo.name() +
+                         " , website= "+ annotationInfo.website()
+                        + " , revision= "+annotationInfo.revision());
+            }
+        }
+    }
+}
+```
+
+以上仅是一个示例，其实可以根据拿到的注解信息做更多有意义的事。
+
+
+
 ## 五、Java IO
+
+### 1. 字符与字节
+
+在Java中有输入、输出两种IO流，每种输入、输出流又分为字节流和字符流两大类。关于字节，我们在学习8大基本数据类型中都有了解，每个字节(byte)有8bit组成，每种数据类型又几个字节组成等。关于字符，我们可能知道代表一个汉字或者英文字母。
+
+**但是字节与字符之间的关系是怎样的？**
+
+Java采用unicode编码，2个字节来表示一个字符，这点与C语言中不同，C语言中采用ASCII，在大多数系统中，一个字符通常占1个字节，但是在0~127整数之间的字符映射，unicode向下兼容ASCII。而Java采用unicode来表示字符，一个中文或英文字符的unicode编码都占2个字节。但如果采用其他编码方式，一个字符占用的字节数则各不相同。
+
+例如：Java中的String类是按照unicode进行编码的，当使用String(byte[] bytes, String encoding)构造字符串时，encoding所指的是bytes中的数据是按照那种方式编码的，而不是最后产生的String是什么编码方式，换句话说，是让系统把bytes中的数据由encoding编码方式转换成unicode编码。如果不指明，bytes的编码方式将由jdk根据操作系统决定。
+
+`getBytes(String charsetName)`使用指定的编码方式将此String编码为 byte 序列，并将结果存储到一个新的 byte 数组中。如果不指定将使用操作系统默认的编码方式，我的电脑默认的是GBK编码。
+
+```java
+public class Hel {  
+    public static void main(String[] args){  
+        String str = "你好hello";  
+            int byte_len = str.getBytes().length;  
+            int len = str.length();  
+            System.out.println("字节长度为：" + byte_len);  
+        System.out.println("字符长度为：" + len);  
+        System.out.println("系统默认编码方式：" + System.getProperty("file.encoding"));  
+       }  
+}
+```
+
+输出结果
+
+> 字节长度为：9
+> 字符长度为：7
+> 系统默认编码方式：GBK
+
+这是因为：在 GB 2312 编码或 GBK 编码中，一个英文字母字符存储需要1个字节，一个汉字字符存储需要2个字节。 在UTF-8编码中，一个英文字母字符存储需要1个字节，一个汉字字符储存需要3到4个字节。在UTF-16编码中，一个英文字母字符存储需要2个字节，一个汉字字符储存需要3到4个字节（Unicode扩展区的一些汉字存储需要4个字节）。在UTF-32编码中，世界上任何字符的存储都需要4个字节。
+
+**简单来讲，一个字符表示一个汉字或英文字母，具体字符与字节之间的大小比例视编码情况而定。有时候读取的数据是乱码，就是因为编码方式不一致，需要进行转换，然后再按照unicode进行编码。**
+
+### 2. File类
+
+File类是java.io包下代表与平台无关的文件和目录，也就是说，如果希望在程序中操作**文件和目录**，都可以通过File类来完成。
+
+#### ①构造函数
+
+```java
+//构造函数File(String pathname)
+File f1 =new File("c:\\abc\\1.txt");
+//File(String parent,String child)
+File f2 =new File("c:\\abc","2.txt");
+//File(File parent,String child)
+File f3 =new File("c:"+File.separator+"abc");//separator 跨平台分隔符
+File f4 =new File(f3,"3.txt");
+System.out.println(f1);//c:\abc\1.txt
+```
+
+**路径分隔符：**
+windows： `"/" "\" `都可以
+linux/unix： `"/"`
+注意:如果windows选择用` "\" `做分割符的话,那么请记得替换成` "\\" `,因为Java中` "\" `代表转义字符
+所以推荐都使用"/"，也可以直接使用代码`File.separator`，表示跨平台分隔符。
+**路径：**
+相对路径：
+./表示当前路径
+../表示上一级路径
+其中当前路径：默认情况下，java.io 包中的类总是根据当前用户目录来分析相对路径名。此目录由系统属性 user.dir 指定，通常是 Java 虚拟机的调用目录。”
+
+绝对路径：
+绝对路径名是完整的路径名，不需要任何其他信息就可以定位自身表示的文件
+
+#### ②创建与删除方法
+
+```java
+//如果文件存在返回false，否则返回true并且创建文件 
+boolean createNewFile();
+//创建一个File对象所对应的目录，成功返回true，否则false。且File对象必须为路径而不是文件。只会创建最后一级目录，如果上级目录不存在就抛异常。
+boolean mkdir();
+//创建一个File对象所对应的目录，成功返回true，否则false。且File对象必须为路径而不是文件。创建多级目录，创建路径中所有不存在的目录
+boolean mkdirs()    ;
+//如果文件存在返回true并且删除文件，否则返回false
+boolean delete();
+//在虚拟机终止时，删除File对象所表示的文件或目录。
+void deleteOnExit();
+```
+
+#### ③判断方法
+
+```java
+boolean canExecute()    ;//判断文件是否可执行
+boolean canRead();//判断文件是否可读
+boolean canWrite();//判断文件是否可写
+boolean exists();//判断文件是否存在
+boolean isDirectory();//判断是否是目录
+boolean isFile();//判断是否是文件
+boolean isHidden();//判断是否是隐藏文件或隐藏目录
+boolean isAbsolute();//判断是否是绝对路径 文件不存在也能判断
+```
+
+#### ④获取方法
+
+```java
+String getName();//返回文件或者是目录的名称
+String getPath();//返回路径
+String getAbsolutePath();//返回绝对路径
+String getParent();//返回父目录，如果没有父目录则返回null
+long lastModified();//返回最后一次修改的时间
+long length();//返回文件的长度
+File[] listRoots();// 列出所有的根目录（Window中就是所有系统的盘符）
+String[] list() ;//返回一个字符串数组，给定路径下的文件或目录名称字符串
+String[] list(FilenameFilter filter);//返回满足过滤器要求的一个字符串数组
+File[]  listFiles();//返回一个文件对象数组，给定路径下文件或目录
+File[] listFiles(FilenameFilter filter);//返回满足过滤器要求的一个文件对象数组
+```
+
+其中包含了一个重要的接口FileNameFilter，该接口是个文件过滤器，包含了一个`accept(File dir,String name)`方法，该方法依次对指定File的所有子目录或者文件进行迭代，按照指定条件，进行过滤，过滤出满足条件的所有文件。
+
+```java
+        // 文件过滤
+        File[] files = file.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File file, String filename) {
+                return filename.endsWith(".mp3");
+            }
+        });
+```
+
+file目录下的所有子文件如果满足后缀是.mp3的条件的文件都会被过滤出来。
+
+### 3. IO流的概念
+
+Java的IO流是实现输入/输出的基础，它可以方便地实现数据的输入/输出操作，在Java中把不同的输入/输出源抽象表述为"流"。流是一组有顺序的，有起点和终点的字节集合，是对数据传输的总称或抽象。即数据在两设备间的传输称为流，流的本质是数据传输，根据数据传输特性将流抽象为各种类，方便更直观的进行数据操作。
+**流有输入和输出，输入时是流从数据源流向程序。输出时是流从程序传向数据源，而数据源可以是内存，文件，网络或程序等。**
+
+### 4. IO流的分类
+
+#### 输入流和输出流
+
+根据数据流向不同分为：输入流和输出流。
+
+> 输入流:只能从中读取数据，而不能向其写入数据。
+> 输出流：只能向其写入数据，而不能从中读取数据。
+
+如下如所示：对程序而言，向右的箭头，表示输入，向左的箭头，表示输出。
+[![img](https://camo.githubusercontent.com/64eecea1ffed2115835f3b3e38e970d2b46969d1/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393833366462643261653234323464302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/64eecea1ffed2115835f3b3e38e970d2b46969d1/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393833366462643261653234323464302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+#### 字节流和字符流
+
+字节流和字符流和用法几乎完全一样，区别在于字节流和字符流所操作的数据单元不同。
+字符流的由来： 因为数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的码表。字节流和字符流的区别：
+（1）读写单位不同：字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。
+（2）处理对象不同：字节流能处理所有类型的数据（如图片、avi等），而字符流只能处理字符类型的数据。
+
+只要是处理纯文本数据，就优先考虑使用字符流。 除此之外都使用字节流。
+
+#### 节点流和处理流
+
+按照流的角色来分，可以分为节点流和处理流。
+可以从/向一个特定的IO设备（如磁盘、网络）读/写数据的流，称为节点流，节点流也被成为低级流。
+处理流是对一个已存在的流进行连接或封装，通过封装后的流来实现数据读/写功能，处理流也被称为高级流。
+
+```java
+//节点流，直接传入的参数是IO设备
+FileInputStream fis = new FileInputStream("test.txt");
+//处理流，直接传入的参数是流对象
+BufferedInputStream bis = new BufferedInputStream(fis);
+```
+
+[![img](https://camo.githubusercontent.com/1cad7cd19ba0088eac96b0143e4f12e53b52998d/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d306636346133666531613262663062392e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/1cad7cd19ba0088eac96b0143e4f12e53b52998d/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d306636346133666531613262663062392e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+当使用处理流进行输入/输出时，程序并不会直接连接到实际的数据源，没有和实际的输入/输出节点连接。使用处理流的一个明显好处是，只要使用相同的处理流，程序就可以采用完全相同的输入/输出代码来访问不同的数据源，随着处理流所包装节点流的变化，程序实际所访问的数据源也相应地发生变化。
+实际上，Java使用处理流来包装节点流是一种典型的装饰器设计模式，通过使用处理流来包装不同的节点流，既可以消除不同节点流的实现差异，也可以提供更方便的方法来完成输入/输出功能。
+
+### 5. IO流的四大基类
+
+根据流的流向以及操作的数据单元不同，将流分为了四种类型，每种类型对应一种抽象基类。这四种抽象基类分别为：InputStream,Reader,OutputStream以及Writer。四种基类下，对应不同的实现类，具有不同的特性。在这些实现类中，又可以分为节点流和处理流。下面就是整个由着四大基类支撑下，整个IO流的框架图。
+[![img](https://camo.githubusercontent.com/fdb7d34b4c62c0dde7adca91c766e224ee3e11f3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333863336561343536326436646265332e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/fdb7d34b4c62c0dde7adca91c766e224ee3e11f3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333863336561343536326436646265332e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+InputStream,Reader,OutputStream以及Writer，这四大抽象基类，本身并不能创建实例来执行输入/输出，但它们将成为所有输入/输出流的模版，所以它们的方法是所有输入/输出流都可以使用的方法。类似于集合中的Collection接口。
+
+#### InputStream
+
+InputStream 是所有的输入字节流的父类，它是一个抽象类，主要包含三个方法：
+
+```java
+//读取一个字节并以整数的形式返回(0~255),如果返回-1已到输入流的末尾。 
+int read() ； 
+//读取一系列字节并存储到一个数组buffer，返回实际读取的字节数，如果读取前已到输入流的末尾返回-1。 
+int read(byte[] buffer) ； 
+//读取length个字节并存储到一个字节数组buffer，从off位置开始存,最多len， 返回实际读取的字节数，如果读取前以到输入流的末尾返回-1。 
+int read(byte[] buffer, int off, int len) ；
+```
+
+#### Reader
+
+Reader 是所有的输入字符流的父类，它是一个抽象类，主要包含三个方法：
+
+```java
+//读取一个字符并以整数的形式返回(0~255),如果返回-1已到输入流的末尾。 
+int read() ； 
+//读取一系列字符并存储到一个数组buffer，返回实际读取的字符数，如果读取前已到输入流的末尾返回-1。 
+int read(char[] cbuf) ； 
+//读取length个字符,并存储到一个数组buffer，从off位置开始存,最多读取len，返回实际读取的字符数，如果读取前以到输入流的末尾返回-1。 
+int read(char[] cbuf, int off, int len)
+```
+
+对比InputStream和Reader所提供的方法，就不难发现两个基类的功能基本一样的，只不过读取的数据单元不同。
+
+**在执行完流操作后，要调用**`close()`**方法来关系输入流，因为程序里打开的IO资源不属于内存资源，垃圾回收机制无法回收该资源，所以应该显式关闭文件IO资源。**
+
+除此之外，InputStream和Reader还支持如下方法来移动流中的指针位置：
+
+```java
+//在此输入流中标记当前的位置
+//readlimit - 在标记位置失效前可以读取字节的最大限制。
+void mark(int readlimit)
+// 测试此输入流是否支持 mark 方法
+boolean markSupported()
+// 跳过和丢弃此输入流中数据的 n 个字节/字符
+long skip(long n)
+//将此流重新定位到最后一次对此输入流调用 mark 方法时的位置
+void reset()
+```
+
+### OutputStream
+
+OutputStream 是所有的输出字节流的父类，它是一个抽象类，主要包含如下四个方法：
+
+```java
+//向输出流中写入一个字节数据,该字节数据为参数b的低8位。 
+void write(int b) ; 
+//将一个字节类型的数组中的数据写入输出流。 
+void write(byte[] b); 
+//将一个字节类型的数组中的从指定位置（off）开始的,len个字节写入到输出流。 
+void write(byte[] b, int off, int len); 
+//将输出流中缓冲的数据全部写出到目的地。 
+void flush();
+```
+
+### Writer
+
+Writer 是所有的输出字符流的父类，它是一个抽象类,主要包含如下六个方法：
+
+```java
+//向输出流中写入一个字符数据,该字节数据为参数b的低16位。 
+void write(int c); 
+//将一个字符类型的数组中的数据写入输出流， 
+void write(char[] cbuf) 
+//将一个字符类型的数组中的从指定位置（offset）开始的,length个字符写入到输出流。 
+void write(char[] cbuf, int offset, int length); 
+//将一个字符串中的字符写入到输出流。 
+void write(String string); 
+//将一个字符串从offset开始的length个字符写入到输出流。 
+void write(String string, int offset, int length); 
+//将输出流中缓冲的数据全部写出到目的地。 
+void flush()
+```
+
+可以看出，Writer比OutputStream多出两个方法，主要是支持写入字符和字符串类型的数据。
+
+**使用Java的IO流执行输出时，不要忘记关闭输出流，关闭输出流除了可以保证流的物理资源被回收之外，还能将输出流缓冲区的数据flush到物理节点里（因为在执行close()方法之前，自动执行输出流的flush()方法）**
+
+以上内容就是整个IO流的框架介绍。
+
+
+
 ## 六、RandomAccessFile
+
+
+
 ## 七、Java NIO
+
+
+
 ## 八、Java异常详解
+
+
+
 ## 九、Java抽象类和接口的区别
+
+
+
 ## 十、Java深拷贝和浅拷贝
+
+### 1. 理解抽象
+
+abstract class和interface是Java语言中对于抽象类定义进行支持的两种机制，正是由于这两种机制的存在，才赋予了Java强大的面向对象能力。 abstract class和interface之间在对于抽象类定义的支持方面具有很大的相似性，甚至可以相互替换，因此很多开发者在进行抽象类定义时对于 abstract class和interface的选择显得比较随意。
+
+其实，两者之间还是有很大的区别的，对于它们的选择甚至反映出对于问题领域本质的理解、对于设计意图的理解是否正确、合理。本文将对它们之间的区别进行一番剖析，试图给开发者提供一个在二者之间进行选择的依据。
+
+### 2. 语法定义理解
+
+1. 抽象类
+
+   ```java
+   abstract class Demo ｛    
+       abstract void method1();    
+       abstract void method2();
+   ｝    
+   ```
+
+2. 接口
+
+   ```java
+   interface Demo {    
+       void method1();    
+       void method2();    
+   }    
+   ```
+
+在abstract class方式中，Demo可以有自己的数据成员，也可以有非abstarct的成员方法，而在interface方式的实现中，Demo只能够有静态的不能被修改的数据成员（也就是必须是static final的，不过在interface中一般不定义数据成员），所有的成员方法都是abstract的。从某种意义上说，interface是一种特殊形式的abstract class。
+
+### 3. 编程角度理解
+
+首先，abstract class在Java语言中表示的是一种继承关系，一个类只能使用一次继承关系。但是，一个类却可以实现多个interface。
+
+其次，在abstract class的定义中，我们可以赋予方法的默认行为。
+
+但是在interface的定义中，方法却不能拥有默认行为，不过在JDK1.8中可以使用`default`关键字实现默认方法。
+
+```java
+interface InterfaceA {
+    default void foo() {
+        System.out.println("InterfaceA foo");
+    }
+}
+```
+
+在 Java 8 之前，接口与其实现类之间的 **耦合度** 太高了（**tightly coupled**），当需要为一个接口添加方法时，所有的实现类都必须随之修改。默认方法解决了这个问题，它可以为接口添加新的方法，而不会破坏已有的接口的实现。这在 lambda 表达式作为Java 8 语言的重要特性而出现之际，为升级旧接口且保持向后兼容（backward compatibility）提供了途径。
+
+### 4. 一般性理解
+
+接口和抽象类的概念不一样。接口是对动作的抽象，抽象类是对根源的抽象。从设计理念上，接口反映的是 **“like-a”** 关系，抽象类反映的是 **“is-a”** 关系。 抽象类表示的是，这个对象是什么。接口表示的是，这个对象能做什么。比如，男人，女人，这两个类（如果是类的话……），他们的抽象类是人。说明，他们都是人。 人可以吃东西，狗也可以吃东西，你可以把“吃东西”定义成一个接口，然后让这些类去实现它. 所以，在高级语言上，一个类只能继承一个类（抽象类）(正如人不可能同时是生物和非生物)，但是可以实现多个接口(吃饭接口、走路接口)。
+
+### 5. 总结
+
+1. 抽象类和接口都不能直接实例化，如果要实例化，抽象类变量必须指向实现所有抽象方法的子类对象，接口变量必须指向实现所有接口方法的类对象。
+2. 抽象类要被子类继承，接口要被类实现。
+3. 接口里定义的变量只能是公共的静态的常量，抽象类中的变量是普通变量。
+4. 抽象类里可以没有抽象方法。
+5. 接口可以被类多实现（被其他接口多继承），抽象类只能被单继承。
+6. 接口中没有 `this` 指针，没有构造函数，不能拥有实例字段（实例变量）或实例方法。
+7. 抽象类不能在Java 8 的 lambda 表达式中使用。
+
 ## 十一、Java transient关键字
 
 ### 1. transient的作用及使用方法
