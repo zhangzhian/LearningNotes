@@ -2188,7 +2188,7 @@ long skip(long n)
 void reset()
 ```
 
-### OutputStream
+#### OutputStream
 
 OutputStream 是所有的输出字节流的父类，它是一个抽象类，主要包含如下四个方法：
 
@@ -2203,7 +2203,7 @@ void write(byte[] b, int off, int len);
 void flush();
 ```
 
-### Writer
+#### Writer
 
 Writer 是所有的输出字符流的父类，它是一个抽象类,主要包含如下六个方法：
 
@@ -2232,21 +2232,677 @@ void flush()
 
 ## 六、RandomAccessFile
 
+### 1. RandomAccessFile简介
 
+RandomAccessFile既可以读取文件内容，也可以向文件输出数据。同时，RandomAccessFile支持“随机访问”的方式，程序快可以直接跳转到文件的任意地方来读写数据。
+
+由于RandomAccessFile可以自由访问文件的任意位置，**所以如果需要访问文件的部分内容，而不是把文件从头读到尾，使用RandomAccessFile将是更好的选择。**
+
+与OutputStream、Writer等输出流不同的是，RandomAccessFile允许自由定义文件记录指针，RandomAccessFile可以不从开始的地方开始输出，因此RandomAccessFile可以向已存在的文件后追加内容。**如果程序需要向已存在的文件后追加内容，则应该使用RandomAccessFile。**
+
+RandomAccessFile的方法虽然多，但它有一个最大的局限，就是只能读写文件，不能读写其他IO节点。
+
+**RandomAccessFile的一个重要使用场景就是网络请求中的多线程下载及断点续传。**
+
+### 2. RandomAccessFile中的方法
+
+**RandomAccessFile的构造函数**
+
+RandomAccessFile类有两个构造函数，其实这两个构造函数基本相同，只不过是指定文件的形式不同——一个需要使用String参数来指定文件名，一个使用File参数来指定文件本身。除此之外，创建RandomAccessFile对象时还需要指定一个mode参数，该参数指定RandomAccessFile的访问模式，一共有4种模式。
+
+> **"r":** 以只读方式打开。调用结果对象的任何 write 方法都将导致抛出 IOException。
+> **"rw":** 打开以便读取和写入。
+> **"rws":** 打开以便读取和写入。相对于 "rw"，"rws" 还要求对“文件的内容”或“元数据”的每个更新都同步写入到基础存储设备。
+> **"rwd" :** 打开以便读取和写入，相对于 "rw"，"rwd" 还要求对“文件的内容”的每个更新都同步写入到基础存储设备。
+
+**RandomAccessFile的重要方法**
+
+RandomAccessFile既可以读文件，也可以写文件，所以类似于InputStream的read()方法，以及类似于OutputStream的write()方法，RandomAccessFile都具备。除此之外，RandomAccessFile具备两个特有的方法，来支持其随机访问的特性。
+
+RandomAccessFile对象包含了一个记录指针，用以标识当前读写处的位置，当程序新创建一个RandomAccessFile对象时，该对象的文件指针记录位于文件头（也就是0处），当读/写了n个字节后，文件记录指针将会后移n个字节。除此之外，RandomAccessFile还可以自由移动该记录指针。下面就是RandomAccessFile具有的两个特殊方法，来操作记录指针，实现随机访问：
+
+> long getFilePointer( )：返回文件记录指针的当前位置
+> void seek(long pos )：将文件指针定位到pos位置
+
+### 3. RandomAccessFile的使用
+
+利用RandomAccessFile实现文件的多线程下载，即多线程下载一个文件时，将文件分成几块，每块用不同的线程进行下载。下面是一个利用多线程在写文件时的例子，其中预先分配文件所需要的空间，然后在所分配的空间中进行分块，然后写入：
+
+```java
+/** 
+ * 测试利用多线程进行文件的写操作 
+ */  
+public class Test {  
+
+    public static void main(String[] args) throws Exception {  
+        // 预分配文件所占的磁盘空间，磁盘中会创建一个指定大小的文件  
+        RandomAccessFile raf = new RandomAccessFile("D://abc.txt", "rw");  
+        raf.setLength(1024*1024); // 预分配 1M 的文件空间  
+        raf.close();  
+
+        // 所要写入的文件内容  
+        String s1 = "第一个字符串";  
+        String s2 = "第二个字符串";  
+        String s3 = "第三个字符串";  
+        String s4 = "第四个字符串";  
+        String s5 = "第五个字符串";  
+
+        // 利用多线程同时写入一个文件  
+        new FileWriteThread(1024*1,s1.getBytes()).start(); // 从文件的1024字节之后开始写入数据  
+        new FileWriteThread(1024*2,s2.getBytes()).start(); // 从文件的2048字节之后开始写入数据  
+        new FileWriteThread(1024*3,s3.getBytes()).start(); // 从文件的3072字节之后开始写入数据  
+        new FileWriteThread(1024*4,s4.getBytes()).start(); // 从文件的4096字节之后开始写入数据  
+        new FileWriteThread(1024*5,s5.getBytes()).start(); // 从文件的5120字节之后开始写入数据  
+    }  
+
+    // 利用线程在文件的指定位置写入指定数据  
+    static class FileWriteThread extends Thread{  
+        private int skip;  
+        private byte[] content;  
+
+        public FileWriteThread(int skip,byte[] content){  
+            this.skip = skip;  
+            this.content = content;  
+        }  
+
+        public void run(){  
+            RandomAccessFile raf = null;  
+            try {  
+                raf = new RandomAccessFile("D://abc.txt", "rw");  
+                raf.seek(skip);  
+                raf.write(content);  
+            } catch (FileNotFoundException e) {  
+                e.printStackTrace();  
+            } catch (IOException e) {  
+                // TODO Auto-generated catch block  
+                e.printStackTrace();  
+            } finally {  
+                try {  
+                    raf.close();  
+                } catch (Exception e) {  
+                }  
+            }  
+        }  
+    }  
+
+}
+```
+
+**当RandomAccessFile向指定文件中插入内容时，将会覆盖掉原有内容。如果不想覆盖掉，则需要将原有内容先读取出来，然后先把插入内容插入后再把原有内容追加到插入内容后。**
 
 ## 七、Java NIO
 
+### 1. NIO的概念
 
+Java NIO(New IO)是一个可以替代标准Java IO API的IO API(从Java1.4开始)，Java NIO提供了与标准IO不同的IO工作方式。
+
+所以Java NIO是一种新式的IO标准，与之间的普通IO的工作方式不同。标准的IO基于字节流和字符流进行操作的，而NIO是基于通道(Channel)和缓冲区(Buffer)进行操作，数据总是从通道读取到缓冲区中，或者从缓冲区写入通道也类似。
+
+**由上面的定义就说明NIO是一种新型的IO，但NIO不仅仅就是等于Non-blocking IO（非阻塞IO），NIO中有实现非阻塞IO的具体类，但不代表NIO就是Non-blocking IO（非阻塞IO）。**
+
+Java NIO 由以下几个核心部分组成：
+
+- Buffer
+- Channel
+- Selector
+
+传统的IO操作面向数据流，意味着每次从流中读一个或多个字节，直至完成，数据没有被缓存在任何地方。NIO操作面向缓冲区，数据从Channel读取到Buffer缓冲区，随后在Buffer中处理数据。
+
+### 2. Buffer的使用
+利用**Buffer**读写数据，通常遵循四个步骤：
+
+1. 把数据写入buffer；
+2. 调用flip；
+3. 从Buffer中读取数据；
+4. 调用buffer.clear()
+
+当写入数据到buffer中时，buffer会记录已经写入的数据大小。当需要读数据时，通过flip()方法把buffer从写模式调整为读模式；在读模式下，可以读取所有已经写入的数据。
+
+当读取完数据后，需要清空buffer，以满足后续写入操作。清空buffer有两种方式：调用clear()，一旦读完Buffer中的数据，需要让Buffer准备好再次被写入，clear会恢复状态值，但不会擦除数据。
+
+**Buffer的容量，位置，上限（Buffer Capacity, Position and Limit）**
+
+buffer缓冲区实质上就是一块内存，用于写入数据，也供后续再次读取数据。这块内存被NIO Buffer管理，并提供一系列的方法用于更简单的操作这块内存。
+
+一个Buffer有三个属性是必须掌握的，分别是：
+
+- capacity容量
+- position位置
+- limit限制
+
+position和limit的具体含义取决于当前buffer的模式。capacity在两种模式下都表示容量。
+下面有张示例图，描诉了不同模式下position和limit的含义：
+[![buffers-modes.png](https://camo.githubusercontent.com/5f403b9066c06abbf7c94eb8fb4248b273e0ae7f/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d373462353333333166313361633539312e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/5f403b9066c06abbf7c94eb8fb4248b273e0ae7f/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d373462353333333166313361633539312e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**容量（Capacity）**
+
+作为一块内存，buffer有一个固定的大小，叫做capacity容量。也就是最多只能写入容量值得字节，整形等数据。一旦buffer写满了就需要清空已读数据以便下次继续写入新的数据。
+
+**位置（Position）**
+
+当写入数据到Buffer的时候需要中一个确定的位置开始，默认初始化时这个位置position为0，一旦写入了数据比如一个字节，整形数据，那么position的值就会指向数据之后的一个单元，position最大可以到capacity-1。
+当从Buffer读取数据时，也需要从一个确定的位置开始。buffer从写入模式变为读取模式时，position会归零，每次读取后，position向后移动。
+
+**上限（Limit）**
+在写模式，limit的含义是我们所能写入的最大数据量。它等同于buffer的容量。
+一旦切换到读模式，limit则代表我们所能读取的最大数据量，他的值等同于写模式下position的位置。
+数据读取的上限时buffer中已有的数据，也就是limit的位置（原position所指的位置）。
+
+**分配一个Buffer（Allocating a Buffer）**
+
+为了获取一个Buffer对象，你必须先分配。每个Buffer实现类都有一个allocate()方法用于分配内存。下面看一个实例,开辟一个48字节大小的buffer：
+
+```
+ByteBuffer buf = ByteBuffer.allocate(48);
+```
+
+开辟一个1024个字符的CharBuffer：
+
+```
+CharBuffer buf = CharBuffer.allocate(1024);
+```
+
+**Buffer的实现类**
+
+[![img](https://camo.githubusercontent.com/9339761ac6960d9d923689993786fcb2db6b989e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d306631383336373136346335366362642e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/9339761ac6960d9d923689993786fcb2db6b989e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d306631383336373136346335366362642e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+其中MappedByteBuffer比较特殊。Java类库中的NIO包相对于IO 包来说有一个新功能是内存映射文件，日常编程中并不是经常用到，但是在处理大文件时是比较理想的提高效率的手段。其中MappedByteBuffer实现的就是内存映射文件，可以实现大文件的高效读写。 可以参考这两篇文章理解： [[Java\][IO]JAVA NIO之浅谈内存映射文件原理与DirectMemory](http://blog.csdn.net/szwangdf/article/details/10588489)，[深入浅出MappedByteBuffer](http://www.jianshu.com/p/f90866dcbffc)。
+
+### 3. Channel的使用
+
+Java NIO Channel通道和流非常相似，主要有以下几点区别：
+
+- 通道可以读也可以写，流一般来说是单向的（只能读或者写）。
+- 通道可以异步读写。
+- 通道总是基于缓冲区Buffer来读写。
+- 正如上面提到的，我们可以从通道中读取数据，写入到buffer；也可以中buffer内读数据，写入到通道中。下面有个示意图：
+  [![img](https://camo.githubusercontent.com/6300d4ff3e04e0124e336ef57321ae2385db417c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d356463616166396237313036613764392e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/6300d4ff3e04e0124e336ef57321ae2385db417c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d356463616166396237313036613764392e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**Channel的实现类有：**
+
+- FileChannel
+- DatagramChannel
+- SocketChannel
+- ServerSocketChannel
+
+还有一些异步IO类，后面有介绍。
+
+FileChannel用于文件的数据读写。 DatagramChannel用于UDP的数据读写。 SocketChannel用于TCP的数据读写。 ServerSocketChannel允许我们监听TCP链接请求，每个请求会创建会一个SocketChannel。
+
+**Channel使用实例**
+
+```java
+RandomAccessFile aFile = new RandomAccessFile("data/nio-data.txt", "rw");
+    FileChannel inChannel = aFile.getChannel();
+
+    ByteBuffer buf = ByteBuffer.allocate(48);
+
+    int bytesRead = inChannel.read(buf);
+    while (bytesRead != -1) {
+
+      System.out.println("Read " + bytesRead);
+      buf.flip();
+
+      while(buf.hasRemaining()){
+          System.out.print((char) buf.get());
+      }
+
+      buf.clear();
+      bytesRead = inChannel.read(buf);
+    }
+    aFile.close();
+```
+
+上面介绍了NIO中的两个关键部分Buffer/Channel，对于Selector的介绍，先放一放，先介绍阻塞/非阻塞/同步/非同步的关系。
+
+### 4. 阻塞/非阻塞/同步/非同步的关系
+
+为什么要介绍这四者的关系，就是因为Selector是对于多个非阻塞IO流的调度器，通过Selector来实现读写操作。所以有必要理解一下什么是阻塞/非阻塞？
+
+本文讨论的背景是UNIX环境下的network IO。本文最重要的参考文献是Richard Stevens的“**UNIX® Network Programming Volume 1, Third Edition: The Sockets Networking** ”，6.2节“**I/O Models** ”，Stevens在这节中详细说明了各种IO的特点和区别。
+
+Stevens在文章中一共比较了五种IO Model：
+
+- blocking IO
+- nonblocking IO
+- IO multiplexing
+- signal driven IO
+- asynchronous IO。
+
+由于signal driven IO在实际中并不常用，所以我这只提及剩下的四种IO Model。再说一下IO发生时涉及的对象和步骤。对于一个network IO (这里我们以read举例)，它会涉及到两个系统对象，一个是调用这个IO的process (or thread)，另一个就是系统内核(kernel)。
+
+当一个read操作发生时，它会经历两个阶段：
+**1 等待数据准备 (Waiting for the data to be ready)**
+**2 将数据从内核拷贝到进程中 (Copying the data from the kernel to the process)**
+
+记住这两点很重要，因为这些IO Model的区别就是在两个阶段上各有不同的情况。
+
+**blocking IO**
+
+在UNIX中，默认情况下所有的socket都是blocking，一个典型的读操作流程大概是这样：
+[![img](https://camo.githubusercontent.com/f55357c57eb4ef5d798816f5f889b33aca8d7f8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d303334366532323939626134383233382e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/f55357c57eb4ef5d798816f5f889b33aca8d7f8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d303334366532323939626134383233382e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+当用户进程调用了recvfrom这个系统调用，kernel就开始了IO的第一个阶段：准备数据。对于network io来说，很多时候数据在一开始还没有到达（比如，还没有收到一个完整的UDP包），这个时候kernel就要等待足够的数据到来。而在用户进程这边，整个进程会被阻塞。当kernel一直等到数据准备好了，它就会将数据从kernel中拷贝到用户内存，然后kernel返回结果，用户进程才解除block的状态，重新运行起来。**所以，blocking IO的特点就是在IO执行的两个阶段都被block了。**
+
+**non-blocking IO**
+
+UNIX下，可以通过设置socket使其变为non-blocking。当对一个non-blocking socket执行读操作时，流程是这个样子：
+[![img](https://camo.githubusercontent.com/2c8c90d120c9c7862f12ab3c1c0a32fc6ad7f161/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653235373334623537313061643563322e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2c8c90d120c9c7862f12ab3c1c0a32fc6ad7f161/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653235373334623537313061643563322e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+从图中可以看出，当用户进程发出read操作时，如果kernel中的数据还没有准备好，那么它并不会block用户进程，而是立刻返回一个error。从用户进程角度讲 ，它发起一个read操作后，并不需要等待，而是马上就得到了一个结果。用户进程判断结果是一个error时，它就知道数据还没有准备好，于是它可以再次发送read操作。**一旦kernel中的数据准备好了，并且又再次收到了用户进程的system call，那么它马上就将数据拷贝到了用户内存，然后返回。所以，用户进程其实是需要不断的主动询问kernel数据好了没有。**
+
+**IO multiplexing**
+
+IO multiplexing这个词可能有点陌生，但是如果我说select，epoll，大概就都能明白了。有些地方也称这种IO方式为event driven IO。我们都知道，select/epoll的好处就在于单个process就可以同时处理多个网络连接的IO。它的基本原理就是select/epoll这个function会不断的轮询所负责的所有socket，当某个socket有数据到达了，就通知用户进程。它的流程如图：
+[![img](https://camo.githubusercontent.com/4bd60d65f6c4b342451fa32ccc63082f2c2f9363/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393839343938636634323739303038332e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/4bd60d65f6c4b342451fa32ccc63082f2c2f9363/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393839343938636634323739303038332e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+当用户进程调用了select，那么整个进程会被block，而同时，kernel会“监视”所有select负责的socket，当任何一个socket中的数据准备好了，select就会返回。这个时候用户进程再调用read操作，将数据从kernel拷贝到用户进程。
+
+这个图和blocking IO的图其实并没有太大的不同，事实上，还更差一些。因为这里需要使用两个system call (select 和 recvfrom)，而blocking IO只调用了一个system call (recvfrom)。但是，用select的优势在于它可以同时处理多个connection。（多说一句。所以，如果处理的连接数不是很高的话，使用select/epoll的web server不一定比使用multi-threading + blocking IO的web server性能更好，可能延迟还更大。select/epoll的优势并不是对于单个连接能处理得更快，而是在于能处理更多的连接。）
+
+在IO multiplexing Model中，**实际中，对于每一个socket，一般都设置成为non-blocking，**但是，如上图所示，整个用户的process其实是一直被block的。**只不过process是被select这个函数block，而不是被socket IO给block。**
+
+**Asynchronous I/O**
+
+UNIX下的asynchronous IO其实用得很少。先看一下它的流程：
+[![img](https://camo.githubusercontent.com/e4d13a397539721001d4caa6d3d5ceca1e2fa9d3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333962393839363733393064623139352e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/e4d13a397539721001d4caa6d3d5ceca1e2fa9d3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333962393839363733393064623139352e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+**用户进程发起read操作之后，立刻就可以开始去做其它的事。** 而另一方面，从kernel的角度，当它受到一个asynchronous read之后，首先它会立刻返回，所以不会对用户进程产生任何block。**然后，kernel会等待数据准备完成，然后将数据拷贝到用户内存，当这一切都完成之后，kernel会给用户进程发送一个signal，告诉它read操作完成了。**
+
+到目前为止，已经将四个IO Model都介绍完了。现在回过头来回答最初的那几个问题：
+
+**blocking和non-blocking的区别在哪，synchronous IO和asynchronous IO的区别在哪？**
+
+先回答最简单的这个：blocking vs non-blocking。前面的介绍中其实已经很明确的说明了这两者的区别。调用blocking IO会一直block住对应的进程直到操作完成，而non-blocking IO在kernel还准备数据的情况下会立刻返回。
+
+在说明synchronous IO和asynchronous IO的区别之前，需要先给出两者的定义。Stevens给出的定义（其实是POSIX的定义）是这样子的：
+**A synchronous I/O operation causes the requesting process to be blocked until that I/O operationcompletes; An asynchronous I/O operation does not cause the requesting process to be blocked;**
+
+两者的区别就在于synchronous IO做”IO operation”的时候会将process阻塞。
+
+按照这个定义，之前所述的**blocking IO，non-blocking IO，IO multiplexing都属于synchronous IO。**
+
+有人可能会说，non-blocking IO并没有被block啊。这里有个非常“狡猾”的地方，定义中所指的”IO operation”是指真实的IO操作，就是例子中的recvfrom这个system call。non-blocking IO在执行recvfrom这个system call的时候，如果kernel的数据没有准备好，这时候不会block进程。但是，当kernel中数据准备好的时候，recvfrom会将数据从kernel拷贝到用户内存中，这个时候进程是被block了，在这段时间内，进程是被block的。而asynchronous IO则不一样，当进程发起IO 操作之后，就直接返回再也不理睬了，直到kernel发送一个信号，告诉进程说IO完成。在这整个过程中，进程完全没有被block。
+
+各个IO Model的比较如图所示：
+[![img](https://camo.githubusercontent.com/df7db01f1e8fbefc2b487471741b95488f33ce94/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d336637616465353538663734396136312e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/df7db01f1e8fbefc2b487471741b95488f33ce94/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d336637616465353538663734396136312e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+经过上面的介绍，会发现non-blocking IO和asynchronous IO的区别还是很明显的。在non-blocking IO中，虽然进程大部分时间都不会被block，但是它仍然要求进程去主动的check，并且当数据准备完成以后，也需要进程主动的再次调用recvfrom来将数据拷贝到用户内存。而asynchronous IO则完全不同。它就像是用户进程将整个IO操作交给了他人（kernel）完成，然后他人做完后发信号通知。在此期间，用户进程不需要去检查IO操作的状态，也不需要主动的去拷贝数据。
+
+### 5. NIO中的blocking IO/nonblocking IO/IO multiplexing/asynchronous IO
+
+上面讲完了IO中的几种模式，虽然是基于UNIX环境下，具体操作系统的知识个人认识很浅，下面就说下自己的个人理解，不对的地方欢迎指正。
+
+首先，标准的IO显然属于blocking IO。
+
+其次，NIO中的实现了SelectableChannel类的对象，可以通过如下方法设置是否支持非阻塞模式：
+
+> SelectableChannel configureBlocking(boolean block)：调整此通道的阻塞模式。
+
+如果为 true，则此通道将被置于阻塞模式；如果为 false，则此通道将被置于非阻塞模式
+设置为false的NIO类将是nonblocking IO。
+
+再其次，通过Selector监听实现多个NIO对象的读写操作，显然属于IO multiplexing。关于Selector，其负责调度多个非阻塞式IO，当有其感兴趣的读写操作到来时，再执行相应的操作。Selector执行select()方法来进行轮询查找是否到来了读写操作，这个过程是阻塞的，具体详细使用下面介绍。
+
+最后，在Java 7中增加了asynchronous IO，具体结构和实现类框架如下：
+
+[![img](https://camo.githubusercontent.com/2c12f45a9292a3a029585244ec52279e6a3dd58e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d396339363461393631663531656464322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2c12f45a9292a3a029585244ec52279e6a3dd58e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d396339363461393631663531656464322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+篇幅有限，具体使用可以看这篇文章：[Java 学习之路 之 基于TCP协议的网络编程（八十二）](http://www.ithao123.cn/content-7365943.html)
+
+### 6. Selector使用
+
+Selector是Java NIO中的一个组件，用于检查一个或多个NIO Channel的状态是否处于可读、可写。如此可以实现单线程管理多个channels,也就是可以管理多个网络链接。
+
+通过上面的了解我们知道Selector是一种IO multiplexing的情况。
+
+下面这幅图描述了单线程处理三个channel的情况：
+[![img](https://camo.githubusercontent.com/654e94e9a6c525f79ed2993bd4fbd12cdc60f2ef/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653465326637613635646430636538302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/654e94e9a6c525f79ed2993bd4fbd12cdc60f2ef/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653465326637613635646430636538302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+**创建Selector(Creating a Selector)。创建一个Selector可以通过Selector.open()方法：**
+
+```
+Selector selector = Selector.open();
+```
+
+**注册Channel到Selector上：**
+
+```
+channel.configureBlocking(false);
+SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
+```
+
+Channel必须是非阻塞的。上面对IO multiplexing的图解中可以看出。所以FileChannel不适用Selector，因为FileChannel不能切换为非阻塞模式。Socket channel可以正常使用。
+
+**注意register的第二个参数，这个参数是一个“关注集合”，代表我们关注的channel状态，有四种基础类型可供监听：**
+
+- Connect
+- Accept
+- Read
+- Write
+
+**一个channel触发了一个事件也可视作该事件处于就绪状态。**
+
+因此当channel与server连接成功后，那么就是“Connetct”状态。server channel接收请求连接时处于“Accept”状态。channel有数据可读时处于“Read”状态。channel可以进行数据写入时处于“Writer”状态。当注册到Selector的所有Channel注册完后，调用Selector的select()方法，将会不断轮询检查是否有以上设置的状态产生，如果产生便会加入到SelectionKey集合中，进行后续操作。
+
+上述的四种就绪状态用SelectionKey中的常量表示如下：
+
+- SelectionKey.OP_CONNECT
+- SelectionKey.OP_ACCEPT
+- SelectionKey.OP_READ
+- SelectionKey.OP_WRITE
+
+如果对多个事件感兴趣可利用位的或运算结合多个常量，比如：
+
+int interestSet = SelectionKey.OP_READ | SelectionKey.OP_WRITE;
+
+**从Selector中选择channel(Selecting Channels via a Selector)**
+
+一旦我们向Selector注册了一个或多个channel后，就可以调用select来获取channel。select方法会返回所有处于就绪状态的channel。
+
+select方法具体如下：
+
+> int select()
+> int select(long timeout)
+> int selectNow()
+
+select()方法在返回channel之前处于阻塞状态。 select(long timeout)和select做的事一样，不过他的阻塞有一个超时限制。
+
+selectNow()不会阻塞，根据当前状态立刻返回合适的channel。
+
+select()方法的返回值是一个int整形，代表有多少channel处于就绪了。也就是自上一次select后有多少channel进入就绪。
+
+举例来说，假设第一次调用select时正好有一个channel就绪，那么返回值是1，并且对这个channel做任何处理，接着再次调用select，此时恰好又有一个新的channel就绪，那么返回值还是1，现在我们一共有两个channel处于就绪，但是在每次调用select时只有一个channel是就绪的。
+
+**selectedKeys()**
+
+在调用select并返回了有channel就绪之后，可以通过选中的key集合来获取channel，这个操作通过调用selectedKeys()方法：
+
+```
+Set<SelectionKey> selectedKeys = selector.selectedKeys();
+```
+
+遍历这些SelectionKey可以通过如下方法：
+
+```java
+Set<SelectionKey> selectedKeys = selector.selectedKeys();
+
+Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+
+while(keyIterator.hasNext()) {
+
+    SelectionKey key = keyIterator.next();
+
+    if(key.isAcceptable()) {
+        // a connection was accepted by a ServerSocketChannel.
+
+    } else if (key.isConnectable()) {
+        // a connection was established with a remote server.
+
+    } else if (key.isReadable()) {
+        // a channel is ready for reading
+
+    } else if (key.isWritable()) {
+        // a channel is ready for writing
+    }
+
+    keyIterator.remove();
+}
+```
+
+上述循环会迭代key集合，针对每个key我们单独判断他是处于何种就绪状态。
+
+注意keyIterater.remove()方法的调用，Selector本身并不会移除SelectionKey对象，这个操作需要我们手动执行。当下次channel处于就绪是，Selector任然会把这些key再次加入进来。
+
+SelectionKey.channel返回的channel实例需要强转为我们实际使用的具体的channel类型，例如ServerSocketChannel或SocketChannel.
+
+**wakeUp()**
+
+由于调用select而被阻塞的线程，可以通过调用Selector.wakeup()来唤醒即便此时已然没有channel处于就绪状态。具体操作是，在另外一个线程调用wakeup，被阻塞与select方法的线程就会立刻返回。
+
+**close()**
+
+当操作Selector完毕后，需要调用close方法。close的调用会关闭Selector并使相关的SelectionKey都无效。channel本身不管被关闭。
+
+**完整的Selector案例**
+
+这有一个完整的案例，首先打开一个Selector,然后注册channel，最后调用select()获取感兴趣的操作：
+
+```java
+Selector selector = Selector.open();
+
+channel.configureBlocking(false);
+
+SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
+
+while(true) {
+
+  int readyChannels = selector.select();
+
+  if(readyChannels == 0) continue;
+
+  Set<SelectionKey> selectedKeys = selector.selectedKeys();
+
+  Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+
+  while(keyIterator.hasNext()) {
+
+    SelectionKey key = keyIterator.next();
+
+    if(key.isAcceptable()) {
+        // a connection was accepted by a ServerSocketChannel.
+
+    } else if (key.isConnectable()) {
+        // a connection was established with a remote server.
+
+    } else if (key.isReadable()) {
+        // a channel is ready for reading
+
+    } else if (key.isWritable()) {
+        // a channel is ready for writing
+    }
+
+    keyIterator.remove();
+  }
+}
+```
 
 ## 八、Java异常详解
 
+### 1. Java异常简介
 
+Java异常是Java提供的一种识别及响应错误的一致性机制。
+
+Java异常机制可以使程序中异常处理代码和正常业务代码分离，保证程序代码更加优雅，并提高程序健壮性。在有效使用异常的情况下，异常能清晰的回答what, where, why这3个问题：异常类型回答了“什么”被抛出，异常堆栈跟踪回答了“在哪“抛出，异常信息回答了“为什么“会抛出。
+
+Java异常机制用到的几个关键字：**try、catch、finally、throw、throws。**
+
+• **try** -- 用于监听。将要被监听的代码(可能抛出异常的代码)放在try语句块之内，当try语句块内发生异常时，异常就被抛出。
+
+• **catch** -- 用于捕获异常。catch用来捕获try语句块中发生的异常。
+
+• **finally** -- finally语句块总是会被执行。它主要用于回收在try块里打开的物理资源(如数据库连接、网络连接和磁盘文件)。只有finally块，执行完成之后，才会回来执行try或者catch块中的return或者throw语句，如果finally中使用了return或者throw等终止方法的语句，则就不会跳回执行，直接停止。
+
+• **throw** -- 用于抛出异常。
+
+• **throws** -- 用在方法签名中，用于声明该方法可能抛出的异常。
+
+下面通过几个示例对这几个关键字进行简单了解。
+
+**示例一: 了解try和catch基本用法**
+
+```java
+public class Demo1 {
+
+    public static void main(String[] args) {
+        try {
+            int i = 10/0;
+              System.out.println("i="+i); 
+        } catch (ArithmeticException e) {
+              System.out.println("Caught Exception"); 
+            System.out.println("e.getMessage(): " + e.getMessage()); 
+            System.out.println("e.toString(): " + e.toString()); 
+            System.out.println("e.printStackTrace():");
+            e.printStackTrace(); 
+        }
+    }
+}
+```
+
+**运行结果**：
+
+```
+Caught Exception
+e.getMessage(): / by zero
+e.toString(): java.lang.ArithmeticException: / by zero
+e.printStackTrace():
+java.lang.ArithmeticException: / by zero
+    at Demo1.main(Demo1.java:6)
+```
+
+**结果说明**：在try语句块中有除数为0的操作，该操作会抛出java.lang.ArithmeticException异常。通过catch，对该异常进行捕获。
+
+观察结果我们发现，并没有执行System.out.println("i="+i)。这说明try语句块发生异常之后，try语句块中的剩余内容就不会再被执行了。
+
+**示例二: 了解finally的基本用法**
+
+在"示例一"的基础上，我们添加finally语句。
+
+```java
+public class Demo2 {
+
+    public static void main(String[] args) {
+        try {
+            int i = 10/0;
+              System.out.println("i="+i); 
+        } catch (ArithmeticException e) {
+              System.out.println("Caught Exception"); 
+            System.out.println("e.getMessage(): " + e.getMessage()); 
+            System.out.println("e.toString(): " + e.toString()); 
+            System.out.println("e.printStackTrace():");
+            e.printStackTrace(); 
+        } finally {
+            System.out.println("run finally");
+        }
+    }
+}
+```
+
+**运行结果**：
+
+```
+Caught Exception
+e.getMessage(): / by zero
+e.toString(): java.lang.ArithmeticException: / by zero
+e.printStackTrace():
+java.lang.ArithmeticException: / by zero
+    at Demo2.main(Demo2.java:6)
+run finally
+```
+
+**结果说明**：最终执行了finally语句块。
+
+**示例三: 了解throws和throw的基本用法**
+
+throws是用于声明抛出的异常，而throw是用于抛出异常。
+
+```java
+class MyException extends Exception {
+    public MyException() {}
+    public MyException(String msg) {
+        super(msg);
+    }
+}
+
+public class Demo3 {
+
+    public static void main(String[] args) {
+        try {
+            test();
+        } catch (MyException e) {
+            System.out.println("Catch My Exception");
+            e.printStackTrace();
+        }
+    }
+    public static void test() throws MyException{
+        try {
+            int i = 10/0;
+              System.out.println("i="+i); 
+        } catch (ArithmeticException e) {
+            throw new MyException("This is MyException"); 
+        }
+    }
+}
+```
+
+**运行结果**：
+
+```
+Catch My Exception
+MyException: This is MyException
+    at Demo3.test(Demo3.java:24)
+    at Demo3.main(Demo3.java:13)
+```
+
+**结果说明**：
+
+MyException是继承于Exception的子类。test()的try语句块中产生ArithmeticException异常(除数为0)，并在catch中捕获该异常；接着抛出MyException异常。main()方法对test()中抛出的MyException进行捕获处理。
+
+### 2. Java异常框架
+
+[![img](https://camo.githubusercontent.com/6f4720a573cb252a0e7aa0bd08364fa9752f67e6/687474703a2f2f696d616765732e636e6974626c6f672e636f6d2f626c6f672f3439373633342f3230313430322f3131313232383038353932363232302e6a7067)](https://camo.githubusercontent.com/6f4720a573cb252a0e7aa0bd08364fa9752f67e6/687474703a2f2f696d616765732e636e6974626c6f672e636f6d2f626c6f672f3439373633342f3230313430322f3131313232383038353932363232302e6a7067)
+
+**1. Throwable**
+
+Throwable是 Java 语言中所有错误或异常的超类。
+
+Throwable包含两个子类: **Error** 和 **Exception**。它们通常用于指示发生了异常情况。
+
+Throwable包含了其线程创建时线程执行堆栈的快照，它提供了printStackTrace()等接口用于获取堆栈跟踪数据等信息。
+
+**2. Exception**
+
+Exception及其子类是 Throwable 的一种形式，它指出了合理的应用程序想要捕获的条件。
+
+**3. RuntimeException**
+
+RuntimeException是那些可能在 Java 虚拟机正常运行期间抛出的异常的超类。
+
+编译器不会检查RuntimeException异常。例如，除数为零时，抛出ArithmeticException异常。RuntimeException是ArithmeticException的超类。当代码发生除数为零的情况时，倘若既"没有通过throws声明抛出ArithmeticException异常"，也"没有通过try...catch...处理该异常"，也能通过编译。这就是我们所说的"编译器不会检查RuntimeException异常"！
+
+如果代码会产生RuntimeException异常，则需要通过修改代码进行避免。例如，若会发生除数为零的情况，则需要通过代码避免该情况的发生！
+
+**4. Error**
+
+和Exception一样，Error也是Throwable的子类。它用于指示合理的应用程序不应该试图捕获的严重问题，大多数这样的错误都是异常条件。
+
+和RuntimeException一样，编译器也不会检查Error。
+
+Java将可抛出(Throwable)的结构分为三种类型：**被检查的异常(Checked Exception)，运行时异常(RuntimeException)和错误(Error)。**
+
+**(01) 运行时异常** **定义**: RuntimeException及其子类都被称为运行时异常。
+
+**特点**: Java编译器不会检查它。也就是说，当程序中可能出现这类异常时，倘若既"没有通过throws声明抛出它"，也"没有用try-catch语句捕获它"，还是会编译通过。例如，除数为零时产生的ArithmeticException异常，数组越界时产生的IndexOutOfBoundsException异常，fail-fast机制产生的ConcurrentModificationException异常等，都属于运行时异常。
+
+虽然Java编译器不会检查运行时异常，但是我们也可以通过throws进行声明抛出，也可以通过try-catch对它进行捕获处理。
+
+如果产生运行时异常，则需要通过修改代码来进行避免。例如，若会发生除数为零的情况，则需要通过代码避免该情况的发生！
+
+**(02) 被检查的异常**
+
+**定义**: Exception类本身，以及Exception的子类中除了"运行时异常"之外的其它子类都属于被检查异常。
+
+**特点**: Java编译器会检查它。此类异常，要么通过throws进行声明抛出，要么通过try-catch进行捕获处理，否则不能通过编译。例如，CloneNotSupportedException就属于被检查异常。当通过clone()接口去克隆一个对象，而该对象对应的类没有实现Cloneable接口，就会抛出CloneNotSupportedException异常。
+
+被检查异常通常都是可以恢复的。
+
+**(03) 错误**
+
+**定义**: Error类及其子类。
+
+**特点**: 和运行时异常一样，编译器也不会对错误进行检查。
+
+当资源不足、约束失败、或是其它程序无法继续运行的条件发生时，就产生错误。程序本身无法修复这些错误的。例如，VirtualMachineError就属于错误。
+
+按照Java惯例，我们是不应该实现任何新的Error子类的！
 
 ## 九、Java抽象类和接口的区别
-
-
-
-## 十、Java深拷贝和浅拷贝
 
 ### 1. 理解抽象
 
@@ -2307,6 +2963,14 @@ interface InterfaceA {
 5. 接口可以被类多实现（被其他接口多继承），抽象类只能被单继承。
 6. 接口中没有 `this` 指针，没有构造函数，不能拥有实例字段（实例变量）或实例方法。
 7. 抽象类不能在Java 8 的 lambda 表达式中使用。
+
+## 十、Java深拷贝和浅拷贝
+
+
+
+
+
+
 
 ## 十一、Java transient关键字
 
