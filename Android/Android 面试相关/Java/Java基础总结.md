@@ -2432,7 +2432,7 @@ FileChannel用于文件的数据读写。 DatagramChannel用于UDP的数据读�
 **Channel使用实例**
 
 ```java
-RandomAccessFile aFile = new RandomAccessFile("data/nio-data.txt", "rw");
+	RandomAccessFile aFile = new RandomAccessFile("data/nio-data.txt", "rw");
     FileChannel inChannel = aFile.getChannel();
 
     ByteBuffer buf = ByteBuffer.allocate(48);
@@ -2472,25 +2472,27 @@ Stevens在文章中一共比较了五种IO Model：
 由于signal driven IO在实际中并不常用，所以我这只提及剩下的四种IO Model。再说一下IO发生时涉及的对象和步骤。对于一个network IO (这里我们以read举例)，它会涉及到两个系统对象，一个是调用这个IO的process (or thread)，另一个就是系统内核(kernel)。
 
 当一个read操作发生时，它会经历两个阶段：
+
 **1 等待数据准备 (Waiting for the data to be ready)**
+
 **2 将数据从内核拷贝到进程中 (Copying the data from the kernel to the process)**
 
 记住这两点很重要，因为这些IO Model的区别就是在两个阶段上各有不同的情况。
 
-**blocking IO**
+#### blocking IO
 
 在UNIX中，默认情况下所有的socket都是blocking，一个典型的读操作流程大概是这样：
 [![img](https://camo.githubusercontent.com/f55357c57eb4ef5d798816f5f889b33aca8d7f8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d303334366532323939626134383233382e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/f55357c57eb4ef5d798816f5f889b33aca8d7f8c/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d303334366532323939626134383233382e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
 
 当用户进程调用了recvfrom这个系统调用，kernel就开始了IO的第一个阶段：准备数据。对于network io来说，很多时候数据在一开始还没有到达（比如，还没有收到一个完整的UDP包），这个时候kernel就要等待足够的数据到来。而在用户进程这边，整个进程会被阻塞。当kernel一直等到数据准备好了，它就会将数据从kernel中拷贝到用户内存，然后kernel返回结果，用户进程才解除block的状态，重新运行起来。**所以，blocking IO的特点就是在IO执行的两个阶段都被block了。**
 
-**non-blocking IO**
+#### non-blocking IO
 
 UNIX下，可以通过设置socket使其变为non-blocking。当对一个non-blocking socket执行读操作时，流程是这个样子：
 [![img](https://camo.githubusercontent.com/2c8c90d120c9c7862f12ab3c1c0a32fc6ad7f161/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653235373334623537313061643563322e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2c8c90d120c9c7862f12ab3c1c0a32fc6ad7f161/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d653235373334623537313061643563322e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
 从图中可以看出，当用户进程发出read操作时，如果kernel中的数据还没有准备好，那么它并不会block用户进程，而是立刻返回一个error。从用户进程角度讲 ，它发起一个read操作后，并不需要等待，而是马上就得到了一个结果。用户进程判断结果是一个error时，它就知道数据还没有准备好，于是它可以再次发送read操作。**一旦kernel中的数据准备好了，并且又再次收到了用户进程的system call，那么它马上就将数据拷贝到了用户内存，然后返回。所以，用户进程其实是需要不断的主动询问kernel数据好了没有。**
 
-**IO multiplexing**
+#### IO multiplexing
 
 IO multiplexing这个词可能有点陌生，但是如果我说select，epoll，大概就都能明白了。有些地方也称这种IO方式为event driven IO。我们都知道，select/epoll的好处就在于单个process就可以同时处理多个网络连接的IO。它的基本原理就是select/epoll这个function会不断的轮询所负责的所有socket，当某个socket有数据到达了，就通知用户进程。它的流程如图：
 [![img](https://camo.githubusercontent.com/4bd60d65f6c4b342451fa32ccc63082f2c2f9363/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393839343938636634323739303038332e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/4bd60d65f6c4b342451fa32ccc63082f2c2f9363/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d393839343938636634323739303038332e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
@@ -2501,13 +2503,13 @@ IO multiplexing这个词可能有点陌生，但是如果我说select，epoll，
 
 在IO multiplexing Model中，**实际中，对于每一个socket，一般都设置成为non-blocking，**但是，如上图所示，整个用户的process其实是一直被block的。**只不过process是被select这个函数block，而不是被socket IO给block。**
 
-**Asynchronous I/O**
+#### Asynchronous I/O
 
 UNIX下的asynchronous IO其实用得很少。先看一下它的流程：
 [![img](https://camo.githubusercontent.com/e4d13a397539721001d4caa6d3d5ceca1e2fa9d3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333962393839363733393064623139352e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/e4d13a397539721001d4caa6d3d5ceca1e2fa9d3/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d333962393839363733393064623139352e6769663f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
 **用户进程发起read操作之后，立刻就可以开始去做其它的事。** 而另一方面，从kernel的角度，当它受到一个asynchronous read之后，首先它会立刻返回，所以不会对用户进程产生任何block。**然后，kernel会等待数据准备完成，然后将数据拷贝到用户内存，当这一切都完成之后，kernel会给用户进程发送一个signal，告诉它read操作完成了。**
 
-到目前为止，已经将四个IO Model都介绍完了。现在回过头来回答最初的那几个问题：
+到目前为止，已经将四个IO Model都介绍完了。现在回答几个问题：
 
 **blocking和non-blocking的区别在哪，synchronous IO和asynchronous IO的区别在哪？**
 
@@ -2545,7 +2547,6 @@ UNIX下的asynchronous IO其实用得很少。先看一下它的流程：
 最后，在Java 7中增加了asynchronous IO，具体结构和实现类框架如下：
 
 [![img](https://camo.githubusercontent.com/2c12f45a9292a3a029585244ec52279e6a3dd58e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d396339363461393631663531656464322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2c12f45a9292a3a029585244ec52279e6a3dd58e/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f333938353536332d396339363461393631663531656464322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
-篇幅有限，具体使用可以看这篇文章：[Java 学习之路 之 基于TCP协议的网络编程（八十二）](http://www.ithao123.cn/content-7365943.html)
 
 ### 6. Selector使用
 
@@ -2558,13 +2559,13 @@ Selector是Java NIO中的一个组件，用于检查一个或多个NIO Channel�
 
 **创建Selector(Creating a Selector)。创建一个Selector可以通过Selector.open()方法：**
 
-```
+```java
 Selector selector = Selector.open();
 ```
 
 **注册Channel到Selector上：**
 
-```
+```java
 channel.configureBlocking(false);
 SelectionKey key = channel.register(selector, SelectionKey.OP_READ);
 ```
@@ -2615,7 +2616,7 @@ select()方法的返回值是一个int整形，代表有多少channel处于就�
 
 在调用select并返回了有channel就绪之后，可以通过选中的key集合来获取channel，这个操作通过调用selectedKeys()方法：
 
-```
+```java
 Set<SelectionKey> selectedKeys = selector.selectedKeys();
 ```
 
@@ -3819,19 +3820,19 @@ Lambda表达式（也称为闭包）是Java 8中最大和最令人期待的语�
 
 Lambda的设计耗费了很多时间和很大的社区力量，最终找到一种折中的实现方案，可以实现简洁而紧凑的语言结构。最简单的Lambda表达式可由逗号分隔的参数列表、**->**符号和语句块组成，例如：
 
-```
+```java
 Arrays.asList( "a", "b", "d" ).forEach( e -> System.out.println( e ) );
 ```
 
 在上面这个代码中的参数**e**的类型是由编译器推理得出的，你也可以显式指定该参数的类型，例如：
 
-```
+```java
 Arrays.asList( "a", "b", "d" ).forEach( ( String e ) -> System.out.println( e ) );
 ```
 
 如果Lambda表达式需要更复杂的语句块，则可以使用花括号将该语句块括起来，类似于Java中的函数体，例如：
 
-```
+```java
 Arrays.asList( "a", "b", "d" ).forEach( e -> {
     System.out.print( e );
     System.out.print( e );
@@ -3840,7 +3841,7 @@ Arrays.asList( "a", "b", "d" ).forEach( e -> {
 
 Lambda表达式可以引用类成员和局部变量（会将这些变量隐式得转换成**final**的），例如下列两个代码块的效果完全相同：
 
-```
+```java
 String separator = ",";
 Arrays.asList( "a", "b", "d" ).forEach( 
     ( String e ) -> System.out.print( e + separator ) );
@@ -3848,7 +3849,7 @@ Arrays.asList( "a", "b", "d" ).forEach(
 
 和
 
-```
+```java
 final String separator = ",";
 Arrays.asList( "a", "b", "d" ).forEach( 
     ( String e ) -> System.out.print( e + separator ) );
@@ -3856,13 +3857,13 @@ Arrays.asList( "a", "b", "d" ).forEach(
 
 Lambda表达式有返回值，返回值的类型也由编译器推理得出。如果Lambda表达式中的语句块只有一行，则可以不用使用**return**语句，下列两个代码片段效果相同：
 
-```
+```java
 Arrays.asList( "a", "b", "d" ).sort( ( e1, e2 ) -> e1.compareTo( e2 ) );
 ```
 
 和
 
-```
+```java
 Arrays.asList( "a", "b", "d" ).sort( ( e1, e2 ) -> {
     int result = e1.compareTo( e2 );
     return result;
@@ -3871,7 +3872,7 @@ Arrays.asList( "a", "b", "d" ).sort( ( e1, e2 ) -> {
 
 Lambda的设计者们为了让现有的功能与Lambda表达式良好兼容，考虑了很多方法，于是产生了**函数接口**这个概念。函数接口指的是只有一个函数的接口，这样的接口可以隐式转换为Lambda表达式。**java.lang.Runnable**和**java.util.concurrent.Callable**是函数式接口的最佳例子。在实践中，函数式接口非常脆弱：只要某个开发者在该接口中添加一个函数，则该接口就不再是函数式接口进而导致编译失败。为了克服这种代码层面的脆弱性，并显式说明某个接口是函数式接口，Java 8 提供了一个特殊的注解**@FunctionalInterface**（Java 库中的所有相关接口都已经带有这个注解了），举个简单的函数式接口的定义：
 
-```
+```java
 @FunctionalInterface
 public interface Functional {
     void method();
@@ -3894,11 +3895,11 @@ Lambda表达式作为Java 8的最大卖点，它有潜力吸引更多的开发�
 
 #### 1.2 接口的默认方法和静态方法
 
-Java 8使用两个新概念扩展了接口的含义：默认方法和静态方法。[默认方法](https://github.com/LRH1993/android_interview/blob/master/java/basis)使得接口有点类似traits，不过要实现的目标不一样。默认方法使得开发者可以在 不破坏二进制兼容性的前提下，往现存接口中添加新的方法，即不强制那些实现了该接口的类也同时实现这个新加的方法。
+Java 8使用两个新概念扩展了接口的含义：默认方法和静态方法。默认方法使得开发者可以在 不破坏二进制兼容性的前提下，往现存接口中添加新的方法，即不强制那些实现了该接口的类也同时实现这个新加的方法。
 
 默认方法和抽象方法之间的区别在于抽象方法需要实现，而默认方法不需要。接口提供的默认方法会被接口的实现类继承或者覆写，例子代码如下：
 
-```
+```java
 private interface Defaulable {
     // Interfaces now allow default methods, the implementer may or 
     // may not implement (override) them.
@@ -3922,7 +3923,7 @@ private static class OverridableImpl implements Defaulable {
 
 Java 8带来的另一个有趣的特性是在接口中可以定义静态方法，例子代码如下：
 
-```
+```java
 private interface DefaulableFactory {
     // Interfaces now allow static methods
     static Defaulable create( Supplier< Defaulable > supplier ) {
@@ -3933,7 +3934,7 @@ private interface DefaulableFactory {
 
 下面的代码片段整合了默认方法和静态方法的使用场景：
 
-```
+```java
 public static void main( String[] args ) {
     Defaulable defaulable = DefaulableFactory.create( DefaultableImpl::new );
     System.out.println( defaulable.notRequired() );
@@ -3958,9 +3959,9 @@ Overridden implementation
 
 方法引用使得开发者可以直接引用现存的方法、Java类的构造方法或者实例对象。方法引用和Lambda表达式配合使用，使得java类的构造方法看起来紧凑而简洁，没有很多复杂的模板代码。
 
-西门的例子中，**Car**类是不同方法引用的例子，可以帮助读者区分四种类型的方法引用。
+下面的例子中，**Car**类是不同方法引用的例子，可以帮助读者区分四种类型的方法引用。
 
-```
+```java
 public static class Car {
     public static Car create( final Supplier< Car > supplier ) {
         return supplier.get();
@@ -3987,19 +3988,19 @@ final Car car = Car.create( Car::new );
 final List< Car > cars = Arrays.asList( car );
 ```
 
-第二种方法引用的类型是静态方法引用，语法是**Class::static_method**。注意：这个方法接受一个Car类型的参数。
+第二种方法引用的类型是**静态方法引用**，语法是**Class::static_method**。注意：这个方法接受一个Car类型的参数。
 
 ```
 cars.forEach( Car::collide );
 ```
 
-第三种方法引用的类型是某个类的成员方法的引用，语法是**Class::method**，注意，这个方法没有定义入参：
+第三种方法引用的类型是**某个类的成员方法的引用**，语法是**Class::method**，注意，这个方法没有定义入参：
 
 ```
 cars.forEach( Car::repair );
 ```
 
-第四种方法引用的类型是某个实例对象的成员方法的引用，语法是**instance::method**。注意：这个方法接受一个Car类型的参数：
+第四种方法引用的类型是**某个实例对象的成员方法的引用**，语法是**instance::method**。注意：这个方法接受一个Car类型的参数：
 
 ```
 final Car police = Car.create( Car::new );
@@ -4022,7 +4023,7 @@ Following the com.javacodegeeks.java8.method.references.MethodReferences$Car@7a8
 
 在Java 8中使用**@Repeatable**注解定义重复注解，实际上，这并不是语言层面的改进，而是编译器做的一个trick，底层的技术仍然相同。可以利用下面的代码说明：
 
-```
+```java
 package com.javacodegeeks.java8.repeatable.annotations;
 
 import java.lang.annotation.ElementType;
@@ -4073,7 +4074,7 @@ filter2
 
 Java 8编译器在类型推断方面有很大的提升，在很多场景下编译器可以推导出某个参数的数据类型，从而使得代码更为简洁。例子代码如下：
 
-```
+```java
 package com.javacodegeeks.java8.type.inference;
 
 public class Value< T > {
@@ -4089,7 +4090,7 @@ public class Value< T > {
 
 下列代码是**Value**类型的应用：
 
-```
+```java
 package com.javacodegeeks.java8.type.inference;
 
 public class TypeInference {
@@ -4106,7 +4107,7 @@ public class TypeInference {
 
 Java 8拓宽了注解的应用场景。现在，注解几乎可以使用在任何元素上：局部变量、接口类型、超类和接口实现类，甚至可以用在函数的异常定义上。下面是一些例子：
 
-```
+```java
 package com.javacodegeeks.java8.annotations;
 
 import java.lang.annotation.ElementType;
@@ -4141,7 +4142,7 @@ public class Annotations {
 
 为了在运行时获得Java程序中方法的参数名称，老一辈的Java程序员必须使用不同方法，例如[Paranamer liberary](https://github.com/paul-hammant/paranamer)。Java 8终于将这个特性规范化，在语言层面（使用反射API和**Parameter.getName()方法**）和字节码层面（使用新的**javac**编译器以及**-parameters**参数）提供支持。
 
-```
+```java
 package com.javacodegeeks.java8.parameter.names;
 
 import java.lang.reflect.Method;
@@ -4171,7 +4172,7 @@ Parameter: args
 
 如果你使用Maven进行项目管理，则可以在**maven-compiler-plugin**编译器的配置项中配置**-parameters**参数：
 
-```
+```xml
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-compiler-plugin</artifactId>
@@ -4196,14 +4197,14 @@ Java应用中最常见的bug就是[空值异常](http://examples.javacodegeeks.c
 
 接下来看一点使用**Optional**的例子：可能为空的值或者某个类型的值：
 
-```
+```java
 Optional< String > fullName = Optional.ofNullable( null );
 System.out.println( "Full Name is set? " + fullName.isPresent() );        
 System.out.println( "Full Name: " + fullName.orElseGet( () -> "[none]" ) ); 
 System.out.println( fullName.map( s -> "Hey " + s + "!" ).orElse( "Hey Stranger!" ) );
 ```
 
-如果**Optional**实例持有一个非空值，则**isPresent()**方法返回true，否则返回false；**orElseGet()**方法，**Optional**实例持有null，则可以接受一个lambda表达式生成的默认值；**map()\**方法可以将现有的\**Opetional**实例的值转换成新的值；**orElse()**方法与**orElseGet()**方法类似，但是在持有null的时候返回传入的默认值。
+如果**Optional**实例持有一个非空值，则**isPresent()**方法返回true，否则返回false；**orElseGet()**方法，**Optional**实例持有null，则可以接受一个lambda表达式生成的默认值；**map()方法可以将现有的Opetional**实例的值转换成新的值；**orElse()**方法与**orElseGet()**方法类似，但是在持有null的时候返回传入的默认值。
 
 上述代码的输出结果如下：
 
@@ -4215,7 +4216,7 @@ Hey Stranger!
 
 再看下另一个简单的例子：
 
-```
+```java
 Optional< String > firstName = Optional.of( "Tom" );
 System.out.println( "First Name is set? " + firstName.isPresent() );        
 System.out.println( "First Name: " + firstName.orElseGet( () -> "[none]" ) ); 
@@ -4239,7 +4240,7 @@ Hey Tom!
 
 Stream API极大得简化了集合操作（后面我们会看到不止是集合），首先看下这个叫Task的类：
 
-```
+```java
 public class Streams  {
     private enum Status {
         OPEN, CLOSED
@@ -4272,7 +4273,7 @@ public class Streams  {
 
 Task类有一个分数（或伪复杂度）的概念，另外还有两种状态：OPEN或者CLOSED。现在假设有一个task集合：
 
-```
+```java
 final Collection< Task > tasks = Arrays.asList(
     new Task( Status.OPEN, 5 ),
     new Task( Status.OPEN, 13 ),
@@ -4282,7 +4283,7 @@ final Collection< Task > tasks = Arrays.asList(
 
 首先看一个问题：在这个task集合中一共有多少个OPEN状态的点？在Java 8之前，要解决这个问题，则需要使用**foreach**循环遍历task集合；但是在Java 8中可以利用steams解决：包括一系列元素的列表，并且支持顺序和并行处理。
 
-```
+```java
 // Calculate total points of all active tasks using sum()
 final long totalPointsOfOpenTasks = tasks
     .stream()
@@ -4309,7 +4310,7 @@ Total points: 18
 
 steam的另一个价值是创造性地支持并行处理（parallel processing）。对于上述的tasks集合，我们可以用下面的代码计算所有任务的点数之和：
 
-```
+```java
 // Calculate total points of all tasks
 final double totalPoints = tasks
    .stream()
@@ -4328,7 +4329,7 @@ Total points（all tasks）: 26.0
 
 对于一个集合，经常需要根据某些条件对其中的元素分组。利用steam提供的API可以很快完成这类任务，代码如下：
 
-```
+```java
 // Group tasks by their status
 final Map< Status, List< Task > > map = tasks
     .stream()
@@ -4344,7 +4345,7 @@ System.out.println( map );
 
 最后一个关于tasks集合的例子问题是：如何计算集合中每个任务的点数在集合中所占的比重，具体处理的代码如下：
 
-```
+```java
 // Calculate the weight of each tasks (as percent of total points) 
 final Collection< String > result = tasks
     .stream()                                        // Stream< String >
@@ -4367,7 +4368,7 @@ System.out.println( result );
 
 最后，正如之前所说，Steam API不仅可以作用于Java集合，传统的IO操作（从文件或者网络一行一行得读取数据）可以受益于steam处理，这里有一个小例子：
 
-```
+```java
 final Path path = new File( filename ).toPath();
 try( Stream< String > lines = Files.lines( path, StandardCharsets.UTF_8 ) ) {
     lines.onClose( () -> System.out.println("Done!") ).forEach( System.out::println );
@@ -4382,9 +4383,9 @@ Java 8引入了[新的Date-Time API(JSR 310)](https://jcp.org/en/jsr/detail?id=3
 
 因为上面这些原因，诞生了第三方库[Joda-Time](http://www.joda.org/joda-time/)，可以替代Java的时间管理API。Java 8中新的时间和日期管理API深受Joda-Time影响，并吸收了很多Joda-Time的精华。新的java.time包包含了所有关于日期、时间、时区、Instant（跟日期类似但是精确到纳秒）、duration（持续时间）和时钟操作的类。新设计的API认真考虑了这些类的不变性（从java.util.Calendar吸取的教训），如果某个实例需要修改，则返回一个新的对象。
 
-我们接下来看看java.time包中的关键类和各自的使用例子。首先，**Clock**类使用时区来返回当前的纳秒时间和日期。**Clock**可以替代**System.currentTimeMillis()\**和\**TimeZone.getDefault()**。
+我们接下来看看java.time包中的关键类和各自的使用例子。首先，**Clock**类使用时区来返回当前的纳秒时间和日期。**Clock**可以替代**System.currentTimeMillis()**和**TimeZone.getDefault()**。
 
-```
+```java
 // Get the system clock as UTC offset 
 final Clock clock = Clock.systemUTC();
 System.out.println( clock.instant() );
@@ -4400,7 +4401,7 @@ System.out.println( clock.millis() );
 
 第二，关注下**LocalDate**和**LocalTime**类。**LocalDate**仅仅包含ISO-8601日历系统中的日期部分；**LocalTime**则仅仅包含该日历系统中的时间部分。这两个类的对象都可以使用Clock对象构建得到。
 
-```
+```java
 // Get the local date and local time
 final LocalDate date = LocalDate.now();
 final LocalDate dateFromClock = LocalDate.now( clock );
@@ -4427,7 +4428,7 @@ System.out.println( timeFromClock );
 
 **LocalDateTime**类包含了LocalDate和LocalTime的信息，但是不包含ISO-8601日历系统中的时区信息。这里有一些[关于LocalDate和LocalTime的例子](https://www.javacodegeeks.com/2014/04/java-8-date-time-api-tutorial-localdatetime.html)：
 
-```
+```java
 // Get the local date/time
 final LocalDateTime datetime = LocalDateTime.now();
 final LocalDateTime datetimeFromClock = LocalDateTime.now( clock );
@@ -4445,7 +4446,7 @@ System.out.println( datetimeFromClock );
 
 如果你需要特定时区的data/time信息，则可以使用**ZoneDateTime**，它保存有ISO-8601日期系统的日期和时间，而且有时区信息。下面是一些使用不同时区的例子：
 
-```
+```java
 // Get the zoned date/time
 final ZonedDateTime zonedDatetime = ZonedDateTime.now();
 final ZonedDateTime zonedDatetimeFromClock = ZonedDateTime.now( clock );
@@ -4466,7 +4467,7 @@ System.out.println( zonedDatetimeFromZone );
 
 最后看下**Duration**类，它持有的时间精确到秒和纳秒。这使得我们可以很容易得计算两个日期之间的不同，例子代码如下：
 
-```
+```java
 // Get duration between two dates
 final LocalDateTime from = LocalDateTime.of( 2014, Month.APRIL, 16, 0, 0, 0 );
 final LocalDateTime to = LocalDateTime.of( 2015, Month.APRIL, 16, 23, 59, 59 );
@@ -4489,7 +4490,7 @@ Duration in hours: 8783
 
 Java 8提供了新的[Nashorn JavaScript引擎](http://www.javacodegeeks.com/2014/02/java-8-compiling-lambda-expressions-in-the-new-nashorn-js-engine.html)，使得我们可以在JVM上开发和运行JS应用。Nashorn JavaScript引擎是javax.script.ScriptEngine的另一个实现版本，这类Script引擎遵循相同的规则，允许Java和JavaScript交互使用，例子代码如下：
 
-```
+```java
 ScriptEngineManager manager = new ScriptEngineManager();
 ScriptEngine engine = manager.getEngineByName( "JavaScript" );
 
@@ -4508,7 +4509,7 @@ Result: 2
 
 [对Base64编码的支持](http://www.javacodegeeks.com/2014/04/base64-in-java-8-its-not-too-late-to-join-in-the-fun.html)已经被加入到Java 8官方库中，这样不需要使用第三方库就可以进行Base64编码，例子代码如下：
 
-```
+```java
 package com.javacodegeeks.java8.base64;
 
 import java.nio.charset.StandardCharsets;
@@ -4544,7 +4545,7 @@ Base64 finally in Java 8!
 
 Java8版本新增了很多新的方法，用于支持并行数组处理。最重要的方法是**parallelSort()**，可以显著加快多核机器上的数组排序。下面的例子论证了**parallexXxx**系列的方法：
 
-```
+```java
 package com.javacodegeeks.java8.parallel.arrays;
 
 import java.util.Arrays;
@@ -4577,7 +4578,7 @@ Sorted: 39 220 263 268 325 607 655 678 723 793
 
 #### 3.7 并发性
 
-基于新增的lambda表达式和steam特性，为Java 8中为**java.util.concurrent.ConcurrentHashMap**类添加了新的方法来支持聚焦操作；另外，也为**java.util.concurrentForkJoinPool**类添加了新的方法来支持通用线程池操作（更多内容可以参考[我们的并发编程课程](http://academy.javacodegeeks.com/course/java-concurrency-essentials/)）。
+基于新增的lambda表达式和steam特性，为Java 8中为**java.util.concurrent.ConcurrentHashMap**类添加了新的方法来支持聚焦操作；另外，也为**java.util.concurrentForkJoinPool**类添加了新的方法来支持通用线程池操作
 
 Java 8还添加了新的**java.util.concurrent.locks.StampedLock**类，用于支持基于容量的锁——该锁有三个模型用于支持读写操作（可以把这个锁当做是**java.util.concurrent.locks.ReadWriteLock**的替代者）。
 
@@ -4596,7 +4597,7 @@ Java 8提供了一些新的命令行工具，这部分会讲解一些对开发�
 
 **jjs**是一个基于标准Nashorn引擎的命令行工具，可以接受js源码并执行。例如，我们写一个**func.js**文件，内容如下：
 
-```
+```js
 function f() { 
      return 1; 
 }; 
