@@ -383,7 +383,7 @@ class Solution {
 
 - 空间复杂度：O(N^2)
 
-### [0147] 特殊数组的特征值：
+### [0147] 特殊数组的特征值
 
 给你一个非负整数数组 nums 。如果存在一个数 x ，使得 nums 中恰好有 x 个元素 大于或者等于 x ，那么就称 nums 是一个 特殊数组 ，而 x 是该数组的 特征值 。
 
@@ -776,9 +776,216 @@ class Solution {
 
 - 空间复杂度：O(N)
 
+### [0151]  用队列实现栈
+
+使用队列实现栈的下列操作：
+
+- push(x) -- 元素 x 入栈
+- pop() -- 移除栈顶元素
+- top() -- 获取栈顶元素
+- empty() -- 返回栈是否为空
+
+注意:
+
+你只能使用队列的基本操作-- 也就是 push to back, peek/pop from front, size, 和 is empty 这些操作是合法的。
+你所使用的语言也许不支持队列。 你可以使用 list 或者 deque（双端队列）来模拟一个队列 , 只要是标准的队列操作即可。
+你可以假设所有操作都是有效的（例如, 对一个空的栈不会调用 pop 或者 top 操作）。
+
+方法一：两个队列
+
+```java
+class MyStack {
+    Queue<Integer> queue1;
+    Queue<Integer> queue2;
+
+    /** Initialize your data structure here. */
+    public MyStack() {
+        queue1 = new LinkedList<Integer>();
+        queue2 = new LinkedList<Integer>();
+    }
+    
+    /** Push element x onto stack. */
+    public void push(int x) {
+        queue2.offer(x);
+        while (!queue1.isEmpty()) {
+            queue2.offer(queue1.poll());
+        }
+        Queue<Integer> temp = queue1;
+        queue1 = queue2;
+        queue2 = temp;
+    }
+    
+    /** Removes the element on top of the stack and returns that element. */
+    public int pop() {
+        return queue1.poll();
+    }
+    
+    /** Get the top element. */
+    public int top() {
+        return queue1.peek();
+    }
+    
+    /** Returns whether the stack is empty. */
+    public boolean empty() {
+        return queue1.isEmpty();
+    }
+}
+
+/**
+ * Your MyStack object will be instantiated and called as such:
+ * MyStack obj = new MyStack();
+ * obj.push(x);
+ * int param_2 = obj.pop();
+ * int param_3 = obj.top();
+ * boolean param_4 = obj.empty();
+ */
+```
+
+方法二：一个队列
+
+```java
+class MyStack {
+    Queue<Integer> queue;
+
+    /** Initialize your data structure here. */
+    public MyStack() {
+        queue = new LinkedList<Integer>();
+    }
+    
+    /** Push element x onto stack. */
+    public void push(int x) {
+        int n = queue.size();
+        queue.offer(x);
+        for (int i = 0; i < n; i++) {
+            queue.offer(queue.poll());
+        }
+    }
+    
+    /** Removes the element on top of the stack and returns that element. */
+    public int pop() {
+        return queue.poll();
+    }
+    
+    /** Get the top element. */
+    public int top() {
+        return queue.peek();
+    }
+    
+    /** Returns whether the stack is empty. */
+    public boolean empty() {
+        return queue.isEmpty();
+    }
+}
+```
 
 
 
+### [0152]  统计最大组的数目
+
+给你一个整数 n 。请你先求出从 1 到 n 的每个整数 10 进制表示下的数位和（每一位上的数字相加），然后把数位和相等的数字放到同一个组中。
+
+请你统计每个组中的数字数目，并返回数字数目并列最多的组有多少个。
+
+示例 1：
+
+```
+输入：n = 13
+输出：4
+解释：总共有 9 个组，将 1 到 13 按数位求和后这些组分别是：
+[1,10]，[2,11]，[3,12]，[4,13]，[5]，[6]，[7]，[8]，[9]。总共有 4 个组拥有的数字并列最多。
+```
+
+示例 2：
+
+```
+输入：n = 2
+输出：2
+解释：总共有 2 个大小为 1 的组 [1]，[2]。
+```
+
+示例 3：
+
+```
+输入：n = 15
+输出：6
+```
+
+示例 4：
+
+```
+输入：n = 24
+输出：5
+```
 
 
+提示：
+
+```
+1 <= n <= 10^4
+```
+
+方法一：哈希表
+
+```java
+class Solution {
+    public int countLargestGroup(int n) {
+        int ans = 0, max = 1;
+        int[] count = new int[n +  1];// 统计数位和有多少
+        int[] sum = new int[n + 1]; //计算1-n各个元素的数位和，例如数字i的数位和是sum[i / 10] + i % 10
+        for(int i = 1; i <= n; i++){
+            sum[i] = sum[i / 10] + i % 10;
+            count[sum[i]]++;
+            if(count[sum[i]] > max) 
+                max = count[sum[i]];
+        }
+
+        for(int num : count) ans += num == max ? 1 : 0;
+        
+        return ans;
+    }
+}
+```
+
+
+
+### [0153]  和为s的两个数字
+
+输入一个递增排序的数组和一个数字s，在数组中查找两个数，使得它们的和正好是s。如果有多对数字的和等于s，则输出任意一对即可。
+
+示例 1：
+
+```
+输入：nums = [2,7,11,15], target = 9
+输出：[2,7] 或者 [7,2]
+```
+
+示例 2：
+
+```
+输入：nums = [10,26,30,31,47,60], target = 40
+输出：[10,30] 或者 [30,10]
+```
+
+
+限制：
+
+- 1 <= nums.length <= 10^5
+- 1 <= nums[i] <= 10^6
+
+方法一：
+
+```java
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        int i = 0, j = nums.length - 1;
+        while(i < j) {
+            int s = nums[i] + nums[j];
+            if(s < target) i++;
+            else if(s > target) j--;
+            else return new int[] { nums[i], nums[j] };
+        }
+        return new int[0];
+    }
+}
+```
 
