@@ -2038,13 +2038,13 @@ class Singleton {
 | **AtomicReferenceFieldUpdater<T，V>** | 基于反射的实用工具，可以对指定类的指定 `volatile` 字段进行原子更新。 |
 | **AtomicStampedReference<V>**         | `AtomicStampedReference` 维护带有整数“标志”的对象引用，可以用原子方式对其进行更新。 |
 
-下面我们来已AtomicIneger的源码为例来看看CAS操作：
+下面我们来已AtomicInteger的源码为例来看看CAS操作：
 
 ```java
 public final int getAndAdd(int delta) {
 	for (; ; ) {
 		int current = get();
-		int next = current + delta;
+		int next =t current + delta;
 		if (compareAndSet(current, next))
 			return current;
 	}
@@ -2079,14 +2079,13 @@ CAS虽然很高效的解决原子操作，但是CAS仍然存在三大问题。AB
 
 
 
-## 十、Java并发集合
-
-### 1. ArrayBlockingQueue
+## 十、Java并发集合：ArrayBlockingQueue
 
 
 
-### 2. LinkedBlockingQueue
+## 十一、Java并发集合：LinkedBlockingQueue
 
 
 
-### 3. ConcurrentHashMap
+## 十二、Java并发集合：ConcurrentHashMap
+
