@@ -969,8 +969,8 @@ class Solution {
 
 限制：
 
-- 1 <= nums.length <= 10^5
-- 1 <= nums[i] <= 10^6
+- `1 <= nums.length <= 10^5`
+- `1 <= nums[i] <= 10^6`
 
 方法一：
 
