@@ -653,7 +653,7 @@ class Solution {
 }
 ```
 
-### [0149] 写字符串需要的行数
+### [0150] 写字符串需要的行数
 
 我们要把给定的字符串 S 从左到右写到每一行上，每一行的最大宽度为100个单位，如果我们在写某个字母的时候会使这行超过了100 个单位，那么我们应该把这个字母写到下一行。我们给定了一个数组 widths ，这个数组 widths[0] 代表 'a' 需要的单位， widths[1] 代表 'b' 需要的单位，...， widths[25] 代表 'z' 需要的单位。
 
@@ -711,7 +711,7 @@ class Solution {
 }
 ```
 
-### [0150] 下一个更大元素 I
+### [0151] 下一个更大元素 I
 
  给定两个 没有重复元素 的数组 nums1 和 nums2 ，其中nums1 是 nums2 的子集。找到 nums1 中每个元素在 nums2 中的下一个比其大的值。
 
@@ -776,7 +776,7 @@ class Solution {
 
 - 空间复杂度：O(N)
 
-### [0151]  用队列实现栈
+### [0152]  用队列实现栈
 
 使用队列实现栈的下列操作：
 
@@ -880,7 +880,7 @@ class MyStack {
 
 
 
-### [0152]  统计最大组的数目
+### [0153]  统计最大组的数目
 
 给你一个整数 n 。请你先求出从 1 到 n 的每个整数 10 进制表示下的数位和（每一位上的数字相加），然后把数位和相等的数字放到同一个组中。
 
@@ -948,7 +948,7 @@ class Solution {
 
 
 
-### [0153]  和为s的两个数字
+### [0154]  和为s的两个数字
 
 输入一个递增排序的数组和一个数字s，在数组中查找两个数，使得它们的和正好是s。如果有多对数字的和等于s，则输出任意一对即可。
 
@@ -989,3 +989,404 @@ class Solution {
 }
 ```
 
+### [0155] 重塑矩阵
+
+在MATLAB中，有一个非常有用的函数 reshape，它可以将一个矩阵重塑为另一个大小不同的新矩阵，但保留其原始数据。
+
+给出一个由二维数组表示的矩阵，以及两个正整数r和c，分别表示想要的重构的矩阵的行数和列数。
+
+重构后的矩阵需要将原始矩阵的所有元素以相同的行遍历顺序填充。
+
+如果具有给定参数的reshape操作是可行且合理的，则输出新的重塑矩阵；否则，输出原始矩阵。
+
+示例 1:
+
+```
+输入: 
+nums = 
+[[1,2],
+ [3,4]]
+r = 1, c = 4
+输出: 
+[[1,2,3,4]]
+解释:
+行遍历nums的结果是 [1,2,3,4]。新的矩阵是 1 * 4 矩阵, 用之前的元素值一行一行填充新矩阵。
+示例 2:
+```
+
+输入: 
+
+```
+nums = 
+[[1,2],
+ [3,4]]
+r = 2, c = 4
+输出: 
+[[1,2],
+ [3,4]]
+解释:
+没有办法将 2 * 2 矩阵转化为 2 * 4 矩阵。 所以输出原矩阵。
+```
+
+注意：
+
+- 给定矩阵的宽和高范围在 [1, 100]。
+- 给定的 r 和 c 都是正数。
+
+方法一 使用队列
+
+```java
+public class Solution {
+    public int[][] matrixReshape(int[][] nums, int r, int c) {
+        int[][] res = new int[r][c];
+        if (nums.length == 0 || r * c != nums.length * nums[0].length)
+            return nums;
+        int count = 0;
+        Queue < Integer > queue = new LinkedList < > ();
+        for (int i = 0; i < nums.length; i++) {
+            for (int j = 0; j < nums[0].length; j++) {
+                queue.add(nums[i][j]);
+            }
+        }
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                res[i][j] = queue.remove();
+            }
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度：O(m*n)
+
+空间复杂度：O(m*n)
+
+方法二 不用额外空间
+
+```java
+public class Solution {
+    public int[][] matrixReshape(int[][] nums, int r, int c) {
+        int[][] res = new int[r][c];
+        if (nums.length == 0 || r * c != nums.length * nums[0].length)
+            return nums;
+        int rows = 0, cols = 0;
+        for (int i = 0; i < nums.length; i++) {
+            for (int j = 0; j < nums[0].length; j++) {
+                res[rows][cols] = nums[i][j];
+                cols++;
+                if (cols == c) {
+                    rows++;
+                    cols = 0;
+                }
+            }
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度：O(m*n)
+
+空间复杂度：O(m*n)
+
+方法三 除法和取模
+
+```java
+public class Solution {
+    public int[][] matrixReshape(int[][] nums, int r, int c) {
+        int[][] res = new int[r][c];
+        if (nums.length == 0 || r * c != nums.length * nums[0].length)
+            return nums;
+        int count = 0;
+        for (int i = 0; i < nums.length; i++) {
+            for (int j = 0; j < nums[0].length; j++) {
+                res[count / c][count % c] = nums[i][j];
+                count++;
+            }
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度：O(m*n)
+
+空间复杂度：O(m*n)
+
+### [0156] 用栈实现队列
+
+使用栈实现队列的下列操作：
+
+- push(x) -- 将一个元素放入队列的尾部。
+- pop() -- 从队列首部移除元素。
+- peek() -- 返回队列首部的元素。
+- empty() -- 返回队列是否为空。
+
+
+示例:
+
+```
+MyQueue queue = new MyQueue();
+
+queue.push(1);
+queue.push(2);  
+queue.peek();  // 返回 1
+queue.pop();   // 返回 1
+queue.empty(); // 返回 false
+```
+
+
+说明:
+
+- 你只能使用标准的栈操作 -- 也就是只有 push to top, peek/pop from top, size, 和 is empty 操作是合法的。
+  你所使用的语言也许不支持栈。你可以使用 list 或者 deque（双端队列）来模拟一个栈，只要是标准的栈操作即可。
+- 假设所有操作都是有效的 （例如，一个空的队列不会调用 pop 或者 peek 操作）。
+
+方法一 使用两个栈
+
+```java
+class MyQueue {
+    private Stack<Integer> s1 = new Stack<>();
+    private Stack<Integer> s2 = new Stack<>();
+    int front = 0;
+    /** Initialize your data structure here. */
+    public MyQueue() {
+
+    }
+    
+    /** Push element x to the back of queue. */
+    public void push(int x) {
+        if (s1.empty())
+            front = x;
+        while (!s1.isEmpty())
+            s2.push(s1.pop());
+        s2.push(x);
+        while (!s2.isEmpty())
+            s1.push(s2.pop());
+    }
+    
+    /** Removes the element from in front of queue and returns that element. */
+    public int pop() {
+        int temp = s1.pop();
+        if (!s1.empty())
+            front = s1.peek();
+        return temp;
+    }
+    
+    /** Get the front element. */
+    public int peek() {
+        return front;
+    }
+    
+    /** Returns whether the queue is empty. */
+    public boolean empty() {
+        return s1.isEmpty();
+    }
+}
+
+/**
+ * Your MyQueue object will be instantiated and called as such:
+ * MyQueue obj = new MyQueue();
+ * obj.push(x);
+ * int param_2 = obj.pop();
+ * int param_3 = obj.peek();
+ * boolean param_4 = obj.empty();
+ */
+```
+
+方法二：
+
+```java
+class MyQueue {
+    private Stack<Integer> s1 = new Stack<>();
+    private Stack<Integer> s2 = new Stack<>();
+    int front = 0;
+    /** Initialize your data structure here. */
+    public MyQueue() {
+
+    }
+    
+    /** Push element x to the back of queue. */
+    public void push(int x) {
+        if (s1.empty())
+            front = x;
+        s1.push(x);
+    }
+    
+    /** Removes the element from in front of queue and returns that element. */
+    public int pop() {
+        if (s2.isEmpty()) {
+            while (!s1.isEmpty())
+                s2.push(s1.pop());
+        }
+        return s2.pop();
+    }
+    
+    /** Get the front element. */
+    public int peek() {
+        if (!s2.isEmpty()) {
+            return s2.peek();
+        }
+        return front;
+    }
+    
+    /** Returns whether the queue is empty. */
+    public boolean empty() {
+        return s1.isEmpty() && s2.isEmpty();
+    }
+}
+
+/**
+ * Your MyQueue object will be instantiated and called as such:
+ * MyQueue obj = new MyQueue();
+ * obj.push(x);
+ * int param_2 = obj.pop();
+ * int param_3 = obj.peek();
+ * boolean param_4 = obj.empty();
+ */
+```
+
+### [0157] Fizz Buzz
+
+写一个程序，输出从 1 到 n 数字的字符串表示。
+
+1. 如果 n 是3的倍数，输出“Fizz”；
+
+2. 如果 n 是5的倍数，输出“Buzz”；
+
+3.如果 n 同时是3和5的倍数，输出 “FizzBuzz”。
+
+示例：
+
+```java
+n = 15,
+
+返回:
+[
+    "1",
+    "2",
+    "Fizz",
+    "4",
+    "Buzz",
+    "Fizz",
+    "7",
+    "8",
+    "Fizz",
+    "Buzz",
+    "11",
+    "Fizz",
+    "13",
+    "14",
+    "FizzBuzz"
+]
+```
+
+方法一： 模拟法
+
+```java
+class Solution {
+  public List<String> fizzBuzz(int n) {
+    // ans list
+    List<String> ans = new ArrayList<String>();
+    for (int num = 1; num <= n; num++) {
+      boolean divisibleBy3 = (num % 3 == 0);
+      boolean divisibleBy5 = (num % 5 == 0);
+      if (divisibleBy3 && divisibleBy5) {
+        // Divides by both 3 and 5, add FizzBuzz
+        ans.add("FizzBuzz");
+      } else if (divisibleBy3) {
+        // Divides by 3, add Fizz
+        ans.add("Fizz");
+      } else if (divisibleBy5) {
+        // Divides by 5, add Buzz
+        ans.add("Buzz");
+      } else {
+        // Not divisible by 3 or 5, add the number
+        ans.add(Integer.toString(num));
+      }
+    }
+    return ans;
+  }
+}
+```
+
+- 时间复杂度： O(N)
+- 空间复杂度： O(1)
+
+方法二： 字符串连接
+
+```java
+class Solution {
+  public List<String> fizzBuzz(int n) {
+    // ans list
+    List<String> ans = new ArrayList<String>();
+    for (int num = 1; num <= n; num++) {
+      boolean divisibleBy3 = (num % 3 == 0);
+      boolean divisibleBy5 = (num % 5 == 0);
+      String numAnsStr = "";
+      if (divisibleBy3) {
+        // Divides by 3, add Fizz
+        numAnsStr += "Fizz";
+      }
+      if (divisibleBy5) {
+        // Divides by 5, add Buzz
+        numAnsStr += "Buzz";
+      }
+      if (numAnsStr.equals("")) {
+        // Not divisible by 3 or 5, add the number
+        numAnsStr += Integer.toString(num);
+      }
+      // Append the current answer str to the ans list
+      ans.add(numAnsStr);
+    }
+
+    return ans;
+  }
+}
+```
+
+- 时间复杂度： O(N)
+- 空间复杂度： O(1)
+
+方法三 用散列表
+
+```java
+class Solution {
+  public List<String> fizzBuzz(int n) {
+    // ans list
+    List<String> ans = new ArrayList<String>();
+    // Hash map to store all fizzbuzz mappings.
+    HashMap<Integer, String> fizzBizzDict =
+        new HashMap<Integer, String>() {
+          {
+            put(3, "Fizz");
+            put(5, "Buzz");
+          }
+        };
+
+    for (int num = 1; num <= n; num++) {
+      String numAnsStr = "";
+      for (Integer key : fizzBizzDict.keySet()) {
+        // If the num is divisible by key,
+        // then add the corresponding string mapping to current numAnsStr
+        if (num % key == 0) {
+          numAnsStr += fizzBizzDict.get(key);
+        }
+      }
+      if (numAnsStr.equals("")) {
+        // Not divisible by 3 or 5, add the number
+        numAnsStr += Integer.toString(num);
+      }
+
+      // Append the current answer str to the ans list
+      ans.add(numAnsStr);
+    }
+
+    return ans;
+  }
+}
+```
+
+- 时间复杂度： O(N)
+- 空间复杂度： O(1)
