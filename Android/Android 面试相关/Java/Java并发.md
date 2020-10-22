@@ -2073,19 +2073,1935 @@ CAS虽然很高效的解决原子操作，但是CAS仍然存在三大问题。AB
 
 ## 八、AbstractQueuedSynchronizer详解
 
+### 1. AQS简介
 
+#### 1.1 AQS介绍
+
+AbstractQueuedSynchronizer提供了一个基于FIFO队列，可以用于构建锁或者其他相关同步装置的基础框架。该同步器（以下简称同步器）利用了一个int来表示状态，期望它能够成为实现大部分同步需求的基础。使用的方法是继承，子类通过继承同步器并需要实现它的方法来管理其状态，管理的方式就是通过类似acquire和release的方式来操纵状态。然而多线程环境中对状态的操纵必须确保原子性，因此子类对于状态的把握，需要使用这个同步器提供的以下三个方法对状态进行操作：
+
+```java
+java.util.concurrent.locks.AbstractQueuedSynchronizer.getState()
+java.util.concurrent.locks.AbstractQueuedSynchronizer.setState(int)
+java.util.concurrent.locks.AbstractQueuedSynchronizer.compareAndSetState(int, int)
+```
+
+子类推荐被定义为自定义同步装置的内部类，同步器自身没有实现任何同步接口，它仅仅是定义了若干acquire之类的方法来供使用。该同步器即可以作为排他模式也可以作为共享模式，当它被定义为一个排他模式时，其他线程对其的获取就被阻止，而共享模式对于多个线程获取都可以成功。
+
+子类推荐被定义为自定义同步装置的内部类，同步器自身没有实现任何同步接口，它仅仅是定义了若干acquire之类的方法来供使用。该同步器即可以作为排他模式也可以作为共享模式，当它被定义为一个排他模式时，其他线程对其的获取就被阻止，而共享模式对于多个线程获取都可以成功。
+
+#### 1.2 AQS用处
+
+[![img](https://camo.githubusercontent.com/3b1e6962810537203ee0c1cf9df037bd6d2dbdbe/687474703a2f2f6c756f6a696e70696e672e636f6d2f696d672f4151535f757365732e6a7067)](http://luojinping.com/img/AQS_uses.jpg)
+
+#### 1.3 同步器与锁
+
+**同步器是实现锁的关键，利用同步器将锁的语义实现，然后在锁的实现中聚合同步器。** 可以这样理解：锁的API是面向使用者的，它定义了与锁交互的公共行为，而每个锁需要完成特定的操作也是透过这些行为来完成的（比如：可以允许两个线程进行加锁，排除两个以上的线程），但是实现是依托给同步器来完成；同步器面向的是线程访问和资源控制，它定义了线程对资源是否能够获取以及线程的排队等操作。**锁和同步器很好的隔离了二者所需要关注的领域，严格意义上讲，同步器可以适用于除了锁以外的其他同步设施上（包括锁）。** 同步器的开始提到了其实现依赖于一个FIFO队列，那么队列中的元素Node就是保存着线程引用和线程状态的容器，每个线程对同步器的访问，都可以看做是队列中的一个节点。Node的主要包含以下成员变量：
+
+```java
+Node {
+    int waitStatus;
+    Node prev;
+    Node next;
+    Node nextWaiter;
+    Thread thread;
+}
+```
+
+以上五个成员变量主要负责保存该节点的线程引用，同步等待队列（以下简称sync队列）的前驱和后继节点，同时也包括了同步状态。
+
+| 属性名称        | 描述                                                         |
+| --------------- | ------------------------------------------------------------ |
+| int waitStatus  | 表示节点的状态。其中包含的状态有： CANCELLED，值为1，表示当前的线程被取消；SIGNAL，值为-1，表示当前节点的后继节点包含的线程需要运行，也就是unpark；CONDITION，值为-2，表示当前节点在等待condition，也就是在condition队列中；PROPAGATE，值为-3，表示当前场景下后续的acquireShared能够得以执行；值为0，表示当前节点在sync队列中，等待着获取锁。 |
+| Node prev       | 前驱节点，比如当前节点被取消，那就需要前驱节点和后继节点来完成连接。 |
+| Node next       | 后继节点。                                                   |
+| Node nextWaiter | 存储condition队列中的后继节点。                              |
+| Thread thread   | 入队列时的当前线程。                                         |
+
+节点成为sync队列和condition队列构建的基础，在同步器中就包含了sync队列。同步器拥有三个成员变量：sync队列的头结点head、sync队列的尾节点tail和状态state。对于锁的获取，请求形成节点，将其挂载在尾部，而锁资源的转移（释放再获取）是从头部开始向后进行。对于同步器维护的状态state，多个线程对其的获取将会产生一个链式的结构。
+
+[![img](https://camo.githubusercontent.com/e00923b637179b9c991410eece69d2cfd558e0fa/687474703a2f2f69666576652e636f6d2f77702d636f6e74656e742f75706c6f6164732f323031332f31302f32312e706e67)](http://ifeve.com/wp-content/uploads/2013/10/21.png)
+
+**API说明**
+
+实现自定义同步器时，需要使用同步器提供的getState()、setState()和compareAndSetState()方法来操纵状态的变迁。
+
+| 方法名称                                    | 描述                                                         |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| protected boolean tryAcquire(int arg)       | 排它的获取这个状态。这个方法的实现需要查询当前状态是否允许获取，然后再进行获取（使用compareAndSetState来做）状态。 |
+| protected boolean tryRelease(int arg)       | 释放状态。                                                   |
+| protected int tryAcquireShared(int arg)     | 共享的模式下获取状态。                                       |
+| protected boolean tryReleaseShared(int arg) | 共享的模式下释放状态。                                       |
+| protected boolean isHeldExclusively()       | 在排它模式下，状态是否被占用。                               |
+
+实现这些方法必须是非阻塞而且是线程安全的，推荐使用该同步器的父类java.util.concurrent.locks.AbstractOwnableSynchronizer来设置当前的线程。 开始提到同步器内部基于一个FIFO队列，对于一个独占锁的获取和释放有以下伪码可以表示。 获取一个排他锁。
+
+```java
+while(获取锁) {
+    if (获取到) {
+        退出while循环
+    } else {
+        if(当前线程没有入队列) {
+            那么入队列
+        }
+        阻塞当前线程
+    }
+}
+释放一个排他锁。
+if (释放成功) {
+    删除头结点
+    激活原头结点的后继节点
+}
+```
+
+#### 1.4 Mutex 示例
+
+下面通过一个排它锁的例子来深入理解一下同步器的工作原理，而只有掌握同步器的工作原理才能够更加深入了解其他的并发组件。 排他锁的实现，一次只能一个线程获取到锁。
+
+```java
+class Mutex implements Lock, java.io.Serializable {
+   // 内部类，自定义同步器
+   private static class Sync extends AbstractQueuedSynchronizer {
+     // 是否处于占用状态
+     protected boolean isHeldExclusively() {
+       return getState() == 1;
+     }
+     // 当状态为0的时候获取锁
+     public boolean tryAcquire(int acquires) {
+       assert acquires == 1; // Otherwise unused
+       if (compareAndSetState(0, 1)) {
+         setExclusiveOwnerThread(Thread.currentThread());
+         return true;
+       }
+       return false;
+     }
+     // 释放锁，将状态设置为0
+     protected boolean tryRelease(int releases) {
+       assert releases == 1; // Otherwise unused
+       if (getState() == 0) throw new IllegalMonitorStateException();
+       setExclusiveOwnerThread(null);
+       setState(0);
+       return true;
+     }
+     // 返回一个Condition，每个condition都包含了一个condition队列
+     Condition newCondition() { return new ConditionObject(); }
+   }
+   // 仅需要将操作代理到Sync上即可
+   private final Sync sync = new Sync();
+   public void lock()                { sync.acquire(1); }
+   public boolean tryLock()          { return sync.tryAcquire(1); }
+   public void unlock()              { sync.release(1); }
+   public Condition newCondition()   { return sync.newCondition(); }
+   public boolean isLocked()         { return sync.isHeldExclusively(); }
+   public boolean hasQueuedThreads() { return sync.hasQueuedThreads(); }
+   public void lockInterruptibly() throws InterruptedException {
+     sync.acquireInterruptibly(1);
+   }
+   public boolean tryLock(long timeout, TimeUnit unit)
+       throws InterruptedException {
+     return sync.tryAcquireNanos(1, unit.toNanos(timeout));
+   }
+ }
+```
+
+可以看到Mutex将Lock接口均代理给了同步器的实现。 使用方将Mutex构造出来之后，调用lock获取锁，调用unlock进行解锁。下面以Mutex为例子，详细分析以下同步器的实现逻辑。
+
+### 2. 独占模式
+
+#### 2.1 acquire
+
+实现分析 public final void acquire(int arg) 该方法以排他的方式获取锁，对中断不敏感，完成synchronized语义。
+
+```java
+public final void acquire(int arg) {
+        if (!tryAcquire(arg) &&
+            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))
+            selfInterrupt();
+}
+```
+
+上述逻辑主要包括：
+
+1. 尝试获取（调用tryAcquire更改状态，需要保证原子性）； 在tryAcquire方法中使用了同步器提供的对state操作的方法，利用compareAndSet保证只有一个线程能够对状态进行成功修改，而没有成功修改的线程将进入sync队列排队。
+2. 如果获取不到，将当前线程构造成节点Node并加入sync队列； 进入队列的每个线程都是一个节点Node，从而形成了一个双向队列，类似CLH队列，这样做的目的是线程间的通信会被限制在较小规模（也就是两个节点左右）。
+3. 再次尝试获取，如果没有获取到那么将当前线程从线程调度器上摘下，进入等待状态。 使用LockSupport将当前线程unpark，关于LockSupport后续会详细介绍。
+
+```java
+private Node addWaiter(Node mode) {
+	Node node = new Node(Thread.currentThread(), mode);
+	// 快速尝试在尾部添加
+	Node pred = tail;
+	if (pred != null) {
+		node.prev = pred;
+		if (compareAndSetTail(pred, node)) {
+			pred.next = node;
+			return node;
+		}
+	}
+	enq(node);
+	return node;
+}
+
+private Node enq(final Node node) {
+	for (;;) {
+		Node t = tail;
+		if (t == null) { // Must initialize
+			if (compareAndSetHead(new Node()))
+				tail = head;
+		} else {
+			node.prev = t;
+			if (compareAndSetTail(t, node)) {
+			t.next = node;
+			return t;
+		}
+	}
+}
+```
+
+上述逻辑主要包括：
+
+1. 使用当前线程构造Node； 对于一个节点需要做的是将当节点前驱节点指向尾节点（current.prev = tail），尾节点指向它（tail = current），原有的尾节点的后继节点指向它（t.next = current）而这些操作要求是原子的。上面的操作是利用尾节点的设置来保证的，也就是compareAndSetTail来完成的。
+
+- 先行尝试在队尾添加；
+
+  如果尾节点已经有了，然后做如下操作：
+
+  1. 分配引用T指向尾节点；
+  2. 将节点的前驱节点更新为尾节点（current.prev = tail）；
+  3. 如果尾节点是T，那么将当尾节点设置为该节点（tail = current，原子更新）；
+  4. T的后继节点指向当前节点（T.next = current）。 注意第3点是要求原子的。 这样可以以最短路径O(1)的效果来完成线程入队，是最大化减少开销的一种方式。
+
+- 如果队尾添加失败或者是第一个入队的节点。
+
+  如果是第1个节点，也就是sync队列没有初始化，那么会进入到enq这个方法，进入的线程可能有多个，或者说在addWaiter中没有成功入队的线程都将进入enq这个方法。
+
+  可以看到enq的逻辑是确保进入的Node都会有机会顺序的添加到sync队列中，而加入的步骤如下：
+
+  1. 如果尾节点为空，那么原子化的分配一个头节点，并将尾节点指向头节点，这一步是初始化；
+  2. **然后是重复在addWaiter中做的工作，但是在一个for(;;)的循环中，直到当前节点入队为止。**
+
+进入sync队列之后，接下来就是要进行锁的获取，或者说是访问控制了，只有一个线程能够在同一时刻继续的运行，而其他的进入等待状态。而每个线程都是一个独立的个体，它们自省的观察，当条件满足的时候（自己的前驱是头结点并且原子性的获取了状态），那么这个线程能够继续运行。
+
+```java
+final boolean acquireQueued(final Node node, int arg) {
+	boolean failed = true;
+	try {
+		boolean interrupted = false;
+		for (;;) {
+			final Node p = node.predecessor();
+			if (p == head &&tryAcquire(arg)) {
+				setHead(node);
+				p.next = null; // help GC
+				failed = false;
+				return interrupted;
+			}
+			if (shouldParkAfterFailedAcquire(p, node) &&
+                    parkAndCheckInterrupt())
+				interrupted = true;
+                }
+	} finally {
+		if (failed)
+			cancelAcquire(node);
+	}
+}
+```
+
+上述逻辑主要包括：
+
+1. 获取当前节点的前驱节点； 需要获取当前节点的前驱节点，而头结点所对应的含义是当前占有锁且正在运行。
+2. 当前驱节点是头结点并且能够获取状态，代表该当前节点占有锁； 如果满足上述条件，那么代表能够占有锁，根据节点对锁占有的含义，设置头结点为当前节点。
+3. 否则进入等待状态。 如果没有轮到当前节点运行，那么将当前线程从线程调度器上摘下，也就是进入等待状态。 这里针对acquire做一下总结：
+4. 状态的维护； 需要在锁定时，需要维护一个状态(int类型)，而对状态的操作是原子和非阻塞的，通过同步器提供的对状态访问的方法对状态进行操纵，并且利用compareAndSet来确保原子性的修改。
+5. 状态的获取； 一旦成功的修改了状态，当前线程或者说节点，就被设置为头节点。
+6. sync队列的维护。 在获取资源未果的过程中条件不符合的情况下(不该自己，前驱节点不是头节点或者没有获取到资源)进入睡眠状态，停止线程调度器对当前节点线程的调度。 这时引入的一个释放的问题，也就是说使睡眠中的Node或者说线程获得通知的关键，就是前驱节点的通知，而这一个过程就是释放，释放会通知它的后继节点从睡眠中返回准备运行。 下面的流程图基本描述了一次acquire所需要经历的过程：
+
+[![img](https://camo.githubusercontent.com/da70d9baa1ed377d98ce785f11f9c354b055d389/687474703a2f2f696d67322e746263646e2e636e2f4c312f3436312f312f745f393638335f313337393332383534325f3932383139313734382e706e67)](http://img2.tbcdn.cn/L1/461/1/t_9683_1379328542_928191748.png)
+
+如上图所示，其中的判定退出队列的条件，判定条件是否满足和休眠当前线程就是完成了自旋spin的过程。
+
+#### 2.2 release
+
+public final boolean release(int arg) 在unlock方法的实现中，使用了同步器的release方法。相对于在之前的acquire方法中可以得出调用acquire，保证能够获取到锁（成功获取状态），而release则表示将状态设置回去，也就是将资源释放，或者说将锁释放。
+
+```
+public final boolean release(int arg) {
+    if (tryRelease(arg)) {
+        Node h = head;
+        if (h != null && h.waitStatus != 0)
+            unparkSuccessor(h);
+        return true;
+    }
+    return false;
+}
+```
+
+上述逻辑主要包括：
+
+1. 尝试释放状态； tryRelease能够保证原子化的将状态设置回去，当然需要使用compareAndSet来保证。如果释放状态成功过之后，将会进入后继节点的唤醒过程。
+2. 唤醒当前节点的后继节点所包含的线程。 通过LockSupport的unpark方法将休眠中的线程唤醒，让其继续acquire状态。
+
+```java
+private void unparkSuccessor(Node node) {
+	// 将状态设置为同步状态
+	int ws = node.waitStatus;
+	if (ws < 0) 		
+		compareAndSetWaitStatus(node, ws, 0); 	
+	
+	/* 
+	* 获取当前节点的后继节点，如果满足状态，那么进行唤醒操作 
+	* 如果没有满足状态，从尾部开始找寻符合要求的节点并将其唤醒 
+	*/
+	
+	Node s = node.next; 	
+	if (s == null || s.waitStatus > 0) {
+		s = null;
+		for (Node t = tail; t != null && t != node; t = t.prev)
+			if (t.waitStatus <= 0)
+				s = t;
+		}
+	if (s != null)
+		LockSupport.unpark(s.thread);
+}
+```
+
+上述逻辑主要包括，该方法取出了当前节点的next引用，然后对其线程(Node)进行了唤醒，这时就只有一个或合理个数的线程被唤醒，被唤醒的线程继续进行对资源的获取与争夺。 回顾整个资源的获取和释放过程： 在获取时，维护了一个sync队列，每个节点都是一个线程在进行自旋，而依据就是自己是否是首节点的后继并且能够获取资源； 在释放时，仅仅需要将资源还回去，然后通知一下后继节点并将其唤醒。 这里需要注意，队列的维护（首节点的更换）是依靠消费者（获取时）来完成的，也就是说在满足了自旋退出的条件时的一刻，这个节点就会被设置成为首节点。
+
+#### 2.3 tryAcquire
+
+protected boolean tryAcquire(int arg) tryAcquire是自定义同步器需要实现的方法，也就是自定义同步器非阻塞原子化的获取状态，如果锁该方法一般用于Lock的tryLock实现中，这个特性是synchronized无法提供的。
+
+public final void acquireInterruptibly(int arg) 该方法提供获取状态能力，当然在无法获取状态的情况下会进入sync队列进行排队，这类似acquire，但是和acquire不同的地方在于它能够在外界对当前线程进行中断的时候提前结束获取状态的操作，换句话说，就是在类似synchronized获取锁时，外界能够对当前线程进行中断，并且获取锁的这个操作能够响应中断并提前返回。一个线程处于synchronized块中或者进行同步I/O操作时，对该线程进行中断操作，这时该线程的中断标识位被设置为true，但是线程依旧继续运行。 如果在获取一个通过网络交互实现的锁时，这个锁资源突然进行了销毁，那么使用acquireInterruptibly的获取方式就能够让该时刻尝试获取锁的线程提前返回。而同步器的这个特性被实现Lock接口中的lockInterruptibly方法。根据Lock的语义，在被中断时，lockInterruptibly将会抛出InterruptedException来告知使用者。
+
+```java
+public final void acquireInterruptibly(int arg)
+	throws InterruptedException {
+	if (Thread.interrupted())
+		throw new InterruptedException();
+	if (!tryAcquire(arg))
+		doAcquireInterruptibly(arg);
+}
+
+private void doAcquireInterruptibly(int arg)
+	throws InterruptedException {
+	final Node node = addWaiter(Node.EXCLUSIVE);
+	boolean failed = true;
+	try {
+		for (;;) {
+			final Node p = node.predecessor();
+			if (p == head && tryAcquire(arg)) {
+				setHead(node);
+				p.next = null; // help GC
+				failed = false;
+				return;
+			}
+			// 检测中断标志位
+			if (shouldParkAfterFailedAcquire(p, node) &&
+			parkAndCheckInterrupt())
+				throw new InterruptedException();
+		}
+	} finally {
+		if (failed)
+			cancelAcquire(node);
+	}
+}
+```
+
+上述逻辑主要包括：
+
+1. 检测当前线程是否被中断； 判断当前线程的中断标志位，如果已经被中断了，那么直接抛出异常并将中断标志位设置为false。
+2. 尝试获取状态； 调用tryAcquire获取状态，如果顺利会获取成功并返回。
+3. 构造节点并加入sync队列； 获取状态失败后，将当前线程引用构造为节点并加入到sync队列中。退出队列的方式在没有中断的场景下和acquireQueued类似，当头结点是自己的前驱节点并且能够获取到状态时，即可以运行，当然要将本节点设置为头结点，表示正在运行。
+4. 中断检测。 在每次被唤醒时，进行中断检测，如果发现当前线程被中断，那么抛出InterruptedException并退出循环。
+
+#### 2.4 doAcquireNanos
+
+private boolean doAcquireNanos(int arg, long nanosTimeout) throws InterruptedException 该方法提供了具备有超时功能的获取状态的调用，如果在指定的nanosTimeout内没有获取到状态，那么返回false，反之返回true。可以将该方法看做acquireInterruptibly的升级版，也就是在判断是否被中断的基础上增加了超时控制。 针对超时控制这部分的实现，主要需要计算出睡眠的delta，也就是间隔值。间隔可以表示为nanosTimeout = 原有nanosTimeout – now（当前时间）+ lastTime（睡眠之前记录的时间）。如果nanosTimeout大于0，那么还需要使当前线程睡眠，反之则返回false。
+
+```java
+private boolean doAcquireNanos(int arg, long nanosTimeout)
+throws InterruptedException {
+	long lastTime = System.nanoTime();
+	final Node node = addWaiter(Node.EXCLUSIVE);
+	boolean failed = true;
+	try {
+		for (;;) {
+			final Node p = node.predecessor();
+			if (p == head &&tryAcquire(arg)) {
+				setHead(node);
+				p.next = null; // help GC
+				failed = false;
+				return true;
+			}
+			if (nanosTimeout <= 0) 				return false; 			if (shouldParkAfterFailedAcquire(p, node) && nanosTimeout > spinForTimeoutThreshold)
+			LockSupport.parkNanos(this, nanosTimeout);
+			long now = System.nanoTime();
+			//计算时间，当前时间减去睡眠之前的时间得到睡眠的时间，然后被
+			//原有超时时间减去，得到了还应该睡眠的时间
+			nanosTimeout -= now - lastTime;
+			lastTime = now;
+			if (Thread.interrupted())
+				throw new InterruptedException();
+		}
+	} finally {
+		if (failed)
+			cancelAcquire(node);
+	}
+}
+```
+
+上述逻辑主要包括：
+
+1. 加入sync队列； 将当前线程构造成为节点Node加入到sync队列中。
+2. 条件满足直接返回； 退出条件判断，如果前驱节点是头结点并且成功获取到状态，那么设置自己为头结点并退出，返回true，也就是在指定的nanosTimeout之前获取了锁。
+3. 获取状态失败休眠一段时间； 通过LockSupport.unpark来指定当前线程休眠一段时间。
+4. 计算再次休眠的时间； 唤醒后的线程，计算仍需要休眠的时间，该时间表示为nanosTimeout = 原有nanosTimeout – now（当前时间）+ lastTime（睡眠之前记录的时间）。其中now – lastTime表示这次睡眠所持续的时间。
+5. 休眠时间的判定。 唤醒后的线程，计算仍需要休眠的时间，并无阻塞的尝试再获取状态，如果失败后查看其nanosTimeout是否大于0，如果小于0，那么返回完全超时，没有获取到锁。 如果nanosTimeout小于等于1000L纳秒，则进入快速的自旋过程。那么快速自旋会造成处理器资源紧张吗？结果是不会，经过测算，开销看起来很小，几乎微乎其微。Doug Lea应该测算了在线程调度器上的切换造成的额外开销，因此在短时1000纳秒内就让当前线程进入快速自旋状态，如果这时再休眠相反会让nanosTimeout的获取时间变得更加不精确。 上述过程可以如下图所示：
+
+[![img](https://camo.githubusercontent.com/f21e8d65f3fda25be4db2e5b8ade65d4cb418756/687474703a2f2f696d67322e746263646e2e636e2f4c312f3436312f312f745f393638335f313337393332383839315f3536383033343038312e706e67)](http://img2.tbcdn.cn/L1/461/1/t_9683_1379328891_568034081.png)
+
+上述这个图中可以理解为在类似获取状态需要排队的基础上增加了一个超时控制的逻辑。每次超时的时间就是当前超时剩余的时间减去睡眠的时间，而在这个超时时间的基础上进行了判断，如果大于0那么继续睡眠（等待），可以看出这个超时版本的获取状态只是一个近似超时的获取状态，因此任何含有超时的调用基本结果就是近似于给定超时。
+
+### 3. 共享模式
+
+#### 3.1 acquireShared
+
+public final void acquireShared(int arg) 调用该方法能够以共享模式获取状态，共享模式和之前的独占模式有所区别。以文件的查看为例，如果一个程序在对其进行读取操作，那么这一时刻，对这个文件的写操作就被阻塞，相反，这一时刻另一个程序对其进行同样的读操作是可以进行的。如果一个程序在对其进行写操作，那么所有的读与写操作在这一时刻就被阻塞，直到这个程序完成写操作。 以读写场景为例，描述共享和独占的访问模式，如下图所示：
+
+[![img](https://camo.githubusercontent.com/1655b0d50856e347338d8ef1bba1dbb157c3bc94/687474703a2f2f696d67312e746263646e2e636e2f4c312f3436312f312f745f393638335f313337393332383935395f313730323338383033312e706e67)](http://img1.tbcdn.cn/L1/461/1/t_9683_1379328959_1702388031.png)
+
+上图中，红色代表被阻塞，绿色代表可以通过。
+
+```java
+public final void acquireShared(int arg) {
+	if (tryAcquireShared(arg) < 0)	
+      doAcquireShared(arg); 
+} 
+private void doAcquireShared(int arg) { 	
+  final Node node = addWaiter(Node.SHARED); 	
+  boolean failed = true; 	
+  try { 		
+    boolean interrupted = false; 		
+    for (;;) { 			
+      final Node p = node.predecessor(); 			
+      if (p == head) { 				
+        int r = tryAcquireShared(arg); 				
+        if (r >= 0) {
+          setHeadAndPropagate(node, r);
+          p.next = null; // help GC
+          if (interrupted)
+            selfInterrupt();
+			failed = false;
+			return;
+				}
+			}
+      if (shouldParkAfterFailedAcquire(p, node) &&
+parkAndCheckInterrupt())
+			interrupted = true;
+    }
+  } finally {
+    if (failed)
+	cancelAcquire(node);
+	}
+}
+```
+
+上述逻辑主要包括：
+
+1. 尝试获取共享状态； 调用tryAcquireShared来获取共享状态，该方法是非阻塞的，如果获取成功则立刻返回，也就表示获取共享锁成功。
+2. 获取失败进入sync队列； 在获取共享状态失败后，当前时刻有可能是独占锁被其他线程所把持，那么将当前线程构造成为节点（共享模式）加入到sync队列中。
+3. 循环内判断退出队列条件； 如果当前节点的前驱节点是头结点并且获取共享状态成功，这里和独占锁acquire的退出队列条件类似。
+4. 获取共享状态成功； 在退出队列的条件上，和独占锁之间的主要区别在于获取共享状态成功之后的行为，而如果共享状态获取成功之后会判断后继节点是否是共享模式，如果是共享模式，那么就直接对其进行唤醒操作，也就是同时激发多个线程并发的运行。
+5. 获取共享状态失败。 通过使用LockSupport将当前线程从线程调度器上摘下，进入休眠状态。 对于上述逻辑中，节点之间的通知过程如下图所示：
+
+[![img](https://camo.githubusercontent.com/1ddfdc594b8b0d2ee70f84852b9b7c65c64ad6b3/687474703a2f2f696d67312e746263646e2e636e2f4c312f3436312f312f745f393638335f313337393332393231375f313534323936373532342e706e67)](http://img1.tbcdn.cn/L1/461/1/t_9683_1379329217_1542967524.png)
+
+上图中，绿色表示共享节点，它们之间的通知和唤醒操作是在前驱节点获取状态时就进行的，红色表示独占节点，它的被唤醒必须取决于前驱节点的释放，也就是release操作，可以看出来图中的独占节点如果要运行，必须等待前面的共享节点均释放了状态才可以。而独占节点如果获取了状态，那么后续的独占式获取和共享式获取均被阻塞。
+
+#### 3.2 releaseShared
+
+public final boolean releaseShared(int arg) 调用该方法释放共享状态，每次获取共享状态acquireShared都会操作状态，同样在共享锁释放的时候，也需要将状态释放。比如说，一个限定一定数量访问的同步工具，每次获取都是共享的，但是如果超过了一定的数量，将会阻塞后续的获取操作，只有当之前获取的消费者将状态释放才可以使阻塞的获取操作得以运行。
+
+```java
+public final boolean releaseShared(int arg) {
+    if (tryReleaseShared(arg)) {
+        doReleaseShared();
+        return true;
+    }
+    return false;
+}
+```
+
+上述逻辑主要就是调用同步器的tryReleaseShared方法来释放状态，并同时在doReleaseShared方法中唤醒其后继节点。
+
+#### 3.3 一个例子 TwinsLock
+
+在上述对同步器AbstractQueuedSynchronizer进行了实现层面的分析之后，我们通过一个例子来加深对同步器的理解： 设计一个同步工具，该工具在同一时刻，只能有两个线程能够并行访问，超过限制的其他线程进入阻塞状态。 对于这个需求，可以利用同步器完成一个这样的设定，定义一个初始状态，为2，一个线程进行获取那么减1，一个线程释放那么加1，状态正确的范围在[0，1，2]三个之间，当在0时，代表再有新的线程对资源进行获取时只能进入阻塞状态（注意在任何时候进行状态变更的时候均需要以CAS作为原子性保障）。由于资源的数量多于1个，同时可以有两个线程占有资源，因此需要实现tryAcquireShared和tryReleaseShared方法，这里谢谢luoyuyou和同事小明指正，已经修改了实现。
+
+```java
+public class TwinsLock implements Lock {
+	private final Sync	sync	= new Sync(2);
+
+	private static final class Sync extends AbstractQueuedSynchronizer {
+		private static final long	serialVersionUID	= -7889272986162341211L;
+
+		Sync(int count) {
+			if (count <= 0) {
+				throw new IllegalArgumentException("count must large than zero.");
+			}
+			setState(count);
+		}
+
+		public int tryAcquireShared(int reduceCount) {
+			for (;;) {
+				int current = getState();
+				int newCount = current - reduceCount;
+				if (newCount < 0 || compareAndSetState(current, newCount)) {
+					return newCount;
+				}
+			}
+		}
+
+		public boolean tryReleaseShared(int returnCount) {
+			for (;;) {
+				int current = getState();
+				int newCount = current + returnCount;
+				if (compareAndSetState(current, newCount)) {
+					return true;
+				}
+			}
+		}
+	}
+
+	public void lock() {
+		sync.acquireShared(1);
+	}
+
+	public void lockInterruptibly() throws InterruptedException {
+		sync.acquireSharedInterruptibly(1);
+	}
+
+	public boolean tryLock() {
+		return sync.tryAcquireShared(1) >= 0;
+	}
+
+	public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+		return sync.tryAcquireSharedNanos(1, unit.toNanos(time));
+	}
+
+	public void unlock() {
+		sync.releaseShared(1);
+	}
+
+	@Override
+	public Condition newCondition() {
+		return null;
+	}
+}
+```
+
+上述测试用例的逻辑主要包括：
+
+1. 打印线程 Worker在两次睡眠之间打印自身线程，如果一个时刻只能有两个线程同时访问，那么打印出来的内容将是成对出现。
+2. 分隔线程 不停的打印换行，能让Worker的输出看起来更加直观。 该测试的结果是在一个时刻，仅有两个线程能够获得到锁，并完成打印，而表象就是打印的内容成对出现。
+
+### 4. 总结
+
+AQS简核心是通过一个共享变量来同步状态，变量的状态由子类去维护，而AQS框架做的是：
+
+- 线程阻塞队列的维护
+- 线程阻塞和唤醒
+
+共享变量的修改都是通过Unsafe类提供的CAS操作完成的。 AbstractQueuedSynchronizer类的主要方法是acquire和release，典型的模板方法， 下面这4个方法由子类去实现：
+
+```java
+protected boolean tryAcquire(int arg)
+protected boolean tryRelease(int arg)
+protected int tryAcquireShared(int arg)
+protected boolean tryReleaseShared(int arg)
+```
+
+acquire方法用来获取锁，返回true说明线程获取成功继续执行，一旦返回false则线程加入到等待队列中，等待被唤醒，release方法用来释放锁。 一般来说实现的时候这两个方法被封装为lock和unlock方法。
 
 ## 九、深入理解ReentrantLock
+
+java5之后，并发包中新增了Lock接口（以及相关实现类）用来实现锁的功能，它提供了与synchronized关键字类似的同步功能。既然有了synchronized这种内置的锁功能，为何要新增Lock接口？先来想象一个场景：手把手的进行锁获取和释放，先获得锁A，然后再获取锁B，当获取锁B后释放锁A同时获取锁C，当锁C获取后，再释放锁B同时获取锁D，以此类推，这种场景下，synchronized关键字就不那么容易实现了，而使用Lock却显得容易许多。
+
+### 1. 定义
+
+```java
+public class ReentrantLock implements Lock, java.io.Serializable {
+    private final Sync sync;
+    abstract static class Sync extends AbstractQueuedSynchronizer {
+
+        /**
+         * Performs {@link Lock#lock}. The main reason for subclassing
+         * is to allow fast path for nonfair version.
+         */
+        abstract void lock();
+
+        /**
+         * Performs non-fair tryLock.  tryAcquire is implemented in
+         * subclasses, but both need nonfair try for trylock method.
+         */
+        final boolean nonfairTryAcquire(int acquires) {
+            final Thread current = Thread.currentThread();
+            int c = getState();
+            if (c == 0) {
+                if (compareAndSetState(0, acquires)) {
+                    setExclusiveOwnerThread(current);
+                    return true;
+                }
+            }
+            else if (current == getExclusiveOwnerThread()) {
+                int nextc = c + acquires;
+                if (nextc < 0) // overflow
+                    throw new Error("Maximum lock count exceeded");
+                setState(nextc);
+                return true;
+            }
+            return false;
+        }
+
+        protected final boolean tryRelease(int releases) {
+            int c = getState() - releases;
+            if (Thread.currentThread() != getExclusiveOwnerThread())
+                throw new IllegalMonitorStateException();
+            boolean free = false;
+            if (c == 0) {
+                free = true;
+                setExclusiveOwnerThread(null);
+            }
+            setState(c);
+            return free;
+        }
+    }
+    //默认非公平锁
+    public ReentrantLock() {
+        sync = new NonfairSync();
+    }
+    //fair为false时，采用公平锁策略
+    public ReentrantLock(boolean fair) {    
+        sync = fair ? new FairSync() : new NonfairSync();
+    }
+    public void lock() {
+        sync.lock();
+    }
+    public void unlock() {    sync.release(1);}
+    public Condition newCondition() {    
+        return sync.newCondition();
+    }
+    ...
+}
+```
+
+从源代码可以Doug lea巧妙的采用组合模式把lock和unlock方法委托给同步器完成。
+
+### 2. 使用方式
+
+```java
+Lock lock = new ReentrantLock();
+Condition condition = lock.newCondition();
+lock.lock();
+try {
+  while(条件判断表达式) {
+      condition.wait();
+  }
+ // 处理逻辑
+} finally {
+    lock.unlock();
+}
+```
+
+需要显示的获取锁，并在finally块中显示的释放锁，目的是保证在获取到锁之后，最终能够被释放。
+
+### 3. 非公平锁实现
+
+在非公平锁中，每当线程执行lock方法时，都尝试利用CAS把state从0设置为1。
+
+那么Doug lea是如何实现锁的非公平性呢？ 我们假设这样一个场景：
+
+1. 持有锁的线程A正在running，队列中有线程BCDEF被挂起并等待被唤醒；
+2. 在某一个时间点，线程A执行unlock，唤醒线程B；
+3. 同时线程G执行lock，这个时候会发生什么？线程B和G拥有相同的优先级，这里讲的优先级是指获取锁的优先级，同时执行CAS指令竞争锁。如果恰好线程G成功了，线程B就得重新挂起等待被唤醒。
+
+通过上述场景描述，我们可以看书，即使线程B等了很长时间也得和新来的线程G同时竞争锁，如此的不公平。
+
+```java
+static final class NonfairSync extends Sync {
+    /**
+     * Performs lock.  Try immediate barge, backing up to normal
+     * acquire on failure.
+     */
+    final void lock() {
+        if (compareAndSetState(0, 1))
+            setExclusiveOwnerThread(Thread.currentThread());
+        else
+            acquire(1);
+    }
+
+    public final void acquire(int arg) {    
+        if (!tryAcquire(arg) && 
+                acquireQueued(addWaiter(Node.EXCLUSIVE), arg))       
+          selfInterrupt();
+    }
+
+    protected final boolean tryAcquire(int acquires) {
+        return nonfairTryAcquire(acquires);
+    }
+}
+```
+
+下面我们用线程A和线程B来描述非公平锁的竞争过程。
+
+1. 线程A和B同时执行CAS指令，假设线程A成功，线程B失败，则表明线程A成功获取锁，并把同步器中的exclusiveOwnerThread设置为线程A。
+
+2. 竞争失败的线程B，在nonfairTryAcquire方法中，会再次尝试获取锁，
+
+   在这段时间如果线程A释放锁，线程B就可以直接获取锁而不用挂起
+
+   。完整的执行流程如下：
+
+   [![img](https://camo.githubusercontent.com/f62090cd63608583c37306104a48b9e5bcf8abcf/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d356264373033383239636264633536612e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/f62090cd63608583c37306104a48b9e5bcf8abcf/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d356264373033383239636264633536612e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+### 4. 公平锁实现
+
+在公平锁中，每当线程执行lock方法时，如果同步器的队列中有线程在等待，则直接加入到队列中。 场景分析：
+
+1. 持有锁的线程A正在running，对列中有线程BCDEF被挂起并等待被唤醒；
+2. 线程G执行lock，队列中有线程BCDEF在等待，线程G直接加入到队列的对尾。
+
+所以每个线程获取锁的过程是公平的，等待时间最长的会最先被唤醒获取锁。
+
+```java
+static final class FairSync extends Sync {
+    private static final long serialVersionUID = -3000897897090466540L;
+
+    final void lock() {
+        acquire(1);
+    }
+
+    /**
+     * Fair version of tryAcquire.  Don't grant access unless
+     * recursive call or no waiters or is first.
+     */
+    protected final boolean tryAcquire(int acquires) {
+        final Thread current = Thread.currentThread();
+        int c = getState();
+        if (c == 0) {
+            if (!hasQueuedPredecessors() &&
+                compareAndSetState(0, acquires)) {
+                setExclusiveOwnerThread(current);
+                return true;
+            }
+        }
+        else if (current == getExclusiveOwnerThread()) {
+            int nextc = c + acquires;
+            if (nextc < 0)
+                throw new Error("Maximum lock count exceeded");
+            setState(nextc);
+            return true;
+        }
+        return false;
+    }
+}
+```
+
+### 5. 重入锁实现
+
+重入锁，即线程可以重复获取已经持有的锁。在非公平和公平锁中，都对重入锁进行了实现。
+
+```java
+    if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0)
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+```
+
+### 6. 条件变量Condition
+
+条件变量很大一个程度上是为了解决Object.wait/notify/notifyAll难以使用的问题。
+
+```java
+public class ConditionObject implements Condition, java.io.Serializable {
+    /** First node of condition queue. */
+    private transient Node firstWaiter;
+    /** Last node of condition queue. */
+    private transient Node lastWaiter;
+    public final void signal() {}
+    public final void signalAll() {}
+    public final void awaitUninterruptibly() {}  
+    public final void await() throws InterruptedException {}
+}
+```
+
+1. Synchronized中，所有的线程都在同一个object的条件队列上等待。而ReentrantLock中，每个condition都维护了一个条件队列。
+2. 每一个**Lock**可以有任意数据的**Condition**对象，**Condition**是与**Lock**绑定的，所以就有**Lock**的公平性特性：如果是公平锁，线程为按照FIFO的顺序从*Condition.await*中释放，如果是非公平锁，那么后续的锁竞争就不保证FIFO顺序了。
+3. Condition接口定义的方法，**await**对应于**Object.wait**，**signal**对应于**Object.notify**，**signalAll**对应于**Object.notifyAll**。特别说明的是Condition的接口改变名称就是为了避免与Object中的*wait/notify/notifyAll*的语义和使用上混淆。
+
+先看一个condition在生产者消费者的应用场景：
+
+```java
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Created by j_zhan on 2016/7/13.
+ */
+public class Queue<T> {
+    private final T[] items;
+    private final Lock lock = new ReentrantLock();
+    private Condition notFull = lock.newCondition();
+    private Condition notEmpty = lock.newCondition();
+    private int head, tail, count;
+    public Queue(int maxSize) {
+        items = (T[]) new Object[maxSize];
+    }
+    public Queue() {
+        this(10);
+    }
+
+    public void put(T t) throws InterruptedException {
+        lock.lock();
+        try {
+            while (count == items.length) {
+                //数组满时，线程进入等待队列挂起。线程被唤醒时，从这里返回。
+                notFull.await(); 
+            }
+            items[tail] = t;
+            if (++tail == items.length) {
+                tail = 0;
+            }
+            ++count;
+            notEmpty.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public T take() throws InterruptedException {
+        lock.lock();
+        try {
+            while (count == 0) {
+                notEmpty.await();
+            }
+            T o = items[head];
+            items[head] = null;//GC
+            if (++head == items.length) {
+                head = 0;
+            }
+            --count;
+            notFull.signal();
+            return o;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+假设线程AB在并发的往items中插入数据，当items中元素存满时。如果线程A获取到锁，继续添加数据，满足count == items.length条件，导致线程A执行await方法。 **ReentrantLock**是独占锁，同一时刻只有一个线程能获取到锁，所以在lock.lock()和lock.unlock()之间可能有一次释放锁的操作（同样也必然还有一次获取锁的操作）。在Queue类中，不管take还是put，在线程持有锁之后只有await()方法有可能释放锁，然后挂起线程，一旦条件满足就被唤醒，再次获取锁。具体实现如下：
+
+```java
+public final void await() throws InterruptedException {
+    if (Thread.interrupted())
+        throw new InterruptedException();
+    Node node = addConditionWaiter();
+    int savedState = fullyRelease(node);
+    int interruptMode = 0;
+    while (!isOnSyncQueue(node)) {
+        LockSupport.park(this);
+        if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
+            break;
+    }
+    if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
+        interruptMode = REINTERRUPT;
+    if (node.nextWaiter != null) // clean up if cancelled
+        unlinkCancelledWaiters();
+    if (interruptMode != 0)
+        reportInterruptAfterWait(interruptMode);
+}
+
+private Node addConditionWaiter() {
+    Node t = lastWaiter;
+    // If lastWaiter is cancelled, clean out.
+    if (t != null && t.waitStatus != Node.CONDITION) {
+        unlinkCancelledWaiters();
+        t = lastWaiter;
+    }
+    Node node = new Node(Thread.currentThread(), Node.CONDITION);
+    if (t == null)
+        firstWaiter = node;
+    else
+        t.nextWaiter = node;
+    lastWaiter = node;
+    return node;
+}
+```
+
+await实现逻辑：
+
+1. 将线程A加入到条件等待队列中，如果最后一个节点是取消状态，则从对列中删除。
+2. 线程A释放锁，实质上是线程A修改AQS的状态state为0，并唤醒AQS等待队列中的线程B，线程B被唤醒后，尝试获取锁，接下去的过程就不重复说明了。
+3. 线程A释放锁并唤醒线程B之后，如果线程A不在AQS的同步队列中，线程A将通过LockSupport.park进行挂起操作。
+4. 随后，线程A等待被唤醒，当线程A被唤醒时，会通过acquireQueued方法竞争锁，如果失败，继续挂起。如果成功，线程A从await位置恢复。
+
+假设线程B获取锁之后，执行了take操作和条件变量的signal，signal通过某种实现唤醒了线程A，具体实现如下：
+
+```java
+ public final void signal() {
+     if (!isHeldExclusively())
+         throw new IllegalMonitorStateException();
+     Node first = firstWaiter;
+     if (first != null)
+         doSignal(first);
+ }
+
+ private void doSignal(Node first) {
+     do {
+         if ((firstWaiter = first.nextWaiter) == null)
+             lastWaiter = null;
+         first.nextWaiter = null;
+     } while (!transferForSignal(first) &&
+              (first = firstWaiter) != null);
+ }
+
+ final boolean transferForSignal(Node node) {
+    if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
+        return false;
+    Node p = enq(node); //线程A插入到AQS的等待队列中
+    int ws = p.waitStatus;
+    if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
+        LockSupport.unpark(node.thread);
+    return true;
+}
+```
+
+signal实现逻辑：
+
+1. 接着上述场景，线程B执行了signal方法，取出条件队列中的第一个非CANCELLED节点线程，即线程A。另外，signalAll就是唤醒条件队列中所有非CANCELLED节点线程。遇到CANCELLED线程就需要将其从队列中删除。
+2. 通过CAS修改线程A的waitStatus，表示该节点已经不是等待条件状态，并将线程A插入到AQS的等待队列中。
+3. 唤醒线程A，线程A和别的线程进行锁的竞争。
+
+### 7. 总结
+
+1. ReentrantLock提供了内置锁类似的功能和内存语义。
+2. 此外，ReetrantLock还提供了其它功能，包括定时的锁等待、可中断的锁等待、公平性、以及实现非块结构的加锁、Condition，对线程的等待和唤醒等操作更加灵活，一个ReentrantLock可以有多个Condition实例，所以更有扩展性，不过ReetrantLock需要显示的获取锁，并在finally中释放锁，否则后果很严重。
+3. ReentrantLock在性能上似乎优于Synchronized，其中在jdk1.6中略有胜出，在1.5中是远远胜出。那么为什么不放弃内置锁，并在新代码中都使用ReetrantLock？
+4. 在java1.5中， 内置锁与ReentrantLock相比有例外一个优点：在线程转储中能给出在哪些调用帧中获得了哪些锁，并能够检测和识别发生死锁的线程。Reentrant的非块状特性任然意味着，获取锁的操作不能与特定的栈帧关联起来，而内置锁却可以。
+5. 因为内置锁时JVM的内置属性，所以未来更可能提升synchronized而不是ReentrantLock的性能。例如对线程封闭的锁对象消除优化，通过增加锁粒度来消除内置锁的同步。
 
 
 
 ## 十、Java并发集合：ArrayBlockingQueue
 
+### 1. Queue接口和BlockingQueue接口回顾
+
+#### 1.1 Queue接口回顾
+
+> 在Queue接口中，除了继承Collection接口中定义的方法外，它还分别额外地定义**插入、删除、查询**这3个操作，其中每一个操作都以两种不同的形式存在，每一种形式都对应着一个方法。
+
+方法说明：
+
+|             | Throws exception | Returns special value |
+| ----------- | ---------------- | --------------------- |
+| **Insert**  | add(e)           | offer(e)              |
+| **Remove**  | remove()         | poll()                |
+| **Examine** | element()        | peek()                |
+
+- add方法在将一个元素插入到队列的尾部时，如果出现队列已经满了，那么就会抛出IllegalStateException,而使用offer方法时，如果队列满了，则添加失败,返回false,但并不会引发异常。
+
+- remove方法是获取队列的头部元素并且删除，如果当队列为空时，那么就会抛出NoSuchElementException。而poll在队列为空时，则返回一个null。
+
+- element方法是从队列中获取到队列的第一个元素，但不会删除，但是如果队列为空时，那么它就会抛出NoSuchElementException。peek方法与之类似，只是不会抛出异常，而是返回false。
+
+#### 1.2 BlockingQueue接口回顾
+
+> BlockingQueue是JDK1.5出现的接口，它在原来的Queue接口基础上提供了更多的额外功能：当获取队列中的头部元素时，如果队列为空，那么它将会使执行线程处于等待状态；当添加一个元素到队列的尾部时，如果队列已经满了，那么它同样会使执行的线程处于等待状态。
+
+前面我们在说Queue接口时提到过，它针对于相同的操作提供了2种不同的形式，而BlockingQueue更夸张，针对于相同的操作提供了4种不同的形式。
+
+> 该四种形式分别为：
+>
+> 1. 抛出异常
+> 2. 返回一个特殊值(可能是null或者是false，取决于具体的操作)
+> 3. 阻塞当前执行直到其可以继续
+> 4. 当线程被挂起后，等待最大的时间，如果一旦超时，即使该操作依旧无法继续执行，线程也不会再继续等待下去。
+
+对应的方法说明:
+
+|             | Throws exception | Returns special value | Blocks | Times out            |
+| ----------- | ---------------- | --------------------- | ------ | -------------------- |
+| **Insert**  | add(e)           | offer(e)              | put(e) | offer(e, time, unit) |
+| **Remove**  | remove()         | poll()                | take() | poll(time, unit)     |
+| **Examine** | element()        | peek()                | 无     | 无                   |
+
+BlockingQueue虽然比起Queue在操作上提供了更多的支持，但是它在使用有如下的几点:
+
+> 1. BlockingQueue中是不允许添加null的，该接受在声明的时候就要求所有的实现类在接收到一个null的时候，都应该抛出NullPointerException。
+> 2. BlockingQueue是线程安全的，因此它的所有和队列相关的方法都具有原子性。但是对于那么从Collection接口中继承而来的批量操作方法，比如addAll(Collection e)等方法，BlockingQueue的实现通常没有保证其具有原子性，因此我们在使用的BlockingQueue，应该尽可能地不去使用这些方法。
+> 3. BlockingQueue主要应用于生产者与消费者的模型中，其元素的添加和获取都是极具规律性的。但是对于remove(Object o)这样的方法，虽然BlockingQueue可以保证元素正确的删除，但是这样的操作会非常响应性能，因此我们在没有特殊的情况下，也应该避免使用这类方法。
+
+### 2. ArrayBlockingQueue深入分析
+
+首先让我们看看API对其的描述。 **注意:这里使用的JDK版本为1.7，不同的JDK版本在实现上存在不同**
+
+[![img](https://camo.githubusercontent.com/2ced146e8c65f5bca72e71c3e0fb0ad536927e45/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d636135303862383733356334303235372e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2ced146e8c65f5bca72e71c3e0fb0ad536927e45/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d636135303862383733356334303235372e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+首先让我们看下ArrayBlockingQueue的核心组成：
+
+```java
+/** 底层维护队列元素的数组 */
+    final Object[] items;
+
+    /**  当读取元素时数组的下标(这里称为读下标) */
+    int takeIndex;
+
+    /** 添加元素时数组的下标 (这里称为写小标)*/
+    int putIndex;
+
+    /** 队列中的元素个数 */
+    int count;
+
+    /**用于并发控制的工具类**/
+    final ReentrantLock lock;
+
+    /** 控制take操作时是否让线程等待 */
+    private final Condition notEmpty;
+
+    /** 控制put操作时是否让线程等待 */
+    private final Condition notFull;
+```
+
+> take方法分析
+
+```java
+    public E take() throws InterruptedException {
+        final ReentrantLock lock = this.lock;
+        /*
+            尝试获取锁，如果此时锁被其他线程锁占用，那么当前线程就处于Waiting的状态。           
+            注意:当方法是支持线程中断响应的如果其他线程此时中断当前线程，
+            那么当前线程就会抛出InterruptedException 
+         */
+        lock.lockInterruptibly();
+        try {
+            /*
+          如果此时队列中的元素个数为0,那么就让当前线程wait,并且释放锁。
+          注意:这里使用了while进行重复检查，是为了防止当前线程可能由于其他未知的原因被唤醒。
+          (通常这种情况被称为"spurious wakeup")
+            */    
+        while (count == 0)
+                notEmpty.await();
+            //如果队列不为空，则从队列的头部取元素
+            return extract();
+        } finally {
+             //完成锁的释放
+            lock.unlock();
+        }
+    }
+```
+
+> extract方法分析
+
+```java
+    /*
+      根据takeIndex来获取当前的元素,然后通知其他等待的线程。
+      Call only when holding lock.(只有当前线程已经持有了锁之后，它才能调用该方法)
+     */
+    private E extract() {
+        final Object[] items = this.items;
+
+        //根据takeIndex获取元素,因为元素是一个Object类型的数组,因此它通过cast方法将其转换成泛型。
+        E x = this.<E>cast(items[takeIndex]);
+
+        //将当前位置的元素设置为null
+        items[takeIndex] = null;
+
+        //并且将takeIndex++,注意：这里因为已经使用了锁，因此inc方法中没有使用到原子操作
+        takeIndex = inc(takeIndex);
+
+        //将队列中的总的元素减1
+        --count;
+        //唤醒其他等待的线程
+        notFull.signal();
+        return x;
+    }
+```
+
+> put方法分析
+
+```java
+    public void put(E e) throws InterruptedException {
+        //首先检查元素是否为空，否则抛出NullPointerException
+        checkNotNull(e);
+        final ReentrantLock lock = this.lock;
+        //进行锁的抢占
+        lock.lockInterruptibly();
+        try {
+            /*当队列的长度等于数组的长度,此时说明队列已经满了,这里同样
+              使用了while来方式当前线程被"伪唤醒"。*/
+            while (count == items.length)
+                //则让当前线程处于等待状态
+                notFull.await();
+            //一旦获取到锁并且队列还未满时，则执行insert操作。
+            insert(e);
+        } finally {
+            //完成锁的释放
+            lock.unlock();
+        }
+    }
+
+      //检查元素是否为空
+     private static void checkNotNull(Object v) {
+        if (v == null)
+            throw new NullPointerException();
+      }
+
+     //该方法的逻辑非常简单
+    private void insert(E x) {
+        //将当前元素设置到putIndex位置   
+        items[putIndex] = x;
+        //让putIndex++
+        putIndex = inc(putIndex);
+        //将队列的大小加1
+        ++count;
+        //唤醒其他正在处于等待状态的线程
+        notEmpty.signal();
+    }
+```
+
+**注:ArrayBlockingQueue其实是一个循环队列** 我们使用一个图来简单说明一下:
+
+> ```
+> 黄色表示数组中有元素
+> ```
+
+[![img](https://camo.githubusercontent.com/91cd14f54005c9d7361d0bfd537506bcdf6ee1aa/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d373464643363663666643262653433322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/91cd14f54005c9d7361d0bfd537506bcdf6ee1aa/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d373464643363663666643262653433322e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+当再一次执行put的时候,其结果为：
+
+[![img](https://camo.githubusercontent.com/2e721616910d1241b8bdacf90a86b36a13af6cdf/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d626462653366653466343364353133302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/2e721616910d1241b8bdacf90a86b36a13af6cdf/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d626462653366653466343364353133302e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+此时放入的元素会从头开始置，我们通过其incr方法更加清晰的看出其底层的操作：
+
+```java
+    /**
+     * Circularly increment i.
+     */
+    final int inc(int i) {
+        //当takeIndex的值等于数组的长度时,就会重新置为0，这个一个循环递增的过程
+        return (++i == items.length) ? 0 : i;
+    }
+```
+
+至此，ArrayBlockingQueue的核心部分就分析完了，其余的队列操作基本上都是换汤不换药的，此处不再一一列举。
+
 
 
 ## 十一、Java并发集合：LinkedBlockingQueue
 
+LinkedBlockingQueue作为JDK中BlockingQueue家族系列中一员，由于其作为固定大小线程池(Executors.newFixedThreadPool())底层所使用的阻塞队列，分析它的目的主要在于2点：
 
+1. 与ArrayBlockingQueue进行类比学习，加深各种数据结构的理解
+2. 了解底层实现，能够更好地理解每一种阻塞队列对线程池性能的影响，做到真正的知其然，且知其所以然
+
+### 1、LinkedBlockingQueue深入分析
+
+LinkedBlockingQueue，见名之意，它是由一个基于链表的阻塞队列，首先看一下的核心组成：
+
+```java
+    // 所有的元素都通过Node这个静态内部类来进行存储，这与LinkedList的处理方式完全一样
+    static class Node<E> {
+        //使用item来保存元素本身
+        E item;
+        //保存当前节点的后继节点
+        Node<E> next;
+        Node(E x) { item = x; }
+    }
+    /**
+        阻塞队列所能存储的最大容量
+        用户可以在创建时手动指定最大容量,如果用户没有指定最大容量
+        那么最默认的最大容量为Integer.MAX_VALUE.
+    */
+    private final int capacity;
+
+    /** 
+        当前阻塞队列中的元素数量
+        PS:如果你看过ArrayBlockingQueue的源码,你会发现
+        ArrayBlockingQueue底层保存元素数量使用的是一个
+        普通的int类型变量。其原因是在ArrayBlockingQueue底层
+        对于元素的入队列和出队列使用的是同一个lock对象。而数
+        量的修改都是在处于线程获取锁的情况下进行操作，因此不
+        会有线程安全问题。
+        而LinkedBlockingQueue却不是，它的入队列和出队列使用的是两个    
+        不同的lock对象,因此无论是在入队列还是出队列，都会涉及对元素数
+        量的并发修改，(之后通过源码可以更加清楚地看到)因此这里使用了一个原子操作类
+        来解决对同一个变量进行并发修改的线程安全问题。
+    */
+    private final AtomicInteger count = new AtomicInteger(0);
+
+    /**
+     * 链表的头部
+     * LinkedBlockingQueue的头部具有一个不变性:
+     * 头部的元素总是为null，head.item==null   
+     */
+    private transient Node<E> head;
+
+    /**
+     * 链表的尾部
+     * LinkedBlockingQueue的尾部也具有一个不变性:
+     * 即last.next==null
+     */
+    private transient Node<E> last;
+
+    /**
+     元素出队列时线程所获取的锁
+     当执行take、poll等操作时线程需要获取的锁
+    */
+    private final ReentrantLock takeLock = new ReentrantLock();
+
+    /**
+    当队列为空时，通过该Condition让从队列中获取元素的线程处于等待状态
+    */
+    private final Condition notEmpty = takeLock.newCondition();
+
+    /** 
+      元素入队列时线程所获取的锁
+      当执行add、put、offer等操作时线程需要获取锁
+    */
+    private final ReentrantLock putLock = new ReentrantLock();
+
+    /** 
+     当队列的元素已经达到capactiy，通过该Condition让元素入队列的线程处于等待状态
+    */
+    private final Condition notFull = putLock.newCondition();
+```
+
+通过上面的分析，我们可以发现LinkedBlockingQueue在入队列和出队列时使用的不是同一个Lock，这也意味着它们之间的操作不会存在互斥操作。在多个CPU的情况下，它们可以做到真正的在同一时刻既消费、又生产，能够做到并行处理。
+
+下面让我们看下LinkedBlockingQueue的构造方法：
+
+```java
+    /**
+     * 如果用户没有显示指定capacity的值，默认使用int的最大值
+     */
+    public LinkedBlockingQueue() {
+        this(Integer.MAX_VALUE);
+    }
+    /**
+     可以看到,当队列中没有任何元素的时候,此时队列的头部就等于队列的尾部,
+     指向的是同一个节点,并且元素的内容为null
+    */
+    public LinkedBlockingQueue(int capacity) {
+        if (capacity <= 0) throw new IllegalArgumentException();
+        this.capacity = capacity;
+        last = head = new Node<E>(null);
+    }
+
+    /*
+    在初始化LinkedBlockingQueue的时候，还可以直接将一个集合
+    中的元素全部入队列，此时队列最大容量依然是int的最大值。
+    */
+    public LinkedBlockingQueue(Collection<? extends E> c) {
+        this(Integer.MAX_VALUE);
+        final ReentrantLock putLock = this.putLock;
+        //获取锁
+        putLock.lock(); // Never contended, but necessary for visibility
+        try {
+            //迭代集合中的每一个元素,让其入队列,并且更新一下当前队列中的元素数量
+            int n = 0;
+            for (E e : c) {
+                if (e == null)
+                    throw new NullPointerException();
+                if (n == capacity)
+                    throw new IllegalStateException("Queue full");
+                //参考下面的enqueue分析        
+                enqueue(new Node<E>(e));
+                ++n;
+            }
+            count.set(n);
+        } finally {
+            //释放锁
+            putLock.unlock();
+        }
+    }
+
+    /**
+     * 等价于如下内容:
+     * last.next=node;
+     * last = node;
+     * 其实也没有什么花样:
+       就是让新入队列的元素成为原来的last的next，让进入的元素称为last
+     *
+     */
+    private void enqueue(Node<E> node) {
+        // assert putLock.isHeldByCurrentThread();
+        // assert last.next == null;
+        last = last.next = node;
+    }
+```
+
+在分析完LinkedBlockingQueue的核心组成之后,下面让我们再看下核心的几个操作方法,首先分析一下元素入队列的过程:
+
+```java
+    public void put(E e) throws InterruptedException {
+        if (e == null) throw new NullPointerException();
+        // Note: convention in all put/take/etc is to preset local var
+
+        /*注意上面这句话,约定所有的put/take操作都会预先设置本地变量,
+        可以看到下面有一个将putLock赋值给了一个局部变量的操作
+        */
+        int c = -1;
+        Node<E> node = new Node(e);
+        /* 
+         在这里首先获取到putLock,以及当前队列的元素数量
+         即上面所描述的预设置本地变量操作
+        */
+        final ReentrantLock putLock = this.putLock;
+        final AtomicInteger count = this.count;
+        /*
+            执行可中断的锁获取操作,即意味着如果线程由于获取
+            锁而处于Blocked状态时，线程是可以被中断而不再继
+            续等待，这也是一种避免死锁的一种方式，不会因为
+            发现到死锁之后而由于无法中断线程最终只能重启应用。
+        */
+        putLock.lockInterruptibly();
+        try {
+            /*
+            当队列的容量到底最大容量时,此时线程将处于等待状
+            态，直到队列有空闲的位置才继续执行。使用while判
+            断依旧是为了放置线程被"伪唤醒”而出现的情况,即当
+            线程被唤醒时而队列的大小依旧等于capacity时，线
+            程应该继续等待。
+            */
+            while (count.get() == capacity) {
+                notFull.await();
+            }
+            //让元素进行队列的末尾,enqueue代码在上面分析过了
+            enqueue(node);
+            //首先获取原先队列中的元素个数,然后再对队列中的元素个数+1.
+            c = count.getAndIncrement();
+            /*注:c+1得到的结果是新元素入队列之后队列元素的总和。
+            当前队列中的总元素个数小于最大容量时,此时唤醒其他执行入队列的线程
+            让它们可以放入元素,如果新加入元素之后,队列的大小等于capacity，
+            那么就意味着此时队列已经满了,也就没有必须要唤醒其他正在等待入队列的线程,因为唤醒它们之后，它们也还是继续等待。
+            */
+            if (c + 1 < capacity)
+                notFull.signal();
+        } finally {
+            //完成对锁的释放
+            putLock.unlock();
+        }
+        /*当c=0时，即意味着之前的队列是空队列,出队列的线程都处于等待状态，
+        现在新添加了一个新的元素,即队列不再为空,因此它会唤醒正在等待获取元素的线程。
+        */
+        if (c == 0)
+            signalNotEmpty();
+    }
+
+    /*
+    唤醒正在等待获取元素的线程,告诉它们现在队列中有元素了
+    */
+    private void signalNotEmpty() {
+        final ReentrantLock takeLock = this.takeLock;
+        takeLock.lock();
+        try {
+            //通过notEmpty唤醒获取元素的线程
+            notEmpty.signal();
+        } finally {
+            takeLock.unlock();
+        }
+    }
+```
+
+看完put方法，下面再看看下offer是如何处理的方法：
+
+```java
+    /**
+    在BlockingQueue接口中除了定义put方法外(当队列元素满了之后就会阻塞，
+    直到队列有新的空间可以方法线程才会继续执行)，还定义一个offer方法，
+    该方法会返回一个boolean值，当入队列成功返回true,入队列失败返回false。
+    该方法与put方法基本操作基本一致，只是有细微的差异。
+    */
+     public boolean offer(E e) {
+        if (e == null) throw new NullPointerException();
+        final AtomicInteger count = this.count;
+        /*
+            当队列已经满了，它不会继续等待,而是直接返回。
+            因此该方法是非阻塞的。
+        */
+        if (count.get() == capacity)
+            return false;
+        int c = -1;
+        Node<E> node = new Node(e);
+        final ReentrantLock putLock = this.putLock;
+        putLock.lock();
+        try {
+            /*
+            当获取到锁时，需要进行二次的检查,因为可能当队列的大小为capacity-1时，
+            两个线程同时去抢占锁，而只有一个线程抢占成功，那么此时
+            当线程将元素入队列后，释放锁，后面的线程抢占锁之后，此时队列
+            大小已经达到capacity，所以将它无法让元素入队列。
+            下面的其余操作和put都一样，此处不再详述
+            */
+            if (count.get() < capacity) {
+                enqueue(node);
+                c = count.getAndIncrement();
+                if (c + 1 < capacity)
+                    notFull.signal();
+            }
+        } finally {
+            putLock.unlock();
+        }
+        if (c == 0)
+            signalNotEmpty();
+        return c >= 0;
+    }
+```
+
+BlockingQueue还定义了一个限时等待插入操作，即在等待一定的时间内，如果队列有空间可以插入，那么就将元素入队列，然后返回true,如果在过完指定的时间后依旧没有空间可以插入，那么就返回false，下面是限时等待操作的分析:
+
+```java
+        /**
+         通过timeout和TimeUnit来指定等待的时长
+         timeout为时间的长度,TimeUnit为时间的单位
+        */
+        public boolean offer(E e, long timeout, TimeUnit unit)
+        throws InterruptedException {
+
+        if (e == null) throw new NullPointerException();
+        //将指定的时间长度转换为毫秒来进行处理
+        long nanos = unit.toNanos(timeout);
+        int c = -1;
+        final ReentrantLock putLock = this.putLock;
+        final AtomicInteger count = this.count;
+        putLock.lockInterruptibly();
+        try {
+            while (count.get() == capacity) {
+                //如果等待的剩余时间小于等于0，那么直接返回
+                if (nanos <= 0)
+                    return false;
+            /*
+              通过condition来完成等待，此时当前线程会完成锁的，并且处于等待状态
+              直到被其他线程唤醒该线程、或者当前线程被中断、
+              等待的时间截至才会返回，该返回值为从方法调用到返回所经历的时长。
+              注意：上面的代码是condition的awitNanos()方法的通用写法，
+              可以参看Condition.awaitNaos的API文档。
+              下面的其余操作和put都一样，此处不再详述
+            */
+                nanos = notFull.awaitNanos(nanos);
+            }
+            enqueue(new Node<E>(e));
+            c = count.getAndIncrement();
+            if (c + 1 < capacity)
+                notFull.signal();
+        } finally {
+            putLock.unlock();
+        }
+        if (c == 0)
+            signalNotEmpty();
+        return true;
+    }
+```
+
+通过上面的分析，我们应该比较清楚地知道了LinkedBlockingQueue的入队列的操作，其主要是通过获取到putLock锁来完成，当队列的数量达到最大值，此时会导致线程处于阻塞状态或者返回false(根据具体的方法来看)；如果队列还有剩余的空间，那么此时会新创建出一个Node对象，将其设置到队列的尾部，作为LinkedBlockingQueue的last元素。
+
+在分析完入队列的过程之后，我们接下来看看LinkedBlockingQueue出队列的过程；由于BlockingQueue的方法都具有对称性，此处就只分析take方法的实现，其余方法的实现都如出一辙：
+
+```java
+ public E take() throws InterruptedException {
+        E x;
+        int c = -1;
+        final AtomicInteger count = this.count;
+        final ReentrantLock takeLock = this.takeLock;
+        //通过takeLock获取锁，并且支持线程中断
+        takeLock.lockInterruptibly();
+        try {
+            //当队列为空时，则让当前线程处于等待
+            while (count.get() == 0) {
+                notEmpty.await();
+            }
+            //完成元素的出队列
+            x = dequeue();
+            /*            
+               队列元素个数完成原子化操作-1,可以看到count元素会
+               在插入元素的线程和获取元素的线程进行并发修改操作。
+            */
+            c = count.getAndDecrement();
+            /*
+              当一个元素出队列之后，队列的大小依旧大于1时
+              当前线程会唤醒其他执行元素出队列的线程,让它们也
+              可以执行元素的获取
+            */
+            if (c > 1)
+                notEmpty.signal();
+        } finally {
+            //完成锁的释放
+            takeLock.unlock();
+        }
+        /*
+            当c==capaitcy时，即在获取当前元素之前，
+            队列已经满了，而此时获取元素之后，队列就会
+            空出一个位置，故当前线程会唤醒执行插入操作的线
+            程通知其他中的一个可以进行插入操作。
+        */
+        if (c == capacity)
+            signalNotFull();
+        return x;
+    }
+
+
+    /**
+     * 让头部元素出队列的过程
+     * 其最终的目的是让原来的head被GC回收，让其的next成为head
+     * 并且新的head的item为null.
+     * 因为LinkedBlockingQueue的头部具有一致性:即元素为null。
+     */
+    private E dequeue() {
+        Node<E> h = head;
+        Node<E> first = h.next;
+        h.next = h; // help GC
+        head = first;
+        E x = first.item;
+        first.item = null;
+        return x;
+    }
+```
+
+[![img](https://camo.githubusercontent.com/40bbf1e02471cf9ac84dae5efbe4e73f9d77ef08/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d396265613330653239306138383232632e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/40bbf1e02471cf9ac84dae5efbe4e73f9d77ef08/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f313638343337302d396265613330653239306138383232632e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+### 2. LinkedBlockingQueue与ArrayBlockingQueue的比较
+
+ArrayBlockingQueue由于其底层基于数组，并且在创建时指定存储的大小，在完成后就会立即在内存分配固定大小容量的数组元素，因此其存储通常有限，故其是一个**“有界“**的阻塞队列；
+
+而LinkedBlockingQueue可以由用户指定最大存储容量，也可以无需指定，如果不指定则最大存储容量将是Integer.MAX_VALUE，即可以看作是一个**“无界”**的阻塞队列，由于其节点的创建都是动态创建，并且在节点出队列后可以被GC所回收，因此其具有灵活的伸缩性。但是由于ArrayBlockingQueue的有界性，因此其能够更好的对于性能进行预测，而LinkedBlockingQueue由于没有限制大小，当任务非常多的时候，不停地向队列中存储，就有可能导致内存溢出的情况发生。
+
+其次，ArrayBlockingQueue中在入队列和出队列操作过程中，使用的是同一个lock，所以即使在多核CPU的情况下，其读取和操作的都无法做到并行，而LinkedBlockingQueue的读取和插入操作所使用的锁是两个不同的lock，它们之间的操作互相不受干扰，因此两种操作可以并行完成，故LinkedBlockingQueue的吞吐量要高于ArrayBlockingQueue。
+
+### 3. 选择LinkedBlockingQueue的理由
+
+```java
+    /**
+        下面的代码是Executors创建固定大小线程池的代码，其使用了
+        LinkedBlockingQueue来作为任务队列。
+    */
+    public static ExecutorService newFixedThreadPool(int nThreads) {
+        return new ThreadPoolExecutor(nThreads, nThreads,
+                                      0L, TimeUnit.MILLISECONDS,
+                                      new LinkedBlockingQueue<Runnable>());
+    }
+```
+
+JDK中选用LinkedBlockingQueue作为阻塞队列的原因就在于其**无界性**。因为线程大小固定的线程池，其线程的数量是不具备伸缩性的，当任务非常繁忙的时候，就势必会导致所有的线程都处于工作状态，如果使用一个有界的阻塞队列来进行处理，那么就非常有可能很快导致队列满的情况发生，从而导致任务无法提交而抛出RejectedExecutionException，而使用无界队列由于其良好的存储容量的伸缩性，可以很好的去缓冲任务繁忙情况下场景，即使任务非常多，也可以进行动态扩容，当任务被处理完成之后，队列中的节点也会被随之被GC回收，非常灵活。
 
 ## 十二、Java并发集合：ConcurrentHashMap
 
+HashMap是我们平时开发过程中用的比较多的集合，但它是非线程安全的，在涉及到多线程并发的情况，进行put操作有可能会引起死循环，导致CPU利用率接近100%。
+
+```java
+final HashMap<String, String> map = new HashMap<String, String>(2);
+for (int i = 0; i < 10000; i++) {
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            map.put(UUID.randomUUID().toString(), "");
+        }
+    }).start();
+}
+```
+
+解决方案有Hashtable和Collections.synchronizedMap(hashMap)，不过这两个方案基本上是对读写进行加锁操作，一个线程在读写元素，其余线程必须等待，性能可想而知。
+
+所以，Doug Lea给我们带来了并发安全的ConcurrentHashMap，它的实现是依赖于 Java 内存模型，所以我们在了解 ConcurrentHashMap 的之前必须了解一些底层的知识：
+
+1. java内存模型
+2. java中的CAS
+3. AbstractQueuedSynchronizer
+4. ReentrantLock
+
+本文源码是JDK8的版本，与之前的版本有较大差异。
+
+### 1. JDK1.6分析
+
+ConcurrentHashMap采用 分段锁的机制，实现并发的更新操作，底层采用数组+链表+红黑树的存储结构。 其包含两个核心静态内部类 Segment和HashEntry。
+
+1. Segment继承ReentrantLock用来充当锁的角色，每个 Segment 对象守护每个散列映射表的若干个桶。
+2. HashEntry 用来封装映射表的键 / 值对；
+3. 每个桶是由若干个 HashEntry 对象链接起来的链表。
+
+一个 ConcurrentHashMap 实例中包含由若干个 Segment 对象组成的数组，下面我们通过一个图来演示一下 ConcurrentHashMap 的结构：
+
+[![img](https://camo.githubusercontent.com/f907a168e28a2ed0421e7878df61123fbde4045b/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d373238633331396634386562653335612e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/f907a168e28a2ed0421e7878df61123fbde4045b/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d373238633331396634386562653335612e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+### 2. JDK1.8分析
+
+1.8的实现已经抛弃了Segment分段锁机制，利用CAS+Synchronized来保证并发更新的安全，底层依然采用数组+链表+红黑树的存储结构。
+
+[![img](https://camo.githubusercontent.com/b95a7f90cf8d557de4f89bb5e035aa8a7d0ffe32/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d336432333635636135393936323734662e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)](https://camo.githubusercontent.com/b95a7f90cf8d557de4f89bb5e035aa8a7d0ffe32/687474703a2f2f75706c6f61642d696d616765732e6a69616e7368752e696f2f75706c6f61645f696d616765732f323138343935312d336432333635636135393936323734662e706e673f696d6167654d6f6772322f6175746f2d6f7269656e742f7374726970253743696d61676556696577322f322f772f31323430)
+
+#### 2.1 重要概念
+
+在开始之前，有些重要的概念需要介绍一下：
+
+1. **table**：默认为null，初始化发生在第一次插入操作，默认大小为16的数组，用来存储Node节点数据，扩容时大小总是2的幂次方。
+
+2. **nextTable**：默认为null，扩容时新生成的数组，其大小为原数组的两倍。
+
+3. sizeCtl
+
+   ：默认为0，用来控制table的初始化和扩容操作，具体应用在后续会体现出来。
+
+   - **-1 **代表table正在初始化
+   - **-N **表示有N-1个线程正在进行扩容操作
+   - 其余情况： 1、如果table未初始化，表示table需要初始化的大小。 2、如果table初始化完成，表示table的容量，默认是table大小的0.75倍，居然用这个公式算0.75（n - (n >>> 2)）。
+
+4. Node
+
+   ：保存key，value及key的hash值的数据结构。
+
+   ```java
+   class Node<K,V> implements Map.Entry<K,V> {
+     final int hash;
+     final K key;
+     volatile V val;
+     volatile Node<K,V> next;
+     ... 省略部分代码
+   }
+   ```
+
+   其中value和next都用volatile修饰，保证并发的可见性。
+
+5. ForwardingNode
+
+   ：一个特殊的Node节点，hash值为-1，其中存储nextTable的引用。
+
+   ```java
+   final class ForwardingNode<K,V> extends Node<K,V> {
+     final Node<K,V>[] nextTable;
+     ForwardingNode(Node<K,V>[] tab) {
+         super(MOVED, null, null, null);
+         this.nextTable = tab;
+     }
+   }
+   ```
+
+   只有table发生扩容的时候，ForwardingNode才会发挥作用，作为一个占位符放在table中表示当前节点为null或则已经被移动。
+
+#### 2.2 实例初始化
+
+实例化ConcurrentHashMap时带参数时，会根据参数调整table的大小，假设参数为100，最终会调整成256，确保table的大小总是2的幂次方，算法如下：
+
+```java
+ConcurrentHashMap<String, String> hashMap = new ConcurrentHashMap<>(100);
+private static final int tableSizeFor(int c) {
+    int n = c - 1;
+    n |= n >>> 1;
+    n |= n >>> 2;
+    n |= n >>> 4;
+    n |= n >>> 8;
+    n |= n >>> 16;
+    return (n < 0) ? 1 : (n >= MAXIMUM_CAPACITY) ? MAXIMUM_CAPACITY : n + 1;
+}
+```
+
+**注意**，ConcurrentHashMap在构造函数中只会初始化sizeCtl值，并不会直接初始化table，而是延缓到第一次put操作。
+
+#### 2.3 table初始化
+
+前面已经提到过，table初始化操作会延缓到第一次put行为。但是put是可以并发执行的，Doug Lea是如何实现table只初始化一次的？让我们来看看源码的实现。
+
+```java
+private final Node<K,V>[] initTable() {
+    Node<K,V>[] tab; int sc;
+    while ((tab = table) == null || tab.length == 0) {
+//如果一个线程发现sizeCtl<0，意味着另外的线程执行CAS操作成功，当前线程只需要让出cpu时间片
+        if ((sc = sizeCtl) < 0) 
+            Thread.yield(); // lost initialization race; just spin
+        else if (U.compareAndSwapInt(this, SIZECTL, sc, -1)) {
+            try {
+                if ((tab = table) == null || tab.length == 0) {
+                    int n = (sc > 0) ? sc : DEFAULT_CAPACITY;
+                    @SuppressWarnings("unchecked")
+                    Node<K,V>[] nt = (Node<K,V>[])new Node<?,?>[n];
+                    table = tab = nt;
+                    sc = n - (n >>> 2);
+                }
+            } finally {
+                sizeCtl = sc;
+            }
+            break;
+        }
+    }
+    return tab;
+}
+```
+
+sizeCtl默认为0，如果ConcurrentHashMap实例化时有传参数，sizeCtl会是一个2的幂次方的值。所以执行第一次put操作的线程会执行Unsafe.compareAndSwapInt方法修改sizeCtl为-1，有且只有一个线程能够修改成功，其它线程通过Thread.yield()让出CPU时间片等待table初始化完成。
+
+#### 2.4 put操作
+
+假设table已经初始化完成，put操作采用CAS+synchronized实现并发插入或更新操作，具体实现如下。
+
+```java
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+    if (key == null || value == null) throw new NullPointerException();
+    int hash = spread(key.hashCode());
+    int binCount = 0;
+    for (Node<K,V>[] tab = table;;) {
+        Node<K,V> f; int n, i, fh;
+        if (tab == null || (n = tab.length) == 0)
+            tab = initTable();
+        else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+            if (casTabAt(tab, i, null, new Node<K,V>(hash, key, value, null)))
+                break;                   // no lock when adding to empty bin
+        }
+        else if ((fh = f.hash) == MOVED)
+            tab = helpTransfer(tab, f);
+        ...省略部分代码
+    }
+    addCount(1L, binCount);
+    return null;
+}
+```
+
+1. hash算法
+
+   ```
+   static final int spread(int h) {return (h ^ (h >>> 16)) & HASH_BITS;}
+   ```
+
+2. table中定位索引位置，n是table的大小
+
+   ```
+   int index = (n - 1) & hash
+   ```
+
+3. 获取table中对应索引的元素f。 Doug Lea采用Unsafe.getObjectVolatile来获取，也许有人质疑，直接table[index]不可以么，为什么要这么复杂？ 在java内存模型中，我们已经知道每个线程都有一个工作内存，里面存储着table的副本，虽然table是volatile修饰的，但不能保证线程每次都拿到table中的最新元素，Unsafe.getObjectVolatile可以直接获取指定内存的数据，保证了每次拿到数据都是最新的。
+
+4. 如果f为null，说明table中这个位置第一次插入元素，利用Unsafe.compareAndSwapObject方法插入Node节点。
+
+   - 如果CAS成功，说明Node节点已经插入，随后addCount(1L, binCount)方法会检查当前容量是否需要进行扩容。
+   - 如果CAS失败，说明有其它线程提前插入了节点，自旋重新尝试在这个位置插入节点。
+
+5. 如果f的hash值为-1，说明当前f是ForwardingNode节点，意味有其它线程正在扩容，则一起进行扩容操作。
+
+6. 其余情况把新的Node节点按链表或红黑树的方式插入到合适的位置，这个过程采用同步内置锁实现并发，代码如下:
+
+   ```java
+   synchronized (f) {
+    if (tabAt(tab, i) == f) {
+        if (fh >= 0) {
+            binCount = 1;
+            for (Node<K,V> e = f;; ++binCount) {
+                K ek;
+                if (e.hash == hash &&
+                    ((ek = e.key) == key ||
+                     (ek != null && key.equals(ek)))) {
+                    oldVal = e.val;
+                    if (!onlyIfAbsent)
+                        e.val = value;
+                    break;
+                }
+                Node<K,V> pred = e;
+                if ((e = e.next) == null) {
+                    pred.next = new Node<K,V>(hash, key,
+                                              value, null);
+                    break;
+                }
+            }
+        }
+        else if (f instanceof TreeBin) {
+            Node<K,V> p;
+            binCount = 2;
+            if ((p = ((TreeBin<K,V>)f).putTreeVal(hash, key,
+                                           value)) != null) {
+                oldVal = p.val;
+                if (!onlyIfAbsent)
+                    p.val = value;
+            }
+        }
+    }
+   }
+   ```
+
+   在节点f上进行同步，节点插入之前，再次利用tabAt(tab, i) == f判断，防止被其它线程修改。
+
+   1. 如果f.hash >= 0，说明f是链表结构的头结点，遍历链表，如果找到对应的node节点，则修改value，否则在链表尾部加入节点。
+   2. 如果f是TreeBin类型节点，说明f是红黑树根节点，则在树结构上遍历元素，更新或增加节点。
+   3. 如果链表中节点数binCount >= TREEIFY_THRESHOLD(默认是8)，则把链表转化为红黑树结构。
+
+#### 2.5 table扩容
+
+当table容量不足的时候，即table的元素数量达到容量阈值sizeCtl，需要对table进行扩容。 整个扩容分为两部分：
+
+1. 构建一个nextTable，大小为table的两倍。
+2. 把table的数据复制到nextTable中。
+
+这两个过程在单线程下实现很简单，但是ConcurrentHashMap是支持并发插入的，扩容操作自然也会有并发的出现，这种情况下，第二步可以支持节点的并发复制，这样性能自然提升不少，但实现的复杂度也上升了一个台阶。
+
+先看第一步，构建nextTable，毫无疑问，这个过程只能只有单个线程进行nextTable的初始化，具体实现如下：
+
+```java
+private final void addCount(long x, int check) {
+    ... 省略部分代码
+    if (check >= 0) {
+        Node<K,V>[] tab, nt; int n, sc;
+        while (s >= (long)(sc = sizeCtl) && (tab = table) != null &&
+               (n = tab.length) < MAXIMUM_CAPACITY) {
+            int rs = resizeStamp(n);
+            if (sc < 0) {
+                if ((sc >>> RESIZE_STAMP_SHIFT) != rs || sc == rs + 1 ||
+                    sc == rs + MAX_RESIZERS || (nt = nextTable) == null ||
+                    transferIndex <= 0)
+                    break;
+                if (U.compareAndSwapInt(this, SIZECTL, sc, sc + 1))
+                    transfer(tab, nt);
+            }
+            else if (U.compareAndSwapInt(this, SIZECTL, sc,
+                                         (rs << RESIZE_STAMP_SHIFT) + 2))
+                transfer(tab, null);
+            s = sumCount();
+        }
+    }
+}
+```
+
+通过Unsafe.compareAndSwapInt修改sizeCtl值，保证只有一个线程能够初始化nextTable，扩容后的数组长度为原来的两倍，但是容量是原来的1.5。
+
+节点从table移动到nextTable，大体思想是遍历、复制的过程。
+
+1. 首先根据运算得到需要遍历的次数i，然后利用tabAt方法获得i位置的元素f，初始化一个forwardNode实例fwd。
+2. 如果f == null，则在table中的i位置放入fwd，这个过程是采用Unsafe.compareAndSwapObjectf方法实现的，很巧妙的实现了节点的并发移动。
+3. 如果f是链表的头节点，就构造一个反序链表，把他们分别放在nextTable的i和i+n的位置上，移动完成，采用Unsafe.putObjectVolatile方法给table原位置赋值fwd。
+4. 如果f是TreeBin节点，也做一个反序处理，并判断是否需要untreeify，把处理的结果分别放在nextTable的i和i+n的位置上，移动完成，同样采用Unsafe.putObjectVolatile方法给table原位置赋值fwd。
+
+遍历过所有的节点以后就完成了复制工作，把table指向nextTable，并更新sizeCtl为新数组大小的0.75倍 ，扩容完成。
+
+#### 2.6 红黑树构造
+
+**注意**：如果链表结构中元素超过TREEIFY_THRESHOLD阈值，默认为8个，则把链表转化为红黑树，提高遍历查询效率。
+
+```java
+if (binCount != 0) {
+    if (binCount >= TREEIFY_THRESHOLD)
+        treeifyBin(tab, i);
+    if (oldVal != null)
+        return oldVal;
+    break;
+}
+```
+
+接下来我们看看如何构造树结构，代码如下：
+
+```java
+private final void treeifyBin(Node<K,V>[] tab, int index) {
+    Node<K,V> b; int n, sc;
+    if (tab != null) {
+        if ((n = tab.length) < MIN_TREEIFY_CAPACITY)
+            tryPresize(n << 1);
+        else if ((b = tabAt(tab, index)) != null && b.hash >= 0) {
+            synchronized (b) {
+                if (tabAt(tab, index) == b) {
+                    TreeNode<K,V> hd = null, tl = null;
+                    for (Node<K,V> e = b; e != null; e = e.next) {
+                        TreeNode<K,V> p =
+                            new TreeNode<K,V>(e.hash, e.key, e.val,
+                                              null, null);
+                        if ((p.prev = tl) == null)
+                            hd = p;
+                        else
+                            tl.next = p;
+                        tl = p;
+                    }
+                    setTabAt(tab, index, new TreeBin<K,V>(hd));
+                }
+            }
+        }
+    }
+}
+```
+
+可以看出，生成树节点的代码块是同步的，进入同步代码块之后，再次验证table中index位置元素是否被修改过。 1、根据table中index位置Node链表，重新生成一个hd为头结点的TreeNode链表。 2、根据hd头结点，生成TreeBin树结构，并把树结构的root节点写到table的index位置的内存中，具体实现如下：
+
+```java
+TreeBin(TreeNode<K,V> b) {
+    super(TREEBIN, null, null, null);
+    this.first = b;
+    TreeNode<K,V> r = null;
+    for (TreeNode<K,V> x = b, next; x != null; x = next) {
+        next = (TreeNode<K,V>)x.next;
+        x.left = x.right = null;
+        if (r == null) {
+            x.parent = null;
+            x.red = false;
+            r = x;
+        }
+        else {
+            K k = x.key;
+            int h = x.hash;
+            Class<?> kc = null;
+            for (TreeNode<K,V> p = r;;) {
+                int dir, ph;
+                K pk = p.key;
+                if ((ph = p.hash) > h)
+                    dir = -1;
+                else if (ph < h)
+                    dir = 1;
+                else if ((kc == null &&
+                          (kc = comparableClassFor(k)) == null) ||
+                         (dir = compareComparables(kc, k, pk)) == 0)
+                    dir = tieBreakOrder(k, pk);
+                    TreeNode<K,V> xp = p;
+                if ((p = (dir <= 0) ? p.left : p.right) == null) {
+                    x.parent = xp;
+                    if (dir <= 0)
+                        xp.left = x;
+                    else
+                        xp.right = x;
+                    r = balanceInsertion(r, x);
+                    break;
+                }
+            }
+        }
+    }
+    this.root = r;
+    assert checkInvariants(root);
+}
+```
+
+主要根据Node节点的hash值大小构建二叉树。这个红黑树的构造过程实在有点复杂，感兴趣的同学可以看看源码。
+
+#### 2.7 get操作
+
+get操作和put操作相比，显得简单了许多。
+
+```java
+public V get(Object key) {
+    Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
+    int h = spread(key.hashCode());
+    if ((tab = table) != null && (n = tab.length) > 0 &&
+        (e = tabAt(tab, (n - 1) & h)) != null) {
+        if ((eh = e.hash) == h) {
+            if ((ek = e.key) == key || (ek != null && key.equals(ek)))
+                return e.val;
+        }
+        else if (eh < 0)
+            return (p = e.find(h, key)) != null ? p.val : null;
+        while ((e = e.next) != null) {
+            if (e.hash == h &&
+                ((ek = e.key) == key || (ek != null && key.equals(ek))))
+                return e.val;
+        }
+    }
+    return null;
+}
+```
+
+1. 判断table是否为空，如果为空，直接返回null。
+2. 计算key的hash值，并获取指定table中指定位置的Node节点，通过遍历链表或则树结构找到对应的节点，返回value值。
+
+### 3. 总结
+
+ConcurrentHashMap 是一个并发散列映射表的实现，它允许完全并发的读取，并且支持给定数量的并发更新。相比于 HashTable 和同步包装器包装的 HashMap，使用一个全局的锁来同步不同线程间的并发访问，同一时间点，只能有一个线程持有锁，也就是说在同一时间点，只能有一个线程能访问容器，这虽然保证多线程间的安全并发访问，但同时也导致对容器的访问变成串行化的了。
