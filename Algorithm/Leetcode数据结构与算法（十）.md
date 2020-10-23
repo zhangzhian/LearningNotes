@@ -1390,3 +1390,315 @@ class Solution {
 
 - 时间复杂度： O(N)
 - 空间复杂度： O(1)
+
+### [0158] 用栈操作构建数组
+
+给你一个目标数组 target 和一个整数 n。每次迭代，需要从  list = {1,2,3..., n} 中依序读取一个数字。
+
+请使用下述操作来构建目标数组 target ：
+
+- Push：从 list 中读取一个新元素， 并将其推入数组中。
+- Pop：删除数组中的最后一个元素。
+- 如果目标数组构建完成，就停止读取更多元素。
+
+题目数据保证目标数组严格递增，并且只包含 1 到 n 之间的数字。
+
+请返回构建目标数组所用的操作序列。
+
+题目数据保证答案是唯一的。
+
+ 示例 1：
+
+```
+输入：target = [1,3], n = 3
+输出：["Push","Push","Pop","Push"]
+解释： 
+读取 1 并自动推入数组 -> [1]
+读取 2 并自动推入数组，然后删除它 -> [1]
+读取 3 并自动推入数组 -> [1,3]
+```
+
+示例 2：
+
+```
+输入：target = [1,2,3], n = 3
+输出：["Push","Push","Push"]
+```
+
+示例 3：
+
+```
+输入：target = [1,2], n = 4
+输出：["Push","Push"]
+解释：只需要读取前 2 个数字就可以停止。
+```
+
+示例 4：
+
+```
+输入：target = [2,3,4], n = 4
+输出：["Push","Pop","Push","Push","Push"]
+```
+
+
+提示：
+
+- 1 <= target.length <= 100
+- 1 <= target[i] <= 100
+- 1 <= n <= 100
+- target 是严格递增的
+
+方法一：
+
+```java
+class Solution {
+    public List<String> buildArray(int[] target, int n) {
+        List<String> res = new ArrayList<>();
+        int cur = 1;
+        for (int num: target) {
+            while (cur++ < num) { res.add("Push"); res.add("Pop"); }
+            res.add("Push");
+        }
+        return res;
+    }
+}
+```
+
+### [0159] 多数元素
+
+给定一个大小为 n 的数组，找到其中的多数元素。多数元素是指在数组中出现次数大于 ⌊ n/2 ⌋ 的元素。
+
+你可以假设数组是非空的，并且给定的数组总是存在多数元素。
+
+示例 1:
+
+```
+输入: [3,2,3]
+输出: 3
+```
+
+示例 2:
+
+```
+输入: [2,2,1,1,1,2,2]
+输出: 2
+```
+
+方法一：哈希表
+
+```java
+class Solution {
+    private Map<Integer, Integer> countNums(int[] nums) {
+        Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+        for (int num : nums) {
+            if (!counts.containsKey(num)) {
+                counts.put(num, 1);
+            } else {
+                counts.put(num, counts.get(num) + 1);
+            }
+        }
+        return counts;
+    }
+
+    public int majorityElement(int[] nums) {
+        Map<Integer, Integer> counts = countNums(nums);
+
+        Map.Entry<Integer, Integer> majorityEntry = null;
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            if (majorityEntry == null || entry.getValue() > majorityEntry.getValue()) {
+                majorityEntry = entry;
+            }
+        }
+
+        return majorityEntry.getKey();
+    }
+}
+```
+
+- 时间复杂度：O(n)
+
+- 空间复杂度：O(n)
+
+方法二：排序
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        Arrays.sort(nums);
+        return nums[nums.length / 2];
+    }
+}
+```
+
+- 时间复杂度：O(nlogn)
+
+- 空间复杂度：O(logn)
+
+方法三：随机化
+
+由于一个给定的下标对应的数字很有可能是众数，我们随机挑选一个下标，检查它是否是众数，如果是就返回，否则继续随机挑选。
+
+```java
+class Solution {
+    private int randRange(Random rand, int min, int max) {
+        return rand.nextInt(max - min) + min;
+    }
+
+    private int countOccurences(int[] nums, int num) {
+        int count = 0;
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int majorityElement(int[] nums) {
+        Random rand = new Random();
+
+        int majorityCount = nums.length / 2;
+
+        while (true) {
+            int candidate = nums[randRange(rand, 0, nums.length)];
+            if (countOccurences(nums, candidate) > majorityCount) {
+                return candidate;
+            }
+        }
+    }
+}
+```
+
+- 时间复杂度：理论上最坏情况下的时间复杂度为O(∞)
+
+- 空间复杂度：O(1)
+
+方法四：分治
+
+```java
+class Solution {
+    private int countInRange(int[] nums, int num, int lo, int hi) {
+        int count = 0;
+        for (int i = lo; i <= hi; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int majorityElementRec(int[] nums, int lo, int hi) {
+        // base case; the only element in an array of size 1 is the majority
+        // element.
+        if (lo == hi) {
+            return nums[lo];
+        }
+
+        // recurse on left and right halves of this slice.
+        int mid = (hi - lo) / 2 + lo;
+        int left = majorityElementRec(nums, lo, mid);
+        int right = majorityElementRec(nums, mid + 1, hi);
+
+        // if the two halves agree on the majority element, return it.
+        if (left == right) {
+            return left;
+        }
+
+        // otherwise, count each element and return the "winner".
+        int leftCount = countInRange(nums, left, lo, hi);
+        int rightCount = countInRange(nums, right, lo, hi);
+
+        return leftCount > rightCount ? left : right;
+    }
+
+    public int majorityElement(int[] nums) {
+        return majorityElementRec(nums, 0, nums.length - 1);
+    }
+}
+```
+
+- 时间复杂度：*O*(nlogn)
+
+- 空间复杂度：O(logn)
+
+方法五：Boyer-Moore 投票算法
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        int count = 0;
+        Integer candidate = null;
+
+        for (int num : nums) {
+            if (count == 0) {
+                candidate = num;
+            }
+            count += (num == candidate) ? 1 : -1;
+        }
+
+        return candidate;
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(1)
+
+### [0160] 消失的数字
+
+数组nums包含从0到n的所有整数，但其中缺了一个。请编写代码找出那个缺失的整数。你有办法在O(n)时间内完成吗？
+
+注意：本题相对书上原题稍作改动
+
+示例 1：
+
+```
+输入：[3,0,1]
+输出：2
+```
+
+
+示例 2：
+
+```
+输入：[9,6,4,2,3,5,7,0,1]
+输出：8
+```
+
+方法一：
+
+利用异或的特性，res = res ^ x ^ x。对同一个值异或两次，那么结果等于它本身
+
+```java
+class Solution {
+    public int missingNumber(int[] nums) {
+        int res = 0;
+        for (int i = 0; i < nums.length; ++i) {
+            res ^= i;
+            res ^= nums[i];
+        }
+        res ^= nums.length;
+        
+        return res;
+    }
+}
+```
+
+方法二：
+
+```java
+class Solution {
+    public int missingNumber(int[] nums) {
+        int sum = (nums.length + 1) * nums.length / 2;
+        int arraySum = 0;
+        for (int i = 0; i < nums.length; i++) arraySum += nums[i];
+        return sum - arraySum;
+    }
+}
+```
+
+两种方法：
+
+- 时间复杂度为O(n)
+
+- 空间复杂度为O(1)
