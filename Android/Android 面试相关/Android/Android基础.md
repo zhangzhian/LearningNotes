@@ -3619,7 +3619,7 @@ public void setOnClickListener(OnClickListener l) {
 
 ### 5. 思考点
 
-#### 5.1 onTouch()和onTouchEvent()的区别
+**onTouch()和onTouchEvent()的区别**
 
 - 这两个方法都是在View的dispatchTouchEvent中调用，但onTouch优先于onTouchEvent执行。
 
@@ -3638,7 +3638,7 @@ public void setOnClickListener(OnClickListener l) {
 
 - 因此如果你有一个控件是非enable的，那么给它注册onTouch事件将永远得不到执行。对于这一类控件，如果我们想要监听它的touch事件，就必须通过在该控件中重写onTouchEvent方法来实现。
 
-#### 5.2 Touch事件的后续事件（MOVE、UP）层级传递
+**Touch事件的后续事件（MOVE、UP）层级传递**
 
 - 如果给控件注册了Touch事件，每次点击都会触发一系列action事件（ACTION_DOWN，ACTION_MOVE，ACTION_UP等）
 
@@ -3676,31 +3676,1935 @@ public void setOnClickListener(OnClickListener l) {
 
 ## 八、AsyncTask详解
 
+### 1. Android中的线程
+
+在操作系统中，线程是操作系统调度的最小单元，同时线程又是一种受限的系统资源，即线程不可能无限制地产生，并且**线程的创建和销毁都会有相应的开销。**当系统中存在大量的线程时，系统会通过会时间片轮转的方式调度每个线程，因此线程不可能做到绝对的并行。
+
+如果在一个进程中频繁地创建和销毁线程，显然不是高效的做法。正确的做法是采用线程池，一个线程池中会缓存一定数量的线程，通过线程池就可以避免因为频繁创建和销毁线程所带来的系统开销。
+
+### 2. AsyncTask简介
+
+AsyncTask是一个抽象类，它是由Android封装的一个轻量级异步类（轻量体现在使用方便、代码简洁），它可以在线程池中执行后台任务，然后把执行的进度和最终结果传递给主线程并在主线程中更新UI。
+
+AsyncTask的内部封装了**两个线程池**(SerialExecutor和THREAD_POOL_EXECUTOR)和**一个Handler**(InternalHandler)。
+
+其中**SerialExecutor线程池用于任务的排队，让需要执行的多个耗时任务，按顺序排列**，**THREAD_POOL_EXECUTOR线程池才真正地执行任务**，**InternalHandler用于从工作线程切换到主线程**。
+
+#### 2.1 AsyncTask的泛型参数
+
+AsyncTask的类声明如下：
+
+```java
+public abstract class AsyncTask<Params, Progress, Result>
+```
+
+AsyncTask是一个抽象泛型类。
+
+其中，三个泛型类型参数的含义如下：
+
+**Params：**开始异步任务执行时传入的参数类型；
+
+**Progress：**异步任务执行过程中，返回下载进度值的类型；
+
+**Result：**异步任务执行完成后，返回的结果类型；
+
+**如果AsyncTask确定不需要传递具体参数，那么这三个泛型参数可以用Void来代替。**
+
+有了这三个参数类型之后，也就控制了这个AsyncTask子类各个阶段的返回类型，如果有不同业务，我们就需要再另写一个AsyncTask的子类进行处理。
+
+#### 2.2 AsyncTask的核心方法
+
+**onPreExecute()**
+
+这个方法会在**后台任务开始执行之间调用，在主线程执行。**用于进行一些界面上的初始化操作，比如显示一个进度条对话框等。
+
+**doInBackground(Params...)**
+
+这个方法中的所有代码都会**在子线程中运行，我们应该在这里去处理所有的耗时任务。**
+
+任务一旦完成就可以通过return语句来将任务的执行结果进行返回，如果AsyncTask的第三个泛型参数指定的是Void，就可以不返回任务执行结果。**注意，在这个方法中是不可以进行UI操作的，如果需要更新UI元素，比如说反馈当前任务的执行进度，可以调用publishProgress(Progress...)方法来完成。**
+
+**onProgressUpdate(Progress...)**
+
+当在后台任务中调用了publishProgress(Progress...)方法后，这个方法就很快会被调用，方法中携带的参数就是在后台任务中传递过来的。**在这个方法中可以对UI进行操作，在主线程中进行，利用参数中的数值就可以对界面元素进行相应的更新。**
+
+**onPostExecute(Result)**
+
+当doInBackground(Params...)执行完毕并通过return语句进行返回时，这个方法就很快会被调用。返回的数据会作为参数传递到此方法中，**可以利用返回的数据来进行一些UI操作，在主线程中进行，比如说提醒任务执行的结果，以及关闭掉进度条对话框等。**
+
+上面几个方法的调用顺序：
+onPreExecute() --> doInBackground() --> publishProgress() --> onProgressUpdate() --> onPostExecute()
+
+如果不需要执行更新进度则为onPreExecute() --> doInBackground() --> onPostExecute(),
+
+除了上面四个方法，AsyncTask还提供了onCancelled()方法，**它同样在主线程中执行，当异步任务取消时，onCancelled()会被调用，这个时候onPostExecute()则不会被调用**，但是要注意的是，**AsyncTask中的cancel()方法并不是真正去取消任务，只是设置这个任务为取消状态，我们需要在doInBackground()判断终止任务。就好比想要终止一个线程，调用interrupt()方法，只是进行标记为中断，需要在线程内部进行标记判断然后中断线程。**
+
+#### 2.3 AsyncTask的简单使用
+
+```java
+class DownloadTask extends AsyncTask<Void, Integer, Boolean> {  
+
+    @Override  
+    protected void onPreExecute() {  
+        progressDialog.show();  
+    }  
+
+    @Override  
+    protected Boolean doInBackground(Void... params) {  
+        try {  
+            while (true) {  
+                int downloadPercent = doDownload();  
+                publishProgress(downloadPercent);  
+                if (downloadPercent >= 100) {  
+                    break;  
+                }  
+            }  
+        } catch (Exception e) {  
+            return false;  
+        }  
+        return true;  
+    }  
+
+    @Override  
+    protected void onProgressUpdate(Integer... values) {  
+        progressDialog.setMessage("当前下载进度：" + values[0] + "%");  
+    }  
+
+    @Override  
+    protected void onPostExecute(Boolean result) {  
+        progressDialog.dismiss();  
+        if (result) {  
+            Toast.makeText(context, "下载成功", Toast.LENGTH_SHORT).show();  
+        } else {  
+            Toast.makeText(context, "下载失败", Toast.LENGTH_SHORT).show();  
+        }  
+    }  
+}
+```
+
+这里我们模拟了一个下载任务，在doInBackground()方法中去执行具体的下载逻辑，在onProgressUpdate()方法中显示当前的下载进度，在onPostExecute()方法中来提示任务的执行结果。如果想要启动这个任务，只需要简单地调用以下代码即可：
+
+```java
+new DownloadTask().execute();
+```
+
+#### 2.4 使用AsyncTask的注意事项
+
+①异步任务的实例必须在UI线程中创建，即AsyncTask对象必须在UI线程中创建。
+
+②execute(Params... params)方法必须在UI线程中调用。
+
+③不要手动调用onPreExecute()，doInBackground(Params... params)，onProgressUpdate(Progress... values)，onPostExecute(Result result)这几个方法。
+
+④不能在doInBackground(Params... params)中更改UI组件的信息。
+
+⑤一个任务实例只能执行一次，如果执行第二次将会抛出异常。
+
+### 3. AsyncTask的源码分析
+
+先从初始化一个AsyncTask时，调用的构造函数开始分析。
+
+```java
+public AsyncTask() {
+        mWorker = new WorkerRunnable<Params, Result>() {
+            public Result call() throws Exception {
+                mTaskInvoked.set(true);
+                Result result = null;
+                try {
+                    Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                    //noinspection unchecked
+                    result = doInBackground(mParams);
+                    Binder.flushPendingCommands();
+                } catch (Throwable tr) {
+                    mCancelled.set(true);
+                    throw tr;
+                } finally {
+                    postResult(result);
+                }
+                return result;
+            }
+        };
+
+        mFuture = new FutureTask<Result>(mWorker) {
+            @Override
+            protected void done() {
+                try {
+                    postResultIfNotInvoked(get());
+                } catch (InterruptedException e) {
+                    android.util.Log.w(LOG_TAG, e);
+                } catch (ExecutionException e) {
+                    throw new RuntimeException("An error occurred while executing doInBackground()",
+                            e.getCause());
+                } catch (CancellationException e) {
+                    postResultIfNotInvoked(null);
+                }
+            }
+        };
+    }
+```
+
+这段代码虽然看起来有点长，但实际上并没有任何具体的逻辑会得到执行，只是初始化了两个变量，mWorker和mFuture，并在初始化mFuture的时候将mWorker作为参数传入。mWorker是一个Callable对象，mFuture是一个FutureTask对象，这两个变量会暂时保存在内存中，稍后才会用到它们。 FutureTask实现了Runnable接口。
+
+mWorker中的call()方法执行了耗时操作，即`result = doInBackground(mParams);`,然后把执行得到的结果通过`postResult(result);`,传递给内部的Handler跳转到主线程中。在这里这是实例化了两个变量，并没有开启执行任务。
+
+**那么mFuture对象是怎么加载到线程池中，进行执行的呢？**
+
+接着如果想要启动某一个任务，就需要调用该任务的execute()方法，因此现在我们来看一看execute()方法的源码，如下所示：
+
+```java
+ public final AsyncTask<Params, Progress, Result> execute(Params... params) {
+        return executeOnExecutor(sDefaultExecutor, params);
+    }
+```
+
+调用了executeOnExecutor()方法,具体执行逻辑在这个方法里面：
+
+```java
+  public final AsyncTask<Params, Progress, Result> executeOnExecutor(Executor exec,
+            Params... params) {
+        if (mStatus != Status.PENDING) {
+            switch (mStatus) {
+                case RUNNING:
+                    throw new IllegalStateException("Cannot execute task:"
+                            + " the task is already running.");
+                case FINISHED:
+                    throw new IllegalStateException("Cannot execute task:"
+                            + " the task has already been executed "
+                            + "(a task can be executed only once)");
+            }
+        }
+
+        mStatus = Status.RUNNING;
+
+        onPreExecute();
+
+        mWorker.mParams = params;
+        exec.execute(mFuture);
+
+        return this;
+    }
+```
+
+可以 看出，先执行了onPreExecute()方法，然后具体执行耗时任务是在`exec.execute(mFuture)`，把构造函数中实例化的mFuture传递进去了。
+
+**exec具体是什么？**
+
+从上面可以看出具体是sDefaultExecutor，再追溯看到是SerialExecutor类，具体源码如下：
+
+```java
+private static class SerialExecutor implements Executor {
+        final ArrayDeque<Runnable> mTasks = new ArrayDeque<Runnable>();
+        Runnable mActive;
+
+        public synchronized void execute(final Runnable r) {
+            mTasks.offer(new Runnable() {
+                public void run() {
+                    try {
+                        r.run();
+                    } finally {
+                        scheduleNext();
+                    }
+                }
+            });
+            if (mActive == null) {
+                scheduleNext();
+            }
+        }
+
+        protected synchronized void scheduleNext() {
+            if ((mActive = mTasks.poll()) != null) {
+                THREAD_POOL_EXECUTOR.execute(mActive);
+            }
+        }
+    }
+```
+
+终于追溯到了调用了SerialExecutor 类的execute方法。SerialExecutor 是个静态内部类，是所有实例化的AsyncTask对象公有的，SerialExecutor 内部维持了一个队列，通过锁使得该队列保证AsyncTask中的任务是串行执行的，即多个任务需要一个个加到该队列中，然后执行完队列头部的再执行下一个，以此类推。
+
+在这个方法中，有两个主要步骤。
+①向队列中加入一个新的任务，即之前实例化后的mFuture对象。
+
+②调用 `scheduleNext()`方法，调用THREAD_POOL_EXECUTOR执行队列头部的任务。
+
+**由此可见SerialExecutor 类仅仅为了保持任务执行是串行的，实际执行交给了THREAD_POOL_EXECUTOR。**
+
+**THREAD_POOL_EXECUTOR又是什么？**
+
+```java
+ ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(
+                CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
+                sPoolWorkQueue, sThreadFactory);
+        threadPoolExecutor.allowCoreThreadTimeOut(true);
+        THREAD_POOL_EXECUTOR = threadPoolExecutor;
+```
+
+实际是个线程池，开启了一定数量的核心线程和工作线程。然后调用线程池的execute()方法。执行具体的耗时任务，即开头构造函数中mWorker中call()方法的内容。先执行完doInBackground()方法，又执行postResult()方法，下面看该方法的具体内容：
+
+```java
+ private Result postResult(Result result) {
+        @SuppressWarnings("unchecked")
+        Message message = getHandler().obtainMessage(MESSAGE_POST_RESULT,
+                new AsyncTaskResult<Result>(this, result));
+        message.sendToTarget();
+        return result;
+    }
+```
+
+该方法向Handler对象发送了一个消息，下面具体看AsyncTask中实例化的Hanlder对象的源码：
+
+```java
+private static class InternalHandler extends Handler {
+        public InternalHandler() {
+            super(Looper.getMainLooper());
+        }
+
+        @SuppressWarnings({"unchecked", "RawUseOfParameterizedType"})
+        @Override
+        public void handleMessage(Message msg) {
+            AsyncTaskResult<?> result = (AsyncTaskResult<?>) msg.obj;
+            switch (msg.what) {
+                case MESSAGE_POST_RESULT:
+                    // There is only one result
+                    result.mTask.finish(result.mData[0]);
+                    break;
+                case MESSAGE_POST_PROGRESS:
+                    result.mTask.onProgressUpdate(result.mData);
+                    break;
+            }
+        }
+    }
+```
+
+在InternalHandler 中，如果收到的消息是MESSAGE_POST_RESULT，即执行完了doInBackground()方法并传递结果，那么就调用finish()方法。
+
+```java
+private void finish(Result result) {
+        if (isCancelled()) {
+            onCancelled(result);
+        } else {
+            onPostExecute(result);
+        }
+        mStatus = Status.FINISHED;
+    }
+```
+
+如果任务已经取消了，回调onCancelled()方法，否则回调 onPostExecute()方法。
+
+如果收到的消息是MESSAGE_POST_PROGRESS，回调onProgressUpdate()方法，更新进度。
+
+**InternalHandler是一个静态类，为了能够将执行环境切换到主线程，因此这个类必须在主线程中进行加载。所以变相要求AsyncTask的类必须在主线程中进行加载。**
+
+到此为止，从任务执行的开始到结束都从源码分析完了。
+
+**AsyncTask的串行和并行**
+
+从上述源码分析中分析得到，默认情况下AsyncTask的执行效果是串行的，因为有了SerialExecutor类来维持保证队列的串行。如果想使用并行执行任务，那么可以直接跳过SerialExecutor类，使用executeOnExecutor()来执行任务。
+
+### 4. AsyncTask使用不当的后果
+
+1) 生命周期
+
+AsyncTask不与任何组件绑定生命周期，所以在Activity/或者Fragment中创建执行AsyncTask时，最好在Activity/Fragment的onDestory()调用 cancel(boolean)；
+
+2) 内存泄漏
+
+如果AsyncTask被声明为Activity的非静态的内部类，那么AsyncTask会保留一个对创建了AsyncTask的Activity的引用。如果Activity已经被销毁，AsyncTask的后台线程还在执行，它将继续在内存里保留这个引用，导致Activity无法被回收，引起内存泄露。
+
+3) 结果丢失
+
+屏幕旋转或Activity在后台被系统杀掉等情况会导致Activity的重新创建，之前运行的AsyncTask（非静态的内部类）会持有一个之前Activity的引用，这个引用已经无效，这时调用onPostExecute()再去更新界面将不再生效。
+
 
 
 ## 九、HandlerThread详解
 
+在Android系统中，我们执行完耗时操作都要另外开启子线程来执行，执行完线程以后线程会自动销毁。想象一下如果我们在项目中经常要执行耗时操作，如果经常要开启线程，接着又销毁线程，这无疑是很消耗性能的？那有什么解决方法呢？
 
+1. 使用线程池
+2. 使用HandlerThread，本章的主要内容
+
+### 1. HandlerThread的使用场景以及怎样使用HandlerThread？
+
+**使用场景**
+
+HandlerThread是Google帮我们封装好的，可以用来执行多个耗时操作，而不需要多次开启线程，里面是采用Handler和Looper实现的。
+
+> Handy class for starting a new thread that has a looper. The looper can then be used to create handler classes. Note that start() must still be called.
+
+**怎样使用HandlerThread？**
+
+1. 创建HandlerThread的实例对象
+
+```java
+HandlerThread mThreadHandler = new HandlerThread("myHandlerThread");
+```
+
+该参数表示线程的名字，可以随便选择。 
+
+2. 启动我们创建的HandlerThread线程
+
+```java
+mThreadHandler.start();
+```
+
+3. 将我们的handlerThread与Handler绑定在一起。 
+
+   还记得是怎样将Handler与线程对象绑定在一起的吗？其实很简单，就是将线程的looper与Handler绑定在一起，代码如下：
+
+``` java
+mThreadHandler = new Handler(mThreadHandler.getLooper()) {
+    @Override
+    public void handleMessage(Message msg) {
+        checkForUpdate();
+        if(isUpdate){
+            mThreadHandler.sendEmptyMessage(MSG_UPDATE_INFO);
+        }
+    }
+};
+```
+
+**注意必须按照以上三个步骤来，下面在讲解源码的时候会分析其原因**
+
+**完整测试代码如下**
+
+``` java
+public class MainActivity extends AppCompatActivity {
+    private static final int MSG_UPDATE_INFO = 0x100;
+    Handler mMainHandler = new Handler();
+    private TextView mTv;
+    private Handler mThreadHandler;
+    private HandlerThread mHandlerThread;
+    private boolean isUpdate = true;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        mTv = (TextView) findViewById(R.id.tv);
+        initHandlerThread();
+    }
+
+    private void initHandlerThread() {
+        mHandlerThread = new HandlerThread("xujun");
+        mHandlerThread.start();
+        mThreadHandler = new Handler(mHandlerThread.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                checkForUpdate();
+                if (isUpdate) {
+                    mThreadHandler.sendEmptyMessage(MSG_UPDATE_INFO);
+                }
+            }
+        };
+    }
+
+    /**
+     * 模拟从服务器解析数据
+     */
+    private void checkForUpdate() {
+        try {
+            //模拟耗时
+            Thread.sleep(1200);
+            mMainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    String result = "实时更新中，当前股票行情：<font color='red'>%d</font>";
+                    result = String.format(result, (int) (Math.random() * 5000 + 1000));
+                    mTv.setText(Html.fromHtml(result));
+                }
+            });
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        isUpdate = true;
+        super.onResume();
+        mThreadHandler.sendEmptyMessage(MSG_UPDATE_INFO);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isUpdate = false;
+        mThreadHandler.removeMessages(MSG_UPDATE_INFO);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mHandlerThread.quit();
+        mMainHandler.removeCallbacksAndMessages(null);
+    }
+}
+```
+
+**运行以上测试代码，将可以看到如下效果图(例子不太恰当，主要使用场景是在handleMessage中执行耗时操作)**
+
+![img](http://upload-images.jianshu.io/upload_images/2050203-a1ee8856b13b5368.gif?imageMogr2/auto-orient/strip)
+
+### 2. HandlerThread源码分析
+
+官方源代码如下，是基于sdk23的，可以看到，只有一百多行代码而已。
+
+```java
+public class HandlerThread extends Thread {
+    int mPriority;
+    int mTid = -1;
+    Looper mLooper;
+
+    public HandlerThread(String name) {
+        super(name);
+        mPriority = Process.THREAD_PRIORITY_DEFAULT;
+    }
+
+    public HandlerThread(String name, int priority) {
+        super(name);
+        mPriority = priority;
+    }
+
+    /**
+     * Call back method that can be explicitly overridden if needed to execute some
+     * setup before Looper loops.
+     */
+    protected void onLooperPrepared() {
+    }
+
+    @Override
+    public void run() {
+        mTid = Process.myTid();
+        Looper.prepare();
+        //持有锁机制来获得当前线程的Looper对象
+        synchronized (this) {
+            mLooper = Looper.myLooper();
+            //发出通知，当前线程已经创建mLooper对象成功，这里主要是通知getLooper方法中的wait
+            notifyAll();
+        }
+        //设置线程的优先级别
+        Process.setThreadPriority(mPriority);
+        //这里默认是空方法的实现，我们可以重写这个方法来做一些线程开始之前的准备，方便扩展
+        onLooperPrepared();
+        Looper.loop();
+        mTid = -1;
+    }
+
+    public Looper getLooper() {
+        if (!isAlive()) {
+            return null;
+        }
+        // 直到线程创建完Looper之后才能获得Looper对象，Looper未创建成功，阻塞
+        synchronized (this) {
+            while (isAlive() && mLooper == null) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+        return mLooper;
+    }
+
+    public boolean quit() {
+        Looper looper = getLooper();
+        if (looper != null) {
+            looper.quit();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean quitSafely() {
+        Looper looper = getLooper();
+        if (looper != null) {
+            looper.quitSafely();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the identifier of this thread. See Process.myTid().
+     */
+    public int getThreadId() {
+        return mTid;
+    }
+}
+```
+
+**1）首先我们先来看一下它的构造方法**
+
+```java
+public HandlerThread(String name) {
+    super(name);
+    mPriority = Process.THREAD_PRIORITY_DEFAULT;
+}
+
+public HandlerThread(String name, int priority) {
+    super(name);
+    mPriority = priority;
+}
+```
+
+有两个构造方法，一个参数的和两个参数的，name代表当前线程的名称，priority为线程的优先级别
+
+**2）接着我们来看一下run()方法，在run方法里面我们可以看到我们会初始化一个Looper，并设置线程的优先级别**
+
+```java
+public void run() {
+    mTid = Process.myTid();
+    Looper.prepare();
+    //持有锁机制来获得当前线程的Looper对象
+    synchronized (this) {
+        mLooper = Looper.myLooper();
+        //发出通知，当前线程已经创建mLooper对象成功，这里主要是通知getLooper方法中的wait
+        notifyAll();
+    }
+    //设置线程的优先级别
+    Process.setThreadPriority(mPriority);
+    //这里默认是空方法的实现，我们可以重写这个方法来做一些线程开始之前的准备，方便扩展
+    onLooperPrepared();
+    Looper.loop();
+    mTid = -1;
+}
+```
+
+- 还记得我们前面我们说到使用HandlerThread的时候必须调用`start()`方法，接着才可以将我们的HandlerThread和我们的handler绑定在一起吗?其实原因就是我们是在`run()`方法才开始初始化我们的looper，而我们调用HandlerThread的`start()`方法的时候，线程会交给虚拟机调度，由虚拟机自动调用run方法：
+
+```java
+mHandlerThread.start();
+mThreadHandler = new Handler(mHandlerThread.getLooper()) {
+    @Override
+    public void handleMessage(Message msg) {
+        checkForUpdate();
+        if(isUpdate){
+            mThreadHandler.sendEmptyMessage(MSG_UPDATE_INFO);
+        }
+    }
+};
+```
+
+- 这里我们为什么要使用锁机制和`notifyAll()`;，原因我们可以从`getLooper()`方法中知道
+
+```java
+public Looper getLooper() {
+    if (!isAlive()) {
+        return null;
+    }
+    // 直到线程创建完Looper之后才能获得Looper对象，Looper未创建成功，阻塞
+    synchronized (this) {
+        while (isAlive() && mLooper == null) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+    return mLooper;
+}
+```
+
+**总结：在获得mLooper对象的时候存在一个同步的问题，只有当线程创建成功并且Looper对象也创建成功之后才能获得mLooper的值。这里等待方法wait和run方法中的notifyAll方法共同完成同步问题。**
+
+**3)接着我们来看一下quit方法和quitSafe方法**
+
+```java
+//调用这个方法退出Looper消息循环，及退出线程
+public boolean quit() {
+    Looper looper = getLooper();
+    if (looper != null) {
+        looper.quit();
+        return true;
+    }
+    return false;
+}
+//调用这个方法安全地退出线程
+@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
+public boolean quitSafely() {
+    Looper looper = getLooper();
+    if (looper != null) {
+        looper.quitSafely();
+        return true;
+    }
+    return false;
+}
+```
+
+跟踪这两个方法容易知道只两个方法最终都会调用MessageQueue的`quit(boolean safe)`方法
+
+```java
+void quit(boolean safe) {
+    if (!mQuitAllowed) {
+        throw new IllegalStateException("Main thread not allowed to quit.");
+    }
+    synchronized (this) {
+        if (mQuitting) {
+            return;
+        }
+        mQuitting = true;
+        //安全退出调用这个方法
+        if (safe) {
+            removeAllFutureMessagesLocked();
+        } else {//不安全退出调用这个方法
+            removeAllMessagesLocked();
+        }
+        // We can assume mPtr != 0 because mQuitting was previously false.
+        nativeWake(mPtr);
+    }
+}
+```
+
+不安全的会调用`removeAllMessagesLocked();`这个方法，我们来看这个方法是怎样处理的，其实就是遍历Message链表，移除所有信息的回调，并重置为null。
+
+```java
+private void removeAllMessagesLocked() {
+    Message p = mMessages;
+    while (p != null) {
+        Message n = p.next;
+        p.recycleUnchecked();
+        p = n;
+    }
+    mMessages = null;
+}
+```
+
+安全地会调用`removeAllFutureMessagesLocked();`这个方法，它会根据Message.when这个属性，判断我们当前消息队列是否正在处理消息，没有正在处理消息的话，直接移除所有回调，正在处理的话，等待该消息处理处理完毕再退出该循环。因此说`quitSafe()`是安全的，而`quit()`方法是不安全的，因为quit方法不管是否正在处理消息，直接移除所有回调。
+
+```java
+private void removeAllFutureMessagesLocked() {
+    final long now = SystemClock.uptimeMillis();
+    Message p = mMessages;
+    if (p != null) {
+        //判断当前队列中的消息是否正在处理这个消息，没有的话，直接移除所有回调
+        if (p.when > now) {
+            removeAllMessagesLocked();
+        } else {//正在处理的话，等待该消息处理处理完毕再退出该循环
+            Message n;
+            for (;;) {
+                n = p.next;
+                if (n == null) {
+                    return;
+                }
+                if (n.when > now) {
+                    break;
+                }
+                p = n;
+            }
+            p.next = null;
+            do {
+                p = n;
+                n = p.next;
+                p.recycleUnchecked();
+            } while (n != null);
+        }
+    }
+}
+```
 
 ## 十、IntentService详解
+
+IntentService是Android里面的一个封装类，继承自四大组件之一的Service。
+
+处理异步请求，实现多线程。
+
+### 1. 工作流程
+
+![](http://upload-images.jianshu.io/upload_images/944365-fa5bfe6dffa531ce.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+注意：若启动IntentService多次，那么每个耗时操作则以队列的方式在IntentService的onHandleIntent回调方法中依次执行，执行完自动结束。
+
+### 2. 实现步骤
+
+- 步骤1：定义IntentService的子类：传入线程名称、复写onHandleIntent()方法
+- 步骤2：在Manifest.xml中注册服务
+- 步骤3：在Activity中开启Service服务
+
+### 3. 具体实例
+
+- 步骤1：定义IntentService的子类：传入线程名称、复写onHandleIntent()方法
+
+```java
+package com.example.carson_ho.demoforintentservice;
+
+import android.app.IntentService;
+import android.content.Intent;
+import android.util.Log;
+
+/**
+ * Created by Carson_Ho on 16/9/28.
+ */
+public class myIntentService extends IntentService {
+
+    /*构造函数*/
+    public myIntentService() {
+        //调用父类的构造函数
+        //构造函数参数=工作线程的名字
+        super("myIntentService");
+
+    }
+
+    /*复写onHandleIntent()方法*/
+    //实现耗时任务的操作
+    @Override
+    protected void onHandleIntent(Intent intent) {
+        //根据Intent的不同进行不同的事务处理
+        String taskName = intent.getExtras().getString("taskName");
+        switch (taskName) {
+            case "task1":
+                Log.i("myIntentService", "do task1");
+                break;
+            case "task2":
+                Log.i("myIntentService", "do task2");
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    @Override
+    public void onCreate() {
+        Log.i("myIntentService", "onCreate");
+        super.onCreate();
+    }
+
+    /*复写onStartCommand()方法*/
+    //默认实现将请求的Intent添加到工作队列里
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.i("myIntentService", "onStartCommand");
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i("myIntentService", "onDestroy");
+        super.onDestroy();
+    }
+}
+```
+
+- 步骤2：在Manifest.xml中注册服务
+
+```xml
+<service android:name=".myIntentService">
+	<intent-filter>
+		<action android:name="cn.scu.finch"/>
+	</intent-filter>
+</service>
+```
+
+- 步骤3：在Activity中开启Service服务
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+        //同一服务只会开启一个工作线程
+        //在onHandleIntent函数里依次处理intent请求。
+
+        Intent i = new Intent("cn.scu.finch");
+        Bundle bundle = new Bundle();
+        bundle.putString("taskName", "task1");
+        i.putExtras(bundle);
+        startService(i);
+
+        Intent i2 = new Intent("cn.scu.finch");
+        Bundle bundle2 = new Bundle();
+        bundle2.putString("taskName", "task2");
+        i2.putExtras(bundle2);
+        startService(i2);
+
+        startService(i);  //多次启动
+    }
+}
+```
+
+- 结果
+
+  ![](http://upload-images.jianshu.io/upload_images/944365-fadf671e3671b52a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 4. 源码分析
+
+接下来，我们会通过源码分析解决以下问题：
+
+- IntentService如何单独开启一个新的工作线程；
+- IntentService如何通过onStartCommand()传递给服务intent被**依次**插入到工作队列中
+
+问题1：IntentService如何单独开启一个新的工作线程
+
+```java
+// IntentService源码中的 onCreate() 方法
+@Override
+public void onCreate() {
+    super.onCreate();
+    // HandlerThread继承自Thread，内部封装了 Looper
+    //通过实例化HandlerThread新建线程并启动
+    //所以使用IntentService时不需要额外新建线程
+    HandlerThread thread = new HandlerThread("IntentService[" + mName + "]");
+    thread.start();
+
+    //获得工作线程的 Looper，并维护自己的工作队列
+    mServiceLooper = thread.getLooper();
+    //将上述获得Looper与新建的mServiceHandler进行绑定
+    //新建的Handler是属于工作线程的。
+    mServiceHandler = new ServiceHandler(mServiceLooper);
+}
+
+private final class ServiceHandler extends Handler {
+
+    public ServiceHandler(Looper looper) {
+        super(looper);
+    }
+
+    // IntentService的handleMessage方法把接收的消息交给onHandleIntent()处理
+    // onHandleIntent()是一个抽象方法，使用时需要重写的方法
+    @Override
+    public void handleMessage(Message msg) {
+        // onHandleIntent 方法在工作线程中执行，执行完调用 stopSelf() 结束服务。
+        onHandleIntent((Intent) msg.obj);
+        //onHandleIntent 处理完成后 IntentService会调用 stopSelf() 自动停止。
+        stopSelf(msg.arg1);
+    }
+}
+
+// onHandleIntent()是一个抽象方法，使用时需要重写的方法
+@WorkerThread
+protected abstract void onHandleIntent(Intent intent);
+```
+
+**问题2：IntentService如何通过onStartCommand()传递给服务intent被依次插入到工作队列中**
+
+```java
+public int onStartCommand(Intent intent, int flags, int startId) {
+    onStart(intent, startId);
+    return mRedelivery ? START_REDELIVER_INTENT : START_NOT_STICKY;
+}
+
+public void onStart(Intent intent, int startId) {
+    Message msg = mServiceHandler.obtainMessage();
+    msg.arg1 = startId;
+    //把 intent 参数包装到 message 的 obj 中，然后发送消息，即添加到消息队列里
+    //这里的Intent 就是启动服务时startService(Intent) 里的 Intent。
+    msg.obj = intent;
+    mServiceHandler.sendMessage(msg);
+}
+
+//清除消息队列中的消息
+@Override
+public void onDestroy() {
+    mServiceLooper.quit();
+}
+```
+
+- 总结
+
+
+  从上面源码可以看出，IntentService本质是采用Handler & HandlerThread方式：
+
+    1. 通过HandlerThread单独开启一个名为**IntentService**的线程
+    2. 创建一个名叫ServiceHandler的内部Handler
+    3. 把内部Handler与HandlerThread所对应的子线程进行绑定
+    4. 通过onStartCommand()传递给服务intent，**依次**插入到工作队列中，并逐个发送给onHandleIntent()
+    5. 通过onHandleIntent()来依次处理所有Intent请求对象所对应的任务
+
+因此我们通过复写方法onHandleIntent()，再在里面根据Intent的不同进行不同的线程操作就可以了
+
+**注意事项：工作任务队列是顺序执行的。**
+
+> 如果一个任务正在IntentService中执行，此时你再发送一个新的任务请求，这个新的任务会一直等待直到前面一个任务执行完毕才开始执行。
+
+  原因：
+
+1. 由于onCreate() 方法只会调用一次，所以只会创建一个工作线程；
+2. 当多次调用 startService(Intent) 时（onStartCommand也会调用多次）其实并不会创建新的工作线程，只是把消息加入消息队列中等待执行，**所以，多次启动 IntentService 会按顺序执行事件**；
+3. 如果服务停止，会清除消息队列中的消息，后续的事件得不到执行。
+
+### 5. 使用场景
+
+- 线程任务需要按顺序、在后台执行的使用场景
+
+  > 最常见的场景：离线下载
+
+- 由于所有的任务都在同一个Thread looper里面来做，所以不符合多个数据同时请求的场景。
+
+### 6. 对比
+
+**IntentService与Service的区别**
+
+- 从属性 & 作用上来说
+  Service：依赖于应用程序的主线程（不是独立的进程 or 线程）
+
+  > 不建议在Service中编写耗时的逻辑和操作，否则会引起ANR；
+
+  IntentService：创建一个工作线程来处理多线程任务 　　
+
+- Service需要主动调用stopSelft()来结束服务，而IntentService不需要（在所有intent被处理完后，系统会自动关闭服务）
+
+**IntentService与其他线程的区别**
+
+- IntentService内部采用了HandlerThread实现，作用类似于后台线程；
+
+- 与后台线程相比，IntentService是一种后台服务，优势是：优先级高（不容易被系统杀死），从而保证任务的执行。
+
+  > 对于后台线程，若进程中没有活动的四大组件，则该线程的优先级非常低，容易被系统杀死，无法保证任务的执行
 
 
 
 ## 十一、LruCache原理解析
 
+一般来说，缓存策略主要包含缓存的添加、获取和删除这三类操作。如何添加和获取缓存这个比较好理解，那么为什么还要删除缓存呢？这是因为不管是内存缓存还是硬盘缓存，它们的缓存大小都是有限的。当缓存满了之后，再想其添加缓存，这个时候就需要删除一些旧的缓存并添加新的缓存。
 
+因此LRU(Least Recently Used)缓存算法便应运而生，LRU是最近最少使用的算法，它的核心思想是当缓存满时，会优先淘汰那些最近最少使用的缓存对象。采用LRU算法的缓存有两种：LrhCache和DisLruCache，分别用于实现内存缓存和硬盘缓存，其核心思想都是LRU缓存算法。
+
+LruCache是Android 3.1所提供的一个缓存类，所以在Android中可以直接使用LruCache实现内存缓存。而DisLruCache目前在Android 还不是Android SDK的一部分，但Android官方文档推荐使用该算法来实现硬盘缓存。
+
+### 1.LruCache的介绍
+
+LruCache是个泛型类，主要算法原理是把最近使用的对象用强引用（即我们平常使用的对象引用方式）存储在 LinkedHashMap 中。当缓存满时，把最近最少使用的对象从内存中移除，并提供了get和put方法来完成缓存的获取和添加操作。
+
+### 2.LruCache的使用
+
+LruCache的使用非常简单，我们就已图片缓存为例。
+
+```java
+int maxMemory = (int) (Runtime.getRuntime().totalMemory() / 1024);
+int cacheSize = maxMemory / 8;
+mMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
+    @Override
+    protected int sizeOf(String key, Bitmap value) {
+        return value.getRowBytes() * value.getHeight() / 1024;
+    }
+};
+```
+
+①设置LruCache缓存的大小，一般为当前进程可用容量的1/8。
+
+②重写sizeOf方法，计算出要缓存的每张图片的大小。
+
+**注意：** 缓存的总容量和每个缓存对象的大小所用单位要一致。
+
+### 3. LruCache的实现原理
+
+LruCache的核心思想很好理解，就是要维护一个缓存对象列表，其中对象列表的排列方式是按照访问顺序实现的，即一直没访问的对象，将放在队尾，即将被淘汰。而最近访问的对象将放在队头，最后被淘汰。
+
+如下图所示：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-33560a9500e72780.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+那么这个队列到底是由谁来维护的，前面已经介绍了是由LinkedHashMap来维护。
+
+而LinkedHashMap是由数组+双向链表的数据结构来实现的。其中双向链表的结构可以实现访问顺序和插入顺序，使得LinkedHashMap中的<key, value>对按照一定顺序排列起来。
+
+通过下面构造函数来指定LinkedHashMap中双向链表的结构是访问顺序还是插入顺序。
+
+```java
+public LinkedHashMap(int initialCapacity,
+	float loadFactor,
+	boolean accessOrder) {
+	super(initialCapacity, loadFactor);
+	this.accessOrder = accessOrder;
+}
+```
+
+其中accessOrder设置为true则为访问顺序，为false，则为插入顺序。
+
+以具体例子解释：
+当设置为true时
+
+```java
+public static final void main(String[] args) {
+	LinkedHashMap<Integer, Integer> map = new LinkedHashMap<>(0, 0.75f, true);
+	map.put(0, 0);
+	map.put(1, 1);
+	map.put(2, 2);
+	map.put(3, 3);
+	map.put(4, 4);
+	map.put(5, 5);
+	map.put(6, 6);
+	map.get(1);
+	map.get(2);
+
+	for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+		System.out.println(entry.getKey() + ":" + entry.getValue());
+
+	}
+}
+```
+
+输出结果：
+
+> 0:0<br>
+> 3:3<br>
+> 4:4<br>
+> 5:5<br>
+> 6:6<br>
+> 1:1<br>
+> 2:2
+
+即最近访问的最后输出，那么这就正好满足的LRU缓存算法的思想。**可见LruCache巧妙实现，就是利用了LinkedHashMap的这种数据结构。**
+
+下面我们在LruCache源码中具体看看，怎么应用LinkedHashMap来实现缓存的添加，获得和删除的。
+
+```java
+public LruCache(int maxSize) {
+	if (maxSize <= 0) {
+		throw new IllegalArgumentException("maxSize <= 0");
+	}
+	this.maxSize = maxSize;
+	this.map = new LinkedHashMap<K, V>(0, 0.75f, true);
+}
+```
+
+从LruCache的构造函数中可以看到正是用了LinkedHashMap的访问顺序。
+
+**put()方法**
+
+```java
+public final V put(K key, V value) {
+         //不可为空，否则抛出异常
+	if (key == null || value == null) {
+		throw new NullPointerException("key == null || value == null");
+	}
+	V previous;
+	synchronized (this) {
+            //插入的缓存对象值加1
+		putCount++;
+            //增加已有缓存的大小
+		size += safeSizeOf(key, value);
+           //向map中加入缓存对象
+		previous = map.put(key, value);
+            //如果已有缓存对象，则缓存大小恢复到之前
+		if (previous != null) {
+			size -= safeSizeOf(key, previous);
+		}
+	}
+        //entryRemoved()是个空方法，可以自行实现
+	if (previous != null) {
+		entryRemoved(false, key, previous, value);
+	}
+        //调整缓存大小(关键方法)
+	trimToSize(maxSize);
+	return previous;
+}
+```
+
+可以看到put()方法并没有什么难点，重要的就是在添加过缓存对象后，调用 trimToSize()方法，来判断缓存是否已满，如果满了就要删除近期最少使用的算法。
+
+**trimToSize()方法**
+
+```java
+public void trimToSize(int maxSize) {
+    //死循环
+	while (true) {
+		K key;
+		V value;
+		synchronized (this) {
+            //如果map为空并且缓存size不等于0或者缓存size小于0，抛出异常
+			if (size < 0 || (map.isEmpty() && size != 0)) {
+				throw new IllegalStateException(getClass().getName()
+					+ ".sizeOf() is reporting inconsistent results!");
+			}
+            //如果缓存大小size小于最大缓存，或者map为空，不需要再删除缓存对象，跳出循环
+			if (size <= maxSize || map.isEmpty()) {
+				break;
+			}
+            //迭代器获取第一个对象，即队尾的元素，近期最少访问的元素
+			Map.Entry<K, V> toEvict = map.entrySet().iterator().next();
+			key = toEvict.getKey();
+			value = toEvict.getValue();
+            //删除该对象，并更新缓存大小
+			map.remove(key);
+			size -= safeSizeOf(key, value);
+			evictionCount++;
+		}
+		entryRemoved(true, key, value, null);
+	}
+}
+```
+
+trimToSize()方法不断地删除LinkedHashMap中队尾的元素，即近期最少访问的，直到缓存大小小于最大值。
+
+当调用LruCache的get()方法获取集合中的缓存对象时，就代表访问了一次该元素，将会更新队列，保持整个队列是按照访问顺序排序。这个更新过程就是在LinkedHashMap中的get()方法中完成的。
+
+先看LruCache的get()方法
+
+**get()方法**
+
+```java
+public final V get(K key) {
+        //key为空抛出异常
+	if (key == null) {
+		throw new NullPointerException("key == null");
+	}
+
+	V mapValue;
+	synchronized (this) {
+            //获取对应的缓存对象
+            //get()方法会实现将访问的元素更新到队列头部的功能
+		mapValue = map.get(key);
+		if (mapValue != null) {
+			hitCount++;
+			return mapValue;
+		}
+		missCount++;
+	}
+```
+
+其中LinkedHashMap的get()方法如下：
+
+```Java
+public V get(Object key) {
+	LinkedHashMapEntry<K,V> e = (LinkedHashMapEntry<K,V>)getEntry(key);
+	if (e == null)
+		return null;
+    //实现排序的关键方法
+	e.recordAccess(this);
+	return e.value;
+}
+```
+
+调用recordAccess()方法如下：
+
+```Java
+void recordAccess(HashMap<K,V> m) {
+	LinkedHashMap<K,V> lm = (LinkedHashMap<K,V>)m;
+    //判断是否是访问排序
+	if (lm.accessOrder) {
+		lm.modCount++;
+        //删除此元素
+		remove();
+        //将此元素移动到队列的头部
+		addBefore(lm.header);
+	}
+}
+```
+
+**由此可见LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。**
 
 ## 十二、Window、Activity、DecorView以及ViewRoot之间的关系
+
+### 1. 简介
+
+**Activity**
+
+Activity并不负责视图控制，它只是控制生命周期和处理事件。真正控制视图的是Window。一个Activity包含了一个Window，Window才是真正代表一个窗口。**Activity就像一个控制器，统筹视图的添加与显示，以及通过其他回调方法，来与Window、以及View进行交互。**
+
+**Window**
+
+Window是视图的承载器，内部持有一个 DecorView，而这个DecorView才是 view 的根布局。Window是一个抽象类，实际在Activity中持有的是其子类PhoneWindow。PhoneWindow中有个内部类DecorView，通过创建DecorView来加载Activity中设置的布局`R.layout.activity_main`。Window 通过WindowManager将DecorView加载其中，并将DecorView交给ViewRoot，进行视图绘制以及其他交互。
+
+**DecorView**
+
+DecorView是FrameLayout的子类，它可以被认为是Android视图树的根节点视图。DecorView作为顶级View，一般情况下它内部包含一个竖直方向的LinearLayout，**在这个LinearLayout里面有上下三个部分，上面是个ViewStub，延迟加载的视图（应该是设置ActionBar，根据Theme设置），中间的是标题栏(根据Theme设置，有的布局没有)，下面的是内容栏。** 具体情况和Android版本及主体有关，以其中一个布局为例，如下所示：
+
+```xml
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+    <!-- Popout bar for action modes -->
+    <ViewStub
+        android:id="@+id/action_mode_bar_stub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inflatedId="@+id/action_mode_bar"
+        android:layout="@layout/action_mode_bar"
+        android:theme="?attr/actionBarTheme" />
+
+    <FrameLayout
+        style="?android:attr/windowTitleBackgroundStyle"
+        android:layout_width="match_parent"
+        android:layout_height="?android:attr/windowTitleSize">
+
+        <TextView
+            android:id="@android:id/title"
+            style="?android:attr/windowTitleStyle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@null"
+            android:fadingEdge="horizontal"
+            android:gravity="center_vertical" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@android:id/content"
+        android:layout_width="match_parent"
+        android:layout_height="0dip"
+        android:layout_weight="1"
+        android:foreground="?android:attr/windowContentOverlay"
+        android:foregroundGravity="fill_horizontal|top" />
+</LinearLayout>
+```
+
+在Activity中通过setContentView所设置的布局文件其实就是被加到内容栏之中的，成为其唯一子View，就是上面的id为content的FrameLayout中，在代码中可以通过content来得到对应加载的布局。
+
+```java
+ViewGroup content = (ViewGroup)findViewById(android.R.id.content);
+ViewGroup rootView = (ViewGroup) content.getChildAt(0);
+```
+
+**ViewRoot**
+
+ViewRoot可能比较陌生，但是其作用非常重大。所有View的绘制以及事件分发等交互都是通过它来执行或传递的。
+
+ViewRoot对应**ViewRootImpl类，它是连接WindowManagerService和DecorView的纽带**，View的三大流程（测量（measure），布局（layout），绘制（draw））均通过ViewRoot来完成。
+
+ViewRoot并不属于View树的一份子。从源码实现上来看，它既非View的子类，也非View的父类，但是，它实现了ViewParent接口，这让它可以作为View的**名义上的父视图**。RootView继承了Handler类，可以接收事件并分发，Android的所有触屏事件、按键事件、界面刷新等事件都是通过ViewRoot进行分发的。
+
+下面结构图可以清晰的揭示四者之间的关系：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-e773ab2cb83ad214.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 2. DecorView的创建
+
+这部分内容主要讲DecorView是怎么一层层嵌套在Actvity，PhoneWindow中的，以及DecorView如何加载内部布局。
+
+**setContentView**
+
+先是从Activity中的setContentView()开始。
+
+```java
+public void setContentView(@LayoutRes int layoutResID) {
+	getWindow().setContentView(layoutResID);
+	initWindowDecorActionBar();
+}
+```
+
+可以看到实际是交给Window装载视图。**下面来看看Activity是怎么获得Window对象的？**
+
+```java
+final void attach(Context context, ActivityThread aThread,
+	Instrumentation instr, IBinder token, int ident,
+	Application application, Intent intent, ActivityInfo info,
+	CharSequence title, Activity parent, String id,
+	NonConfigurationInstances lastNonConfigurationInstances,
+	Configuration config, String referrer, IVoiceInteractor voiceInteractor,
+	Window window) {
+		..................................................................
+        mWindow = new PhoneWindow(this, window);//创建一个Window对象
+        mWindow.setWindowControllerCallback(this);
+        mWindow.setCallback(this);//设置回调，向Activity分发点击或状态改变等事件
+        mWindow.setOnWindowDismissedCallback(this);
+        .................................................................
+        mWindow.setWindowManager(
+        	(WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
+        	mToken, mComponent.flattenToString(),
+                (info.flags & ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0);//给Window设置WindowManager对象
+        ....................................................................
+}
+```
+
+在Activity中的attach()方法中，生成了PhoneWindow实例。既然有了Window对象，那么我们就可以**设置DecorView给Window对象了。**
+
+```java
+public void setContentView(int layoutResID) {
+    if (mContentParent == null) {//mContentParent为空，创建一个DecroView
+    	installDecor();
+    } else {
+        mContentParent.removeAllViews();//mContentParent不为空，删除其中的View
+    }
+    mLayoutInflater.inflate(layoutResID, mContentParent);//为mContentParent添加子View,即Activity中设置的布局文件
+    final Callback cb = getCallback();
+    if (cb != null && !isDestroyed()) {
+        cb.onContentChanged();//回调通知，内容改变
+    }
+}
+```
+
+看了下来，可能有一个疑惑：**mContentParent到底是什么？** 就是前面布局中`@android:id/content`所对应的FrameLayout。
+
+**通过上面的流程我们大致可以了解先在PhoneWindow中创建了一个DecroView，其中创建的过程中可能根据Theme不同，加载不同的布局格式，例如有没有Title，或有没有ActionBar等，然后再向mContentParent中加入子View，即Activity中设置的布局。到此位置，视图一层层嵌套添加上了。**
+
+下面具体来看看`installDecor();`方法，**怎么创建的DecroView，并设置其整体布局？**
+
+```java
+private void installDecor() {
+    if (mDecor == null) {
+        mDecor = generateDecor(); //生成DecorView
+        mDecor.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        mDecor.setIsRootNamespace(true);
+        if (!mInvalidatePanelMenuPosted && mInvalidatePanelMenuFeatures != 0) {
+            mDecor.postOnAnimation(mInvalidatePanelMenuRunnable);
+        }
+    }
+    if (mContentParent == null) {
+        mContentParent = generateLayout(mDecor); // 为DecorView设置布局格式，并返回mContentParent
+        ...
+        } 
+    }
+}
+```
+
+再来看看 generateDecor()
+
+```java
+protected DecorView generateDecor() {
+    return new DecorView(getContext(), -1);
+}
+```
+
+很简单，创建了一个DecorView。
+
+再看generateLayout
+
+```java
+protected ViewGroup generateLayout(DecorView decor) {
+    // 从主题文件中获取样式信息
+    TypedArray a = getWindowStyle();
+
+    ...................
+
+    if (a.getBoolean(R.styleable.Window_windowNoTitle, false)) {
+        requestFeature(FEATURE_NO_TITLE);
+    } else if (a.getBoolean(R.styleable.Window_windowActionBar, false)) {
+        // Don't allow an action bar if there is no title.
+        requestFeature(FEATURE_ACTION_BAR);
+    }
+
+    ................
+
+    // 根据主题样式，加载窗口布局
+    int layoutResource;
+    int features = getLocalFeatures();
+    // System.out.println("Features: 0x" + Integer.toHexString(features));
+    if ((features & (1 << FEATURE_SWIPE_TO_DISMISS)) != 0) {
+        layoutResource = R.layout.screen_swipe_dismiss;
+    } else if(...){
+        ...
+    }
+
+    View in = mLayoutInflater.inflate(layoutResource, null);//加载layoutResource
+
+    //往DecorView中添加子View，即文章开头介绍DecorView时提到的布局格式，那只是一个例子，根据主题样式不同，加载不同的布局。
+    decor.addView(in, new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)); 
+    mContentRoot = (ViewGroup) in;
+
+    ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT);// 这里获取的就是mContentParent
+    if (contentParent == null) {
+        throw new RuntimeException("Window couldn't find content container view");
+    }
+
+    if ((features & (1 << FEATURE_INDETERMINATE_PROGRESS)) != 0) {
+        ProgressBar progress = getCircularProgressBar(false);
+        if (progress != null) {
+            progress.setIndeterminate(true);
+        }
+    }
+
+    if ((features & (1 << FEATURE_SWIPE_TO_DISMISS)) != 0) {
+        registerSwipeCallbacks();
+    }
+
+    // Remaining setup -- of background and title -- that only applies
+    // to top-level windows.
+    ...
+
+    return contentParent;
+}
+```
+
+虽然比较复杂，但是逻辑还是很清楚的。先从主题中获取样式，然后根据样式，加载对应的布局到DecorView中，然后从中获取mContentParent。获得到之后，可以回到上面的代码，为mContentParent添加View，即Activity中的布局。
+
+以上就是DecorView的创建过程，其实到`installDecor()`就已经介绍完了，后面只是具体介绍其中的逻辑。
+
+### 3. DecorView的显示
+
+以上仅仅是将DecorView建立起来。通过setContentView()设置的界面，为什么在onResume()之后才对用户可见呢？
+
+这就要从ActivityThread开始说起。
+
+```Java
+private void handleLaunchActivity(ActivityClientRecord r, Intent customIntent) {
+
+    //就是在这里调用了Activity.attach()呀，接着调用了Activity.onCreate()和Activity.onStart()生命周期，
+    //但是由于只是初始化了mDecor，添加了布局文件，还没有把
+    //mDecor添加到负责UI显示的PhoneWindow中，所以这时候对用户来说，是不可见的
+    Activity a = performLaunchActivity(r, customIntent);
+
+    ......
+
+    if (a != null) {
+    //这里面执行了Activity.onResume()
+    handleResumeActivity(r.token, false, r.isForward,
+                        !r.activity.mFinished && !r.startsNotResumed);
+
+    if (!r.activity.mFinished && r.startsNotResumed) {
+        try {
+                r.activity.mCalled = false;
+                //执行Activity.onPause()
+                mInstrumentation.callActivityOnPause(r.activity);
+                }
+        }
+    }
+}
+```
+
+重点看下handleResumeActivity(),在这其中，DecorView将会显示出来，同时重要的一个角色：ViewRoot也将登场。
+
+```java
+final void handleResumeActivity(IBinder token, boolean clearHide, 
+                                boolean isForward, boolean reallyResume) {
+
+    //这个时候，Activity.onResume()已经调用了，但是现在界面还是不可见的
+    ActivityClientRecord r = performResumeActivity(token, clearHide);
+
+    if (r != null) {
+        final Activity a = r.activity;
+        if (r.window == null && !a.mFinished && willBeVisible) {
+            r.window = r.activity.getWindow();
+            View decor = r.window.getDecorView();
+            //decor对用户不可见
+            decor.setVisibility(View.INVISIBLE);
+            ViewManager wm = a.getWindowManager();
+            WindowManager.LayoutParams l = r.window.getAttributes();
+            a.mDecor = decor;
+
+            l.type = WindowManager.LayoutParams.TYPE_BASE_APPLICATION;
+
+            if (a.mVisibleFromClient) {
+                a.mWindowAdded = true;
+                //被添加进WindowManager了，但是这个时候，还是不可见的
+                wm.addView(decor, l);
+            }
+
+            if (!r.activity.mFinished && willBeVisible
+                    && r.activity.mDecor != null && !r.hideForNow) {
+                //在这里，执行了重要的操作,使得DecorView可见
+                if (r.activity.mVisibleFromClient) {
+                    r.activity.makeVisible();
+                }
+            }
+        }
+    }
+}
+```
+
+当我们执行了Activity.makeVisible()方法之后，界面才对我们是可见的。
+
+```java
+void makeVisible() {
+   if (!mWindowAdded) {
+        ViewManager wm = getWindowManager();
+        wm.addView(mDecor, getWindow().getAttributes());//将DecorView添加到WindowManager
+        mWindowAdded = true;
+    }
+    mDecor.setVisibility(View.VISIBLE);//DecorView可见
+}
+```
+
+到此DecorView便可见，显示在屏幕中。但是在这其中,`wm.addView(mDecor, getWindow().getAttributes());`起到了重要的作用，因为其内部创建了一个ViewRootImpl对象，负责绘制显示各个子View。
+
+具体来看`addView()`方法，因为WindowManager是个接口，具体是交给WindowManagerImpl来实现的。
+
+```java
+public final class WindowManagerImpl implements WindowManager {    
+    private final WindowManagerGlobal mGlobal = WindowManagerGlobal.getInstance();
+    ...
+    @Override
+    public void addView(View view, ViewGroup.LayoutParams params) {
+        mGlobal.addView(view, params, mDisplay, mParentWindow);
+    }
+}
+```
+
+交给WindowManagerGlobal 的addView()方法去实现
+
+```java
+public void addView(View view, ViewGroup.LayoutParams params,
+                    Display display, Window parentWindow) {
+
+    final WindowManager.LayoutParams wparams = (WindowManager.LayoutParams) params;
+
+    ......
+
+    synchronized (mLock) {
+
+        ViewRootImpl root;
+        //实例化一个ViewRootImpl对象
+        root = new ViewRootImpl(view.getContext(), display);
+        view.setLayoutParams(wparams);
+
+        mViews.add(view);
+        mRoots.add(root);
+        mParams.add(wparams);
+    }
+
+    ......
+
+    try {
+        //将DecorView交给ViewRootImpl
+        root.setView(view, wparams, panelParentView);
+    } catch (RuntimeException e) {
+
+    }
+}
+```
+
+看到其中实例化了ViewRootImpl对象，然后调用其setView()方法。其中setView()方法经过一些列折腾，最终调用了performTraversals()方法，**然后依照下图流程层层调用，完成绘制，最终界面才显示出来。**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-582aae4fe27d0b3f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+其实ViewRootImpl的作用不止如此，还有许多功能，如事件分发。
+
+要知道，当用户点击屏幕产生一个触摸行为，这个触摸行为则是通过底层硬件来传递捕获，然后交给ViewRootImpl，接着将事件传递给DecorView，而DecorView再交给PhoneWindow，PhoneWindow再交给Activity，然后接下来就是我们常见的View事件分发了。
+
+**硬件 -> ViewRootImpl -> DecorView -> PhoneWindow -> Activity**
+
+不详细介绍了，如果感兴趣，可以看[这篇文章](http://www.jianshu.com/p/9e6c54739217)。
+
+由此可见ViewRootImpl的重要性，是个连接器，负责WindowManagerService与DecorView之间的通信。
+
+### 4. 总结
+
+**通过以上了解可以知道，Activity就像个控制器，不负责视图部分。Window像个承载器，装着内部视图。DecorView就是个顶层视图，是所有View的最外层布局。ViewRoot像个连接器，负责沟通，通过硬件的感知来通知视图，进行用户之间的交互。**
 
 
 
 ## 十三、View测量、布局及绘制原理
 
+### 1. View绘制的流程框架
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-5f3c64af676d9aee.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+View的绘制是从上往下一层层迭代下来的。DecorView-->ViewGroup（--->ViewGroup）-->View ，按照这个流程从上往下，依次measure(测量),layout(布局),draw(绘制)。
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-a7ace6f9221c9d79.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 2. Measure流程
+
+顾名思义，就是测量每个控件的大小。
+
+调用measure()方法，进行一些逻辑处理，然后调用onMeasure()方法，在其中调用setMeasuredDimension()设定View的宽高信息，完成View的测量操作。
+
+```java
+public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
+}
+```
+
+measure()方法中，传入了两个参数 widthMeasureSpec, heightMeasureSpec 表示View的宽高的一些信息。
+
+```java
+protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        setMeasuredDimension(getDefaultSize(getSuggestedMinimumWidth(), widthMeasureSpec),
+                getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec));
+    }
+```
+
+由上述流程来看Measure流程很简单，关键点是在于widthMeasureSpec, heightMeasureSpec这两个参数信息怎么获得？
+
+如果有了widthMeasureSpec, heightMeasureSpec，通过一定的处理(**可以重写，自定义处理步骤**)，从中获取View的宽/高，调用setMeasuredDimension()方法，指定View的宽高，完成测量工作。
+
+**MeasureSpec的确定**
+
+先介绍下什么是MeasureSpec？
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-d3bf0905aeb8719b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+MeasureSpec由两部分组成，一部分是测量模式，另一部分是测量的尺寸大小。
+
+其中，Mode模式共分为三类
+
+UNSPECIFIED ：不对View进行任何限制，要多大给多大，一般用于系统内部
+
+EXACTLY：对应LayoutParams中的match_parent和具体数值这两种模式。检测到View所需要的精确大小，这时候View的最终大小就是SpecSize所指定的值，
+
+AT_MOST ：对应LayoutParams中的wrap_content。View的大小不能大于父容器的大小。
+
+**那么MeasureSpec又是如何确定的？**
+
+对于DecorView，其确定是通过屏幕的大小，和自身的布局参数LayoutParams。
+
+这部分很简单，根据LayoutParams的布局格式（match_parent，wrap_content或指定大小），将自身大小，和屏幕大小相比，设置一个不超过屏幕大小的宽高，以及对应模式。
+
+对于其他View（包括ViewGroup），其确定是通过父布局的MeasureSpec和自身的布局参数LayoutParams。
+
+这部分比较复杂。以下列图表表示不同的情况：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-e3f20c6662effb7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**当子View的LayoutParams的布局格式是wrap_content，可以看到子View的大小是父View的剩余尺寸，和设置成match_parent时，子View的大小没有区别。为了显示区别，一般在自定义View时，需要重写onMeasure方法，处理wrap_content时的情况，进行特别指定。**
+
+**从这里看出MeasureSpec的指定也是从顶层布局开始一层层往下去，父布局影响子布局。**
+
+可能关于MeasureSpec如何确定View大小还有些模糊，篇幅有限，没详细具体展开介绍，可以看[这篇文章](http://www.jianshu.com/p/1dab927b2f36)
+
+View的测量流程：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-d1a57294428ff668.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 3. Layout流程
+
+测量完View大小后，就需要将View布局在Window中，View的布局主要通过确定上下左右四个点来确定的。
+
+**其中布局也是自上而下，不同的是ViewGroup先在layout()中确定自己的布局，然后在onLayout()方法中再调用子View的layout()方法，让子View布局。在Measure过程中，ViewGroup一般是先测量子View的大小，然后再确定自身的大小。**
+
+```Java
+public void layout(int l, int t, int r, int b) {  
+
+    // 当前视图的四个顶点
+    int oldL = mLeft;  
+    int oldT = mTop;  
+    int oldB = mBottom;  
+    int oldR = mRight;  
+
+    // setFrame（） / setOpticalFrame（）：确定View自身的位置
+    // 即初始化四个顶点的值，然后判断当前View大小和位置是否发生了变化并返回  
+ boolean changed = isLayoutModeOptical(mParent) ?
+            setOpticalFrame(l, t, r, b) : setFrame(l, t, r, b);
+
+    //如果视图的大小和位置发生变化，会调用onLayout（）
+    if (changed || (mPrivateFlags & PFLAG_LAYOUT_REQUIRED) == PFLAG_LAYOUT_REQUIRED) {  
+
+        // onLayout（）：确定该View所有的子View在父容器的位置     
+        onLayout(changed, l, t, r, b);      
+  ...
+
+}
+```
+
+上面看出通过 setFrame（） / setOpticalFrame（）：确定View自身的位置，通过onLayout()确定子View的布局。
+setOpticalFrame（）内部也是调用了setFrame（），所以具体看setFrame（）怎么确定自身的位置布局。
+
+```java
+protected boolean setFrame(int left, int top, int right, int bottom) {
+    ...
+// 通过以下赋值语句记录下了视图的位置信息，即确定View的四个顶点
+// 即确定了视图的位置
+    mLeft = left;
+    mTop = top;
+    mRight = right;
+    mBottom = bottom;
+
+    mRenderNode.setLeftTopRightBottom(mLeft, mTop, mRight, mBottom);
+}
+```
+
+确定了自身的位置后，就要通过onLayout()确定子View的布局。onLayout()是一个可继承的空方法。
+
+```java
+protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    }
+```
+
+**如果当前View就是一个单一的View，那么没有子View，就不需要实现该方法。**
+
+**如果当前View是一个ViewGroup，就需要实现onLayout方法，该方法的实现个自定义ViewGroup时其特性有关，必须自己实现。**
+
+由此便完成了一层层的的布局工作。
+
+View的布局流程：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-8aefac42b3912539.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 4. Draw过程
+
+View的绘制过程遵循如下几步：
+
+①绘制背景 background.draw(canvas)
+
+②绘制自己（onDraw）
+
+③绘制Children(dispatchDraw)
+
+④绘制装饰（onDrawScrollBars）
+
+从源码中可以清楚地看出绘制的顺序。
+
+```java
+public void draw(Canvas canvas) {
+// 所有的视图最终都是调用 View 的 draw （）绘制视图（ ViewGroup 没有复写此方法）
+// 在自定义View时，不应该复写该方法，而是复写 onDraw(Canvas) 方法进行绘制。
+// 如果自定义的视图确实要复写该方法，那么需要先调用 super.draw(canvas)完成系统的绘制，然后再进行自定义的绘制。
+    ...
+    int saveCount;
+    if (!dirtyOpaque) {
+          // 步骤1： 绘制本身View背景
+        drawBackground(canvas);
+    }
+
+        // 如果有必要，就保存图层（还有一个复原图层）
+        // 优化技巧：
+        // 当不需要绘制 Layer 时，“保存图层“和“复原图层“这两步会跳过
+        // 因此在绘制的时候，节省 layer 可以提高绘制效率
+        final int viewFlags = mViewFlags;
+        if (!verticalEdges && !horizontalEdges) {
+
+        if (!dirtyOpaque) 
+             // 步骤2：绘制本身View内容  默认为空实现，  自定义View时需要进行复写
+            onDraw(canvas);
+
+        ......
+        // 步骤3：绘制子View   默认为空实现 单一View中不需要实现，ViewGroup中已经实现该方法
+        dispatchDraw(canvas);
+
+        ........
+
+        // 步骤4：绘制滑动条和前景色等等
+        onDrawScrollBars(canvas);
+
+       ..........
+        return;
+    }
+    ...    
+}
+```
+
+**无论是ViewGroup还是单一的View，都需要实现这套流程，不同的是，在ViewGroup中，实现了 dispatchDraw()方法，而在单一子View中不需要实现该方法。自定义View一般要重写onDraw()方法，在其中绘制不同的样式。**
+
+View绘制流程：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-594f6b3cde8762c7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 5. 总结
+
+从View的测量、布局和绘制原理来看，要实现自定义View，根据自定义View的种类不同，可能分别要自定义实现不同的方法。但是这些方法不外乎：**onMeasure()方法，onLayout()方法，onDraw()方法。**
+
+**onMeasure()方法**：单一View，一般重写此方法，针对wrap_content情况，规定View默认的大小值，避免于match_parent情况一致。ViewGroup，若不重写，就会执行和单子View中相同逻辑，不会测量子View。一般会重写onMeasure()方法，循环测量子View。
+
+**onLayout()方法:**单一View，不需要实现该方法。ViewGroup必须实现，该方法是个抽象方法，实现该方法，来对子View进行布局。
+
+**onDraw()方法：**无论单一View，或者ViewGroup都需要实现该方法，因其是个空方法
+
 
 
 ## 十四、Android虚拟机及编译过程
 
+### 1. 什么是Dalvik虚拟机
 
+Dalvik是Google公司自己设计用于Android平台的Java虚拟机，它是Android平台的重要组成部分，支持dex格式（Dalvik Executable）的Java应用程序的运行。dex格式是专门为Dalvik设计的一种压缩格式，适合内存和处理器速度有限的系统。Google对其进行了特定的优化，使得Dalvik具有**高效、简洁、节省资源**的特点。从Android系统架构图知，Dalvik虚拟机运行在Android的运行时库层。
+
+Dalvik作为面向Linux、为嵌入式操作系统设计的虚拟机，主要负责完成对象生命周期管理、堆栈管理、线程管理、安全和异常管理，以及垃圾回收等。另外，Dalvik早期并没有JIT编译器，直到Android2.2才加入了对JIT的技术支持。
+
+### 2. Dalvik虚拟机的特点
+
+体积小，占用内存空间小；
+
+专有的DEX可执行文件格式，体积更小，执行速度更快；
+
+常量池采用32位索引值，寻址类方法名，字段名，常量更快；
+
+基于寄存器架构，并拥有一套完整的指令系统；
+
+提供了对象生命周期管理，堆栈管理，线程管理，安全和异常管理以及垃圾回收等重要功能；
+
+所有的Android程序都运行在Android系统进程里，每个进程对应着一个Dalvik虚拟机实例。
+
+### 3. Dalvik虚拟机和Java虚拟机的区别
+
+Dalvik虚拟机与传统的Java虚拟机有着许多不同点，两者并不兼容，它们显著的不同点主要表现在以下几个方面：
+
+**Java虚拟机运行的是Java字节码，Dalvik虚拟机运行的是Dalvik字节码。**
+
+传统的Java程序经过编译，生成Java字节码保存在class文件中，Java虚拟机通过解码class文件中的内容来运行程序。而Dalvik虚拟机运行的是Dalvik字节码，所有的Dalvik字节码由Java字节码转换而来，并被打包到一个DEX（Dalvik Executable）可执行文件中。Dalvik虚拟机通过解释DEX文件来执行这些字节码。
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-9deada32508b8ee5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**Dalvik可执行文件体积小。Android SDK中有一个叫dx的工具负责将Java字节码转换为Dalvik字节码。**
+
+dx工具对Java类文件重新排列，消除在类文件中出现的所有冗余信息，避免虚拟机在初始化时出现反复的文件加载与解析过程。一般情况下，Java类文件中包含多个不同的方法签名，如果其他的类文件引用该类文件中的方法，方法签名也会被复制到其类文件中，也就是说，多个不同的类会同时包含相同的方法签名，同样地，大量的字符串常量在多个类文件中也被重复使用。这些冗余信息会直接增加文件的体积，同时也会严重影响虚拟机解析文件的效率。**消除其中的冗余信息，重新组合形成一个常量池，所有的类文件共享同一个常量池。由于dx工具对常量池的压缩，使得相同的字符串，常量在DEX文件中只出现一次，从而减小了文件的体积。**
+
+针对每个Class文件，都由如下格式进行组成：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-1cbefe93f659ab2a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+dex格式文件使用共享的、特定类型的常量池机制来节省内存。常量池存储类中的所有字面常量，它包括字符串常量、字段常量等值。
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-6b35135f3f4a35a9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+简单来讲，dex格式文件就是将多个class文件中公有的部分统一存放，去除冗余信息。
+
+**Java虚拟机与Dalvik虚拟机架构不同。**这也是Dalvik与JVM之间最大的区别。
+
+**Java虚拟机基于栈架构**，程序在运行时虚拟机需要频繁的从栈上读取或写入数据，这个过程需要更多的指令分派与内存访问次数，会耗费不少CPU时间，对于像手机设备资源有限的设备来说，这是相当大的一笔开销。**Dalvik虚拟机基于寄存器架构**。数据的访问通过寄存器间直接传递，这样的访问方式比基于栈方式要快很多。
+
+### 4. Dalvik虚拟机的结构
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-4da3de576e6a045d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+一个应用首先经过DX工具将class文件转换成Dalvik虚拟机可以执行的dex文件，然后由类加载器加载原生类和Java类，接着由解释器根据指令集对Dalvik字节码进行解释、执行。最后，根据dvm_arch参数选择编译的目标机体系结构。
+
+### 5. Android APK 编译打包流程
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-cdba319dab32d0c7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+1.Java编译器对工程本身的java代码进行编译，这些java代码有三个来源：app的源代码，由资源文件生成的R文件(aapt工具)，以及有aidl文件生成的java接口文件(aidl工具)。产出为.class文件。
+
+①用AAPT编译R.java文件
+
+②编译AIDL的java文件
+
+③把java文件编译成class文件
+
+2..class文件和依赖的三方库文件通过dex工具生成Delvik虚拟机可执行的.dex文件，包含了所有的class信息，包括项目自身的class和依赖的class。产出为.dex文件。
+
+3.apkbuilder工具将.dex文件和编译后的资源文件生成未经签名对齐的apk文件。这里编译后的资源文件包括两部分，一是由aapt编译产生的编译后的资源文件，二是依赖的三方库里的资源文件。产出为未经签名的.apk文件。
+
+4.分别由Jarsigner和zipalign对apk文件进行签名和对齐，生成最终的apk文件。
+
+总结为：编译-->DEX-->打包-->签名和对齐
+
+### 6. ART虚拟机与Dalvik虚拟机的区别
+
+**什么是ART:**
+
+ART代表Android Runtime，其处理应用程序执行的方式完全不同于Dalvik，Dalvik是依靠一个Just-In-Time (JIT)编译器去解释字节码。开发者编译后的应用代码需要通过一个解释器在用户的设备上运行，这一机制并不高效，但让应用能更容易在不同硬件和架构上运行。ART则完全改变了这套做法，在应用安装时就预编译字节码到机器语言，这一机制叫Ahead-Of-Time (AOT）编译。在移除解释代码这一过程后，应用程序执行将更有效率，启动更快。
+
+**ART优点：**
+
+1. 系统性能的显著提升。
+2. 应用启动更快、运行更快、体验更流畅、触感反馈更及时。
+3. 更长的电池续航能力。
+4. 支持更低的硬件。
+
+**ART缺点：**
+
+1. 更大的存储空间占用，可能会增加10%-20%。
+2. 更长的应用安装时间。
+
+**ART虚拟机相对于Dalvik虚拟机的提升**
+
+**预编译**
+
+在dalvik中，如同其他大多数JVM一样，都采用的是JIT来做及时翻译(动态翻译)，将dex或odex中并排的dalvik code(或者叫smali指令集)**运行态**翻译成native code去执行。JIT的引入使得dalvik提升了3~6倍的性能。
+
+而在ART中，完全抛弃了dalvik的JIT，使用了AOT直接在安装时将其完全翻译成native code。这一技术的引入，使得虚拟机执行指令的速度又一重大提升。
+
+**垃圾回收机制**
+
+首先介绍下dalvik的GC的过程。主要有有四个过程:
+
+1. 当gc被触发时候，其会去查找所有活动的对象，这个时候整个程序与虚拟机内部的所有线程就会挂起，这样目的是在较少的堆栈里找到所引用的对象；
+   - 注意：这个回收动作和应用程序**非并发**；
+2. gc对符合条件的对象进行标记；
+3. gc对标记的对象进行回收；
+4. 恢复所有线程的执行现场继续运行。
+
+**dalvik这么做的好处是，当pause了之后，GC势必是相当快速的。但是如果出现GC频繁并且内存吃紧势必会导致UI卡顿、掉帧、操作不流畅等。**
+
+后来ART改善了这种GC方式， 主要的改善点在将其**非并发过程**改成了**部分并发**，还有就是对**内存的重新分配管理**。
+
+当ART GC发生时:
+
+1. GC将会锁住Java堆，扫描并进行标记；
+2. 标记完毕释放掉Java堆的锁，并且挂起所有线程；
+3. GC对标记的对象进行回收；
+4. 恢复所有线程的执行现场继续运行；
+5. **重复2-4直到结束。**
+
+可以看出整个过程做到了部分并发使得时间缩短。据官方测试数据说GC效率提高2倍。
+
+**提高内存使用，减少碎片化**
+
+**Dalvik内存管理特点是:内存碎片化严重**，当然这也是Mark and Sweep算法带来的弊端。
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-f170d48f08992b3d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+可以看出每次GC后内存千疮百孔，本来连续分配的内存块变得碎片化严重，之后再分配进入的对象再进行内存寻址变得困难。
+
+**ART的解决：**在ART中，它将Java分了一块空间命名为**Large-Object-Space**，这块内存空间的引入用来专门存放large object。同时ART又引入了moving collector的技术，即将不连续的物理内存块进行对齐。对齐了后内存碎片化就得到了很好的解决。Large-Object-Space的引入是因为moving collector对大块内存的位移时间成本太高。根官方统计，ART的内存利用率提高10倍了左右，大大提高了内存的利用率。
 
 ## 十五、Android进程间通信方式
 
