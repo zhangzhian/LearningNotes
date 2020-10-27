@@ -1463,7 +1463,7 @@ Serializable序列化不保存静态变量，可以使用Transient关键字对�
 
 ⑥App进程的binder线程（ApplicationThread）在收到请求后，通过handler向主线程发送LAUNCH_ACTIVITY消息；
 
-⑦主线程在收到Message后，通过发射机制创建目标Activity，并回调Activity.onCreate()等方法。
+⑦主线程在收到Message后，通过反射机制创建目标Activity，并回调Activity.onCreate()等方法。
 
 ⑧到此，App便正式启动，开始进入Activity生命周期，执行完onCreate/onStart/onResume方法，UI渲染结束后便可以看到App的主界面。
 
@@ -1473,7 +1473,7 @@ Serializable序列化不保存静态变量，可以使用Transient关键字对�
 
 ### 2. 理论基础
 
-#### 1.zygote
+#### 1) zygote
 
 zygote意为“受精卵“。Android是基于Linux系统的，而在Linux中，所有的进程都是由init进程直接或者是间接fork出来的，zygote进程也不例外。
 
@@ -1487,7 +1487,7 @@ zygote意为“受精卵“。Android是基于Linux系统的，而在Linux中，
 
 所以当系统里面的第一个zygote进程运行之后，在这之后再开启App，就相当于开启一个新的进程。而为了实现资源共用和更快的启动速度，Android系统开启新进程的方式，是通过fork第一个zygote进程实现的。所以说，除了第一个zygote进程，其他应用所在的进程都是zygote的子进程，这下你明白为什么这个进程叫“受精卵”了吧？因为就像是一个受精卵一样，它能快速的分裂，并且产生遗传物质一样的细胞！
 
-#### 2.system_server
+#### 2) system_server
 
 SystemServer也是一个进程，而且是由zygote进程fork出来的。
 
@@ -1496,7 +1496,7 @@ SystemServer也是一个进程，而且是由zygote进程fork出来的。
 为什么说SystemServer非常重要呢？因为系统里面重要的服务都是在这个进程里面开启的，比如
 ActivityManagerService、PackageManagerService、WindowManagerService等等。
 
-#### 3.ActivityManagerService
+#### 3) ActivityManagerService
 
 ActivityManagerService，简称AMS，服务端对象，负责系统中所有Activity的生命周期。
 
@@ -1524,7 +1524,7 @@ startActivity(intent);
 
 在Android系统中，**任何一个Activity的启动都是由AMS和应用程序进程（主要是ActivityThread）相互配合来完成的。AMS服务统一调度系统中所有进程的Activity启动，而每个Activity的启动过程则由其所属的进程具体来完成。**
 
-#### 4.Launcher
+#### 4) Launcher
 
 当我们点击手机桌面上的图标的时候，App就由Launcher开始启动了。但是，你有没有思考过Launcher到底是一个什么东西？
 
@@ -1541,14 +1541,14 @@ public final class Launcher extends Activity
 
 Launcher实现了点击、长按等回调接口，来接收用户的输入。既然是普通的App，那么我们的开发经验在这里就仍然适用，比如，我们点击图标的时候，是怎么开启的应用呢？**捕捉图标点击事件，然后startActivity()发送对应的Intent请求呗！是的，Launcher也是这么做的，就是这么easy！**
 
-#### 5.Instrumentation和ActivityThread
+#### 5) Instrumentation和ActivityThread
 
 每个Activity都持有Instrumentation对象的一个引用，但是整个进程只会存在一个Instrumentation对象。
 Instrumentation这个类里面的方法大多数和Application和Activity有关，**这个类就是完成对Application和Activity初始化和生命周期的工具类。**Instrumentation这个类很重要，对Activity生命周期方法的调用根本就离不开他，他可以说是一个大管家。
 
 ActivityThread，依赖于UI线程。App和AMS是通过Binder传递信息的，那么ActivityThread就是专门与AMS的外交工作的。
 
-#### 6.ApplicationThread
+#### 6) ApplicationThread
 
 前面我们已经知道了App的启动以及Activity的显示都需要AMS的控制，那么我们便需要和服务端的沟通，而这个沟通是双向的。
 
@@ -1617,8 +1617,6 @@ ActivityThread，依赖于UI线程。App和AMS是通过Binder传递信息的，�
 **更直白的流程解释：**
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-d8def9358f4646e1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-（如果看不懂AMS,ATP等名词，后面有解释）
 
 #### 3.显示Activity界面
 
