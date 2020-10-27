@@ -5518,7 +5518,9 @@ dex格式文件使用共享的、特定类型的常量池机制来节省内存�
 
 **Java虚拟机与Dalvik虚拟机架构不同。**这也是Dalvik与JVM之间最大的区别。
 
-**Java虚拟机基于栈架构**，程序在运行时虚拟机需要频繁的从栈上读取或写入数据，这个过程需要更多的指令分派与内存访问次数，会耗费不少CPU时间，对于像手机设备资源有限的设备来说，这是相当大的一笔开销。**Dalvik虚拟机基于寄存器架构**。数据的访问通过寄存器间直接传递，这样的访问方式比基于栈方式要快很多。
+**Java虚拟机基于栈架构**，程序在运行时虚拟机需要频繁的从栈上读取或写入数据，这个过程需要更多的指令分派与内存访问次数，会耗费不少CPU时间，对于像手机设备资源有限的设备来说，这是相当大的一笔开销。
+
+**Dalvik虚拟机基于寄存器架构**。数据的访问通过寄存器间直接传递，这样的访问方式比基于栈方式要快很多。
 
 ### 4. Dalvik虚拟机的结构
 
@@ -5608,18 +5610,1851 @@ ART代表Android Runtime，其处理应用程序执行的方式完全不同于Da
 
 ## 十五、Android进程间通信方式
 
+Android 中的 IPC 方式
+
+### 1. 使用 Intent
+
+- Activity，Service，Receiver 都支持在 Intent 中传递 Bundle 数据，而 Bundle 实现了 Parcelable 接口，可以在不同的进程间进行传输。
+
+- 在一个进程中启动了另一个进程的 Activity，Service 和 Receiver ，可以在 Bundle 中附加要传递的数据通过 Intent 发送出去。  
+
+### 2. 使用文件共享
+
+- Windows 上，一个文件如果被加了排斥锁会导致其他线程无法对其进行访问，包括读和写；而 Android 系统基于 Linux ，使得其并发读取文件没有限制地进行，甚至允许两个线程同时对一个文件进行读写操作，尽管这样可能会出问题。
+
+- 可以在一个进程中序列化一个对象到文件系统中，在另一个进程中反序列化恢复这个对象（**注意**：并不是同一个对象，只是内容相同。）。
+
+- SharedPreferences 是个特例，系统对它的读 / 写有一定的缓存策略，即内存中会有一份 ShardPreferences 文件的缓存，系统对他的读 / 写就变得不可靠，当面对高并发的读写访问，SharedPreferences 有很多大的几率丢失数据。因此，IPC 不建议采用 SharedPreferences。
+
+### 3. 使用 Messenger
+
+Messenger 是一种轻量级的 IPC 方案，它的底层实现是 AIDL ，可以在不同进程中传递 Message 对象，它一次只处理一个请求，在服务端不需要考虑线程同步的问题，服务端不存在并发执行的情形。
+
+- 服务端进程：服务端创建一个 Service 来处理客户端请求，同时通过一个 Handler 对象来实例化一个 Messenger 对象，然后在 Service 的 onBind 中返回这个 Messenger 对象底层的 Binder 即可。
+
+```java
+public class MessengerService extends Service {
+
+    private static final String TAG = MessengerService.class.getSimpleName();
+
+    private class MessengerHandler extends Handler {
+
+        /**
+         * @param msg
+         */
+        @Override
+        public void handleMessage(Message msg) {
+
+            switch (msg.what) {
+                case Constants.MSG_FROM_CLIENT:
+                    Log.d(TAG, "receive msg from client: msg = [" + msg.getData().getString(Constants.MSG_KEY) + "]");
+                    Toast.makeText(MessengerService.this, "receive msg from client: msg = [" + msg.getData().getString(Constants.MSG_KEY) + "]", Toast.LENGTH_SHORT).show();
+                    Messenger client = msg.replyTo;
+                    Message replyMsg = Message.obtain(null, Constants.MSG_FROM_SERVICE);
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Constants.MSG_KEY, "我已经收到你的消息，稍后回复你！");
+                    replyMsg.setData(bundle);
+                    try {
+                        client.send(replyMsg);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+
+    private Messenger mMessenger = new Messenger(new MessengerHandler());
+
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return mMessenger.getBinder();
+    }
+}
+```
+
+- 客户端进程：首先绑定服务端 Service ，绑定成功之后用服务端的 IBinder 对象创建一个 Messenger ，通过这个 Messenger 就可以向服务端发送消息了，消息类型是 Message 。如果需要服务端响应，则需要创建一个 Handler 并通过它来创建一个 Messenger（和服务端一样），并通过 Message 的 replyTo 参数传递给服务端。服务端通过 Message 的 replyTo 参数就可以回应客户端了。
+
+```Java
+public class MainActivity extends AppCompatActivity {
+    private static final String TAG = MainActivity.class.getSimpleName();
+    private Messenger mGetReplyMessenger = new Messenger(new MessageHandler());
+    private Messenger mService;
+
+    private class MessageHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case Constants.MSG_FROM_SERVICE:
+                    Log.d(TAG, "received msg form service: msg = [" + msg.getData().getString(Constants.MSG_KEY) + "]");
+                    Toast.makeText(MainActivity.this, "received msg form service: msg = [" + msg.getData().getString(Constants.MSG_KEY) + "]", Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+        }
+    }
+
+
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+    }
+
+    public void bindService(View v) {
+        Intent mIntent = new Intent(this, MessengerService.class);
+        bindService(mIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    public void sendMessage(View v) {
+        Message msg = Message.obtain(null,Constants.MSG_FROM_CLIENT);
+        Bundle data = new Bundle();
+        data.putString(Constants.MSG_KEY, "Hello! This is client.");
+        msg.setData(data);
+        msg.replyTo = mGetReplyMessenger;
+        try {
+            mService.send(msg);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        unbindService(mServiceConnection);
+        super.onDestroy();
+    }
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        /**
+         * @param name
+         * @param service
+         */
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mService = new Messenger(service);
+            Message msg = Message.obtain(null,Constants.MSG_FROM_CLIENT);
+            Bundle data = new Bundle();
+            data.putString(Constants.MSG_KEY, "Hello! This is client.");
+            msg.setData(data);
+            //
+            msg.replyTo = mGetReplyMessenger;
+            try {
+                mService.send(msg);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        /**
+         * @param name
+         */
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+
+        }
+    };
+}
+```
+
+**注意：**客户端和服务端是通过拿到对方的 Messenger 来发送 Message 的。只不过客户端通过 bindService onServiceConnected 而服务端通过 message.replyTo 来获得对方的 Messenger 。Messenger 中有一个 Hanlder 以串行的方式处理队列中的消息。不存在并发执行，因此我们不用考虑线程同步的问题。
+
+### 4. 使用 AIDL
+
+Messenger 是以串行的方式处理客户端发来的消息，如果大量消息同时发送到服务端，服务端只能一个一个处理，所以大量并发请求就不适合用 Messenger ，而且 Messenger 只适合传递消息，不能跨进程调用服务端的方法。AIDL 可以解决并发和跨进程调用方法的问题，要知道 Messenger 本质上也是 AIDL ，只不过系统做了封装方便上层的调用而已。
+
+**AIDL 文件支持的数据类型**
+
+- *基本数据类型*；
+- *String* 和 *CharSequence*
+  [![String](http://images.cnitblog.com/blog/497634/201311/08083111-591e2833f8a34264b0dad417f4188e35.jpg)](http://images.cnitblog.com/blog/497634/201311/08083111-591e2833f8a34264b0dad417f4188e35.jpg)
+- *ArrayList* ，里面的元素必须能够被 AIDL 支持；
+- *HashMap* ，里面的元素必须能够被 AIDL 支持；
+- *Parcelable* ，实现 Parcelable 接口的对象；
+  **注意：如果 AIDL 文件中用到了自定义的 Parcelable 对象，必须新建一个和它同名的 AIDL 文件。**
+- *AIDL* ，AIDL 接口本身也可以在 AIDL 文件中使用。
+
+**服务端**
+
+服务端创建一个 Service 用来监听客户端的连接请求，然后创建一个 AIDL 文件，将暴露给客户端的接口在这个 AIDL 文件中声明，最后在 Service 中实现这个 AIDL 接口即可。
+
+**客户端**
+
+绑定服务端的 Service ，绑定成功后，将服务端返回的 Binder 对象转成 AIDL 接口所属的类型，然后就可以调用 AIDL 中的方法了。客户端调用远程服务的方法，被调用的方法运行在服务端的 Binder 线程池中，同时客户端的线程会被挂起，如果服务端方法执行比较耗时，就会导致客户端线程长时间阻塞，导致 ANR 。客户端的 onServiceConnected 和 onServiceDisconnected 方法都在 UI 线程中。
+
+**服务端访问权限管理**
+
+- 使用 Permission 验证，在 manifest 中声明
+
+```java
+<permission android:name="com.jc.ipc.ACCESS_BOOK_SERVICE"
+    android:protectionLevel="normal"/>
+<uses-permission android:name="com.jc.ipc.ACCESS_BOOK_SERVICE"/>
+```
+
+服务端 onBinder 方法中
+
+```java
+public IBinder onBind(Intent intent) {
+    //Permission 权限验证
+    int check = checkCallingOrSelfPermission("com.jc.ipc.ACCESS_BOOK_SERVICE");
+    if (check == PackageManager.PERMISSION_DENIED) {
+        return null;
+    }
+
+    return mBinder;
+}
+```
+
+- Pid Uid 验证
+
+详细代码：
+
+```java
+// Book.aidl
+package com.jc.ipc.aidl;
+
+parcelable Book;
+```
+
+```java
+// IBookManager.aidl
+package com.jc.ipc.aidl;
+
+import com.jc.ipc.aidl.Book;
+import com.jc.ipc.aidl.INewBookArrivedListener;
+
+// AIDL 接口中只支持方法，不支持静态常量，区别于传统的接口
+interface IBookManager {
+    List<Book> getBookList();
+
+    // AIDL 中除了基本数据类型，其他数据类型必须标上方向,in,out 或者 inout
+    // in 表示输入型参数
+    // out 表示输出型参数
+    // inout 表示输入输出型参数
+
+    void addBook(in Book book);
+
+    void registerListener(INewBookArrivedListener listener);
+    void unregisterListener(INewBookArrivedListener listener);
+
+}
+```
+
+```java
+// INewBookArrivedListener.aidl
+package com.jc.ipc.aidl;
+import com.jc.ipc.aidl.Book;
+
+// 提醒客户端新书到来
+
+interface INewBookArrivedListener {
+    void onNewBookArrived(in Book newBook);
+}
+```
+
+```java
+public class BookManagerActivity extends AppCompatActivity {
+    private static final String TAG = BookManagerActivity.class.getSimpleName();
+    private static final int MSG_NEW_BOOK_ARRIVED = 0x10;
+    private Button getBookListBtn,addBookBtn;
+    private TextView displayTextView;
+    private IBookManager bookManager;
+    private Handler mHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_NEW_BOOK_ARRIVED:
+                    Log.d(TAG, "handleMessage: new book arrived " + msg.obj);
+                    Toast.makeText(BookManagerActivity.this, "new book arrived " + msg.obj, Toast.LENGTH_SHORT).show();
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+
+        }
+    };
+
+    private ServiceConnection mServiceConn = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            bookManager = IBookManager.Stub.asInterface(service);
+            try {
+                bookManager.registerListener(listener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
+
+    private INewBookArrivedListener listener = new INewBookArrivedListener.Stub() {
+        @Override
+        public void onNewBookArrived(Book newBook) throws RemoteException {
+            mHandler.obtainMessage(MSG_NEW_BOOK_ARRIVED, newBook).sendToTarget();
+
+        }
+    };
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.book_manager);
+        displayTextView = (TextView) findViewById(R.id.displayTextView);
+        Intent intent = new Intent(this, BookManagerService.class);
+        bindService(intent, mServiceConn, BIND_AUTO_CREATE);
+
+    }
+
+
+    public void getBookList(View view) {
+        try {
+            List<Book> list = bookManager.getBookList();
+            Log.d(TAG, "getBookList: " + list.toString());
+            displayTextView.setText(list.toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void addBook(View view) {
+        try {
+            bookManager.addBook(new Book(3, "天龙八部"));
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (bookManager != null && bookManager.asBinder().isBinderAlive()) {
+            Log.d(TAG, "unregister listener " + listener);
+            try {
+                bookManager.unregisterListener(listener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+        unbindService(mServiceConn);
+        super.onDestroy();
+    }
+}
+```
+
+```java
+public class BookManagerService extends Service {
+    private static final String TAG = BookManagerService.class.getSimpleName();
+
+    // CopyOnWriteArrayList 支持并发读写，实现自动线程同步，他不是继承自 ArrayList
+    private CopyOnWriteArrayList<Book> mBookList = new CopyOnWriteArrayList<Book>();
+    //对象是不能跨进程传输的，对象的跨进程传输本质都是反序列化的过程，Binder 会把客户端传递过来的对象重新转化生成一个新的对象
+    //RemoteCallbackList 是系统专门提供的用于删除系统跨进程 listener 的接口，利用底层的 Binder 对象是同一个
+    //RemoteCallbackList 会在客户端进程终止后，自动溢出客户端注册的 listener ，内部自动实现了线程同步功能。
+    private RemoteCallbackList<INewBookArrivedListener> mListeners = new RemoteCallbackList<>();
+    private AtomicBoolean isServiceDestroied = new AtomicBoolean(false);
+
+
+    private Binder mBinder = new IBookManager.Stub() {
+
+        @Override
+        public List<Book> getBookList() throws RemoteException {
+            return mBookList;
+        }
+
+        @Override
+        public void addBook(Book book) throws RemoteException {
+            Log.d(TAG, "addBook: " + book.toString());
+            mBookList.add(book);
+
+        }
+
+        @Override
+        public void registerListener(INewBookArrivedListener listener) throws RemoteException {
+            mListeners.register(listener);
+        }
+
+        @Override
+        public void unregisterListener(INewBookArrivedListener listener) throws RemoteException {
+            mListeners.unregister(listener);
+        }
+    };
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        mBookList.add(new Book(1, "老人与海"));
+        mBookList.add(new Book(2, "哈姆雷特"));
+        new Thread(new ServiceWorker()).start();
+    }
+
+    private void onNewBookArrived(Book book) throws RemoteException {
+        mBookList.add(book);
+
+        int count = mListeners.beginBroadcast();
+
+        for (int i = 0; i < count; i++) {
+            INewBookArrivedListener listener = mListeners.getBroadcastItem(i);
+            if (listener != null) {
+                listener.onNewBookArrived(book);
+            }
+        }
+
+        mListeners.finishBroadcast();
+
+    }
+
+    private class ServiceWorker implements Runnable {
+        @Override
+        public void run() {
+            while (!isServiceDestroied.get()) {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                int bookId = mBookList.size() +1;
+                Book newBook = new Book(bookId, "new book # " + bookId);
+                try {
+                    onNewBookArrived(newBook);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+    }
+
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        //Permission 权限验证
+        int check = checkCallingOrSelfPermission("com.jc.ipc.ACCESS_BOOK_SERVICE");
+        if (check == PackageManager.PERMISSION_DENIED) {
+            return null;
+        }
+
+        return mBinder;
+    }
+
+    @Override
+    public void onDestroy() {
+        isServiceDestroied.set(true);
+        super.onDestroy();
+    }
+}
+```
+
+### 5. 使用 ContentProvider
+
+用于不同应用间数据共享，和 Messenger 底层实现同样是 Binder 和 AIDL，系统做了封装，使用简单。
+系统预置了许多 ContentProvider ，如通讯录、日程表，需要跨进程访问。
+使用方法：继承 ContentProvider 类实现 6 个抽象方法，这六个方法均运行在 ContentProvider 进程中，除 onCreate 运行在主线程里，其他五个方法均由外界回调运行在 Binder 线程池中。
+
+ContentProvider 的底层数据，可以是 SQLite 数据库，可以是文件，也可以是内存中的数据。
+
+详见代码：
+
+```java
+public class BookProvider extends ContentProvider {
+    private static final String TAG = "BookProvider";
+    public static final String AUTHORITY = "com.jc.ipc.Book.Provider";
+
+    public static final Uri BOOK_CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/book");
+    public static final Uri USER_CONTENT_URI = Uri.parse("content://" + AUTHORITY + "/user");
+
+    public static final int BOOK_URI_CODE = 0;
+    public static final int USER_URI_CODE = 1;
+    private static final UriMatcher sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+
+    static {
+        sUriMatcher.addURI(AUTHORITY, "book", BOOK_URI_CODE);
+        sUriMatcher.addURI(AUTHORITY, "user", USER_URI_CODE);
+    }
+
+    private Context mContext;
+    private SQLiteDatabase mDB;
+
+    @Override
+    public boolean onCreate() {
+        mContext = getContext();
+        initProviderData();
+
+        return true;
+    }
+
+    private void initProviderData() {
+        //不建议在 UI 线程中执行耗时操作
+        mDB = new DBOpenHelper(mContext).getWritableDatabase();
+        mDB.execSQL("delete from " + DBOpenHelper.BOOK_TABLE_NAME);
+        mDB.execSQL("delete from " + DBOpenHelper.USER_TABLE_NAME);
+        mDB.execSQL("insert into book values(3,'Android');");
+        mDB.execSQL("insert into book values(4,'iOS');");
+        mDB.execSQL("insert into book values(5,'Html5');");
+        mDB.execSQL("insert into user values(1,'haohao',1);");
+        mDB.execSQL("insert into user values(2,'nannan',0);");
+
+    }
+
+    @Nullable
+    @Override
+    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+        Log.d(TAG, "query, current thread"+ Thread.currentThread());
+        String table = getTableName(uri);
+        if (table == null) {
+            throw new IllegalArgumentException("Unsupported URI" + uri);
+        }
+
+        return mDB.query(table, projection, selection, selectionArgs, null, null, sortOrder, null);
+    }
+
+    @Nullable
+    @Override
+    public String getType(Uri uri) {
+        Log.d(TAG, "getType");
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public Uri insert(Uri uri, ContentValues values) {
+        Log.d(TAG, "insert");
+        String table = getTableName(uri);
+        if (table == null) {
+            throw new IllegalArgumentException("Unsupported URI" + uri);
+        }
+        mDB.insert(table, null, values);
+        // 通知外界 ContentProvider 中的数据发生变化
+        mContext.getContentResolver().notifyChange(uri, null);
+        return uri;
+    }
+
+    @Override
+    public int delete(Uri uri, String selection, String[] selectionArgs) {
+        Log.d(TAG, "delete");
+        String table = getTableName(uri);
+        if (table == null) {
+            throw new IllegalArgumentException("Unsupported URI" + uri);
+        }
+        int count = mDB.delete(table, selection, selectionArgs);
+        if (count > 0) {
+            mContext.getContentResolver().notifyChange(uri, null);
+        }
+
+        return count;
+    }
+
+    @Override
+    public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+        Log.d(TAG, "update");
+        String table = getTableName(uri);
+        if (table == null) {
+            throw new IllegalArgumentException("Unsupported URI" + uri);
+        }
+        int row = mDB.update(table, values, selection, selectionArgs);
+        if (row > 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+        return row;
+    }
+
+    private String getTableName(Uri uri) {
+        String tableName = null;
+        switch (sUriMatcher.match(uri)) {
+            case BOOK_URI_CODE:
+                tableName = DBOpenHelper.BOOK_TABLE_NAME;
+                break;
+            case USER_URI_CODE:
+                tableName = DBOpenHelper.USER_TABLE_NAME;
+                break;
+            default:
+                break;
+        }
+
+        return tableName;
+
+    }
+}
+```
+
+```java
+public class DBOpenHelper extends SQLiteOpenHelper {
+
+    private static final String DB_NAME = "book_provider.db";
+    public static final String BOOK_TABLE_NAME = "book";
+    public static final String USER_TABLE_NAME = "user";
+
+    private static final int DB_VERSION = 1;
+
+    private String CREATE_BOOK_TABLE = "CREATE TABLE IF NOT EXISTS "
+            + BOOK_TABLE_NAME + "(_id INTEGER PRIMARY KEY," + "name TEXT)";
+
+    private String CREATE_USER_TABLE = "CREATE TABLE IF NOT EXISTS "
+            + USER_TABLE_NAME + "(_id INTEGER PRIMARY KEY," + "name TEXT,"
+            + "sex INT)";
+
+
+
+    public DBOpenHelper(Context context) {
+        super(context, DB_NAME, null, DB_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL(CREATE_BOOK_TABLE);
+        db.execSQL(CREATE_USER_TABLE);
+
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+    }
+}
+```
+
+```java
+public class ProviderActivity extends AppCompatActivity {
+    private static final String TAG = ProviderActivity.class.getSimpleName();
+    private TextView displayTextView;
+    private Handler mHandler;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_provider);
+        displayTextView = (TextView) findViewById(R.id.displayTextView);
+        mHandler = new Handler();
+
+        getContentResolver().registerContentObserver(BookProvider.BOOK_CONTENT_URI, true, new ContentObserver(mHandler) {
+            @Override
+            public boolean deliverSelfNotifications() {
+                return super.deliverSelfNotifications();
+            }
+
+            @Override
+            public void onChange(boolean selfChange) {
+                super.onChange(selfChange);
+            }
+
+            @Override
+            public void onChange(boolean selfChange, Uri uri) {
+                Toast.makeText(ProviderActivity.this, uri.toString(), Toast.LENGTH_SHORT).show();
+                super.onChange(selfChange, uri);
+            }
+        });
+
+
+
+
+    }
+
+    public void insert(View v) {
+        ContentValues values = new ContentValues();
+        values.put("_id",1123);
+        values.put("name", "三国演义");
+        getContentResolver().insert(BookProvider.BOOK_CONTENT_URI, values);
+
+    }
+    public void delete(View v) {
+        getContentResolver().delete(BookProvider.BOOK_CONTENT_URI, "_id = 4", null);
+
+
+    }
+    public void update(View v) {
+        ContentValues values = new ContentValues();
+        values.put("_id",1123);
+        values.put("name", "三国演义新版");
+        getContentResolver().update(BookProvider.BOOK_CONTENT_URI, values , "_id = 1123", null);
+
+
+    }
+    public void query(View v) {
+        Cursor bookCursor = getContentResolver().query(BookProvider.BOOK_CONTENT_URI, new String[]{"_id", "name"}, null, null, null);
+        StringBuilder sb = new StringBuilder();
+        while (bookCursor.moveToNext()) {
+            Book book = new Book(bookCursor.getInt(0),bookCursor.getString(1));
+            sb.append(book.toString()).append("\n");
+        }
+        sb.append("--------------------------------").append("\n");
+        bookCursor.close();
+
+        Cursor userCursor = getContentResolver().query(BookProvider.USER_CONTENT_URI, new String[]{"_id", "name", "sex"}, null, null, null);
+        while (userCursor.moveToNext()) {
+            sb.append(userCursor.getInt(0))
+                    .append(userCursor.getString(1)).append(" ,")
+                    .append(userCursor.getInt(2)).append(" ,")
+                    .append("\n");
+        }
+        sb.append("--------------------------------");
+        userCursor.close();
+        displayTextView.setText(sb.toString());
+    }
+}
+```
+
+### 6. 使用 Socket
+
+> Socket起源于 Unix，而 Unix 基本哲学之一就是“一切皆文件”，都可以用“打开 open –读写 write/read –关闭 close ”模式来操作。Socket 就是该模式的一个实现，网络的 Socket 数据传输是一种特殊的 I/O，Socket 也是一种文件描述符。Socket 也具有一个类似于打开文件的函数调用： Socket()，该函数返回一个整型的Socket 描述符，随后的连接建立、数据传输等操作都是通过该 Socket 实现的。
+>
+> 常用的 Socket 类型有两种：流式 Socket（SOCK_STREAM）和数据报式 Socket（SOCK_DGRAM）。流式是一种面向连接的 Socket，针对于面向连接的 TCP 服务应用；数据报式 Socket 是一种无连接的 Socket ，对应于无连接的 UDP 服务应用。
+
+Socket 本身可以传输任意字节流。
+
+谈到Socket，就必须要说一说 TCP/IP 五层网络模型：
+
+- 应用层：规定应用程序的数据格式，主要的协议 HTTP，FTP，WebSocket，POP3 等；
+- 传输层：建立“端口到端口” 的通信，主要的协议：TCP，UDP；
+- 网络层：建立”主机到主机”的通信，主要的协议：IP，ARP ，IP 协议的主要作用：一个是为每一台计算机分配 IP 地址，另一个是确定哪些地址在同一子网；
+- 数据链路层：确定电信号的分组方式，主要的协议：以太网协议；
+- 物理层：负责电信号的传输。
+
+**Socket 是连接应用层与传输层之间接口（API）。**
+
+只实现 TCP Socket，Client 端代码：
+
+```java
+public class TCPClientActivity extends AppCompatActivity implements View.OnClickListener{
+
+    private static final String TAG = "TCPClientActivity";
+    public static final int MSG_RECEIVED = 0x10;
+    public static final int MSG_READY = 0x11;
+    private EditText editText;
+    private TextView textView;
+    private PrintWriter mPrintWriter;
+    private Socket mClientSocket;
+    private Button sendBtn;
+    private StringBuilder stringBuilder;
+    private Handler mHandler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_READY:
+                    sendBtn.setEnabled(true);
+                    break;
+                case MSG_RECEIVED:
+                    stringBuilder.append(msg.obj).append("\n");
+                    textView.setText(stringBuilder.toString());
+                    break;
+                default:
+                    super.handleMessage(msg);
+            }
+
+    }
+    };
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.tcp_client_activity);
+        editText = (EditText) findViewById(R.id.editText);
+        textView = (TextView) findViewById(R.id.displayTextView);
+        sendBtn = (Button) findViewById(R.id.sendBtn);
+        sendBtn.setOnClickListener(this);
+        sendBtn.setEnabled(false);
+        stringBuilder = new StringBuilder();
+
+        Intent intent = new Intent(TCPClientActivity.this, TCPServerService.class);
+        startService(intent);
+
+        new Thread(){
+            @Override
+            public void run() {
+                connectTcpServer();
+            }
+        }.start();
+    }
+
+
+    private String formatDateTime(long time) {
+        return new SimpleDateFormat("(HH:mm:ss)").format(new Date(time));
+    }
+
+    private void connectTcpServer() {
+        Socket socket = null;
+        while (socket == null) {
+            try {
+                socket = new Socket("localhost", 8888);
+                mClientSocket = socket;
+                mPrintWriter = new PrintWriter(new BufferedWriter(
+                        new OutputStreamWriter(socket.getOutputStream())
+                ), true);
+                mHandler.sendEmptyMessage(MSG_READY);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // receive message
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        while (!isFinishing()) {
+            try {
+                String msg = bufferedReader.readLine();
+                if (msg != null) {
+                    String time = formatDateTime(System.currentTimeMillis());
+                    String showedMsg = "server " + time + ":" + msg
+                            + "\n";
+                    mHandler.obtainMessage(MSG_RECEIVED, showedMsg).sendToTarget();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    @Override
+    public void onClick(View v) {
+        if (mPrintWriter != null) {
+            String msg = editText.getText().toString();
+            mPrintWriter.println(msg);
+            editText.setText("");
+            String time = formatDateTime(System.currentTimeMillis());
+            String showedMsg = "self " + time + ":" + msg + "\n";
+            stringBuilder.append(showedMsg);
+
+        }
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (mClientSocket != null) {
+            try {
+                mClientSocket.shutdownInput();
+                mClientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        super.onDestroy();
+    }
+}
+```
+
+Server 端代码：
+
+```java
+public class TCPServerService extends Service {
+    private static final String TAG = "TCPServerService";
+    private boolean isServiceDestroyed = false;
+    private String[] mMessages = new String[]{
+            "Hello! Body!",
+            "用户不在线！请稍后再联系！",
+            "请问你叫什么名字呀？",
+            "厉害了，我的哥！",
+            "Google 不需要科学上网是真的吗？",
+            "扎心了，老铁！！！"
+    };
+
+
+    @Override
+    public void onCreate() {
+        new Thread(new TCPServer()).start();
+        super.onCreate();
+    }
+
+    @Override
+    public void onDestroy() {
+        isServiceDestroyed = true;
+        super.onDestroy();
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    private class TCPServer implements Runnable {
+
+        @Override
+        public void run() {
+            ServerSocket serverSocket = null;
+            try {
+                serverSocket = new ServerSocket(8888);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return;
+            }
+            while (!isServiceDestroyed) {
+                // receive request from client
+                try {
+                    final Socket client = serverSocket.accept();
+                    Log.d(TAG, "=============== accept ==================");
+                    new Thread(){
+                        @Override
+                        public void run() {
+                            try {
+                                responseClient(client);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }.start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+    }
+
+
+    private void responseClient(Socket client) throws IOException {
+        //receive message
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(client.getInputStream()));
+        //send message
+        PrintWriter out = new PrintWriter(
+                new BufferedWriter(
+                        new OutputStreamWriter(
+                                client.getOutputStream())),true);
+        out.println("欢迎来到聊天室！");
+
+        while (!isServiceDestroyed) {
+            String str = in.readLine();
+            Log.d(TAG, "message from client: " + str);
+            if (str == null) {
+                return;
+            }
+            Random random = new Random();
+            int index = random.nextInt(mMessages.length);
+            String msg = mMessages[index];
+            out.println(msg);
+            Log.d(TAG, "send Message: " + msg);
+        }
+        out.close();
+        in.close();
+        client.close();
+
+    }
+}
+```
+
+UDP Socket 可以自己尝试着实现。
+
 
 
 ## 十六、Android Bitmap压缩策略
 
+### 1. 为什么Bitmap需要高效加载？
 
+现在的高清大图，动辄就要好几M，而Android对单个应用所施加的内存限制，只有小几十M，如16M，这导致加载Bitmap的时候很容易出现内存溢出。如下异常信息，便是在开发中经常需要的：
+
+> java.lang.OutofMemoryError:bitmap size exceeds VM budget
+
+为了解决这个问题，就出现了Bitmap的高效加载策略。其实核心思想很简单。假设通过ImageView来显示图片，很多时候ImageView并没有原始图片的尺寸那么大，这个时候把整个图片加载进来后再设置给ImageView，显然是没有必要的，因为ImageView根本没办法显示原始图片。这时候就可以按一定的采样率来将图片缩小后再加载进来，这样图片既能在ImageView显示出来，又能降低内存占用从而在一定程度上避免OOM，提高了Bitmap加载时的性能。
+
+### 2. Bitmap高效加载的具体方式
+
+**加载Bitmap的方式**
+
+Bitmap在Android中指的是一张图片。通过BitmapFactory类提供的四类方法：decodeFile,decodeResource,decodeStream和decodeByteArray,分别从文件系统，资源，输入流和字节数组中加载出一个Bitmap对象，其中decodeFile,decodeResource又间接调用了decodeStream方法，这四类方法最终是在Android的底层实现的，对应着BitmapFactory类的几个native方法。
+
+**BitmapFactory.Options的参数**
+
+**① inSampleSize参数**
+
+上述四类方法都支持BitmapFactory.Options参数，而Bitmap的按一定采样率进行缩放就是通过BitmapFactory.Options参数实现的，主要用到了inSampleSize参数，即采样率。通过对inSampleSize的设置，对图片的像素的高和宽进行缩放。
+
+当inSampleSize=1，即采样后的图片大小为图片的原始大小。小于1，也按照1来计算。
+当inSampleSize>1，即采样后的图片将会缩小，缩放比例为1/(inSampleSize的二次方)。
+
+例如：一张1024 ×1024像素的图片，采用ARGB8888格式存储，那么内存大小1024×1024×4=4M。如果inSampleSize=2，那么采样后的图片内存大小：512×512×4=1M。
+
+**注意：官方文档支出，inSampleSize的取值应该总是2的指数，如1，2，4，8等。如果外界传入的inSampleSize的值不为2的指数，那么系统会向下取整并选择一个最接近2的指数来代替。比如3，系统会选择2来代替。当时经验证明并非在所有Android版本上都成立。**
+
+**关于inSampleSize取值的注意事项：**
+通常是根据图片宽高实际的大小/需要的宽高大小，分别计算出宽和高的缩放比。但应该取其中最小的缩放比，避免缩放图片太小，到达指定控件中不能铺满，需要拉伸从而导致模糊。
+
+例如：ImageView的大小是100×100像素，而图片的原始大小为200×300，那么宽的缩放比是2，高的缩放比是3。如果最终inSampleSize=2，那么缩放后的图片大小100×150，仍然合适ImageView。如果inSampleSize=3，那么缩放后的图片大小小于ImageView所期望的大小，这样图片就会被拉伸而导致模糊。
+
+**② inJustDecodeBounds参数**
+
+我们需要获取加载的图片的宽高信息，然后交给inSampleSize参数选择缩放比缩放。那么如何能先不加载图片却能获得图片的宽高信息，通过inJustDecodeBounds=true，然后加载图片就可以实现只解析图片的宽高信息，并不会真正的加载图片，所以这个操作是轻量级的。当获取了宽高信息，计算出缩放比后，然后在将inJustDecodeBounds=false,再重新加载图片，就可以加载缩放后的图片。
+
+**注意：BitmapFactory获取的图片宽高信息和图片的位置以及程序运行的设备有关，比如同一张图片放在不同的drawable目录下或者程序运行在不同屏幕密度的设备上，都可能导致BitmapFactory获取到不同的结果，和Android的资源加载机制有关。**
+
+**高效加载Bitmap的流程**
+
+①将BitmapFactory.Options的inJustDecodeBounds参数设为true并加载图片。
+
+②从BitmapFactory.Options中取出图片的原始宽高信息，它们对应于outWidth和outHeight参数。
+
+③根据采样率的规则并结合目标View的所需大小计算出采样率inSampleSize。
+
+④将BitmapFactory.Options的inJustDecodeBounds参数设为false，然后重新加载图片。
+
+### 3. Bitmap高效加载的代码实现
+
+```java
+ public static Bitmap decodeSampledBitmapFromResource(Resources res, int resId, int reqWidth, int reqHeight){
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        //加载图片
+        BitmapFactory.decodeResource(res,resId,options);
+        //计算缩放比
+        options.inSampleSize = calculateInSampleSize(options,reqHeight,reqWidth);
+        //重新加载图片
+        options.inJustDecodeBounds =false;
+        return BitmapFactory.decodeResource(res,resId,options);
+    }
+
+    private static int calculateInSampleSize(BitmapFactory.Options options, int reqHeight, int reqWidth) {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+        if(height>reqHeight||width>reqWidth){
+            int halfHeight = height/2;
+            int halfWidth = width/2;
+            //计算缩放比，是2的指数
+            while((halfHeight/inSampleSize)>=reqHeight&&(halfWidth/inSampleSize)>=reqWidth){
+                inSampleSize*=2;
+            }
+        }
+
+
+        return inSampleSize;
+    }
+```
+
+这个时候就可以通过如下方式高效加载图片：
+
+```java
+mImageView.setImageBitmap(decodeSampledBitmapFromResource(getResources(),R.mipmap.ic_launcher,100,100);
+```
+
+除了BitmapFactory的decodeResource方法，其他方法也可以类似实现。
 
 ## 十七、Android动画总结
 
+总的来说，Android动画可以分为两类，最初的**传统动画**和Android3.0 之后出现的**属性动画**；
 
+传统动画又包括 帧动画（Frame Animation）和补间动画（Tweened Animation）。
+
+### 1. 帧动画
+
+帧动画是最容易实现的一种动画，这种动画更多的依赖于完善的UI资源，他的原理就是将一张张单独的图片连贯的进行播放，从而在视觉上产生一种动画的效果；有点类似于某些软件制作gif动画的方式。
+
+![](http://upload-images.jianshu.io/upload_images/1115031-b52487cb6b97f911.gif?imageMogr2/auto-orient/strip)
+
+如上图中的京东加载动画，代码要做的事情就是把一幅幅的图片按顺序显示，造成动画的视觉效果。
+
+**帧动画实现**
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/a_0"
+        android:duration="100" />
+    <item
+        android:drawable="@drawable/a_1"
+        android:duration="100" />
+    <item
+        android:drawable="@drawable/a_2"
+        android:duration="100" />
+</animation-list>
+```
+
+```java
+protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_frame_animation);
+        ImageView animationImg1 = (ImageView) findViewById(R.id.animation1);
+        animationImg1.setImageResource(R.drawable.frame_anim1);
+        AnimationDrawable animationDrawable1 = (AnimationDrawable) animationImg1.getDrawable();
+        animationDrawable1.start();
+    }
+```
+
+可以说，图片资源决定了这种方式可以实现怎样的动画
+
+在有些代码中，我们还会看到android：oneshot="false" ，这个oneshot 的含义就是动画执行一次（true）还是循环执行多次。
+
+这里其他几个动画实现方式都是一样，无非就是图片资源的差异。
+
+### 2. 补间动画
+
+补间动画又可以分为四种形式，分别是 **alpha（淡入淡出），translate（位移），scale（缩放大小），rotate（旋转）**。
+
+补间动画的实现，一般会采用xml 文件的形式；代码会更容易书写和阅读，同时也更容易复用。
+
+**XML 实现**
+
+首先，在res/anim/ 文件夹下定义如下的动画实现方式
+
+**alpha_anim.xml 动画实现**
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1000"
+    android:fromAlpha="1.0"
+    android:interpolator="@android:anim/accelerate_decelerate_interpolator"
+    android:toAlpha="0.0" />
+```
+
+**scale.xml 动画实现**
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<scale xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1000"
+    android:fromXScale="0.0"
+    android:fromYScale="0.0"
+    android:pivotX="50%"
+    android:pivotY="50%"
+    android:toXScale="1.0"
+    android:toYScale="1.0"/>
+```
+
+然后，在Activity中 
+
+```java
+Animation animation = AnimationUtils.loadAnimation(mContext, R.anim.alpha_anim);
+img = (ImageView) findViewById(R.id.img);
+img.startAnimation(animation);
+```
+
+这样就可以实现ImageView alpha 透明变化的动画效果。
+
+也可以使用set 标签将多个动画组合（代码源自Android SDK API）
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@[package:]anim/interpolator_resource"
+    android:shareInterpolator=["true" | "false"] >
+    <alpha
+        android:fromAlpha="float"
+        android:toAlpha="float" />
+    <scale
+        android:fromXScale="float"
+        android:toXScale="float"
+        android:fromYScale="float"
+        android:toYScale="float"
+        android:pivotX="float"
+        android:pivotY="float" />
+    <translate
+        android:fromXDelta="float"
+        android:toXDelta="float"
+        android:fromYDelta="float"
+        android:toYDelta="float" />
+    <rotate
+        android:fromDegrees="float"
+        android:toDegrees="float"
+        android:pivotX="float"
+        android:pivotY="float" />
+    <set>
+        ...
+    </set>
+</set>
+```
+
+可以看到组合动画是可以嵌套使用的。
+
+各个动画属性的含义结合动画自身的特点应该很好理解，就不一一阐述了；这里主要说一下**interpolator** 和 **pivot**。
+
+> Interpolator 主要作用是可以控制动画的变化速率 ，就是动画进行的快慢节奏。
+
+Android 系统已经为我们提供了一些Interpolator ，比如 accelerate_decelerate_interpolator，accelerate_interpolator等。更多的interpolator 及其含义可以在Android SDK 中查看。同时这个Interpolator也是可以自定义的，这个后面还会提到。
+
+> pivot 决定了当前动画执行的参考位置
+
+pivot 这个属性主要是在translate 和 scale 动画中，这两种动画都牵扯到view 的“物理位置“发生变化，所以需要一个参考点。而pivotX和pivotY就共同决定了这个点；它的值可以是float或者是百分比数值。
+
+我们以pivotX为例，
+
+| pivotX取值 | 含义                                                  |
+| ---------- | ----------------------------------------------------- |
+| 10         | 距离动画所在view自身左边缘10像素                      |
+| 10%        | 距离动画所在view自身左边缘 的距离是整个view宽度的10%  |
+| 10%p       | 距离动画所在view父控件左边缘的距离是整个view宽度的10% |
+
+pivotY 也是相同的原理，只不过变成的纵向的位置。如果还是不明白可以参考[源码](https://github.com/REBOOTERS/AndroidAnimationExercise)，在Tweened Animation中结合seekbar的滑动观察rotate的变化理解。
+
+![](http://upload-images.jianshu.io/upload_images/1115031-743288fa3be134ea.gif?imageMogr2/auto-orient/strip)
+
+**Java Code  实现**
+
+有时候，动画的属性值可能需要动态的调整，这个时候使用xml 就不合适了，需要使用java代码实现
+
+```java
+private void RotateAnimation() {
+        animation = new RotateAnimation(-deValue, deValue, Animation.RELATIVE_TO_SELF,
+                pxValue, Animation.RELATIVE_TO_SELF, pyValue);
+        animation.setDuration(timeValue);
+
+        if (keep.isChecked()) {
+            animation.setFillAfter(true);
+        } else {
+            animation.setFillAfter(false);
+        }
+        if (loop.isChecked()) {
+            animation.setRepeatCount(-1);
+        } else {
+            animation.setRepeatCount(0);
+        }
+
+        if (reverse.isChecked()) {
+            animation.setRepeatMode(Animation.REVERSE);
+        } else {
+            animation.setRepeatMode(Animation.RESTART);
+        }
+        img.startAnimation(animation);
+    }
+```
+
+**这里animation.setFillAfter决定了动画在播放结束时是否保持最终的状态；animation.setRepeatCount和animation.setRepeatMode 决定了动画的重复次数及重复方式，具体细节可查看源码理解。**
+
+好了，传统动画的内容就说到这里了。
+
+### 3. 属性动画
+
+属性动画，顾名思义它是对于对象属性的动画。因此，所有补间动画的内容，都可以通过属性动画实现。
+
+首先我们来看看如何用属性动画实现上面补间动画的效果
+
+```java
+    private void RotateAnimation() {
+        ObjectAnimator anim = ObjectAnimator.ofFloat(myView, "rotation", 0f, 360f);
+        anim.setDuration(1000);
+        anim.start();
+    }
+
+    private void AlpahAnimation() {
+        ObjectAnimator anim = ObjectAnimator.ofFloat(myView, "alpha", 1.0f, 0.8f, 0.6f, 0.4f, 0.2f, 0.0f);
+        anim.setRepeatCount(-1);
+        anim.setRepeatMode(ObjectAnimator.REVERSE);
+        anim.setDuration(2000);
+        anim.start();
+    }
+```
+
+这两个方法用属性动画的方式分别实现了旋转动画和淡入淡出动画，其中setDuration、setRepeatMode及setRepeatCount和补间动画中的概念是一样的。
+
+可以看到，属性动画貌似强大了许多，实现很方便，同时动画可变化的值也有了更多的选择，动画所能呈现的细节也更多。
+
+当然属性动画也是可以组合实现的
+
+```java
+                ObjectAnimator alphaAnim = ObjectAnimator.ofFloat(myView, "alpha", 1.0f, 0.5f, 0.8f, 1.0f);
+                ObjectAnimator scaleXAnim = ObjectAnimator.ofFloat(myView, "scaleX", 0.0f, 1.0f);
+                ObjectAnimator scaleYAnim = ObjectAnimator.ofFloat(myView, "scaleY", 0.0f, 2.0f);
+                ObjectAnimator rotateAnim = ObjectAnimator.ofFloat(myView, "rotation", 0, 360);
+                ObjectAnimator transXAnim = ObjectAnimator.ofFloat(myView, "translationX", 100, 400);
+                ObjectAnimator transYAnim = ObjectAnimator.ofFloat(myView, "tranlsationY", 100, 750);
+                AnimatorSet set = new AnimatorSet();
+                set.playTogether(alphaAnim, scaleXAnim, scaleYAnim, rotateAnim, transXAnim, transYAnim);
+//                set.playSequentially(alphaAnim, scaleXAnim, scaleYAnim, rotateAnim, transXAnim, transYAnim);
+                set.setDuration(3000);
+                set.start();
+```
+
+可以看到这些动画可以同时播放，或者是按序播放。
+
+#### 属性动画核心原理 
+
+在上面实现属性动画的时候，我们反复的使用到了ObjectAnimator  这个类，这个类继承自ValueAnimator，使用这个类可以对任意对象的**任意属性**进行动画操作。而ValueAnimator是整个属性动画机制当中最核心的一个类；这点从下面的图片也可以看出。
+
+![](http://upload-images.jianshu.io/upload_images/1115031-80301bbb0ae884b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+属性动画核心原理，此图来自于Android SDK API 文档。
+
+> 属性动画的运行机制是通过不断地对值进行操作来实现的，而初始值和结束值之间的动画过渡就是由ValueAnimator这个类来负责计算的。它的内部使用一种时间循环的机制来计算值与值之间的动画过渡，我们只需要将初始值和结束值提供给ValueAnimator，并且告诉它动画所需运行的时长，那么ValueAnimator就会自动帮我们完成从初始值平滑地过渡到结束值这样的效果。除此之外，ValueAnimator还负责管理动画的播放次数、播放模式、以及对动画设置监听器等。
+
+从上图我们可以了解到，通过duration、startPropertyValue和endPropertyValue 等值，我们就可以定义动画运行时长，初始值和结束值。然后通过start方法开始动画。
+那么ValueAnimator 到底是怎样实现从初始值平滑过渡到结束值的呢？这个就是由TypeEvaluator 和TimeInterpolator 共同决定的。
+
+具体来说，**TypeEvaluator 决定了动画如何从初始值过渡到结束值。**
+
+**TimeInterpolator 决定了动画从初始值过渡到结束值的节奏。**
+
+说的通俗一点，你每天早晨出门去公司上班，TypeEvaluator决定了你是坐公交、坐地铁还是骑车；而当你决定骑车后，TimeInterpolator决定了你一路上骑行的方式，你可以匀速的一路骑到公司，你也可以前半程骑得飞快，后半程骑得慢悠悠。
+
+如果，还是不理解，那么就看下面的代码吧。首先看一下下面的这两个gif动画，一个小球在屏幕上以 y=sin(x) 的数学函数轨迹运行，同时小球的颜色和半径也发生着变化，可以发现，两幅图动画变化的节奏也是不一样的。
+
+![](http://upload-images.jianshu.io/upload_images/1115031-741c714c3ef5fa84.gif?imageMogr2/auto-orient/strip)
+
+![](http://upload-images.jianshu.io/upload_images/1115031-dbbb2e4aca44b0e7.gif?imageMogr2/auto-orient/strip)
+
+*如果不考虑属性动画，这样的一个动画纯粹的使用Canvas+Handler的方式绘制也是有可能实现的。但是会复杂很多，而且加上各种线程，会带来很多意想不到的问题。*
+
+这里就通过自定义属性动画的方式看看这个动画是如何实现的。
+
+#### 属性动画自定义实现
+
+这个动画最关键的三点就是 运动轨迹、小球半径及颜色的变化；我们就从这三个方面展开。最后我们在结合Interpolator说一下TimeInterpolator的意义。
+
+**用TypeEvaluator 确定运动轨迹**
+
+前面说了，TypeEvaluator决定了动画如何从初始值过渡到结束值。这个TypeEvaluator是个接口，我们可以实现这个接口。
+
+```java
+public class PointSinEvaluator implements TypeEvaluator {
+
+    @Override
+    public Object evaluate(float fraction, Object startValue, Object endValue) {
+        Point startPoint = (Point) startValue;
+        Point endPoint = (Point) endValue;
+        float x = startPoint.getX() + fraction * (endPoint.getX() - startPoint.getX());
+
+        float y = (float) (Math.sin(x * Math.PI / 180) * 100) + endPoint.getY() / 2;
+        Point point = new Point(x, y);
+        return point;
+    }
+}
+```
+
+PointSinEvaluator 继承了TypeEvaluator类，并实现了他唯一的方法evaluate；这个方法有三个参数，第一个参数fraction 代表当前动画完成的**百分比**，这个值是如何变化的后面还会提到；第二个和第三个参数代表动画的**初始值和结束值**。这里我们的逻辑很简单，x的值随着fraction 不断变化，并最终达到结束值；y的值就是当前x值所对应的sin(x) 值，然后用x 和 y 产生一个新的点（Point对象）返回。
+
+这样我们就可以使用这个PointSinEvaluator 生成属性动画的实例了。
+
+```java
+        Point startP = new Point(RADIUS, RADIUS);//初始值（起点）
+        Point endP = new Point(getWidth() - RADIUS, getHeight() - RADIUS);//结束值（终点）
+        final ValueAnimator valueAnimator = ValueAnimator.ofObject(new PointSinEvaluator(), startP, endP);
+        valueAnimator.setRepeatCount(-1);
+        valueAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                currentPoint = (Point) animation.getAnimatedValue();
+                postInvalidate();
+            }
+        });
+```
+
+这样我们就完成了动画轨迹的定义，现在只要调用valueAnimator.start() 方法，就会绘制出一个正弦曲线的轨迹。
+
+**颜色及半径动画实现**
+
+之前我们说过，使用ObjectAnimator  可以对任意对象的任意属性进行动画操作，这句话是不太严谨的，这个任意属性还需要有get 和 set  方法。
+
+```java
+public class PointAnimView extends View {
+
+    /**
+     * 实现关于color 的属性动画
+     */
+    private int color;
+    private float radius = RADIUS;
+
+    .....
+
+}
+```
+
+这里在我们的自定义view中，定义了两个属性color 和 radius，并实现了他们各自的get set 方法，这样我们就可以使用属性动画的特点实现小球颜色变化的动画和半径变化的动画。
+
+```java
+        ObjectAnimator animColor = ObjectAnimator.ofObject(this, "color", new ArgbEvaluator(), Color.GREEN,
+                Color.YELLOW, Color.BLUE, Color.WHITE, Color.RED);
+        animColor.setRepeatCount(-1);
+        animColor.setRepeatMode(ValueAnimator.REVERSE);
+
+
+        ValueAnimator animScale = ValueAnimator.ofFloat(20f, 80f, 60f, 10f, 35f,55f,10f);
+        animScale.setRepeatCount(-1);
+        animScale.setRepeatMode(ValueAnimator.REVERSE);
+        animScale.setDuration(5000);
+        animScale.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                radius = (float) animation.getAnimatedValue();
+            }
+        });
+```
+
+这里，我们使用ObjectAnimator  实现对color 属性的值按照ArgbEvaluator 这个类的规律在给定的颜色值之间变化，这个ArgbEvaluator 和我们之前定义的PointSinEvaluator一样，都是决定动画如何从初始值过渡到结束值的，只不过这个类是系统自带的，我们直接拿来用就可以，他可以实现各种颜色间的自由过渡。
+
+对radius 这个属性使用了ValueAnimator，使用了其ofFloat方法实现了一系列float值的变化；同时为其添加了动画变化的监听器，在属性值更新的过程中，我们可以将变化的结果赋给radius，这样就实现了半径动态的变化。
+
+**这里radius 也可以使用和color相同的方式，只需要把ArgbEvaluator 替换为FloatEvaluator，同时修改动画的变化值即可；使用添加监听器的方式，只是为了介绍监听器的使用方法而已**
+
+好了，到这里我们已经定义出了所有需要的动画，前面说过，属性动画也是可以组合使用的。因此，在动画启动的时候，同时播放这三个动画，就可以实现图中的效果了。
+
+```java
+        animSet = new AnimatorSet();
+        animSet.play(valueAnimator).with(animColor).with(animScale);
+        animSet.setDuration(5000);
+        animSet.setInterpolator(interpolatorType);
+        animSet.start();
+```
+
+PointAnimView  源码
+
+```java
+public class PointAnimView extends View {
+
+    public static final float RADIUS = 20f;
+
+    private Point currentPoint;
+
+    private Paint mPaint;
+    private Paint linePaint;
+
+    private AnimatorSet animSet;
+    private TimeInterpolator interpolatorType = new LinearInterpolator();
+
+    /**
+     * 实现关于color 的属性动画
+     */
+    private int color;
+    private float radius = RADIUS;
+
+    public PointAnimView(Context context) {
+        super(context);
+        init();
+    }
+
+
+    public PointAnimView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public PointAnimView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
+        mPaint.setColor(this.color);
+    }
+
+    public float getRadius() {
+        return radius;
+    }
+
+    public void setRadius(float radius) {
+        this.radius = radius;
+    }
+
+    private void init() {
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPaint.setColor(Color.TRANSPARENT);
+
+        linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        linePaint.setColor(Color.BLACK);
+        linePaint.setStrokeWidth(5);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (currentPoint == null) {
+            currentPoint = new Point(RADIUS, RADIUS);
+            drawCircle(canvas);
+//            StartAnimation();
+        } else {
+            drawCircle(canvas);
+        }
+
+        drawLine(canvas);
+    }
+
+    private void drawLine(Canvas canvas) {
+        canvas.drawLine(10, getHeight() / 2, getWidth(), getHeight() / 2, linePaint);
+        canvas.drawLine(10, getHeight() / 2 - 150, 10, getHeight() / 2 + 150, linePaint);
+        canvas.drawPoint(currentPoint.getX(), currentPoint.getY(), linePaint);
+
+    }
+
+    public void StartAnimation() {
+        Point startP = new Point(RADIUS, RADIUS);
+        Point endP = new Point(getWidth() - RADIUS, getHeight() - RADIUS);
+        final ValueAnimator valueAnimator = ValueAnimator.ofObject(new PointSinEvaluator(), startP, endP);
+        valueAnimator.setRepeatCount(-1);
+        valueAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                currentPoint = (Point) animation.getAnimatedValue();
+                postInvalidate();
+            }
+        });
+
+//
+        ObjectAnimator animColor = ObjectAnimator.ofObject(this, "color", new ArgbEvaluator(), Color.GREEN,
+                Color.YELLOW, Color.BLUE, Color.WHITE, Color.RED);
+        animColor.setRepeatCount(-1);
+        animColor.setRepeatMode(ValueAnimator.REVERSE);
+
+
+        ValueAnimator animScale = ValueAnimator.ofFloat(20f, 80f, 60f, 10f, 35f,55f,10f);
+        animScale.setRepeatCount(-1);
+        animScale.setRepeatMode(ValueAnimator.REVERSE);
+        animScale.setDuration(5000);
+        animScale.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                radius = (float) animation.getAnimatedValue();
+            }
+        });
+
+
+        animSet = new AnimatorSet();
+        animSet.play(valueAnimator).with(animColor).with(animScale);
+        animSet.setDuration(5000);
+        animSet.setInterpolator(interpolatorType);
+        animSet.start();
+
+    }
+
+    private void drawCircle(Canvas canvas) {
+        float x = currentPoint.getX();
+        float y = currentPoint.getY();
+        canvas.drawCircle(x, y, radius, mPaint);
+    }
+
+
+    public void setInterpolatorType(int type ) {
+        switch (type) {
+            case 1:
+                interpolatorType = new BounceInterpolator();
+                break;
+            case 2:
+                interpolatorType = new AccelerateDecelerateInterpolator();
+                break;
+            case 3:
+                interpolatorType = new DecelerateInterpolator();
+                break;
+            case 4:
+                interpolatorType = new AnticipateInterpolator();
+                break;
+            case 5:
+                interpolatorType = new LinearInterpolator();
+                break;
+            case 6:
+                interpolatorType=new LinearOutSlowInInterpolator();
+                break;
+            case 7:
+                interpolatorType = new OvershootInterpolator();
+            default:
+                interpolatorType = new LinearInterpolator();
+                break;
+        }
+    }
+
+
+    @TargetApi(Build.VERSION_CODES.KITKAT)
+    public void pauseAnimation() {
+        if (animSet != null) {
+            animSet.pause();
+        }
+    }
+
+
+    public void stopAnimation() {
+        if (animSet != null) {
+            animSet.cancel();
+            this.clearAnimation();
+        }
+    }
+}
+```
+
+**TimeInterpolator 介绍**
+
+Interpolator的概念其实我们并不陌生，在补间动画中我们就使用到了。他就是用来控制动画快慢节奏的；而在属性动画中，TimeInterpolator 也是类似的作用；TimeInterpolator 继承自Interpolator。我们可以继承TimerInterpolator 以自己的方式控制动画变化的节奏，也可以使用Android 系统提供的Interpolator。
+
+下面都是系统帮我们定义好的一些Interpolator，我们可以通过setInterpolator 设置不同的Interpolator。
+
+![](http://upload-images.jianshu.io/upload_images/1115031-9e26dde319ebaae7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+这里我们使用的Interpolator就决定了 前面我们提到的fraction。变化的节奏决定了动画所执行的百分比。不得不说，这么ValueAnimator的设计的确是很巧妙。
+
+**XML 属性动画**
+
+这里提一下，属性动画当然也可以使用xml文件的方式实现，但是属性动画的属性值一般会牵扯到对象具体的属性，更多是通过代码动态获取，所以xml文件的实现会有些不方便。
+
+```xml
+<set android:ordering="sequentially">
+    <set>
+        <objectAnimator
+            android:propertyName="x"
+            android:duration="500"
+            android:valueTo="400"
+            android:valueType="intType"/>
+        <objectAnimator
+            android:propertyName="y"
+            android:duration="500"
+            android:valueTo="300"
+            android:valueType="intType"/>
+    </set>
+    <objectAnimator
+        android:propertyName="alpha"
+        android:duration="500"
+        android:valueTo="1f"/>
+</set>
+```
+
+使用方式：
+
+```java
+AnimatorSet set = (AnimatorSet) AnimatorInflater.loadAnimator(myContext,
+    R.anim.property_animator);
+set.setTarget(myObject);
+set.start();
+```
+
+xml 文件中的标签也和属性动画的类相对应。
+
+```xml
+ ValueAnimator --- <animator> 
+ ObjectAnimator --- <objectAnimator> 
+ AnimatorSet --- <set>
+```
+
+这些就是属性动画的核心内容。现在使用属性动画的特性自定义动画应该不是难事了。其余便签的含义，结合之前的内容应该不难理解了。
+
+### 4. 传统动画 VS 属性动画
+
+相较于传统动画，属性动画有很多优势。那是否意味着属性动画可以完全替代传统动画呢。其实不然，两种动画都有各自的优势，属性动画如此强大，也不是没有缺点。
+
+![补间动画点击事件](http://upload-images.jianshu.io/upload_images/1115031-6864a7fffbc80884.gif?imageMogr2/auto-orient/strip)
+
+![属性动画点击事件](http://upload-images.jianshu.io/upload_images/1115031-10bb818b5584da5e.gif?imageMogr2/auto-orient/strip)
+
+- 从上面两幅图比较可以发现，补间动画中，虽然使用translate将图片移动了，但是点击原来的位置，依旧可以发生点击事件，而属性动画却不是。因此我们可以确定，属性动画才是真正的实现了view的移动，补间动画对view的移动更像是在不同地方绘制了一个影子，实际的对象还是处于原来的地方。
+- 当我们把动画的repeatCount设置为无限循环时，如果在Activity退出时没有及时将动画停止，属性动画会导致Activity无法释放而导致内存泄漏，而补间动画却没有问题。因此，使用属性动画时切记在Activity执行 onStop 方法时顺便将动画停止。
+- xml 文件实现的补间动画，复用率极高。在Activity切换，窗口弹出时等情景中有着很好的效果。
+- 使用帧动画时需要注意，不要使用过多特别大的图，容易导致内存不足。
 
 ## 十八、Android进程优先级
 
+在安卓系统中：当系统内存不足时，Android系统将根据进程的优先级选择杀死一些不太重要的进程，优先级低的先杀死。进程优先级从高到低如下。
 
+### 1. 前台进程
+
+- 处于正在与用户交互的activity
+- 与前台activity绑定的service
+- 调用了startForeground（）方法的service
+- 正在执行oncreate（），onstart（），ondestroy方法的 service。
+- 进程中包含正在执行onReceive（）方法的BroadcastReceiver。
+
+系统中的前台进程并不会很多，而且一般前台进程都不会因为内存不足被杀死。特殊情况除外。当内存低到无法保证所有的前台进程同时运行时，才会选择杀死某个进程。
+
+### 2. 可视进程
+
+- 为处于前台，但仍然可见的activity（例如：调用了onpause（）而还没调用onstop（）的activity）。典型情况是：运行activity时，弹出对话框（dialog等），此时的activity虽然不是前台activity，但是仍然可见。
+- 可见activity绑定的service。（处于上诉情况下的activity所绑定的service）
+
+可视进程一般也不会被系统杀死，除非为了保证前台进程的运行不得已而为之。
+
+### 3. 服务进程
+
+- 已经启动的service
+
+### 4. 后台进程
+
+- 不可见的activity（调用onstop（）之后的activity）
+
+后台进程不会影响用户的体验，为了保证前台进程，可视进程，服务进程的运行，系统随时有可能杀死一个后台进程。当一个正确实现了生命周期的activity处于后台被杀死时，如果用户重新启动，会恢复之前的运行状态。
+
+### 5. 空进程
+
+- 任何没有活动的进程
+
+系统会杀死空进程，但这不会造成影响。空进程的存在无非为了一些缓存，以便于下次可以更快的启动。
 
 ## 十九、Android Context详解
+
+**Activity mActivity =new Activity()**
+
+作为Android开发者，不知道你有没有思考过这个问题，Activity可以new吗？Android的应用程序开发采用JAVA语言，Activity本质上也是一个对象，那上面的写法有什么问题呢？估计很多人说不清道不明。Android程序不像Java程序一样，随便创建一个类，写个main()方法就能运行，**Android应用模型是基于组件的应用设计模式，组件的运行要有一个完整的Android工程环境**，在这个环境下，Activity、Service等系统组件才能够正常工作，而这些组件并不能采用普通的Java对象创建方式，new一下就能创建实例了，而是要有它们各自的上下文环境，也就是我们这里讨论的Context。可以这样讲，Context是维持Android程序中各组件能够正常工作的一个核心功能类。
+
+### 1. Context简介
+
+  Context的中文翻译为：语境; 上下文; 背景; 环境，在开发中我们经常说称之为“上下文”，那么这个“上下文”到底是指什么意思呢？在语文中，我们可以理解为语境，在程序中，我们可以理解为当前对象在程序中所处的一个环境，一个与系统交互的过程。比如微信聊天，此时的“环境”是指聊天的界面以及相关的数据请求与传输，Context在加载资源、启动Activity、获取系统服务、创建View等操作都要参与。
+
+那Context到底是什么呢？一个Activity就是一个Context，一个Service也是一个Context。Android程序员把“场景”抽象为Context类，他们认为用户和操作系统的每一次交互都是一个场景，比如打电话、发短信，这些都是一个有界面的场景，还有一些没有界面的场景，比如后台运行的服务（Service）。一个应用程序可以认为是一个工作环境，用户在这个环境中会切换到不同的场景，这就像一个前台秘书，她可能需要接待客人，可能要打印文件，还可能要接听客户电话，而这些就称之为不同的场景，前台秘书可以称之为一个应用程序。
+
+上面的概念中采用了通俗的理解方式，将Context理解为“上下文”或者“场景”，如果你仍然觉得很抽象，不好理解。在这里我给出一个可能不是很恰当的比喻，希望有助于大家的理解：一个Android应用程序，可以理解为一部电影或者一部电视剧，Activity，Service，Broadcast Receiver，Content Provider这四大组件就好比是这部戏里的四个主角：胡歌，霍建华，诗诗，Baby。他们是由剧组（系统）一开始就定好了的，整部戏就是由这四位主演领衔担纲的，所以这四位主角并不是大街上随随便便拉个人（new 一个对象）都能演的。有了演员当然也得有摄像机拍摄啊，他们必须通过镜头（Context）才能将戏传递给观众，这也就正对应说四大组件（四位主角）必须工作在Context环境下（摄像机镜头）。那Button，TextView，LinearLayout这些控件呢，就好比是这部戏里的配角或者说群众演员，他们显然没有这么重用，随便一个路人甲路人乙都能演（可以new一个对象），但是他们也必须要面对镜头（工作在Context环境下），所以`Button mButton=new Button（Context）`是可以的。虽然不很恰当，但还是很容易理解的，希望有帮助。
+
+**源码中的Context**
+
+```java
+/**
+ * Interface to global information about an application environment.  This is
+ * an abstract class whose implementation is provided by
+ * the Android system.  It
+ * allows access to application-specific resources and classes, as well as
+ * up-calls for application-level operations such as launching activities,
+ * broadcasting and receiving intents, etc.
+ */
+public abstract class Context {
+    /**
+     * File creation mode: the default mode, where the created file can only
+     * be accessed by the calling application (or all applications sharing the
+     * same user ID).
+     * @see #MODE_WORLD_READABLE
+     * @see #MODE_WORLD_WRITEABLE
+     */
+    public static final int MODE_PRIVATE = 0x0000;
+
+    public static final int MODE_WORLD_WRITEABLE = 0x0002;
+
+    public static final int MODE_APPEND = 0x8000;
+
+    public static final int MODE_MULTI_PROCESS = 0x0004;
+
+    .
+    .
+    .
+    }
+```
+
+源码中的注释是这么来解释Context的：Context提供了关于应用环境全局信息的接口。**它是一个抽象类，它的执行被Android系统所提供**。它允许获取以应用为特征的资源和类型，是一个统领一些资源（应用程序环境变量等）的上下文。就是说，它描述一个应用程序环境的信息（即上下文）；是一个抽象类，Android提供了该抽象类的具体实现类；通过它我们可以获取应用程序的资源和类（包括应用级别操作，如启动Activity，发广播，接受Intent等）。既然上面Context是一个抽象类，那么肯定有他的实现类咯，我们在Context的源码中通过IDE可以查看到他的子类最终可以得到如下关系图：
+
+![](http://upload-images.jianshu.io/upload_images/1187237-1b4c0cd31fd0193f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+Context类本身是一个纯abstract类，它有两个具体的实现子类：ContextImpl和ContextWrapper。其中ContextWrapper类，如其名所言，这只是一个包装而已，ContextWrapper构造函数中必须包含一个真正的Context引用，同时ContextWrapper中提供了attachBaseContext（）用于给ContextWrapper对象中指定真正的Context对象，调用ContextWrapper的方法都会被转向其所包含的真正的Context对象。ContextThemeWrapper类，如其名所言，其内部包含了与主题（Theme）相关的接口，这里所说的主题就是指在AndroidManifest.xml中通过android：theme为Application元素或者Activity元素指定的主题。当然，只有Activity才需要主题，Service是不需要主题的，因为Service是没有界面的后台场景，所以Service直接继承于ContextWrapper，Application同理。而ContextImpl类则真正实现了Context中的所以函数，应用程序中所调用的各种Context类的方法，其实现均来自于该类。一句话总结：**Context的两个子类分工明确，其中ContextImpl是Context的具体实现类，ContextWrapper是Context的包装类。**Activity，Application，Service虽都继承自ContextWrapper（Activity继承自ContextWrapper的子类ContextThemeWrapper），但它们初始化的过程中都会创建ContextImpl对象，由ContextImpl实现Context中的方法。
+
+**一个应用程序有几个Context？**
+
+其实这个问题本身并没有什么意义，关键还是在于对Context的理解，从上面的关系图我们已经可以得出答案了，在应用程序中Context的具体实现子类就是：Activity，Service，Application。那么`Context数量=Activity数量+Service数量+1`。当然如果你足够细心，可能会有疑问：我们常说四大组件，这里怎么只有Activity，Service持有Context，那Broadcast Receiver，Content Provider呢？**Broadcast Receiver，Content Provider并不是Context的子类，他们所持有的Context都是其他地方传过去的，所以并不计入Context总数。**上面的关系图也从另外一个侧面告诉我们Context类在整个Android系统中的地位是多么的崇高，因为很显然Activity，Service，Application都是其子类，其地位和作用不言而喻。
+
+### 2. Context作用
+
+Context到底可以实现哪些功能呢？这个就实在是太多了，弹出Toast、启动Activity、启动Service、发送广播、操作数据库等等都需要用到Context。
+
+```java
+TextView tv = new TextView(getContext());
+
+ListAdapter adapter = new SimpleCursorAdapter(getApplicationContext(), ...);
+
+AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);getApplicationContext().getSharedPreferences(name, mode);
+
+getApplicationContext().getContentResolver().query(uri, ...);
+
+getContext().getResources().getDisplayMetrics().widthPixels * 5 / 8;
+
+getContext().startActivity(intent);
+
+getContext().startService(intent);
+
+getContext().sendBroadcast(intent);
+```
+
+虽然Context神通广大，但并不是随便拿到一个Context实例就可以为所欲为，它的使用还是有一些规则限制的。由于Context的具体实例是由ContextImpl类去实现的，因此在绝大多数场景下，Activity、Service和Application这三种类型的Context都是可以通用的。不过有几种场景比较特殊，比如启动Activity，还有弹出Dialog。出于安全原因的考虑，Android是不允许Activity或Dialog凭空出现的，一个Activity的启动必须要建立在另一个Activity的基础之上，也就是以此形成的返回栈。而Dialog则必须在一个Activity上面弹出（除非是System Alert类型的Dialog），因此在这种场景下，我们只能使用Activity类型的Context，否则将会出错。
+
+![](http://upload-images.jianshu.io/upload_images/1187237-fb32b0f992da4781.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+从上图我们可以发现Activity所持有的Context的作用域最广，无所不能。因为Activity继承自ContextThemeWrapper，而Application和Service继承自ContextWrapper，很显然ContextThemeWrapper在ContextWrapper的基础上又做了一些操作使得Activity变得更强大，这里我就不再贴源码给大家分析了，有兴趣的童鞋可以自己查查源码。上图中的YES和NO我也不再做过多的解释了，这里我说一下上图中Application和Service所不推荐的两种使用情况。
+
+1. 如果我们用ApplicationContext去启动一个LaunchMode为standard的Activity的时候会报错`android.util.AndroidRuntimeException: Calling startActivity from outside of an Activity context requires the FLAG_ACTIVITY_NEW_TASK flag. Is this really what you want?`
+
+   这是因为非Activity类型的Context并没有所谓的任务栈，所以待启动的Activity就找不到栈了。解决这个问题的方法就是为待启动的Activity指定FLAG_ACTIVITY_NEW_TASK标记位，这样启动的时候就为它创建一个新的任务栈，而此时Activity是以singleTask模式启动的。所有这种用Application启动Activity的方式不推荐使用，Service同Application。
+
+2. 在Application和Service中去layout inflate也是合法的，但是会使用系统默认的主题样式，如果你自定义了某些样式可能不会被使用。所以这种方式也不推荐使用。
+
+一句话总结：凡是跟UI相关的，都应该使用Activity做为Context来处理；其他的一些操作，Service,Activity,Application等实例都可以，当然了，注意Context引用的持有，防止内存泄漏。
+
+### 3. 获取Context
+
+通常我们想要获取Context对象，主要有以下四种方法
+
+1. View.getContext,返回当前View对象的Context对象，通常是当前正在展示的Activity对象。
+2. Activity.getApplicationContext,获取当前Activity所在的(应用)进程的Context对象，通常我们使用Context对象时，要优先考虑这个全局的进程Context。
+3. ContextWrapper.getBaseContext():用来获取一个ContextWrapper进行装饰之前的Context，可以使用这个方法，这个方法在实际开发中使用并不多，也不建议使用。
+4. Activity.this 返回当前的Activity实例，如果是UI控件需要使用Activity作为Context对象，但是默认的Toast实际上使用ApplicationContext也可以。
+
+**getApplication()和getApplicationContext()**
+
+上面说到获取当前Application对象用getApplicationContext，不知道你有没有联想到getApplication()，这两个方法有什么区别？相信这个问题会难倒不少开发者。
+
+![](http://upload-images.jianshu.io/upload_images/1187237-593b912ecd199046.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+程序是不会骗人的，我们通过上面的代码，打印得出两者的内存地址都是相同的，看来它们是同一个对象。其实这个结果也很好理解，因为前面已经说过了，Application本身就是一个Context，所以这里获取getApplicationContext()得到的结果就是Application本身的实例。那么问题来了，既然这两个方法得到的结果都是相同的，那么Android为什么要提供两个功能重复的方法呢？实际上这两个方法在作用域上有比较大的区别。getApplication()方法的语义性非常强，一看就知道是用来获取Application实例的，**但是这个方法只有在Activity和Service中才能调用的到**。那么也许在绝大多数情况下我们都是在Activity或者Service中使用Application的，但是如果在一些其它的场景，比如BroadcastReceiver中也想获得Application的实例，这时就可以借助getApplicationContext()方法了。
+
+```java
+public class MyReceiver extends BroadcastReceiver{
+  @Override
+  public void onReceive(Contextcontext,Intentintent){
+    Application myApp= (Application)context.getApplicationContext();
+  }
+}
+```
+
+### 4. Context引起的内存泄露
+
+但Context并不能随便乱用，用的不好有可能会引起内存泄露的问题，下面就示例两种错误的引用方式。
+
+**错误的单例模式**
+
+```java
+public class Singleton {
+    private static Singleton instance;
+    private Context mContext;
+
+    private Singleton(Context context) {
+        this.mContext = context;
+    }
+
+    public static Singleton getInstance(Context context) {
+        if (instance == null) {
+            instance = new Singleton(context);
+        }
+        return instance;
+    }
+}
+```
+
+这是一个非线程安全的单例模式，instance作为静态对象，其生命周期要长于普通的对象，其中也包含Activity，假如Activity A去getInstance获得instance对象，传入this，常驻内存的Singleton保存了你传入的Activity A对象，并一直持有，即使Activity被销毁掉，但因为它的引用还存在于一个Singleton中，就不可能被GC掉，这样就导致了内存泄漏。
+
+**View持有Activity引用**
+
+```java
+public class MainActivity extends Activity {
+    private static Drawable mDrawable;
+
+    @Override
+    protected void onCreate(Bundle saveInstanceState) {
+        super.onCreate(saveInstanceState);
+        setContentView(R.layout.activity_main);
+        ImageView iv = new ImageView(this);
+        mDrawable = getResources().getDrawable(R.drawable.ic_launcher);
+        iv.setImageDrawable(mDrawable);
+    }
+}
+```
+
+有一个静态的Drawable对象，当ImageView设置这个Drawable时，ImageView保存了mDrawable的引用，而ImageView传入的this是MainActivity的mContext，因为被static修饰的mDrawable是常驻内存的，MainActivity是它的间接引用，MainActivity被销毁时，也不能被GC掉，所以造成内存泄漏。
+
+**正确使用Context**
+
+一般Context造成的内存泄漏，几乎都是当Context销毁的时候，却因为被引用导致销毁失败，而Application的Context对象可以理解为随着进程存在的，所以我们总结出使用Context的正确姿势：
+
+1. 当Application的Context能搞定的情况下，并且生命周期长的对象，优先使用Application的Context。
+2. 不要让生命周期长于Activity的对象持有到Activity的引用。
+3. 尽量不要在Activity中使用非静态内部类，因为非静态内部类会隐式持有外部类实例的引用，如果使用静态内部类，将外部实例引用作为弱引用持有。
