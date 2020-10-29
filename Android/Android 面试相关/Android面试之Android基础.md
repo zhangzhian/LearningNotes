@@ -87,7 +87,6 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 ```
 px = dp * density
-复制代码
 ```
 
 假设UI给的设计图屏幕宽度基于360dp，那么设备宽的像素点已知，即px，dp也已知，360dp，所以`density = px / dp`，之后根据这个修改系统中跟`density`相关的点即可。
@@ -129,6 +128,19 @@ Android消息机制中的四大概念：
 #### 3. IdHandler(闲时机制）介绍
 
 介绍： IdleHandler是在Hanlder空闲时处理空闲任务的一种机制。
+
+IdleHandler 可以用来提升性能，主要用在我们希望能够在当前线程消息队列空闲时做些事情，最好不要做耗时操作。
+
+```java
+//getMainLooper().myQueue()或者Looper.myQueue()
+Looper.myQueue().addIdleHandler(new IdleHandler() {  
+    @Override  
+    public boolean queueIdle() {  
+        //你要处理的事情
+        return false;//返回true就是单次回调后不删除，下次进入空闲时继续回调该方法，false只回调单次。    
+    }  
+});
+```
 
 执行场景：
 
@@ -183,8 +195,6 @@ Android消息机制中的四大概念：
 ![资源文件夹](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a6516590e0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 比如一个一张图片的像素为`180*180px`，`dpi`(设备独立像素密度)为320，如果它仅仅存放在`drawable-hdpi`，则有：
-
-
 
 ```
 横向像素点 = 180 * 320/240 + 0.5f = 240 px
