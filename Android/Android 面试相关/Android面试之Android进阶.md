@@ -12,7 +12,7 @@
 
 Binder是Android中特有的IPC方式，引用《Android开发艺术探索》中的话(略有改动)：
 
-> 从IPC角度来说，Binder是Android中的一种跨进程通信方式；Binder还可以理解为虚拟的物理设备，它的设备驱动是/dev/binder；从`Android Framework`来讲，Binder是`Service Manager`连接各种`Manager`和对应的`ManagerService`的桥梁。从面向对象和CS模型来讲，`Client`通过Binder和远程的`Server`进行通讯。
+> 从IPC角度来说，Binder是Android中的一种跨进程通信方式；Binder可以理解为虚拟的物理设备，它的设备驱动是/dev/binder；从`Android Framework`来讲，Binder是`Service Manager`连接各种`Manager`和对应的`ManagerService`的桥梁。从面向对象和CS模型来讲，`Client`通过Binder和远程的`Server`进行通讯。
 
 基于Binder，Android还实现了其他的IPC方式，比如`AIDL`、`Messenger`和`ContentProvider`。
 
