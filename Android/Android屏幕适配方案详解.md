@@ -5,12 +5,6 @@
 | 2020.10.15 | 1.0.0 | 初稿完成 |
 |            |       |          |
 
-先说结论，个人意见，大型、注重稳定性的项目，建议使用Smallest限定符方案，快速、敏捷开发的项目使用基于今日头条方案的AutoSize。选用适合自己项目的方案。
-
-UI设计上明显更适合使用wrap_content,match_parent,layout_weight等，就要使用，**而且在高度维度，要依照情况设计为可滑动的方式，或者match_parent,尽量不要写死。**
-
-所有的适配方案都不是用来取代match_parent,wrap_content的，而是用来完善他们的。
-
 ## 一、基础知识
 
 **px**是真实像素单位，Pixel像素，不同手机的分辨率可能不同，比如一个100*100像素的控件在分辨率越来越高的手机上会在整体UI中看起来越来越小。
@@ -495,6 +489,9 @@ values-sw400dp：
 
 **SmallestWidth 限定符适配方案** 主打的是稳定性，在运行过程中极少会出现安全隐患，适配范围也可控，不会产生其他未知的影响，而 **今日头条适配方案** 主打的是降低开发成本、提高开发效率，使用上更灵活，也能满足更多的扩展需求。
 
+> 注意：UI设计上明显更适合使用wrap_content,match_parent,layout_weight等，就要使用，**而且在高度维度，要依照情况设计为可滑动的方式，或者match_parent,尽量不要写死。**
+> 所有的适配方案都不是用来取代match_parent,wrap_content的，而是用来完善他们的。
+
 ## 参考
 
 [一种极低成本的Android屏幕适配方式](https://mp.weixin.qq.com/s/d9QCoBP6kV9VSWvVldVVwA)
@@ -506,6 +503,10 @@ values-sw400dp：
 [Github：AndroidAutoSize](https://github.com/JessYanCoding/AndroidAutoSize)
 
 [Github：生成values-sw](https://github.com/ladingwu/dimens_sw)
+
+---
+
+我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork
 
 **欢迎关注我的公众号，持续分析优质技术文章**
 ![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
