@@ -488,7 +488,7 @@ class Solution {
       9  20
         /  \
        15   7
-    
+
 返回它的最大深度 3 。
 
 方法一：递归，深度优先
@@ -655,3 +655,265 @@ class Solution {
 
 - 时间复杂度：O(n)
 - 空间复杂度：O(1)
+
+### [009] 多数元素
+
+给定一个大小为 n 的数组，找到其中的多数元素。多数元素是指在数组中出现次数大于 ⌊ n/2 ⌋ 的元素。
+
+你可以假设数组是非空的，并且给定的数组总是存在多数元素。
+
+示例 1:
+
+```
+输入: [3,2,3]
+输出: 3
+```
+
+示例 2:
+
+```
+输入: [2,2,1,1,1,2,2]
+输出: 2
+```
+
+方法一：摩尔投票法
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        int count = 0;
+        Integer candidate = null;
+
+        for (int num : nums) {
+            if (count == 0) {
+                candidate = num;
+            }
+            count += (num == candidate) ? 1 : -1;
+        }
+
+        return candidate;
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(1)
+
+方法二：哈希表
+
+```java
+class Solution {
+    private Map<Integer, Integer> countNums(int[] nums) {
+        Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+        for (int num : nums) {
+            if (!counts.containsKey(num)) {
+                counts.put(num, 1);
+            } else {
+                counts.put(num, counts.get(num) + 1);
+            }
+        }
+        return counts;
+    }
+
+    public int majorityElement(int[] nums) {
+        Map<Integer, Integer> counts = countNums(nums);
+
+        Map.Entry<Integer, Integer> majorityEntry = null;
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            if (majorityEntry == null || entry.getValue() > majorityEntry.getValue()) {
+                majorityEntry = entry;
+            }
+        }
+
+        return majorityEntry.getKey();
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(n)
+
+方法三：排序
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        Arrays.sort(nums);
+        return nums[nums.length / 2];
+    }
+}
+```
+
+时间复杂度：O(nlogn)
+
+空间复杂度：O(log n)
+
+方法四：随机化
+
+由于一个给定的下标对应的数字很有可能是众数，我们随机挑选一个下标，检查它是否是众数，如果是就返回，否则继续随机挑选。
+
+```java
+class Solution {
+    private int randRange(Random rand, int min, int max) {
+        return rand.nextInt(max - min) + min;
+    }
+
+    private int countOccurences(int[] nums, int num) {
+        int count = 0;
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int majorityElement(int[] nums) {
+        Random rand = new Random();
+
+        int majorityCount = nums.length / 2;
+
+        while (true) {
+            int candidate = nums[randRange(rand, 0, nums.length)];
+            if (countOccurences(nums, candidate) > majorityCount) {
+                return candidate;
+            }
+        }
+    }
+}
+```
+
+时间复杂度：O(∞)
+
+空间复杂度：O(1)
+
+**方法五：分治**（递归） 
+
+分治法解决这个问题：将数组分成左右两部分，分别求出左半部分的众数 `a1` 以及右半部分的众数 `a2`，随后在 `a1` 和 `a2` 中选出正确的众数。
+
+使用经典的分治算法递归求解，直到所有的子问题都是长度为 1 的数组。长度为 1 的子数组中唯一的数显然是众数，直接返回即可。如果回溯后某区间的长度大于 1，我们必须将左右子区间的值合并。如果它们的众数相同，那么显然这一段区间的众数是它们相同的值。否则，我们需要比较两个众数在整个区间内出现的次数来决定该区间的众数。
+
+```java
+class Solution {
+    private int countInRange(int[] nums, int num, int lo, int hi) {
+        int count = 0;
+        for (int i = lo; i <= hi; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int majorityElementRec(int[] nums, int lo, int hi) {
+        // base case; the only element in an array of size 1 is the majority
+        // element.
+        if (lo == hi) {
+            return nums[lo];
+        }
+
+        // recurse on left and right halves of this slice.
+        int mid = (hi - lo) / 2 + lo;
+        int left = majorityElementRec(nums, lo, mid);
+        int right = majorityElementRec(nums, mid + 1, hi);
+
+        // if the two halves agree on the majority element, return it.
+        if (left == right) {
+            return left;
+        }
+
+        // otherwise, count each element and return the "winner".
+        int leftCount = countInRange(nums, left, lo, hi);
+        int rightCount = countInRange(nums, right, lo, hi);
+
+        return leftCount > rightCount ? left : right;
+    }
+
+    public int majorityElement(int[] nums) {
+        return majorityElementRec(nums, 0, nums.length - 1);
+    }
+}
+```
+
+时间复杂度：O(nlog n)
+
+空间复杂度：O(log n)
+
+### [010] 合并两个有序链表
+
+将两个升序链表合并为一个新的 升序 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。 
+
+ 示例：
+
+```
+输入：1->2->4, 1->3->4
+输出：1->1->2->3->4->4
+```
+
+方法一：递归
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        if (l1 == null) {
+            return l2;
+        } else if (l2 == null) {
+            return l1;
+        } else if (l1.val < l2.val) {
+            l1.next = mergeTwoLists(l1.next, l2);
+            return l1;
+        } else {
+            l2.next = mergeTwoLists(l1, l2.next);
+            return l2;
+        }
+
+    }
+}
+```
+
+时间复杂度：O(n + m) 
+
+空间复杂度：O(n + m) 
+
+方法二：迭代
+
+```java
+class Solution {
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        ListNode prehead = new ListNode(-1);
+
+        ListNode prev = prehead;
+        while (l1 != null && l2 != null) {
+            if (l1.val <= l2.val) {
+                prev.next = l1;
+                l1 = l1.next;
+            } else {
+                prev.next = l2;
+                l2 = l2.next;
+            }
+            prev = prev.next;
+        }
+
+        // 合并后 l1 和 l2 最多只有一个还未被合并完，我们直接将链表末尾指向未合并完的链表即可
+        prev.next = l1 == null ? l2 : l1;
+
+        return prehead.next;
+    }
+}
+```
+
+时间复杂度：O(n + m)  
+
+空间复杂度：O(1) 
