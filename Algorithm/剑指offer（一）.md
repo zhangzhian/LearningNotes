@@ -419,3 +419,282 @@ class Solution {
 }
 ```
 
+### [005] 打印从1到最大的n位数
+
+输入数字 n，按顺序打印出从 1 到最大的 n 位十进制数。比如输入 3，则打印出 1、2、3 一直到最大的 3 位数 999。
+
+示例 1:
+
+```
+输入: n = 1
+输出: [1,2,3,4,5,6,7,8,9]
+```
+
+
+说明：
+
+- 用返回一个整数列表来代替打印
+- 4n 为正整数
+
+方法一：直接计算
+
+```java
+class Solution {
+    public int[] printNumbers(int n) {
+        int end = (int)Math.pow(10, n) - 1;
+        int[] res = new int[end];
+        for(int i = 0; i < end; i++)
+            res[i] = i + 1;
+        return res;
+    }
+}
+```
+
+时间复杂度 O(10^n)
+
+空间复杂度 O(1)
+
+方法二：[大数打印解法](https://leetcode-cn.com/problems/da-yin-cong-1dao-zui-da-de-nwei-shu-lcof/solution/mian-shi-ti-17-da-yin-cong-1-dao-zui-da-de-n-wei-2/)
+
+实际上，本题的主要考点是大数越界情况下的打印。需要解决以下三个问题：
+
+1. 表示大数的变量类型：大数的表示应用字符串 String 类型。
+2. 生成数字的字符串集：生成的列表实际上是 n 位 00 - 99 的 全排列 ，因此可避开进位操作，通过递归生成数字的 String 列表。
+
+3. 递归生成全排列：
+基于分治算法的思想，先固定高位，向低位递归，当个位已被固定时，添加数字的字符串。例如当 n = 2 时（数字范围 1 - 99），固定十位为 00 - 99 ，按顺序依次开启递归，固定个位 00 - 99 ，终止递归并添加数字字符串。
+
+![Picture1.png](https://pic.leetcode-cn.com/83f4b5930ddc1d42b05c724ea2950ee7f00427b11150c86b45bd88405f8c7c87-Picture1.png)
+
+```java
+class Solution {
+    int[] res;
+    int nine = 0, count = 0, start, n;
+    char[] num, loop = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    public int[] printNumbers(int n) {
+        this.n = n;
+        res = new int[(int)Math.pow(10, n) - 1];
+        num = new char[n];
+        start = n - 1;
+        dfs(0);
+        return res;
+    }
+    void dfs(int x) {
+        if(x == n) {
+            String s = String.valueOf(num).substring(start);
+            if(!s.equals("0")) res[count++] = Integer.parseInt(s);
+            if(n - start == nine) start--;
+            return;
+        }
+        for(char i : loop) {
+            if(i == '9') nine++;
+            num[x] = i;
+            dfs(x + 1);
+        }
+        nine--;
+    }
+}
+```
+
+时间复杂度 O(10^n)
+
+空间复杂度 O(10^n)
+
+### [006] 替换空格
+
+请实现一个函数，把字符串 s 中的每个空格替换成"%20"。
+
+ 示例 1：
+
+```
+输入：s = "We are happy."
+输出："We%20are%20happy."
+```
+
+**限制：**
+
+- 0 <= s 的长度 <= 10000
+
+方法一：字符数组
+
+```java
+class Solution {
+    public String replaceSpace(String s) {
+        int length = s.length();
+        char[] array = new char[length * 3];
+        int size = 0;
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            if (c == ' ') {
+                array[size++] = '%';
+                array[size++] = '2';
+                array[size++] = '0';
+            } else {
+                array[size++] = c;
+            }
+        }
+        String newStr = new String(array, 0, size);
+        return newStr;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：O(n) 
+
+方法二：
+
+```java
+class Solution {
+    public String replaceSpace(String s) {
+        StringBuilder res = new StringBuilder();
+        for(Character c : s.toCharArray())
+        {
+            if(c == ' ') res.append("%20");
+            else res.append(c);
+        }
+        return res.toString();
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：O(n) 
+
+### [007] 从尾到头打印链表
+
+输入一个链表的头节点，从尾到头反过来返回每个节点的值（用数组返回）。
+
+ 示例 1：
+
+```
+输入：head = [1,3,2]
+输出：[2,3,1]
+```
+
+
+限制：
+
+- 0 <= 链表长度 <= 10000
+
+方法一：递归
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    int[] res;
+    int i = 0, j = 0;
+    public int[] reversePrint(ListNode head) {
+        solve(head);
+        return res;
+    }
+    public void solve(ListNode head){
+        if(head == null){
+            res = new int[i];
+            return;
+        }
+        i++; 
+        solve(head.next);
+        res[j] = head.val;
+        j++;
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(n)
+
+方法二：
+
+```java
+class Solution {
+    public int[] reversePrint(ListNode head) {
+        LinkedList<Integer> stack = new LinkedList<Integer>();
+        while(head != null) {
+            stack.addLast(head.val);
+            head = head.next;
+        }
+        int[] res = new int[stack.size()];
+        for(int i = 0; i < res.length; i++)
+            res[i] = stack.removeLast();
+    return res;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：O(1) 
+
+### [008] 反转链表
+
+反转一个单链表。
+
+示例:
+
+```
+输入: 1->2->3->4->5->NULL
+输出: 5->4->3->2->1->NULL
+```
+
+**限制：**
+
+```
+0 <= 节点个数 <= 5000
+```
+
+方法一：递归
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public ListNode reverseList(ListNode head) {
+        if (head == null || head.next == null) {
+            return head;
+        }
+        ListNode p = reverseList(head.next);
+        head.next.next = head;
+        head.next = null;
+        return p;
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(n)
+
+方法二：
+
+```java
+class Solution {
+    public ListNode reverseList(ListNode head) {
+        ListNode prev = null;
+        ListNode curr = head;
+        while (curr != null) {
+            ListNode nextTemp = curr.next;
+            curr.next = prev;
+            prev = curr;
+            curr = nextTemp;
+        }
+        return prev;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：O(1) 
