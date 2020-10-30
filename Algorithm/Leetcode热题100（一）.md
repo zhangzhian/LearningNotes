@@ -917,3 +917,152 @@ class Solution {
 时间复杂度：O(n + m)  
 
 空间复杂度：O(1) 
+
+### [011] 移动零
+
+给定一个数组 nums，编写一个函数将所有 0 移动到数组的末尾，同时保持非零元素的相对顺序。
+
+示例:
+
+```
+输入: [0,1,0,3,12]
+输出: [1,3,12,0,0]
+```
+
+说明:
+
+必须在原数组上操作，不能拷贝额外的数组。
+尽量减少操作次数。
+
+方法一：两次遍历
+
+```java
+class Solution {
+    public void moveZeroes(int[] nums) {
+		if(nums==null) {
+			return;
+		}
+		//第一次遍历的时候，j指针记录非0的个数，只要是非0的统统都赋给nums[j]
+		int j = 0;
+		for(int i=0;i<nums.length;++i) {
+			if(nums[i]!=0) {
+				nums[j++] = nums[i];
+			}
+		}
+		//非0元素统计完了，剩下的都是0了
+		//所以第二次遍历把末尾的元素都赋为0即可
+		for(int i=j;i<nums.length;++i) {
+			nums[i] = 0;
+		}
+    }
+}
+```
+
+时间复杂度:O(n)
+空间复杂度:O(1)
+
+方法二：一次遍历
+
+```java
+class Solution {
+	public void moveZeroes(int[] nums) {
+		if(nums==null) {
+			return;
+		}
+		//两个指针i和j
+		int j = 0;
+		for(int i=0;i<nums.length;i++) {
+			//当前元素!=0，就把其交换到左边，等于0的交换到右边
+            if (nums[i] != 0) {
+                if (i > j) {// #1
+                    nums[j] = nums[i];
+                    nums[i] = 0;
+                }
+                j++;
+            }
+		}
+	}
+}	
+```
+
+时间复杂度:O(n)
+空间复杂度:O(1)
+
+### [012] 找到所有数组中消失的数字
+
+给定一个范围在  1 ≤ a[i] ≤ n ( n = 数组大小 ) 的 整型数组，数组中的元素一些出现了两次，另一些只出现一次。
+
+找到所有在 [1, n] 范围之间没有出现在数组中的数字。
+
+您能在不使用额外空间且时间复杂度为O(n)的情况下完成这个任务吗? 你可以假定返回的数组不算在额外空间内。
+
+示例:
+
+```
+输入:
+[4,3,2,7,8,2,3,1]
+
+输出:
+[5,6]
+```
+
+方法一：HashMap（复杂度为O(n)，不符合题目要求）
+
+```java
+class Solution {
+    public List<Integer> findDisappearedNumbers(int[] nums) {
+        HashMap<Integer, Boolean> hashTable = new HashMap<Integer, Boolean>();
+        
+        for (int i = 0; i < nums.length; i++) {
+            hashTable.put(nums[i], true);
+        }
+        
+        List<Integer> result = new LinkedList<Integer>();
+        
+        for (int i = 1; i <= nums.length; i++) {
+            if (!hashTable.containsKey(i)) {
+                result.add(i);
+            }
+        }
+        
+        return result;   
+    }
+}
+```
+
+- 时间复杂度：O(N)
+- 空间复杂度：O(N) 
+
+方法二：
+
+1. 遍历每个元素，对索引进行标记，将对应索引位置的值变为负数；
+2. 遍历下索引，看看哪些索引位置上的数不是负数的，位置上不是负数的索引，对应的元素就是不存在的。
+
+```java
+class Solution {
+    public List<Integer> findDisappearedNumbers(int[] nums) {
+        //用来存放结果
+        List<Integer> res = new ArrayList<>(); 
+        //1. 遍历下数组的元素，对对应的索引位置的元素作标记
+        int len = nums.length;
+        for(int i = 0; i < len; i++){
+            int num = Math.abs(nums[i]);  //由于数组的元素有可能被*-1，所以取绝对值
+            int index = num - 1;
+            if(nums[index] > 0){
+                nums[index] *= -1;
+            }
+        }      
+        // 寻找没有标记的索引位置
+        for(int i = 0; i < len; i++){
+            if(nums[i] > 0){
+                int num = i + 1;  //将索引转化为对应的元素
+                res.add(num);
+            }     
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度：O(N) 
+- 空间复杂度：O(1) 
