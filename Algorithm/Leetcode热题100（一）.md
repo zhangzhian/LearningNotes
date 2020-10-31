@@ -1066,3 +1066,220 @@ class Solution {
 
 - 时间复杂度：O(N) 
 - 空间复杂度：O(1) 
+
+### [013] 相交链表
+
+编写一个程序，找到两个单链表相交的起始节点。
+
+如下面的两个链表：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_statement.png)
+
+在节点 c1 开始相交。
+
+ 
+
+示例 1：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_1.png)
+
+```
+输入：intersectVal = 8, listA = [4,1,8,4,5], listB = [5,0,1,8,4,5], skipA = 2, skipB = 3
+输出：Reference of the node with value = 8
+输入解释：相交节点的值为 8 （注意，如果两个链表相交则不能为 0）。从各自的表头开始算起，链表 A 为 [4,1,8,4,5]，链表 B 为 [5,0,1,8,4,5]。在 A 中，相交节点前有 2 个节点；在 B 中，相交节点前有 3 个节点。
+```
+
+
+示例 2：
+
+[![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_2.png)](https://assets.leetcode.com/uploads/2018/12/13/160_example_2.png)
+
+```
+输入：intersectVal = 2, listA = [0,9,1,2,4], listB = [3,2,4], skipA = 3, skipB = 1
+输出：Reference of the node with value = 2
+输入解释：相交节点的值为 2 （注意，如果两个链表相交则不能为 0）。从各自的表头开始算起，链表 A 为 [0,9,1,2,4]，链表 B 为 [3,2,4]。在 A 中，相交节点前有 3 个节点；在 B 中，相交节点前有 1 个节点。
+```
+
+
+示例 3：
+
+[![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_3.png)](https://assets.leetcode.com/uploads/2018/12/13/160_example_3.png)
+
+```
+输入：intersectVal = 0, listA = [2,6,4], listB = [1,5], skipA = 3, skipB = 2
+输出：null
+输入解释：从各自的表头开始算起，链表 A 为 [2,6,4]，链表 B 为 [1,5]。由于这两个链表不相交，所以 intersectVal 必须为 0，而 skipA 和 skipB 可以是任意值。
+解释：这两个链表不相交，因此返回 null。
+```
+
+
+注意：
+
+- 如果两个链表没有交点，返回 null.
+- 在返回结果后，两个链表仍须保持原有的结构。
+- 可假定整个链表结构中没有循环。
+- 程序尽量满足 O(n) 时间复杂度，且仅用 O(1) 内存。
+
+方法一: 暴力法
+
+```java
+public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+    if(headA==null||headB==null){
+        return null;
+    }
+    ListNode flagA=headA;
+    do {
+        ListNode flagB=headB;
+        do {
+            if(flagA==flagB) {
+                return flagA;
+            }else {
+                flagB=flagB.next;
+            }
+
+        }while(flagB!=null);
+        flagA=flagA.next;
+    }while(flagA!=null);
+    return null;
+}//暴力法
+```
+
+- 时间复杂度 : (mn) 
+- 空间复杂度 : O(1) 
+
+方法二: 哈希表法
+
+```java
+public ListNode getIntersectionNode1(ListNode headA, ListNode headB) {
+    if(headA==null||headB==null) {
+        return null;
+    }
+    HashMap<ListNode, Integer> nodeOfHeadA=new HashMap<ListNode, Integer>();
+    ListNode pA=headA;
+    while(pA!=null) {
+        if(!nodeOfHeadA.containsKey(pA)) {
+            nodeOfHeadA.put(pA,pA.val);
+        }
+        pA=pA.next;
+    }
+    ListNode pB=headB;
+    while(pB!=null) {
+        if(nodeOfHeadA.containsKey(pB)) {
+            return pB;
+        }
+        pB=pB.next;
+    }
+    return null;
+}//哈希表法
+
+```
+
+- 时间复杂度 : O(m+n) 
+- 空间复杂度 : O(m) 或 O(n)。
+
+**方法三**：双指针法，消除长度差，拼接两链表
+
+```
+pA:1->2->3->4->5->6->null->9->5->6->null
+pB:9->5->6->null->1->2->3->4->5->6->null
+```
+
+ ```java
+public class Solution {
+    public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+        if (headA == null || headB == null) return null;
+        ListNode pA = headA, pB = headB;
+        while (pA != pB) {
+            pA = pA == null ? headB : pA.next;
+            pB = pB == null ? headA : pB.next;
+        }
+        return pA;
+    }
+}
+ ```
+
+- 时间复杂度 : O(m+n) 
+- 空间复杂度 : O(1)
+
+### [014] 最小栈
+
+设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。
+
+push(x) —— 将元素 x 推入栈中。
+pop() —— 删除栈顶的元素。
+top() —— 获取栈顶元素。
+getMin() —— 检索栈中的最小元素。
+
+
+示例:
+
+```
+输入：
+["MinStack","push","push","push","getMin","pop","top","getMin"]
+[[],[-2],[0],[-3],[],[],[],[]]
+
+输出：
+[null,null,null,null,-3,null,0,-2]
+
+解释：
+MinStack minStack = new MinStack();
+minStack.push(-2);
+minStack.push(0);
+minStack.push(-3);
+minStack.getMin();   --> 返回 -3.
+minStack.pop();
+minStack.top();      --> 返回 0.
+minStack.getMin();   --> 返回 -2.
+```
+
+
+提示：
+
+pop、top 和 getMin 操作总是在 非空栈 上调用。
+
+方法一
+
+```java
+class MinStack {
+    Deque<Integer> xStack;
+    Deque<Integer> minStack;
+
+    public MinStack() {
+        xStack = new LinkedList<Integer>();
+        minStack = new LinkedList<Integer>();
+        minStack.push(Integer.MAX_VALUE);
+    }
+    
+    public void push(int x) {
+        xStack.push(x);
+        minStack.push(Math.min(minStack.peek(), x));
+    }
+    
+    public void pop() {
+        xStack.pop();
+        minStack.pop();
+    }
+    
+    public int top() {
+        return xStack.peek();
+    }
+    
+    public int getMin() {
+        return minStack.peek();
+    }
+}
+
+/**
+ * Your MinStack object will be instantiated and called as such:
+ * MinStack obj = new MinStack();
+ * obj.push(x);
+ * obj.pop();
+ * int param_3 = obj.top();
+ * int param_4 = obj.getMin();
+ */
+```
+
+时间复杂度：对于题目中的所有操作，时间复杂度均为 O(1) 
+
+空间复杂度：O(n) 
+
