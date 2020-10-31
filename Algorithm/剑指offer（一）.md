@@ -698,3 +698,188 @@ class Solution {
 
 - 时间复杂度：O(n) 
 - 空间复杂度：O(1) 
+
+### [009] 二叉搜索树的第k大节点
+
+给定一棵二叉搜索树，请找出其中第k大的节点。
+
+```
+示例 1:
+
+输入: root = [3,1,4,null,2], k = 1
+   3
+  / \
+ 1   4
+  \
+   2
+输出: 4
+示例 2:
+
+输入: root = [5,3,6,2,4,null,null,1], k = 3
+       5
+      / \
+     3   6
+    / \
+   2   4
+  /
+ 1
+输出: 4
+```
+
+**限制：**
+
+- 1 ≤ k ≤ 二叉搜索树元素个数
+
+方法一：dfs
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int kthLargest(TreeNode root, int k) {
+        List<Integer> list = new ArrayList();
+        dfs(list,root);
+        return list.get(list.size() - k);
+    }
+
+    void dfs(List list, TreeNode root){
+        if (root == null) return;
+        dfs(list,root.left);
+        list.add(root.val);
+        dfs(list,root.right);
+    }
+}
+```
+
+```java
+class Solution {
+    int res, k;
+    public int kthLargest(TreeNode root, int k) {
+        this.k = k;
+        dfs(root);
+        return res;
+    }
+    void dfs(TreeNode root) {
+        if(root == null) return;
+        dfs(root.right);
+        if(k == 0) return;
+        if(--k == 0) res = root.val;
+        dfs(root.left);
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(N) 
+
+方法二：
+
+```java
+class Solution {
+    public int kthLargest(TreeNode root, int k) {
+        int count = 1;
+        Stack<TreeNode> stack = new Stack<>();
+        while (root != null || !stack.empty()) {
+            while (root != null) {
+                stack.push(root);
+                root = root.right;
+            }
+            TreeNode pop = stack.pop();
+            if (count == k) {
+                return pop.val;
+            }
+            count++;
+            root = pop.left;
+        }
+        return 0;
+    }
+}
+```
+
+### [010] 合并两个排序的链表
+
+输入两个递增排序的链表，合并这两个链表并使新链表中的节点仍然是递增排序的。
+
+示例1：
+
+```
+输入：1->2->4, 1->3->4
+输出：1->1->2->3->4->4
+```
+
+限制：
+
+- 0 <= 链表长度 <= 1000
+
+方法一：递归
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        if (l1 == null) {
+            return l2;
+        } else if (l2 == null) {
+            return l1;
+        } else if (l1.val < l2.val) {
+            l1.next = mergeTwoLists(l1.next, l2);
+            return l1;
+        } else {
+            l2.next = mergeTwoLists(l1, l2.next);
+            return l2;
+        }
+    }
+}
+```
+
+时间复杂度：O(n + m) 
+
+空间复杂度：O(n + m) 
+
+方法二：迭代
+
+```java
+class Solution {
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        ListNode prehead = new ListNode(-1);
+
+        ListNode prev = prehead;
+        while (l1 != null && l2 != null) {
+            if (l1.val <= l2.val) {
+                prev.next = l1;
+                l1 = l1.next;
+            } else {
+                prev.next = l2;
+                l2 = l2.next;
+            }
+            prev = prev.next;
+        }
+
+        // 合并后 l1 和 l2 最多只有一个还未被合并完，我们直接将链表末尾指向未合并完的链表即可
+        prev.next = l1 == null ? l2 : l1;
+
+        return prehead.next;
+    }
+}
+```
+
+时间复杂度：O(n + m)  
+
+空间复杂度：O(1) 
