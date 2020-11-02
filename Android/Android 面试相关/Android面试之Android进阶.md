@@ -45,6 +45,12 @@ Binder的结构： `Client`：服务的请求方。 `Server`：服务的提供�
 
 Binder通信的实质是利用内存映射，将用户进程的内存地址和内核的内存地址映射为同一块物理地址，也就是说他们使用的同一块物理空间，每次创建Binder的时候大概分配128的空间。数据进行传输的时候，从这个内存空间分配一点，用完了再释放即可。
 
+#### (3) binder怎么验证pid?binder驱动了解吗？
+
+
+
+#### (4) binder进程间通信可以调用原进程方法吗？
+
 
 
 ### 2. 进程
@@ -62,6 +68,10 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 #### (2) Zygote孕育进程过程？
 
 ![Zygote工作流程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a68eb05620?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+#### (3) 点击桌面图标的启动过程？涉及的进程和组件
+
+> [默认Home应用程序（Launcher）的启动过程源码分析](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.kancloud.cn%2Falex_wsc%2Fandroids%2F477726)
 
 
 
@@ -101,6 +111,22 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 5. `AMS`发送创建`Application`的消息给`ApplicationThread`，进而转交给`ActivityThread`中的`H`，它是一个`Handler`，接着进行`Application`的创建工作。
 6. `AMS`以同样的方式创建`Activity`，接着就是大家熟悉的创建`Activity`的工作了。
 
+#### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？从事件传递，网络请求,AMS交互角度分析
+
+
+
+#### (4) AMS交互调用生命周期是顺序的吗？
+
+
+
+#### (5) 说说App的启动过程,在ActivityThread的main方法里面做了什么事，什么时候启动第一个Activity？
+
+#### (6) Launcher启动图标，有几个进程？
+
+
+
+#### (7) 启动优化做过什么工作？如果首页就要用到的初始化？
+
 
 
 ### 4. Window
@@ -127,10 +153,30 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 > [《Android Context 上下文 你必须知道的一切》](https://blog.csdn.net/lmj623565791/article/details/40481055)
 
+#### (2) Android应用中哪些是 Context，一个应用有多少个 Context？
+
+> [Android Context 熟悉还是陌生](https://www.jianshu.com/p/cc0bb2a71ee8)
+
+#### (3) Context 的使用上如何避免内存泄漏？
+
+#### (4) 如何跨进程拿 Context？如 Activity 还没启动的时候如何拿 Context？
+
+**getApplication 与 getApplicationContext 区别**：getApplication() 用用来获取 Application实例的，但这个方法只有在 Activity 和 Service 中才能调用。如果在一些其它的场景，比如BroadcastReceiver 中也想获得 Application 的实例，这时需要借助 getApplicationContext() 方法。也就是说，getApplicationContext() 方法的作用域会更广一些，任何一个 Context 的实例，只要调用 getApplicationContext() 方法都可以拿到我们的Application对象；
+
+**Application 中方法的执行顺序为**：Application 构造方法 → attachBaseContext() → onCreate()。如果在 attachBaseContext() 中或执行前，调用 getApplicationContext() 得到的值为null
+
+
+
+### 7. AIDL
+
+#### (1) AIDL in out oneWay代表什么意思？
+
+
+
 ## 二、Android权限处理
 
 ## 三、多线程断点续传
-#### (1) 多线程断点续传？
+#### (1) 多线程断点续传r？
 
 基础知识：
 
@@ -150,6 +196,16 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 
 建议寻找一些RxJava的文章。
 
+#### (1) RXJava怎么切换线程
+
+#### (2) Rxjava自定义操作符
+
+#### (3) 广播与RxBus的区别，全局广播与局部广播区别
+
+
+
+
+
 ### 2. OkHttp
 
 #### (1) OkHttp责任链模式
@@ -158,6 +214,20 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 
 建议看一遍源码，过程并不复杂。
 
+#### (3) OkHttp怎么实现连接池?里面怎么处理SSL？
+
+#### (4) 如果让你来实现一个网络框架，你会考虑什么
+
+#### (5) OkHttp网络拦截器，应用拦截器?OKHttp有哪些拦截器，分别起什么作用
+
+#### (6) OkHttp里面用到了什么设计模式
+
+#### (7) okhttp 在 response 返回后，调用了 response.toString()，后面再使用 response 会用什么问题？
+
+调用 response.toString() 连接会断开，后面的取值会出问题
+
+
+
 ### 3. Retrofit
 
 #### (1) 设计模式和封层解耦的理念
@@ -165,6 +235,14 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 #### (2) 动态代理
 
 建议看一遍源码，过程并不复杂。
+
+
+
+#### (3) 编译时注解与运行时注解，为什么retrofit要使用运行时注解？什么时候用运行时注解？
+
+#### (4) retrofit怎么做post请求
+
+
 
 ### 4. Glide
 
@@ -175,6 +253,10 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 #### (3) Glide缓存实现机制？
 
 #### (4) Glide如何处理生命周期？
+
+#### (5) 有用过Glide的什么深入的API，自定义model是在Glide的什么阶段
+
+
 
 [《Glide最全解析》](https://blog.csdn.net/sinyu890807/category_9268670.html)
 [《面试官：简历上最好不要写Glide，不是问源码那么简单》](https://juejin.im/post/6844903986412126216)
@@ -194,23 +276,175 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 
 > [《Android Jetpack源码分析系列》](https://blog.csdn.net/mq2553299/column/info/24151)
 
+#### 1. LifeCycle的原理是怎样的？如果在onStart里面订阅，会回调onCreate吗？
+
+#### 2. ViewModel为什么在旋转屏幕后不会丢失状态
+
+#### 3. 有没有看一下Google官方的ViewModel demo
+
+#### 4. ViewModel在Activity初始化与在Fragment中初始化，有什么区别？
+
+#### 5.viewModel是怎么实现双向数据绑定的？
+
+#### 6.viewModel怎么实现自动处理生命周期？
+
+#### 7. ViewModel的使用中有什么坑？
+
+#### 8. DataBinding的原理了解吗？
+
+#### 9. ViewModel如何知道View层的生命周期？
+
+事实上，如果你仅仅使用ViewModel，它是感知不了生命周期，它需要结合LiveData去感知生命周期，如果仅仅使用DataBinding去实现MVVM，它对数据源使用了弱引用，所以一定程度上可以避免内存泄漏的发生。
+
+
+
+
+
 ## 五、性能优化
+
 [《Android 性能优化最佳实践》](https://juejin.im/post/6844903641032163336)
 
 ### 1. 布局优化
 
 ### 2. 绘制优化
 ### 3. 内容泄漏
+
+#### 1. 有哪些原因会引起内存泄漏？
+
+> [Android 内存泄露与分析工具](https://www.jianshu.com/p/97fb764f2669)
+
+#### 2. 内存泄漏有什么方式检测？用过哪些工具，其中的原理是什么？
+
+[Java内存问题 及 LeakCanary 原理分析](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F5ab8d3d46fb9a028ca52f813)：
+
+基本原理：用ActivityLifecycleCallbacks接口来检测Activity生命周期，主要是在**onDestroy()**方法中，手动调用 GC，然后利用ReferenceQueue+WeakReference 监听对象回收情况 ，来判断是否有释放不掉的引用，再结合dump memory的hpof文件, 用[HaHa](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Fsquare%2Fhaha)分析出泄漏地方；
+
+LeakCanary会单独开一进程，用来执行分析任务，和监听任务分开处理。Application中可通过processName判断是否是任务执行进程；
+
+利用主线程空闲的时候执行检测任务，在MessageQueue中加入了一个IdleHandler来得到主线程空闲回调；
+
+LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还得用
+
+
+
 ### 4. 响应速度优化
+
+#### 1. 有什么实际解决UI卡顿优化的经历
+
+
+
 ### 5. 启动优化
 ### 6. Bitmap优化
+
+#### 1. 有做过什么Bitmap优化的实际经验
+
+
+
 ### 7. 线程优化
 ### 8. RecycleView优化
 
+#### 
+
+### 9.其他
+
+#### 1. ANR了解过吗？有没有实际的ANR定位问题的经历
+
+#### 2. 哪些原因会导致 oom？
+
+**虚拟机堆内存不足**：内存泄漏（内存缓增）、大对象/大图片（内存突增）
+
+**内存碎片，无足够连续内存空间**：循环中创建对象、字符串拼接...
+
+**系统底层限制**：FD 数量超出限制、线程数量超出限制、其他系统限制
+
+#### 3. 为什么会出现oom？
+
+为了整个Android系统的内存控制需要，Android 系统为每一个应用程序都设置了一个硬性的Dalvik Heap Size 最大限制阈值，这个阈值在不同的设备上会因为 RAM 大小不同而各有差异。如果应用占用内存空间已经接近这个阈值，此时再尝试分配内存的话，很容易引起OutOfMemoryError 的错误。
+
+#### debug 包有什么修改方式使不出现 oom？
+
+Android为每个进程分配内存时，采用弹性的分配方式，即刚开始并不会给应用分配很多的内存，而是给每一个进程[分配一个“够用”的内存大小](https://www.jianshu.com/p/500ab0f48dc3)，这个值由具体的设备决定
+
+在AndroidManifest.xml中的application标签中设置largeHeap为true，可以申请最多的内存的限制
+
+这个内存限制的值是在 /system/build.prop文件中可以[查看与修改](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.droidviews.com%2Fedit-build-prop-file-on-android%2F)
+
+
+
 ## 六、插件化
+#### 1. 插件化的主要优点和缺点是什么？
+
+
+
+#### 2. 插件化的原理是怎样的？
+
+#### 3. 有没有什么非运行时插件化的解决方案？
+
+#### 4. 资源的插件化id重复如何解决？
+
+#### 5.插件化换肤方案
+
+#### 6. startActivity hook了哪个方法
+
+
+
 ## 七、组件化
 
-## 八、架构
+#### 1. 组件化有详细了解过吗？ARouter详细原理
+
+
+
+#### 2.ARouter怎么实现接口调用
+
+#### 3.ARouter怎么实现页面拦截
+
+#### 4.如果不用ARouter，你会怎么去解藕。接口？设计接口有什么需要注意的？
+
+## 八、热修复
+
+#### 1. tinker的原理是什么,还用过什么热修复框架，robust的原理是什么？
+
+#### 2. 热修复的原理，资源的热修复的原理,会不会有资源冲突的问题
+
+
+
+## 九、NDK
+
+
+
+## 十、WebView
+
+#### 1. h5与native通信你做过什么工作？
+
+
+
+#### 2. webView加载本地图片，如何从安全方面考虑
+
+
+
+#### 3. h5与native交互，webView.loadUrl与webView.evaluateUrl区别
+
+
+
+#### 4. 有没有做过什么WebView秒开的一些优化
+
+
+
+#### 5. native如何对h5进行鉴权，让某些页面可以调，某些页面不能调
+
+
+
+#### 6. jsBridge实现方式
+
+#### 7. 项目中对WebView的功能进行了怎样的增强
+
+#### 8. 项目中的Webview与native通信
+
+#### 9. 为什么不利用同步方法来做jsBridge交互？同步可以做异步，异步不能做同步
+
+
+
+## 十一、架构
 
 #### 1. MVC、MVP和MVVM是什么？
 
@@ -228,15 +462,45 @@ MVP是MVC的进一步解耦，简单来讲，在MVC中，View层既可以和Cont
 
 MVP中的每个方法都需要你去主动调用，它其实是被动的，而MVVM中有数据驱动这个概念，当你的持有的数据状态发生变更的时候，你的View你可以监听到这个变化，从而主动去更新，这其实是主动的。
 
-#### 4. ViewModel如何知道View层的生命周期？
-
-事实上，如果你仅仅使用ViewModel，它是感知不了生命周期，它需要结合LiveData去感知生命周期，如果仅仅使用DataBinding去实现MVVM，它对数据源使用了弱引用，所以一定程度上可以避免内存泄漏的发生。
 
 
+#### 5. 讲讲MVP模式中内存泄漏的问题，怎么处理内存泄漏
 
 
 
+#### 6. 项目搭建过程中有什么经验,有用到什么gradle脚本，分包有做什么操作
 
+#### 7. mainfest中配置LargeHeap，真的能分配到大内存吗？ 
+
+#### 8. 如果叫你实现，你会怎样实现一个多主题的效果
+
+#### 10. mvp与mvvm的区别，mvvm怎么更新UI
+
+#### 11. 如何在网络框架里直接避免内存泄漏，不需要在presenter中释放订阅
+
+## 十二、 Android 虚拟机 
+
+#### 1. Android 虚拟机区别，编译区别，dex区别
+
+## 十三、其他
+
+#### 1. token放在本地如何保存？如何加密比较好？
+
+
+
+#### 2. 说说你对屏幕刷新机制的了解，双重缓冲，三重缓冲，黄油模型
+
+
+
+#### 3. 阿里编程规范不建议使用线程池，为什么？
+
+
+
+#### 4. 你们项目的稳定性如何？有做过什么稳定性优化的工作？
+
+#### 5. 推送sdk底层实现
+
+#### 6. LeakCanary 的收集内存泄露是在 Activity 的什么时机，大致原理
 
 
 

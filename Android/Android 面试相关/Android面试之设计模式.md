@@ -119,3 +119,4 @@ public class SingleInstance {
 }
 ```
 
+#### 6. Android源码中有哪些设计模式
