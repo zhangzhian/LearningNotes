@@ -1008,3 +1008,246 @@ class CQueue {
 时间复杂度：对于插入和删除操作，时间复杂度均为 O(1)。插入不多说，对于删除操作，虽然看起来是 O(n)的时间复杂度，但是仔细考虑下每个元素只会「至多被插入和弹出 stack2 一次」，因此均摊下来每个元素被删除的时间复杂度仍为 O(1)
 
 空间复杂度：O(n)。需要使用两个栈存储已有的元素。
+
+### [013] 二叉树的最近公共祖先
+
+给定一个二叉树, 找到该树中两个指定节点的最近公共祖先。
+
+百度百科中最近公共祖先的定义为：“对于有根树 T 的两个结点 p、q，最近公共祖先表示为一个结点 x，满足 x 是 p、q 的祖先且 x 的深度尽可能大（一个节点也可以是它自己的祖先）。”
+
+例如，给定如下二叉树:  root = [3,5,1,6,2,0,8,null,null,7,4]
+
+ ![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/15/binarytree.png)
+
+示例 1:
+
+```
+输入: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 1
+输出: 3
+解释: 节点 5 和节点 1 的最近公共祖先是节点 3。
+```
+
+示例 2:
+
+```
+输入: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4
+输出: 5
+解释: 节点 5 和节点 4 的最近公共祖先是节点 5。因为根据定义最近公共祖先节点可以为节点本身。
+```
+
+**说明:**
+
+- 所有节点的值都是唯一的。
+- p、q 为不同节点且均存在于给定的二叉树中。
+
+方法一：递归
+
+**终止条件：**
+
+- 当越过叶节点，则直接返回 null  ；
+- 当 root 等于 p, q，则直接返回 root  ；
+
+**递推工作：**
+
+- 开启递归左子节点，返回值记为 left ；
+
+- 开启递归右子节点，返回值记为 right ；
+
+**返回值**： 根据 left 和 right ，可展开为四种情况；
+
+- 当 left 和 right 同时为空 ：说明 root 的左 / 右子树中都不包含 p,q ，返回 null ；
+
+- 当 left 和 right 同时不为空 ：说明 p, q 分列在 root 的 异侧 （分别在 左 / 右子树），因此 root 为最近公共祖先，返回 root ；
+
+- 当 left 为空 ，right 不为空 ：p,q 都不在 root 的左子树中，直接返回 right 。具体可分为两种情况：
+  - p,q 其中一个在 root 的 右子树 中，此时 right 指向 pp（假设为 pp ）；
+  - p,q 两节点都在 root 的 右子树 中，此时的 right 指向 最近公共祖先节点 ；
+
+- 当 left 不为空 ， right 为空 ：与情况 3. 同理；
+
+观察发现， 情况 1. 可合并至 3. 和 4. 内。
+
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(root == null || root == p || root == q) return root;
+        TreeNode left = lowestCommonAncestor(root.left, p, q);
+        TreeNode right = lowestCommonAncestor(root.right, p, q);
+        if(left == null) return right;
+        if(right == null) return left;
+        return root;
+    }
+}
+```
+
+情况 1. , 2. , 3. , 4. 的展开写法如下。
+
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(root == null || root == p || root == q) return root;
+        TreeNode left = lowestCommonAncestor(root.left, p, q);
+        TreeNode right = lowestCommonAncestor(root.right, p, q);
+        if(left == null && right == null) return null; // 1.
+        if(left == null) return right; // 3.
+        if(right == null) return left; // 4.
+        return root; // 2. if(left != null and right != null)
+    }
+}
+```
+
+时间复杂度 O(N) ： 其中 N 为二叉树节点数；最差情况下，需要递归遍历树的所有节点。
+
+空间复杂度 O(N) ： 最差情况下，递归深度达到 N ，系统使用 O(N)大小的额外空间。
+
+### [014] 和为s的连续正数序列
+
+输入一个正整数 target ，输出所有和为 target 的连续正整数序列（至少含有两个数）。
+
+序列内的数字由小到大排列，不同序列按照首个数字从小到大排列。
+
+示例 1：
+
+```
+输入：target = 9
+输出：[[2,3,4],[4,5]]
+```
+
+示例 2：
+
+```
+输入：target = 15
+输出：[[1,2,3,4,5],[4,5,6],[7,8]]
+```
+
+
+限制：
+
+- 1 <= target <= 10^5
+
+[方法一和方法二](https://leetcode-cn.com/problems/he-wei-sde-lian-xu-zheng-shu-xu-lie-lcof/solution/mian-shi-ti-57-ii-he-wei-sde-lian-xu-zheng-shu-x-2/)
+
+**方法一：枚举 + 暴力**
+
+```java
+class Solution {
+    public int[][] findContinuousSequence(int target) {
+        List<int[]> list = new ArrayList<>();      
+        // (target - 1) / 2 等效于 target / 2 下取整
+        int sum = 0, limit = (target - 1) / 2; 
+        for (int i = 1; i <= limit; ++i) {
+            for (int j = i;; ++j) {
+                sum += j;
+                if (sum > target) {
+                    sum = 0;
+                    break;
+                }
+                else if (sum == target) {
+                    int[] arr = new int[j-i+1];
+                    for (int k = i; k <= j; k++) {
+                        arr[k-i] = k;
+                    }
+                    list.add(arr);
+                    sum = 0;
+                    break;
+                }
+            }
+        }
+        return list.toArray(new int[list.size()][]);
+    }
+}
+```
+
+**方法二：枚举 + 数学优化**
+
+```java
+class Solution {
+    public int[][] findContinuousSequence(int target) {
+        List<int[]> list = new ArrayList<>();  
+        // (target - 1) / 2 等效于 target / 2 下取整
+        int limit = (target - 1) / 2; 
+        for (int x = 1; x <= limit; ++x) {
+            long delta = 1 - 4 * (x - 1L * x * x - 2 * target);
+            if (delta < 0) continue;
+            int delta_sqrt = (int)Math.sqrt(delta + 0.5);
+            if (1L * delta_sqrt * delta_sqrt == delta 
+            && (delta_sqrt - 1) % 2 == 0){
+                // 另一个解(-1-delta_sqrt)/2必然小于0，不用考虑
+                int y = (-1 + delta_sqrt) / 2; 
+                if (x < y) {
+                    int[] arr = new int[y-x+1];
+                    for (int i = x; i <= y; i++){
+                        arr[i-x] = i; 
+                    } 
+                    list.add(arr);
+                }
+            }
+        }
+        return list.toArray(new int[list.size()][]);
+    }
+}
+```
+
+**方法三：双指针（滑动窗口）**
+
+https://leetcode-cn.com/problems/he-wei-sde-lian-xu-zheng-shu-xu-lie-lcof/solution/shi-yao-shi-hua-dong-chuang-kou-yi-ji-ru-he-yong-h/
+
+ ```java
+public int[][] findContinuousSequence(int target) {
+    int i = 1; // 滑动窗口的左边界
+    int j = 1; // 滑动窗口的右边界
+    int sum = 0; // 滑动窗口中数字的和
+    List<int[]> res = new ArrayList<>();
+
+    while (i <= target / 2) {
+        if (sum < target) {
+            // 右边界向右移动
+            sum += j;
+            j++;
+        } else if (sum > target) {
+            // 左边界向右移动
+            sum -= i;
+            i++;
+        } else {
+            // 记录结果
+            int[] arr = new int[j-i];
+            for (int k = i; k < j; k++) {
+                arr[k-i] = k;
+            }
+            res.add(arr);
+            // 右边界向右移动
+            sum -= i;
+            i++;
+        }
+    }
+
+    return res.toArray(new int[res.size()][]);
+}
+ ```
+
+时间复杂度：由于两个指针移动均单调不减，且最多移动
+$$
+\lfloor\frac{\textit{target}}{2}\rfloor
+$$
+次，即方法一提到的枚举的上界，所以时间复杂度为 O(target) 。
+
+空间复杂度：O(1) ，除了答案数组只需要常数的空间存放若干变量。
+
+### [015] 	二叉搜索树的最近公共祖先
+
+
+
+### [016] 从上到下打印二叉树 II  
+
+
+
+### [017] 数组中出现次数超过一半的数字
+
+
+
+### [018] 数组中重复的数字  
+
+
+
+### [019] 和为s的两个数字  
+
