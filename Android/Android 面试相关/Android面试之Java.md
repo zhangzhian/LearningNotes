@@ -86,6 +86,42 @@ public changeValue(String str) {
 
 
 
+#### 4. String是java中的基本数据类型吗？是可变的吗？是线程安全的吗？
+
+- `String`不是基本数据类型，java中把大数据类型是：`byte, short, int, long, char, float, double, boolean`
+- `String`是不可变的
+- `String`是不可变类，一旦创建了String对象，我们就无法改变它的值。因此，它是**线程安全**的，可以安全地用于多线程环境中
+
+#### 5. 为什么要设计成不可变的呢？如果String是不可变的，那我们平时赋值是改的什么呢？
+
+1）为什么设计不可变
+
+- **安全**。由于String广泛用于java类中的参数，所以安全是非常重要的考虑点。包括线程安全，打开文件，存储数据密码等等。
+
+- String的不变性保证哈希码始终一，所以在用于HashMap等类的时候就不需要重新计算哈希码，**提高效率**。
+
+- 因为java字符串是不可变的，可以在java运行时**节省大量java堆空间**。因为不同的字符串变量可以引用池中的相同的字符串。如果字符串是可变得话，任何一个变量的值改变，就会反射到其他变量，那字符串池也就没有任何意义了。
+
+2）平时使用双引号方式赋值的时候其实是返回的字符串引用,并不是改变了这个字符串对象
+
+#### 6. 浅谈一下String, StringBuffer，StringBuilder的区别？String的两种创建方式，在JVM的存储方式相同吗？
+String是不可变类，每当我们对String进行操作的时候，总是会创建新的字符串。操作String很耗资源,所以Java提供了两个工具类来操作String - StringBuffer和StringBuilder。
+
+StringBuffer和StringBuilder是可变类，StringBuffer是线程安全的，StringBuilder则不是线程安全的。所以在多线程对同一个字符串操作的时候，我们应该选择用StringBuffer。由于不需要处理多线程的情况，StringBuilder的效率比StringBuffer高。
+
+1） String常见的创建方式有两种
+
+- String s1 = “Java”
+- String s2 = new String("Java")
+
+2）存储方式不同
+
+- 第一种，s1会先去字符串常量池中找字符串"Java”，如果有相同的字符则直接返回常量句柄，如果没有此字符串则会先在常量池中创建此字符串，然后再返回常量句柄，或者说字符串引用。
+
+- 第二种，s2是直接在堆上创建一个变量对象，但不存储到字符串池 ，调用`intern`方法才会把此字符串保存到常量池中
+
+
+
 ### 三、继承
 
 #### 1. Java中抽象类和接口的特点？
@@ -262,6 +298,19 @@ HashMap的特点：
 
 ####  5. Java 中的引用类型分类和区别，虚引用的使用场景？
 
+#### 6. Base64算法是什么，是加密算法吗？
+
+- `Base64`是一种将二进制数据转换成64种字符组成的字符串的编码算法，主要用于非文本数据的传输，比如图片。可以将图片这种二进制数据转换成具体的字符串，进行保存和传输。
+- 严格来说，不算。虽然它确实把一段二进制数据转换成另外一段数据，但是他的加密和解密是公开的，也就无秘密可言了。所以我更倾向于认为它是一种编码，每个人都可以用base64对二进制数据进行编码和解码。
+- `面试加分项`：为了减少混淆，方便复制，减少数据长度，就衍生出一种base58编码。去掉了base64中一些容易混淆的数字和字母（数字0，字母O，字母I，数字1，符号+，符号/）
+   大名鼎鼎的比特币就是用的改进后的base58编码，即`Base58Check`编码方式，有了校验机制，加入了hash值。
+
+#### 7. Base64底层
+
+
+
+#### 8. Linux进程和Java进程有何区别
+
 
 
 ## 并发
@@ -271,12 +320,11 @@ HashMap的特点：
 
 线程的状态有：
 
-- `new`：新创建的线程
-- `Ready`：准备就绪的线程，由于CPU分配的时间片的关系，此时的任务不在执行过程中。
-- `Running`：正在执行的任务
-- `Block`：被阻塞的任务
-- `Time Waiting`：计时等待的任务
-- `Terminated`：终止的任务
+- `New`：新创建的线程，进入了初始状态
+- `Runnable`：准备就绪的线程，由于CPU分配的时间片的关系，此时的任务不在执行过程中
+- `Running`：正在执行的任务获得了cpu 时间片 ，执行程序代码
+- `Block`：被阻塞的任务，通常是为了等待某个时间的发生（比如说某项资源就绪）之后再继续运行
+- `Terminated`：终止的任务，线程run()、main() 方法执行结束，或者因异常退出了run()方法，则该线程结束生命周期。
 
 附上一张状态转换的图：
 
@@ -304,7 +352,38 @@ HashMap的特点：
 
 #### 7. 实现一个线程同步的计数器
 
+#### 8. 为什么多线程同时访问（读写）同个变量，会有并发问题？
+- Java 内存模型规定了所有的变量都存储在主内存中，每条线程有自己的工作内存。
+- 线程的工作内存中保存了该线程中用到的变量的主内存副本拷贝，线程对变量的所有操作都必须在工作内存中进行，而不能直接读写主内存。
+- 线程访问一个变量，首先将变量从主内存拷贝到工作内存，对变量的写操作，不会马上同步到主内存。
+- 不同的线程之间也无法直接访问对方工作内存中的变量，线程间变量的传递均需要自己的工作内存和主存之间进行数据同步。
 
+#### 9. 说说原子性，可见性，有序性分别是什么意思？
+原子性：在一个操作中，CPU 不可以在中途暂停然后再调度，即不被中断操作，要么执行完成，要么就不执行。
+
+可见性：多个线程访问同一个变量时，一个线程修改了这个变量的值，其他线程能够立即看得到修改的值。
+
+有序性：程序执行的顺序按照代码的先后顺序执行。
+
+#### 10. 实际项目过程中，有用到多线程并发问题的例子吗？
+
+有，比如**单例模式**。由于单例模式的特殊性，可能被程序中不同地方多个线程**同时调用**，所以为了避免多线程并发问题，一般要采用`volatile+Synchronized`的方式进行变量，方法保护。
+
+```java
+    private volatile static Singleton singleton;
+
+    public static Singleton getSingleton() {
+        if (singleton == null) {
+            synchronized (Singleton.class) {
+                if (singleton == null) {
+                    singleton = new Singleton();
+                }
+            }
+
+        }
+        return singleton;
+    }
+```
 
 ### 二、线程池
 
@@ -323,22 +402,94 @@ public ThreadPoolExecutor(int corePoolSize,
 }
 ```
 
-参数解释如下：
+**参数解释：**
 
 - `corePoolSize`：核心线程数量，不会释放。
 - `maximumPoolSize`：允许使用的最大线程池数量，非核心线程数量，闲置时会释放。
 - `keepAliveTime`：闲置线程允许的最大闲置时间。
 - `unit`：闲置时间的单位。
 - `workQueue`：阻塞队列，不同的阻塞队列有不同的特性。
+- `ThreadFactory`：线程工厂。定制一个线程，可以设置线程的优先级、名字、是否后台线程、状态等。一般无须设置该参数。
+- `RejectedExecutionHandler`：拒绝策略。这是当前任务队列和线程池都满了时所采取的应对策略，默认是AbordPolicy，表示无法处理新任务，并抛出RejectedExecutionException异常。
 
-线程池分为四个类型：
+**拒绝策略有四种：**
+
+- `AbordPolicy`:无法处理新任务，并抛出RejectedExecutionException异常。
+- `CallerRunsPolicy`:用调用者所在的线程来处理任务。此策略提供简单的反馈控制机制，能够减缓新任务的提交速度。
+- `DiscardPolicy`：不能执行的任务，并将该任务删除。
+- `DiscardOldestPolicy`:丢弃队列最近的任务，并执行当前的任务。
+
+**线程池分为四个类型：**
 
 - `CachedThreadPool`：闲置线程超时会释放，没有闲置线程的情况下，每次都会创建新的线程。
+
+  ```java
+      public static ExecutorService newCachedThreadPool() {
+          return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                                        60L, TimeUnit.SECONDS,
+                                        new SynchronousQueue<Runnable>());
+      }
+  ```
+
+  - 线程数量不定，只有非核心线程，最大线程数`任意大`：传入核心线程数量的参数为0，最大线程数为Integer.MAX_VALUE；
+  - 有新任务时使用`空闲线程`执行，没有空闲线程则创建新的线程来处理。
+  - 该线程池的每个空闲线程都有超时机制，时常为60s（参数：60L, TimeUnit.SECONDS），空闲超过60s则回收空闲线程。
+  - 适合执行大量的耗时较少的任务，当所有线程闲置`超过60s`都会被停止，所以这时几乎不占用系统资源。
+
 - `FixedThreadPool`：线程池只能存放指定数量的线程池，线程不会释放，可重复利用。
+
+  ```java
+      public static ExecutorService newFixedThreadPool(int nThreads) {
+          return new ThreadPoolExecutor(nThreads, nThreads,
+                                        0L, TimeUnit.MILLISECONDS,
+                                        new LinkedBlockingQueue<Runnable>());
+      }
+  ```
+
+  - 线程`数量固定`且都是核心线程：核心线程数量和最大线程数量都是nThreads；
+
+  - 都是核心线程且不会被回收，快速相应外界请求；
+
+  - 没有超时机制，任务队列也没有大小限制；
+
+  - 新任务使用`核心线程`处理，如果没有空闲的核心线程，则排队等待执行。
+
 - `SingleThreadExecutor`：单线程的线程池。
+
+  ```java
+      public static ExecutorService newSingleThreadExecutor() {
+          return new FinalizableDelegatedExecutorService
+              (new ThreadPoolExecutor(1, 1,
+                                      0L, TimeUnit.MILLISECONDS,
+                                      new LinkedBlockingQueue<Runnable>()));
+      }
+  ```
+
+  - 只有`一个核心线程`，所有任务在同一个线程按顺序执行。
+  - 所有的外界任务统一到一个线程中，所以不需要处理线程同步的问题。
+
 - `ScheduledThreadPool`：可定时和重复执行的线程池。
 
+  ```java
+      private static final long DEFAULT_KEEPALIVE_MILLIS = 10L;
+  
+      public ScheduledThreadPoolExecutor(int corePoolSize) {
+          super(corePoolSize, Integer.MAX_VALUE,
+                DEFAULT_KEEPALIVE_MILLIS, MILLISECONDS,
+                new DelayedWorkQueue());
+      }
+  ```
 
+  - 核心线程`数量固定`，非核心线程数量`无限制`；
+  - 非核心线程闲置超过10s会被回收；
+  - 主要用于执行定时任务和具有固定周期的重复任务；
+
+**执行任务流程：**
+
+- 如果线程池中的线程数量未达到`核心线程的数量`，会直接启动一个核心线程来执行任务。
+- 如果线程池中的线程数量已经达到或者超过核心线程的数量，那么任务会被插入到`任务队列`中排队等待执行。
+- 如果任务队列无法插入新任务，说明任务队列已满，如果未达到规定的最大线程数量，则启动一个`非核心线程`来执行任务。
+- 如果线程数量超过规定的最大值，则执行`拒绝策略`-RejectedExecutionHandler。
 
 #### 2. 与新建一个线程相比，线程池的特点？
 
@@ -360,7 +511,7 @@ public ThreadPoolExecutor(int corePoolSize,
 3. 阻塞队列满了，考虑非核心线程（图上好像少了这个过程）。
 4. 非核心线程满了，再触发拒绝任务。
 
-#### 4. 拒绝策略有几种,为什么有newSingleThread
+#### 4. 为什么有newSingleThread?
 
 
 
@@ -440,6 +591,10 @@ synchronized 修饰 static 方法、普通方法、类、方法块区别？
 
 > [synchronized 详解](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F594a24defe88c2006aa01f1c%23heading-5)
 
+**Synchronized修饰非静态方法**，实际上是对调用该方法的对象加锁，俗称“对象锁”。也就是锁住的是这个对象，即this。如果同一个对象在两个线程分别访问对象的两个同步方法，就会产生互斥，这就是对象锁，一个对象一次只能进入一个操作。
+
+**Synchronized修饰静态方法**，实际上是对该类对象加锁，俗称“类锁”。也就是锁住的是这个类，即xx.class。如果一个对象在两个线程中分别调用一个静态同步方法和一个非静态同步方法，由于静态方法会收到类锁限制，但是非静态方法会收到对象限制，所以两个方法并不是同一个对象锁，因此不会排斥。
+
 
 
 ### 五、ReentranLock
@@ -497,6 +652,57 @@ Java内存模型具有一些先天的有序性，它通常叫做happens-before�
 
 使用 AtomicInteger 可以使 i++ 线程安全
 
+#### 3. 说说双重校验锁，以及volatile的作用
+
+先回顾下双重校验锁的原型，也就是单例模式的实现：
+
+```java
+public class Singleton {
+    private volatile static Singleton mSingleton;
+    private Singleton() {
+    }
+
+    public Singleton getInstance() {
+        if (null == mSingleton) {
+            synchronized (Singleton.class) {
+                if (null == mSingleton) {
+                    mSingleton = new Singleton();
+                }
+            }
+        }
+        return mSingleton;
+	}
+}
+```
+有几个疑问需要解决：
+
+为什么要加锁？为什么不直接给getInstance方法加锁？为什么需要双重判断是否为空？为什么还要加volatile修饰变量？接下来一一解答：
+
+- 如果不加锁的话，是线程不安全的，也就是有可能多个线程同时访问getInstance方法会得到两个实例化的对象。
+
+- 如果给getInstance方法加锁，就每次访问mSingleton都需要加锁，增加了性能开销
+
+- 第一次判空是为了判断是否已经实例化，如果已经实例化就直接返回变量，不需要加锁了。第二次判空是因为走到加锁这一步，如果线程A已经实例化，等B获得锁，进入的时候其实对象已经实例化完成了，如果不二次判空就会再次实例化。
+
+- 加volatile是为了禁止指令重排。指令重排指的是在程序运行过程中，并不是完全按照代码顺序执行的，会考虑到性能等原因，将不影响结果的指令顺序有可能进行调换。所以初始化的顺序本来是这三步：
+
+  1）分配内存空间 2）初始化对象 3）将对象指向分配的空间
+
+  如果进行了指令重排，由于不影响结果，所以2和3有可能被调换。所以就变成了：
+
+  1）分配内存空间 2）将对象指向分配的空间 3）初始化对象
+
+  就有可能会导致，假如线程A中已经进行到第二步，线程B进入第二次判空的时候，判断mSingleton不为空，就直接返回了，但是实际此时mSingleton还没有初始化。
+
+#### 4. synchronized和volatile的区别
+
+- `volatile`本质是在告诉jvm当前变量在寄存器中的值是不确定的,需要从主存中读取,`synchronized`则是锁定当前变量,只有当前线程可以访问该变量,其他线程被阻塞住.
+- `volatile`仅能使用在变量级别,`synchronized`则可以使用在变量,方法.
+- `volatile`仅能实现变量的修改可见性,而`synchronized`则可以保证变量的修改可见性和原子性.
+- `volatile`不会造成线程的阻塞,而`synchronized`可能会造成线程的阻塞.
+- 当一个域的值依赖于它之前的值时，`volatile`就无法工作了，如n=n+1,n++等，也就是不保证原子性。
+- 使用`volatile`而不是`synchronized`的唯一安全的情况是类中只有一个可变的域。
+
 
 
 
@@ -518,15 +724,136 @@ JDK 1.8之前采用的是分段锁，核心类是一个`Segment`，`Segment`继�
 
 JDK 1.8采用了`CAS + synchronized`，插入键值对的时候如果当前桶中没有Node节点，使用CAS方式进行更新，如果有Node节点，则使用synchronized的方式进行更新。
 
-### 九、协程
+### 九、协程，纤程(Java Kotlin)
 
 #### 1.说说你对协程的理解
 
-#### 2.协程怎么取消
+在我看来，协程和线程一样都是用来解决`并发任务（异步任务）`的方案。
+所以协程和线程是属于一个层级的概念，但是对于`kotlin`中的协程，又与广义的协程有所不同。
+kotlin中的协程其实是对线程的一种`封装`，或者说是一种线程框架，为了让异步任务更好更方便使用。
 
-#### 3. 你了解协程吗？协程有什么作用？可以完全取代rxjava吗？
+#### 2. 说下协程具体的使用
 
-#### 4. 讲一个协程的scope与context，协程的+号代表什么
+比如在一个异步任务需要回调到主线程的情况，普通线程需要通过`handler`切换线程然后进行UI更新等，一旦多个任务需要`顺序调用`，那更是很不方便，比如以下情况：
+
+```kotlin
+//客户端顺序进行三次网络异步请求，并用最终结果更新UI
+thread{
+    iotask1(parameter) { value1 ->
+        iotask1(value1) { value2 ->
+            iotask1(value2) { value3 ->
+                runOnUiThread{
+                    updateUI(value3) 
+                }      
+        } 
+    }              
+}
+}
+```
+
+简直是`魔鬼调用`，如果不止3次，而是5次，6次，那还得了。。
+
+而用协程就能很好解决这个问题：
+
+```kotlin
+//并发请求
+GlobalScope.launch(Dispatchers.Main) {
+    //三次请求并发进行
+    val value1 = async { request1(parameter1) }
+    val value2 = async { request2(parameter2) }
+    val value3 = async { request3(parameter3) }
+    //所有结果全部返回后更新UI
+    updateUI(value1.await(), value2.await(), value3.await())
+}
+
+//切换到io线程
+suspend fun request1(parameter : Parameter){withContext(Dispatcher.IO){}}
+suspend fun request2(parameter : Parameter){withContext(Dispatcher.IO){}}
+suspend fun request3(parameter : Parameter){withContext(Dispatcher.IO){}}
+```
+
+就像是同一个线程中顺序执行的效果一样，再比如我要按顺序执行一次异步任务，然后完成后更新UI，一共三个异步任务。
+如果正常写应该怎么写？
+
+```kotlin
+thread{
+    iotask1() { value1 ->
+        runOnUiThread{
+            updateUI1(value1) 
+            iotask2() { value2 ->
+            runOnUiThread{
+                updateUI2(value2) 
+                iotask3() { value3 ->
+                runOnUiThread{
+                    updateUI3(value3) 
+                } 
+                }   
+            }      
+            }   
+
+        }
+    }
+}
+```
+
+晕了晕了，不就是一次异步任务，一次UI更新吗。怎么这么麻烦，来，用协程看看怎么写：
+
+```kotlin
+    GlobalScope.launch (Dispatchers.Main) {
+        ioTask1()
+        ioTask1()
+        ioTask1()
+        updateUI1()
+        updateUI2()
+        updateUI3()
+    }
+
+    suspend fun ioTask1(){
+        withContext(Dispatchers.IO){}
+    }
+    suspend fun ioTask2(){
+        withContext(Dispatchers.IO){}
+    }
+    suspend fun ioTask3(){
+        withContext(Dispatchers.IO){}
+    }
+
+    fun updateUI1(){
+    }
+    fun updateUI2(){
+    }
+    fun updateUI3(){
+    }
+```
+
+#### 3.协程怎么取消
+
+- 取消`协程作用域`将取消它的所有子协程。
+
+```kotlin
+// 协程作用域 scope
+val job1 = scope.launch { … }
+val job2 = scope.launch { … }
+scope.cancel()
+```
+
+- 取消`子协程`
+
+```kotlin
+// 协程作用域 scope
+val job1 = scope.launch { … }
+val job2 = scope.launch { … }
+job1.cancel()
+```
+
+但是调用了`cancel`并不代表协程内的工作会马上停止，他并不会组织代码运行。
+ 比如上述的`job1`，正常情况处于`active`状态，调用了`cancel`方法后，协程会变成`Cancelling`状态，工作完成之后会变成`Cancelled` 状态，所以可以通过判断协程的状态来停止工作。
+
+Jetpack 中定义的协程作用域`（viewModelScope 和 lifecycleScope）`可以帮助你自动取消任务，下次再详细说明，其他情况就需要自行进行绑定和取消了。
+
+#### 5. 你了解协程吗？协程有什么作用？可以完全取代rxjava吗？
+
+#### 6. 讲一个协程的scope与context，协程的+号代表什么
 
 
 
@@ -537,10 +864,6 @@ JDK 1.8采用了`CAS + synchronized`，插入键值对的时候如果当前桶�
 #### 2. AQS了解吗？
 
 #### 3. 管道了解吗？
-
-#### 4. Base64底层
-
-#### 5. Linux进程和Java进程有何区别
 
 
 
@@ -624,13 +947,14 @@ JDK 1.8采用了`CAS + synchronized`，插入键值对的时候如果当前桶�
 
 **（3）初始化 -** 真正执行类初始化的代码逻辑，包括静态字段赋值的动作，以及类中静态初始化块内的逻辑。编译器在编译阶段就会把这部分逻辑整理好，父类型的初始化逻辑优先于当前类型的逻辑
 
-#### 2. 类加载的机制，以及为什么要这样设计？
+#### 2. 类加载的机制，以及为什么要这样设计？双亲委派模型？
 
 类加载的机制是双亲委派模型。大部分Java程序需要使用的类加载器包括：
 
 - `启动类加载器`：由C++语言实现，负责加载Java中的核心类。
 - `扩展类加载器`：负责加载Java扩展的核心类之外的类。
 - `应用程序类加载器`：负责加载用户类路径上指定的类库。
+- `自定义类加载器`: 用户自定义
 
 双亲委派模型如下：
 
@@ -638,11 +962,22 @@ JDK 1.8采用了`CAS + synchronized`，插入键值对的时候如果当前桶�
 
 双亲委派模型要求出了顶层的启动类加载器之外，其他的类加载器都有自己的父加载器，通过组合实现。
 
-
-
 双亲委派模型的工作流程： 当一个类加载的任务来临的时候，先交给父类加载器完成，父类加载器交给父父类加载器完成，知道传递给启动类加载器，如果完成不了的情况下，再依次往下传递类加载的任务。
 
 这样设计的原因： 双亲委派模型能够保证Java程序的稳定运行，不同层次的类加载器具有不同优先级，所有的对象的父类Object，无论哪一个类加载器加载，最后都会交给启动类加载器，保证安全。
+
+举例：
+
+- 当Application ClassLoader 收到一个类加载请求时，他首先不会自己去尝试加载这个类，而是将这个请求委派给父类加载器Extension ClassLoader去完成。
+- 当Extension ClassLoader收到一个类加载请求时，他首先也不会自己去尝试加载这个类，而是将请求委派给父类加载器Bootstrap ClassLoader去完成。
+- 如果Bootstrap ClassLoader加载失败(在<JAVA_HOME>\lib中未找到所需类)，就会让Extension ClassLoader尝试加载。
+- 如果Extension ClassLoader也加载失败，就会使用Application ClassLoader加载。
+- 如果Application ClassLoader也加载失败，就会使用自定义加载器去尝试加载。
+- 如果均加载失败，就会抛出ClassNotFoundException异常。
+
+这么设计的原因是为了防止危险代码的植入，比如String类，如果在AppClassLoader就直接被加载，就相当于会被篡改了，所以都要经过老大，也就是BootstrapClassLoader进行检查，已经加载过的类就不需要再去加载了。
+
+
 
 #### 3. 属性先加载还是方法先加载
 
