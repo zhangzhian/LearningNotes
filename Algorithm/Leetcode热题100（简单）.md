@@ -1,113 +1,6 @@
 # Leetcode热题100
 
-### [001] 子集 ★ 回溯
-
-给定一组不含重复元素的整数数组 nums，返回该数组所有可能的子集（幂集）。
-
-说明：解集不能包含重复的子集。
-
-示例:
-
-```
-输入: nums = [1,2,3]
-输出:
-[
-  [3],
-  [1],
-  [2],
-  [1,2,3],
-  [1,3],
-  [2,3],
-  [1,2],
-  []
-]
-```
-
-[题解](https://leetcode-cn.com/problems/subsets)
-
-方法一：迭代法实现子集枚举
-
-```java
-class Solution {
-    List<Integer> t = new ArrayList<Integer>();
-    List<List<Integer>> ans = new ArrayList<List<Integer>>();
-
-    public List<List<Integer>> subsets(int[] nums) {
-        int n = nums.length;
-        for (int mask = 0; mask < (1 << n); ++mask) {
-            t.clear();
-            for (int i = 0; i < n; ++i) {
-                if ((mask & (1 << i)) != 0) {
-                    t.add(nums[i]);
-                }
-            }
-            ans.add(new ArrayList<Integer>(t));
-        }
-        return ans;
-    }
-}
-```
-
-时间复杂度：
-$$
-O(n \times 2^n)
-$$
-空间复杂度：O(n)。即构造子集使用的临时数组 t 的空间代价。
-
-方法二：递归法实现子集枚举
-
-```java
-class Solution {
-    List<Integer> t = new ArrayList<Integer>();
-    List<List<Integer>> ans = new ArrayList<List<Integer>>();
-
-    public List<List<Integer>> subsets(int[] nums) {
-        dfs(0, nums);
-        return ans;
-    }
-
-    public void dfs(int cur, int[] nums) {
-        if (cur == nums.length) {
-            ans.add(new ArrayList<Integer>(t));
-            return;
-        }
-        t.add(nums[cur]);
-        dfs(cur + 1, nums);
-        t.remove(t.size() - 1);
-        dfs(cur + 1, nums);
-    }
-}
-```
-
-时间复杂度：
-$$
-O(n \times 2^n)
-$$
-空间复杂度：O(n)。即构造子集使用的临时数组 t 的空间代价。
-
-方法三：非递归
-
-```java
-public List<List<Integer>> subsets(int[] nums) {
-    List<List<Integer>> res = new ArrayList<>(1 << nums.length);
-    //先添加一个空的集合
-    res.add(new ArrayList<>());
-    for (int num : nums) {
-        //每遍历一个元素就在之前子集中的每个集合追加这个元素，让他变成新的子集
-        for (int i = 0, j = res.size(); i < j; i++) {
-            //遍历之前的子集，重新封装成一个新的子集
-            List<Integer> list = new ArrayList<>(res.get(i));
-            //然后在新的子集后面追加这个元素
-            list.add(num);
-            //把这个新的子集添加到集合中
-            res.add(list);
-        }
-    }
-    return res;
-}
-```
-
-### [002] 合并二叉树
+### [001] 合并二叉树
 
 给定两个二叉树，想象当你将它们中的一个覆盖到另一个上时，两个二叉树的一些节点便会重叠。
 
@@ -223,7 +116,7 @@ class Solution {
 
 空间复杂度：O(min(m,n))
 
-### [003] 汉明距离
+### [002] 汉明距离
 
 两个整数之间的汉明距离指的是这两个数字对应二进制位不同的位置的数目。
 
@@ -305,7 +198,7 @@ class Solution {
 
 空间复杂度：O(1)
 
-### [004] 翻转二叉树
+### [003] 翻转二叉树
 
 翻转一棵二叉树。
 
@@ -413,66 +306,9 @@ class Solution {
 }
 ```
 
-### [005] 全排列 ★ 回溯
 
-给定一个 没有重复 数字的序列，返回其所有可能的全排列。
 
-示例:
-
-```
-输入: [1,2,3]
-输出:
-[
-  [1,2,3],
-  [1,3,2],
-  [2,1,3],
-  [2,3,1],
-  [3,1,2],
-  [3,2,1]
-]
-```
-
-[题解](https://leetcode-cn.com/problems/permutations/solution/quan-pai-lie-by-leetcode-solution-2/)
-
-方法一：
-
-```java
-class Solution {
-    public List<List<Integer>> permute(int[] nums) {
-        List<List<Integer>> res = new ArrayList<List<Integer>>();
-
-        List<Integer> output = new ArrayList<Integer>();
-        for (int num : nums) {
-            output.add(num);
-        }
-
-        int n = nums.length;
-        backtrack(n, output, res, 0);
-        return res;
-    }
-
-    public void backtrack(int n, List<Integer> output, List<List<Integer>> res, int first) {
-        // 所有数都填完了
-        if (first == n) {
-            res.add(new ArrayList<Integer>(output));
-        }
-        for (int i = first; i < n; i++) {
-            // 动态维护数组
-            Collections.swap(output, first, i);
-            // 继续递归填下一个数
-            backtrack(n, output, res, first + 1);
-            // 撤销操作
-            Collections.swap(output, first, i);
-        }
-    }
-}
-```
-
-时间复杂度：O(n * n!)
-
-空间复杂度：O(n)
-
-### [006] 二叉树的最大深度
+### [004] 二叉树的最大深度
 
 给定一个二叉树，找出其最大深度。
 
@@ -554,7 +390,7 @@ class Solution {
 
 空间复杂度：最坏情况下会达到 O(n)
 
-### [007] 反转链表
+### [005] 反转链表
 
 反转一个单链表。
 
@@ -617,7 +453,7 @@ class Solution {
 - 时间复杂度：O(n) 
 - 空间复杂度：O(1) 
 
-### [008] 只出现一次的数字
+### [006] 只出现一次的数字
 
 给定一个非空整数数组，除了某个元素只出现一次以外，其余每个元素均出现两次。找出那个只出现了一次的元素。
 
@@ -656,7 +492,7 @@ class Solution {
 - 时间复杂度：O(n)
 - 空间复杂度：O(1)
 
-### [009] 多数元素
+### [007] 多数元素
 
 给定一个大小为 n 的数组，找到其中的多数元素。多数元素是指在数组中出现次数大于 ⌊ n/2 ⌋ 的元素。
 
@@ -841,7 +677,7 @@ class Solution {
 
 空间复杂度：O(log n)
 
-### [010] 合并两个有序链表
+### [008] 合并两个有序链表
 
 将两个升序链表合并为一个新的 升序 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。 
 
@@ -918,7 +754,7 @@ class Solution {
 
 空间复杂度：O(1) 
 
-### [011] 移动零
+### [009] 移动零
 
 给定一个数组 nums，编写一个函数将所有 0 移动到数组的末尾，同时保持非零元素的相对顺序。
 
@@ -988,7 +824,7 @@ class Solution {
 时间复杂度:O(n)
 空间复杂度:O(1)
 
-### [012] 找到所有数组中消失的数字
+### [010] 找到所有数组中消失的数字
 
 给定一个范围在  1 ≤ a[i] ≤ n ( n = 数组大小 ) 的 整型数组，数组中的元素一些出现了两次，另一些只出现一次。
 
@@ -1067,7 +903,7 @@ class Solution {
 - 时间复杂度：O(N) 
 - 空间复杂度：O(1) 
 
-### [013] 相交链表
+### [011] 相交链表
 
 编写一个程序，找到两个单链表相交的起始节点。
 
@@ -1201,7 +1037,7 @@ public class Solution {
 - 时间复杂度 : O(m+n) 
 - 空间复杂度 : O(1)
 
-### [014] 最小栈
+### [012] 最小栈
 
 设计一个支持 push ，pop ，top 操作，并能在常数时间内检索到最小元素的栈。
 
@@ -1283,7 +1119,7 @@ class MinStack {
 
 空间复杂度：O(n) 
 
-### [015] 买卖股票的最佳时机  
+### [013] 买卖股票的最佳时机  
 
 给定一个数组，它的第 i 个元素是一支给定股票第 i 天的价格。
 
@@ -1356,7 +1192,7 @@ public class Solution {
 - 时间复杂度：O(n) 
 - 空间复杂度：O(1) 
 
-### [016] 对称二叉树
+### [014] 对称二叉树
 
  给定一个二叉树，检查它是否是镜像对称的。
 
@@ -1452,7 +1288,7 @@ class Solution {
 - 时间复杂度：O(n) 
 - 空间复杂度：这里需要用一个队列来维护节点，每个节点最多进队一次，出队一次，队列中最多不会超过 n 个点，故渐进空间复杂度为 O(n) 
 
-### [017] 最大子序和
+### [015] 最大子序和
 
 给定一个整数数组 nums ，找到一个具有最大和的连续子数组（子数组最少包含一个元素），返回其最大和。
 
@@ -1527,7 +1363,7 @@ class Solution {
 }
 ```
 
-### [018] 二叉树的直径
+### [016] 二叉树的直径
 
 给定一棵二叉树，你需要计算它的直径长度。一棵二叉树的直径长度是任意两个结点路径长度中的最大值。这条路径可能穿过也可能不穿过根结点。
 
@@ -1579,7 +1415,7 @@ class Solution {
 }
 ```
 
-### [019] 爬楼梯
+### [017] 爬楼梯
 
 假设你正在爬楼梯。需要 n 阶你才能到达楼顶。
 
@@ -1778,7 +1614,7 @@ public class Solution {
 - 时间复杂度：O(log n)
 - 空间复杂度：O(1)
 
-### [020] 环形链表
+### [018] 环形链表
 
 给定一个链表，判断链表中是否有环。
 

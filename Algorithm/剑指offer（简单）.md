@@ -1233,13 +1233,180 @@ $$
 
 空间复杂度：O(1) ，除了答案数组只需要常数的空间存放若干变量。
 
-### [015] 	二叉搜索树的最近公共祖先
+### [015] 二叉搜索树的最近公共祖先
+
+> **[013] 二叉树的最近公共祖先**
+
+给定一个二叉搜索树, 找到该树中两个指定节点的最近公共祖先。
+
+百度百科中最近公共祖先的定义为：“对于有根树 T 的两个结点 p、q，最近公共祖先表示为一个结点 x，满足 x 是 p、q 的祖先且 x 的深度尽可能大（一个节点也可以是它自己的祖先）。”
+
+例如，给定如下二叉搜索树:  root = [6,2,8,0,4,7,9,null,null,3,5]
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/binarysearchtree_improved.png)
+
+示例 1:
+
+```
+输入: root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8
+输出: 6 
+解释: 节点 2 和节点 8 的最近公共祖先是 6。
+```
+
+示例 2:
+
+```
+输入: root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 4
+输出: 2
+解释: 节点 2 和节点 4 的最近公共祖先是 2, 因为根据定义最近公共祖先节点可以为节点本身。
+```
 
 
+说明:
+
+- 所有节点的值都是唯一的。
+- p、q 为不同节点且均存在于给定的二叉搜索树中。
+
+方法一：递归
+
+递推工作：
+
+- 当 p, q 都在 root 的 右子树 中，则开启递归 root.right 并返回；
+- 否则，当 p, q 都在 root 的 左子树 中，则开启递归 root.left 并返回；
+
+返回值： 最近公共祖先 root 
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(root.val < p.val && root.val < q.val)
+            return lowestCommonAncestor(root.right, p, q);
+        if(root.val > p.val && root.val > q.val)
+            return lowestCommonAncestor(root.left, p, q);
+        return root;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(N)
+
+方法二：迭代
+
+循环搜索： 当节点 root 为空时跳出；
+
+- 当 p, q 都在 root的 右子树 中，则遍历至 root.right；
+- 否则，当 p, q 都在 root 的 左子树 中，则遍历至 root.left；
+- 否则，说明找到了 最近公共祖先 ，跳出t。
+
+返回值： 最近公共祖先 root 。
+
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        while(root != null) {
+            if(root.val < p.val && root.val < q.val) // p,q 都在 root 的右子树中
+                root = root.right; // 遍历至右子节点
+            else if(root.val > p.val && root.val > q.val) // p,q 都在 root 的左子树中
+                root = root.left; // 遍历至左子节点
+            else break;
+        }
+        return root;
+    }
+}
+```
+
+优化：若可保证 p.val < q.val，则在循环中可减少判断条件。
+
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if(p.val > q.val) { // 保证 p.val < q.val
+            TreeNode tmp = p;
+            p = q;
+            q = tmp;
+        }
+        while(root != null) {
+            if(root.val < p.val) // p,q 都在 root 的右子树中
+                root = root.right; // 遍历至右子节点
+            else if(root.val > q.val) // p,q 都在 root 的左子树中
+                root = root.left; // 遍历至左子节点
+            else break;
+        }
+        return root;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(1)
 
 ### [016] 从上到下打印二叉树 II  
 
+从上到下按层打印二叉树，同一层的节点按从左到右的顺序打印，每一层打印到一行。
 
+例如:
+
+给定二叉树: [3,9,20,null,null,15,7],
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回其层次遍历结果：
+
+```
+[
+  [3],
+  [9,20],
+  [15,7]
+]
+```
+
+
+提示：
+
+- 节点总数 <= 1000
+
+方法一：
+
+```java
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        Queue<TreeNode> queue = new LinkedList<>();
+        List<List<Integer>> res = new ArrayList<>();
+        if(root != null) queue.add(root);
+        while(!queue.isEmpty()) {
+            List<Integer> tmp = new ArrayList<>();
+            for(int i = queue.size(); i > 0; i--) {
+                TreeNode node = queue.poll();
+                tmp.add(node.val);
+                if(node.left != null) queue.add(node.left);
+                if(node.right != null) queue.add(node.right);
+            }
+            res.add(tmp);
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(N)
 
 ### [017] 数组中出现次数超过一半的数字
 
@@ -1251,3 +1418,6 @@ $$
 
 ### [019] 和为s的两个数字  
 
+
+
+### [020] 调整数组顺序使奇数位于偶数前面
