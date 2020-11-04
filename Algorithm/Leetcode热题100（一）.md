@@ -1579,3 +1579,308 @@ class Solution {
 }
 ```
 
+### [019] 爬楼梯
+
+假设你正在爬楼梯。需要 n 阶你才能到达楼顶。
+
+每次你可以爬 1 或 2 个台阶。你有多少种不同的方法可以爬到楼顶呢？
+
+注意：给定 n 是一个正整数。
+
+示例 1：
+
+```
+输入： 2
+输出： 2
+解释： 有两种方法可以爬到楼顶。
+
+1.  1 阶 + 1 阶
+2.  2 阶
+```
+
+示例 2：
+
+```
+输入： 3
+输出： 3
+解释： 有三种方法可以爬到楼顶。
+
+1.  1 阶 + 1 阶 + 1 阶
+2.  1 阶 + 2 阶
+3.  2 阶 + 1 阶
+```
+
+[题解](https://leetcode-cn.com/problems/climbing-stairs/solution/)
+
+我们用 f(x) 表示爬到第 x 级台阶的方案数，考虑最后一步可能跨了一级台阶，也可能跨了两级台阶，所以我们可以列出如下式子：
+$$
+f(x)=f(x−1)+f(x−2)
+$$
+它意味着爬到第 x 级台阶的方案数是爬到第 x - 1 级台阶的方案数和爬到第 x - 2 级台阶的方案数的和。很好理解，因为每次只能爬 1 级或 2 级，所以 f(x) 只能从 f(x - 1)  和 f(x - 2) 转移过来，而这里要统计方案总数，我们就需要对这两项的贡献求和。
+
+假设 n = 5，有5级楼梯要爬
+
+- 每次都有2种选择：爬1级，或爬2级。
+  - 如果爬1级，则剩下4级要爬。
+  - 如果爬2级，则剩下3级要爬。
+
+- 这拆分出了2个子问题：
+  - 爬4级楼梯有几种方式？
+  - 爬3级楼梯有几种方式？
+
+于是，爬 5 级楼梯的方式数 = 爬 4 级楼梯的方式数 + 爬 3 级楼梯的方式数
+
+方法一：递归
+
+![image.png](https://pic.leetcode-cn.com/6486420fe6a2d3c7d747f2d79593972a4d09f35562382bafd151a556f2771b31-image.png)
+
+调用栈的深度是楼梯数 n ，时间复杂度最坏是 O(2^n)，所有节点都遍历到，空间复杂度是O(n) 
+
+```java
+class Solution {
+    public int climbStairs(int n) {
+        if (n == 1)
+            return 1;
+        if (n == 2)
+            return n;
+        return climbStairs(n - 1) + climbStairs(n - 2);
+    }
+}
+```
+
+- 时间复杂度：O(2^n)
+- 空间复杂度：O(n)
+
+方法二：递归优化
+
+如下图，黄色阴影部分，蓝色阴影部分，就是相同的子树，即相同的子问题。
+
+![image.png](https://pic.leetcode-cn.com/1656fbbbb9f8cb9230ffcbd6bfd34b7beb5d29f7cbee495056b4c0a90f81735f-image.png)
+
+- 计算过的子问题的结果可以哈希表存起来，也可以用数组，下次遇到就不用再次计算。
+- 去除重复的计算后的子树如下，时间复杂度降到了O(n)，空间复杂度O(n)。
+
+```java
+class Solution {
+    public int climbStairs(int n) {
+        int memo[] = new int[n+1]; 
+        return climbStairsMemo(n, memo);
+    }
+
+    public int climbStairsMemo(int n, int memo[]){
+        if (memo[n] > 0)
+            return memo[n];
+        if (n == 1)
+            memo[1] = 1;
+        if (n == 2)
+            memo[2] = 2;
+        if (n > 2)
+            memo[n] = climbStairsMemo(n - 1, memo) + climbStairsMemo(n - 2, memo);
+        return memo[n];      
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(n)
+
+方法三：动态规划
+
+用一个数组存放中间子问题的结果，dp[i]：爬 i 级楼梯的方式数。从dp[0]、dp[1]出发，顺序计算直到算出 dp[i]。
+
+![image.png](https://pic.leetcode-cn.com/e60b159161ba4a32967a087fb1fc5b25356fc506f2eff197b19deb34e9053653-image.png)
+
+```java
+class Solution {
+    public int climbStairs(int n) {
+        int[] dp = new int[n + 1];
+        dp[0] = 1;
+        dp[1] = 1;
+        for(int i = 2; i <= n; i++) {
+            dp[i] = dp[i - 1] + dp[i - 2];
+        }
+        return dp[n];
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(n)
+
+方法四：动态规划空间优化
+
+dp[i] 只与过去的两项：dp[i-1] 和 dp[i-2] 有关，没有必要存下所有计算过的 dp 项。用两个变量去存这两个过去的状态就好。
+
+```java
+class Solution {
+    public int climbStairs(int n) {
+        int p = 0, q = 0, r = 1;
+        for (int i = 1; i <= n; ++i) {
+            p = q; 			//dp[i-2]
+            q = r; 			//dp[i-1]
+            r = p + q;		//dp[i]
+        }
+        return r;
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(1)
+
+方法五：通项公式
+
+```java
+public class Solution {
+    public int climbStairs(int n) {
+        double sqrt5 = Math.sqrt(5);
+        double fibn = Math.pow((1 + sqrt5) / 2, n + 1) - Math.pow((1 - sqrt5) / 2, n + 1);
+        return (int)(fibn / sqrt5);
+    }
+}
+```
+
+- 时间复杂度：O(log n)
+- 空间复杂度：O(1)
+
+方法六：矩阵
+
+```java
+public class Solution {
+   public int climbStairs(int n) {
+       int[][] q = {{1, 1}, {1, 0}};
+       int[][] res = pow(q, n);
+       return res[0][0];
+   }
+   public int[][] pow(int[][] a, int n) {
+       int[][] ret = {{1, 0}, {0, 1}};
+       while (n > 0) {
+           if ((n & 1) == 1) {
+               ret = multiply(ret, a);
+           }
+           n >>= 1;
+           a = multiply(a, a);
+       }
+       return ret;
+   }
+   public int[][] multiply(int[][] a, int[][] b) {
+       int[][] c = new int[2][2];
+       for (int i = 0; i < 2; i++) {
+           for (int j = 0; j < 2; j++) {
+               c[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j];
+           }
+       }
+       return c;
+   }
+}
+```
+
+- 时间复杂度：O(log n)
+- 空间复杂度：O(1)
+
+### [020] 环形链表
+
+给定一个链表，判断链表中是否有环。
+
+如果链表中有某个节点，可以通过连续跟踪 next 指针再次到达，则链表中存在环。 为了表示给定链表中的环，我们使用整数 pos 来表示链表尾连接到链表中的位置（索引从 0 开始）。 如果 pos 是 -1，则在该链表中没有环。注意：pos 不作为参数进行传递，仅仅是为了标识链表的实际情况。
+
+如果链表中存在环，则返回 true 。 否则，返回 false 。
+
+进阶：
+
+你能用 O(1)（即，常量）内存解决此问题吗？
+
+示例 1：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist.png)
+
+```
+输入：head = [3,2,0,-4], pos = 1
+输出：true
+解释：链表中有一个环，其尾部连接到第二个节点。
+```
+
+示例 2：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist_test2.png)
+
+```
+输入：head = [1,2], pos = 0
+输出：true
+解释：链表中有一个环，其尾部连接到第一个节点。
+```
+
+示例 3：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist_test3.png)
+
+```
+输入：head = [1], pos = -1
+输出：false
+解释：链表中没有环。
+```
+
+
+提示：
+
+- 链表中节点的数目范围是 [0, 10^4]
+- -10^5 <= Node.val <= 10^5
+- pos 为 -1 或者链表中的一个 有效索引 。
+
+方法一：哈希表
+
+```java
+/**
+ * Definition for singly-linked list.
+ * class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) {
+ *         val = x;
+ *         next = null;
+ *     }
+ * }
+ */
+public class Solution {
+    public boolean hasCycle(ListNode head) {
+        Set<ListNode> seen = new HashSet<ListNode>();
+        while (head != null) {
+            if (!seen.add(head)) {
+                return true;
+            }
+            head = head.next;
+        }
+        return false;     
+    }
+}
+```
+
+- 时间复杂度：O(N)
+
+- 空间复杂度：O(N)
+
+方法二：快慢指针
+
+```java
+public class Solution {
+    public boolean hasCycle(ListNode head) {
+        if (head == null || head.next == null) {
+            return false;
+        }
+        ListNode slow = head;
+        ListNode fast = head.next;
+        while (slow != fast) {
+            if (fast == null || fast.next == null) {
+                return false;
+            }
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        return true;
+    }
+}
+```
+
+- 时间复杂度：O(N)
+
+- 空间复杂度：O(1)
