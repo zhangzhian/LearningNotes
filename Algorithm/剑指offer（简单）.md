@@ -1410,14 +1410,566 @@ class Solution {
 
 ### [017] 数组中出现次数超过一半的数字
 
+数组中有一个数字出现的次数超过数组长度的一半，请找出这个数字。
 
+你可以假设数组是非空的，并且给定的数组总是存在多数元素。
+
+示例 1:
+
+输入: [1, 2, 3, 2, 2, 2, 5, 4, 2]
+输出: 2
+
+
+限制：
+
+1 <= 数组长度 <= 50000
+
+方法一：哈希表
+
+```java
+class Solution {
+    private Map<Integer, Integer> countNums(int[] nums) {
+        Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+        for (int num : nums) {
+            if (!counts.containsKey(num)) {
+                counts.put(num, 1);
+            } else {
+                counts.put(num, counts.get(num) + 1);
+            }
+        }
+        return counts;
+    }
+
+    public int majorityElement(int[] nums) {
+        Map<Integer, Integer> counts = countNums(nums);
+
+        Map.Entry<Integer, Integer> majorityEntry = null;
+        for (Map.Entry<Integer, Integer> entry : counts.entrySet()) {
+            if (majorityEntry == null || entry.getValue() > majorityEntry.getValue()) {
+                majorityEntry = entry;
+            }
+        }
+
+        return majorityEntry.getKey();
+    }
+}
+```
+
+- 时间复杂度：O(n)
+
+- 空间复杂度：O(n)
+
+方法二：排序
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        Arrays.sort(nums);
+        return nums[nums.length / 2];
+    }
+}
+```
+
+- 时间复杂度：O(nlogn)
+
+- 空间复杂度：O(logn)
+
+方法三：随机化
+
+由于一个给定的下标对应的数字很有可能是众数，我们随机挑选一个下标，检查它是否是众数，如果是就返回，否则继续随机挑选。
+
+```java
+class Solution {
+    private int randRange(Random rand, int min, int max) {
+        return rand.nextInt(max - min) + min;
+    }
+
+    private int countOccurences(int[] nums, int num) {
+        int count = 0;
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int majorityElement(int[] nums) {
+        Random rand = new Random();
+
+        int majorityCount = nums.length / 2;
+
+        while (true) {
+            int candidate = nums[randRange(rand, 0, nums.length)];
+            if (countOccurences(nums, candidate) > majorityCount) {
+                return candidate;
+            }
+        }
+    }
+}
+```
+
+- 时间复杂度：理论上最坏情况下的时间复杂度为O(∞)
+
+- 空间复杂度：O(1)
+
+方法四：分治
+
+```java
+class Solution {
+    private int countInRange(int[] nums, int num, int lo, int hi) {
+        int count = 0;
+        for (int i = lo; i <= hi; i++) {
+            if (nums[i] == num) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int majorityElementRec(int[] nums, int lo, int hi) {
+        // base case; the only element in an array of size 1 is the majority
+        // element.
+        if (lo == hi) {
+            return nums[lo];
+        }
+
+        // recurse on left and right halves of this slice.
+        int mid = (hi - lo) / 2 + lo;
+        int left = majorityElementRec(nums, lo, mid);
+        int right = majorityElementRec(nums, mid + 1, hi);
+
+        // if the two halves agree on the majority element, return it.
+        if (left == right) {
+            return left;
+        }
+
+        // otherwise, count each element and return the "winner".
+        int leftCount = countInRange(nums, left, lo, hi);
+        int rightCount = countInRange(nums, right, lo, hi);
+
+        return leftCount > rightCount ? left : right;
+    }
+
+    public int majorityElement(int[] nums) {
+        return majorityElementRec(nums, 0, nums.length - 1);
+    }
+}
+```
+
+- 时间复杂度：*O*(nlogn)
+
+- 空间复杂度：O(logn)
+
+方法五：Boyer-Moore 投票算法
+
+```java
+class Solution {
+    public int majorityElement(int[] nums) {
+        int count = 0;
+        Integer candidate = null;
+
+        for (int num : nums) {
+            if (count == 0) {
+                candidate = num;
+            }
+            count += (num == candidate) ? 1 : -1;
+        }
+
+        return candidate;
+    }
+}
+```
+
+- 时间复杂度：O(n)
+- 空间复杂度：O(1)
 
 ### [018] 数组中重复的数字  
 
+找出数组中重复的数字。
 
+
+在一个长度为 n 的数组 nums 里的所有数字都在 0～n-1 的范围内。数组中某些数字是重复的，但不知道有几个数字重复了，也不知道每个数字重复了几次。请找出数组中任意一个重复的数字。
+
+示例 1：
+
+```
+输入：
+[2, 3, 1, 0, 2, 5, 3]
+输出：2 或 3 
+```
+
+
+限制：
+
+- 2 <= n <= 100000
+
+方法一：遍历数组
+
+```java
+class Solution {
+    public int findRepeatNumber(int[] nums) {
+        Set<Integer> set = new HashSet<Integer>();
+        int repeat = -1;
+        for (int num : nums) {
+            if (!set.add(num)) {
+                repeat = num;
+                break;
+            }
+        }
+        return repeat;
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(n)
+
+方法二：
+
+如果没有重复数字，那么正常排序后，数字i应该在下标为i的位置
+
+思路是重头扫描数组，遇到下标为i的数字如果不是i的话，（假设为m),那么我们就拿与下标m的数字交换。在交换过程中，如果有重复的数字发生，那么终止返回ture 
+
+```java
+class Solution {
+    public int findRepeatNumber(int[] nums) {
+        int temp;
+        for(int i=0;i<nums.length;i++){
+            while (nums[i]!=i){
+                if(nums[i]==nums[nums[i]]){
+                    return nums[i];
+                }
+                temp=nums[i];
+                nums[i]=nums[temp];
+                nums[temp]=temp;
+            }
+        }
+        return -1;
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(1)
 
 ### [019] 和为s的两个数字  
 
+输入一个递增排序的数组和一个数字s，在数组中查找两个数，使得它们的和正好是s。如果有多对数字的和等于s，则输出任意一对即可。
 
+ 示例 1：
+
+```
+输入：nums = [2,7,11,15], target = 9
+输出：[2,7] 或者 [7,2]
+```
+
+示例 2：
+
+```
+输入：nums = [10,26,30,31,47,60], target = 40
+输出：[10,30] 或者 [30,10]
+```
+
+限制：
+
+- 1 <= nums.length <= 10^5
+- 1 <= nums[i] <= 10^6
+
+方法一：
+
+```java
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        int i = 0, j = nums.length - 1;
+        while(i < j) {
+            int s = nums[i] + nums[j];
+            if(s < target) i++;
+            else if(s > target) j--;
+            else return new int[] { nums[i], nums[j] };
+        }
+        return new int[0];
+    }
+}
+```
+
+- 时间复杂度 O(N)
+- 空间复杂度 O(1)
 
 ### [020] 调整数组顺序使奇数位于偶数前面
+
+输入一个整数数组，实现一个函数来调整该数组中数字的顺序，使得所有奇数位于数组的前半部分，所有偶数位于数组的后半部分。
+
+示例：
+
+```
+输入：nums = [1,2,3,4]
+输出：[1,3,2,4] 
+注：[3,1,2,4] 也是正确的答案之一。
+```
+
+
+提示：
+
+- 1 <= nums.length <= 50000
+- 1 <= nums[i] <= 10000
+
+方法一：
+
+```java
+class Solution {
+    public int[] exchange(int[] nums) {
+        int i = 0, j = nums.length - 1, tmp;
+        while(i < j) {
+            while(i < j && (nums[i] & 1) == 1) i++;
+            while(i < j && (nums[j] & 1) == 0) j--;
+            tmp = nums[i];
+            nums[i] = nums[j];
+            nums[j] = tmp;
+        }
+        return nums;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+- 空间复杂度 O(1)
+
+### [021] 圆圈中最后剩下的数字
+
+0,1...n-1这n个数字排成一个圆圈，从数字0开始，每次从这个圆圈里删除第m个数字。求出这个圆圈里剩下的最后一个数字。
+
+例如，0、1、2、3、4这5个数字组成一个圆圈，从数字0开始每次删除第3个数字，则删除的前4个数字依次是2、0、4、1，因此最后剩下的数字是3。
+
+ 示例 1：
+
+```
+输入: n = 5, m = 3
+输出: 3
+```
+
+示例 2：
+
+```
+输入: n = 10, m = 17
+输出: 2
+```
+
+
+限制：
+
+- 1 <= n <= 10^5
+- 1 <= m <= 10^6
+
+方法一：暴力
+
+```java
+class Solution {
+    public int lastRemaining(int n, int m) {
+        ArrayList<Integer> list = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            list.add(i);
+        }
+        int idx = 0;
+        while (n > 1) {
+            idx = (idx + m - 1) % n;
+            list.remove(idx);
+            n--;
+        }
+        return list.get(0);
+    }
+}
+```
+
+- 时间复杂度 O(N^2) 
+- 空间复杂度 O(N)
+
+方法二：数学
+
+![image.png](https://pic.leetcode-cn.com/9dda886441be8d249abb76e35f53f29fd6e780718d4aca2ee3c78f947fb76e75-image.png)
+
+删除的位置 = (当前index + m) % 上一轮剩余数字的个数。
+
+**递归**
+
+```java
+class Solution {
+    public int lastRemaining(int n, int m) {
+        return f(n, m);
+    }
+
+    public int f(int n, int m) {
+        if (n == 1) {
+            return 0;
+        }
+        int x = f(n - 1, m);
+        return (m + x) % n;
+    }
+}
+```
+
+时间复杂度：O(n) 
+
+空间复杂度：O(n) 
+
+**迭代**
+
+```java
+class Solution {
+    public int lastRemaining(int n, int m) {
+        int f = 0;
+        for (int i = 2;  i <= n; i++) {
+            f = (m + f) % i;
+        }
+        return f;
+    }
+}
+```
+
+复杂度分析
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(1) 
+
+### [022] 两个链表的第一个公共节点
+
+输入两个链表，找出它们的第一个公共节点。
+
+如下面的两个链表：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_statement.png)
+
+在节点 c1 开始相交。
+
+ 
+
+示例 1：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_1.png)
+
+```
+输入：intersectVal = 8, listA = [4,1,8,4,5], listB = [5,0,1,8,4,5], skipA = 2, skipB = 3
+输出：Reference of the node with value = 8
+输入解释：相交节点的值为 8 （注意，如果两个链表相交则不能为 0）。从各自的表头开始算起，链表 A 为 [4,1,8,4,5]，链表 B 为 [5,0,1,8,4,5]。在 A 中，相交节点前有 2 个节点；在 B 中，相交节点前有 3 个节点。
+```
+
+
+示例 2：
+
+[![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_2.png)](https://assets.leetcode.com/uploads/2018/12/13/160_example_2.png)
+
+```
+输入：intersectVal = 2, listA = [0,9,1,2,4], listB = [3,2,4], skipA = 3, skipB = 1
+输出：Reference of the node with value = 2
+输入解释：相交节点的值为 2 （注意，如果两个链表相交则不能为 0）。从各自的表头开始算起，链表 A 为 [0,9,1,2,4]，链表 B 为 [3,2,4]。在 A 中，相交节点前有 3 个节点；在 B 中，相交节点前有 1 个节点。
+```
+
+
+示例 3：
+
+[![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/14/160_example_3.png)](https://assets.leetcode.com/uploads/2018/12/13/160_example_3.png)
+
+```
+输入：intersectVal = 0, listA = [2,6,4], listB = [1,5], skipA = 3, skipB = 2
+输出：null
+输入解释：从各自的表头开始算起，链表 A 为 [2,6,4]，链表 B 为 [1,5]。由于这两个链表不相交，所以 intersectVal 必须为 0，而 skipA 和 skipB 可以是任意值。
+解释：这两个链表不相交，因此返回 null。
+```
+
+
+注意：
+
+- 如果两个链表没有交点，返回 null.
+- 在返回结果后，两个链表仍须保持原有的结构。
+- 可假定整个链表结构中没有循环。
+- 程序尽量满足 O(n) 时间复杂度，且仅用 O(1) 内存。
+
+方法一: 暴力法
+
+```java
+public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+    if(headA==null||headB==null){
+        return null;
+    }
+    ListNode flagA=headA;
+    do {
+        ListNode flagB=headB;
+        do {
+            if(flagA==flagB) {
+                return flagA;
+            }else {
+                flagB=flagB.next;
+            }
+
+        }while(flagB!=null);
+        flagA=flagA.next;
+    }while(flagA!=null);
+    return null;
+}//暴力法
+```
+
+- 时间复杂度 : (m*n) 
+- 空间复杂度 : O(1) 
+
+方法二: 哈希表法
+
+```java
+public ListNode getIntersectionNode1(ListNode headA, ListNode headB) {
+    if(headA==null||headB==null) {
+        return null;
+    }
+    HashMap<ListNode, Integer> nodeOfHeadA=new HashMap<ListNode, Integer>();
+    ListNode pA=headA;
+    while(pA!=null) {
+        if(!nodeOfHeadA.containsKey(pA)) {
+            nodeOfHeadA.put(pA,pA.val);
+        }
+        pA=pA.next;
+    }
+    ListNode pB=headB;
+    while(pB!=null) {
+        if(nodeOfHeadA.containsKey(pB)) {
+            return pB;
+        }
+        pB=pB.next;
+    }
+    return null;
+}//哈希表法
+
+```
+
+- 时间复杂度 : O(m+n) 
+- 空间复杂度 : O(m) 或 O(n)。
+
+**方法三**：双指针法，消除长度差，拼接两链表
+
+创建两个指针 pA 和 pB，分别初始化为链表 A 和 B 的头结点。然后让它们向后逐结点遍历。
+
+当 pA 到达链表的尾部时，将它重定位到链表 B 的头结点; 类似的，当 pB 到达链表的尾部时，将它重定位到链表 A 的头结点。
+
+若在某一时刻 pA 和 pB 相遇，则 pA/pB 为相交结点。
+
+```
+pA:1->2->3->4->5->6->null->9->5->6->null
+pB:9->5->6->null->1->2->3->4->5->6->null
+```
+
+ ```java
+public class Solution {
+    public ListNode getIntersectionNode(ListNode headA, ListNode headB) {
+        if (headA == null || headB == null) return null;
+        ListNode pA = headA, pB = headB;
+        while (pA != pB) {
+            pA = pA == null ? headB : pA.next;
+            pB = pB == null ? headA : pB.next;
+        }
+        return pA;
+    }
+}
+ ```
+
+- 时间复杂度 : O(m+n) 
+- 空间复杂度 : O(1)
