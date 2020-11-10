@@ -1973,3 +1973,167 @@ public class Solution {
 
 - 时间复杂度 : O(m+n) 
 - 空间复杂度 : O(1)
+
+### [023] 第一个只出现一次的字符
+
+在字符串 s 中找出第一个只出现一次的字符。如果没有，返回一个单空格。 s 只包含小写字母。
+
+示例:
+
+```
+s = "abaccdeff"
+返回 "b"
+
+s = "" 
+返回 " "
+```
+
+
+限制：
+
+0 <= s 的长度 <= 50000
+
+方法一：哈希表
+
+遍历字符串 s ，使用哈希表统计 “各字符数量是否 > 1>1 ”。
+
+再遍历字符串 s ，在哈希表中找到首个 “数量为 1的字符”，并返回。
+
+```java
+class Solution {
+    public char firstUniqChar(String s) {
+        HashMap<Character, Boolean> dic = new HashMap<>();
+        char[] sc = s.toCharArray();
+        for(char c : sc)
+            dic.put(c, !dic.containsKey(c));
+        for(char c : sc)
+            if(dic.get(c)) return c;
+        return ' ';
+    }
+}
+```
+
+- 时间复杂度 O(N)
+
+- 空间复杂度 O(1)
+
+方法二：有序哈希表
+
+在哈希表的基础上，有序哈希表中的键值对是 **按照插入顺序排序** 的。基于此，可通过遍历有序哈希表，实现搜索首个 “数量为 11 的字符”。
+
+相比于方法一，方法二减少了第二轮遍历的循环次数。当字符串很长（重复字符很多）时，方法二则效率更高。
+
+```java
+class Solution {
+    public char firstUniqChar(String s) {
+        Map<Character, Boolean> dic = new LinkedHashMap<>();
+        char[] sc = s.toCharArray();
+        for(char c : sc)
+            dic.put(c, !dic.containsKey(c));
+        for(Map.Entry<Character, Boolean> d : dic.entrySet()){
+           if(d.getValue()) return d.getKey();
+        }
+        return ' ';
+    }
+}
+```
+
+- 时间复杂度 O(N)
+
+- 空间复杂度 O(1)
+
+### [024] 连续子数组的最大和
+
+输入一个整型数组，数组中的一个或连续多个整数组成一个子数组。求所有子数组的和的最大值。
+
+要求时间复杂度为O(n)。
+
+ 示例1:
+
+```
+输入: nums = [-2,1,-3,4,-1,2,1,-5,4]
+输出: 6
+解释: 连续子数组 [4,-1,2,1] 的和最大，为 6。
+```
+
+
+提示：
+
+- 1 <= arr.length <= 10^5
+- -100 <= arr[i] <= 100
+
+给定一个整数数组 nums ，找到一个具有最大和的连续子数组（子数组最少包含一个元素），返回其最大和。
+
+进阶:
+
+如果你已经实现复杂度为 O(n) 的解法，尝试使用更为精妙的分治法求解。
+
+[题解](https://leetcode-cn.com/problems/maximum-subarray/solution/)
+
+| 常见解法 | 时间复杂度 | 空间复杂度 |
+| -------- | ---------- | ---------- |
+| 暴力搜索 | O(N^2)     | O(1)       |
+| 分治思想 | O(NlogN)   | O(logN)    |
+| 动态规划 | O(N)       | O(1)       |
+
+方法一：动态规划
+
+![Picture1.png](https://pic.leetcode-cn.com/8fec91e89a69d8695be2974de14b74905fcd60393921492bbe0338b0a628fd9a-Picture1.png)
+
+
+
+```java
+class Solution {
+    public int maxSubArray(int[] nums) {
+        int pre = 0, maxAns = nums[0];
+        for (int x : nums) {
+            pre = Math.max(pre + x, x);
+            maxAns = Math.max(maxAns, pre);
+        }
+        return maxAns;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：O(1) 
+
+方法二：分治 ★
+
+```java
+class Solution {
+    public class Status {
+        public int lSum, rSum, mSum, iSum;
+
+        public Status(int lSum, int rSum, int mSum, int iSum) {
+            this.lSum = lSum;
+            this.rSum = rSum;
+            this.mSum = mSum;
+            this.iSum = iSum;
+        }
+    }
+
+    public int maxSubArray(int[] nums) {
+        return getInfo(nums, 0, nums.length - 1).mSum;
+    }
+
+    public Status getInfo(int[] a, int l, int r) {
+        if (l == r) {
+            return new Status(a[l], a[l], a[l], a[l]);
+        }
+        int m = (l + r) >> 1;
+        Status lSub = getInfo(a, l, m);
+        Status rSub = getInfo(a, m + 1, r);
+        return pushUp(lSub, rSub);
+    }
+
+    public Status pushUp(Status l, Status r) {
+        int iSum = l.iSum + r.iSum;
+        int lSum = Math.max(l.lSum, l.iSum + r.lSum);
+        int rSum = Math.max(r.rSum, r.iSum + l.rSum);
+        int mSum = Math.max(Math.max(l.mSum, r.mSum), l.rSum + r.lSum);
+        return new Status(lSum, rSum, mSum, iSum);
+    }
+}
+```
+
