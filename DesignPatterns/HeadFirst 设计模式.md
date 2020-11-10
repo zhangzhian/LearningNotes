@@ -9,7 +9,8 @@
 - **设计原则**：多用组合，少用继承。
 - **设计原则**：为了交互对象之间的松耦合设计而努力。
 
-
+- **设计原则**：类应该对扩展开放，对修改关闭。
+- **设计原则**：要依赖抽象，不要依赖具体类。
 
 良好的OO设计必须具备：可复用，可扩充，可维护三个特性。设计模式可以让我们建造出具有良好OO设计质量的系统。
 
@@ -18,6 +19,20 @@
 模式不是被发明，而是发现。
 
 松耦合的设计之所以能让我们建立有弹性的OO系统，能够应对变化，是因为对象之间的互相依赖降到了最低。
+
+在程序设计中，应该允许行为可以被扩展，而无需修改现有的代码。
+
+组合和委托可在运行时动态地加上新的行为。
+
+**依赖倒置原则**：要依赖抽象，不要依赖具体的类。
+
+避免OO设计中违反依赖倒置原则的指导方针：
+
+- 变量不可以持有具体的引用
+- 不要让类派生自具体类
+- 不要覆盖基类中已实现的方法
+
+
 
 ## 零、策略模式
 
@@ -252,29 +267,54 @@ public class ObserverTest
 
 ## 二、装饰者模式
 
-**定义：**
+**定义：**装饰者模式动态地将责任附加到对象上。若要扩展此功能，装饰者提供了比继承更有弹性的代替方案。
 
-装饰者模式动态地将责任附加到对象上。若要扩展此功能，装饰者提供了比继承更有弹性的代替方案。
+> 装饰者模式意味着一群装饰者类，这些类用来包装具体的组件。
+>
+> 装饰者反映出被装饰的组件类型（事实上，他们具有相同的类型，都经过接口或继承实现）。
+>
+> 装饰者可以在被装饰者的行为前面或后面加上自己的行为，甚至将被装饰者行为整个取代掉，而达到特定的目的。
+>
+> 可以用无数个装饰者包装一个组件。
+>
+> 装饰者一般对组件的客户是透明的，除非客户程序依赖与组件的具体类型。
+>
+> 装饰者会导致设计中出现许多小对象，过度使用，会让程序变的很复杂。
 
-在程序设计中，应该允许行代码可以被扩展，而无需修改现有的代码
+**主要优点：**
 
-组合和委托可在允许时动态地加上新的行为
+- 装饰器是继承的有力补充，比继承灵活，在不改变原有对象的情况下，动态的给一个对象扩展功能，即插即用
+- 通过使用不用装饰类及这些装饰类的排列组合，可以实现不同效果
+- 装饰器模式完全遵守开闭原则
 
-装饰者模式意味着一群装饰者类，这些类用来包装具体的组件
+**主要缺点：**
 
-装饰者反映出被装饰的组件类型（事实上，他们具有相同的类型，都经过接口或继承实现）。
+装饰模式会增加许多子类，过度使用会增加程序得复杂性。
 
-装饰者可以在被装饰者的行为前面或后面加上自己的行为，甚至将被装饰者行为整个取代掉，而达到特定的目的
+**应用实例：** 
 
-可以用无数个装饰者包装一个组件
+1. 孙悟空有 72 变，当他变成"庙宇"后，他的根本还是一只猴子，但是他又有了庙宇的功能。 
 
-装饰者一般对组件的客户是透明的，除非客户程序依赖与组件的具体类型
+2. 不论一幅画有没有画框都可以挂在墙上，但是通常都是有画框的，并且实际上是画框被挂在墙上。在挂在墙上之前，画可以被蒙上玻璃，装到框子里；这时画、玻璃和画框形成了一个物体。
 
-装饰者会导致设计中出现许多小对象，过度使用，会让程序变的很复杂
+**使用场景：** 
 
-设计原则：类应该对扩展开放，对修改关闭
+1. 扩展一个类的功能。 
 
-![](https://img-blog.csdn.net/20140818201029976?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvemhzaHVsaW4=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/Center)
+2. 动态增加功能，动态撤销。
+
+**装饰模式的结构与实现**
+
+通常情况下，扩展一个类的功能会使用继承方式来实现。但继承具有静态特征，耦合度高，并且随着扩展功能的增多，子类会很膨胀。如果使用组合关系来创建一个包装对象（即装饰对象）来包裹真实对象，并在保持真实对象的类结构不变的前提下，为其提供额外的功能，这就是装饰模式的目标。下面来分析其基本结构和实现方法。
+
+1. 抽象构件（Component）角色：定义一个抽象接口以规范准备接收附加责任的对象。
+2. 具体构件（ConcreteComponent）角色：实现抽象构件，通过装饰角色为其添加一些职责。
+3. 抽象装饰（Decorator）角色：继承抽象构件，并包含具体构件的实例，可以通过其子类扩展具体构件的功能。
+4. 具体装饰（ConcreteDecorator）角色：实现抽象装饰的相关方法，并给具体构件对象添加附加的责任。
+
+装饰模式的结构图如下图所示。
+
+![装饰模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q115142115M2.gif)
 
 ```java
 // 男人
@@ -383,39 +423,438 @@ public class DecoratorTest {
 
 ## 三、工厂模式
 
-分为：简单工厂模式，工厂模式和抽象工厂模式
+**分为**：简单工厂模式，工厂模式和抽象工厂模式
 
-6简单工厂模式其实不是一种设计模式，反而比较像是一种编程习惯，但仍可以将客户程序从具体实现解耦
+**简单工厂模式**：其实不是一种设计模式，反而比较像是一种编程习惯，但仍可以将客户程序从具体实现解耦。
 
-工厂方法用来处理对象的创建，并将这样的行为封装在子类，客户程序中关于超类的代码就和子类对象创建代码解耦类
+**工厂模式定义**：定义了一个创建对象的接口，但由子类决定要实例化的类是哪一个。工厂方法让类把实例化到子类。
 
-所有工厂模式都是用来封装对象的创建，都通过减少应用程序和具体类之间的依赖促进松耦合
+**抽象工厂模式定义**：提供了一个接口，用于创建相关或依赖对象的家族，而不需要明确制定具体类
 
-工厂模式方法通过让子类决定该创建的对象是什么，来达到将对象创建的过程封装的目的
+> 工厂方法用来处理对象的创建，并将这样的行为封装在子类，客户程序中关于超类的代码就和子类对象创建代码解耦类。
+>
+> 所有工厂模式都是用来封装对象的创建，都通过减少应用程序和具体类之间的依赖促进松耦合。
+>
+> 工厂模式方法通过让子类决定该创建的对象是什么，来达到将对象创建的过程封装的目的。
+>
+> 工厂方法使用继承：把对象的创建委托给子类，子类实现工厂方法来创建对象。
+>
+> 抽象工厂使用对象耦合：对象的创建被实现在工厂接口所暴露出来的方法中。
 
-工厂方法使用继承：把对象的创建委托给子类，子类实现工厂方法来创建对象
+### 1. 简单工厂模式
 
-**工厂方法模式**：定义了一个创建对象的接口，但由于子类决定要实例化的类是哪一个。工厂方法让类把实例化到子类。
+**优点：**
 
-依赖倒置原则：要依赖抽象，不要依赖具体的类
+1. 工厂类包含必要的逻辑判断，可以决定在什么时候创建哪一个产品的实例。客户端可以免除直接创建产品对象的职责，很方便的创建出相应的产品。工厂和产品的职责区分明确。
+2. 客户端无需知道所创建具体产品的类名，只需知道参数即可。
+3. 也可以引入配置文件，在不修改客户端代码的情况下更换和添加新的具体产品类。
 
-避免OO设计中违反依赖倒置原则的指导方针：
+**缺点：**
 
-- 变量不可以持有具体的引用
-- 不要让类派生自具体类
-- 不要覆盖基类中以实现的方法
+1. 简单工厂模式的工厂类单一，负责所有产品的创建，职责过重，一旦异常，整个系统将受影响。且工厂类代码会非常臃肿，违背高聚合原则。
+2. 使用简单工厂模式会增加系统中类的个数（引入新的工厂类），增加系统的复杂度和理解难度
+3. 系统扩展困难，一旦增加新产品不得不修改工厂逻辑，在产品类型较多时，可能造成逻辑过于复杂
+4. 简单工厂模式使用了 static 工厂方法，造成工厂角色无法形成基于继承的等级结构。
 
-**抽象工厂模式**：提供了一个接口，用于创建相关或依赖对象的家族，而不需要明确制定具体类
+**应用场景：**
 
-抽象工厂使用对象耦合：对象的创建被实现在工厂接口所暴露出来的方法中
+对于产品种类相对较少的情况，考虑使用简单工厂模式。使用简单工厂模式的客户端只需要传入工厂类的参数，不需要关心如何创建对象的逻辑，可以很方便地创建所需产品。
 
-https://segmentfault.com/a/1190000019485423?utm_source=tag-newest
+**模式的结构与实现：**
+
+- 简单工厂（SimpleFactory）：是简单工厂模式的核心，负责实现创建所有实例的内部逻辑。工厂类的创建产品类的方法可以被外界直接调用，创建所需的产品对象。
+- 抽象产品（Product）：是简单工厂创建的所有对象的父类，负责描述所有实例共有的公共接口。
+- 具体产品（ConcreteProduct）：是简单工厂模式的创建目标。
+
+
+其结构图如下图所示。
+
+![简单工厂模式的结构图](http://c.biancheng.net/uploads/allimg/200908/5-200ZQ64244445.png)
+
+```java
+//抽象产品类（接口或抽象类）
+public interface Product {
+    void doSomething();
+    void doAnything();
+}
+
+//具体产品类
+public class ConcreteProductA implements Product {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductA doSomething");
+
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductA doAnything");
+    }
+}
+public class ConcreteProductB implements Product {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductB doSomething");
+
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductB doAnything");
+    }
+}
+
+//工厂类
+public class Creator {
+
+    public static Product createProduct(String type) {
+        Product product = null;
+        switch (type) {
+            case "A":
+                product = new ConcreteProductA();
+                break;
+            case "B":
+                product = new ConcreteProductB();
+                break;
+        }
+        return product;
+    }
+}
+
+//客户端代码
+public class Client {
+
+    public static void main(String[] args) {
+        Product productA = Creator.createProduct("A");
+        productA.doSomething();
+        productA.doAnything();
+      
+        Product productB = Creator.createProduct("B");
+        productB.doSomething();
+        productB.doAnything();
+    }
+
+}
+```
+
+### 2. 工厂模式
+
+**优点：**
+
+- 用户只需要知道具体工厂的名称就可得到所要的产品，无须知道产品的具体创建过程。
+- 灵活性增强，对于新产品的创建，只需多写一个相应的工厂类。
+- 典型的解耦框架。高层模块只需要知道产品的抽象类，无须关心其他实现类，满足迪米特法则、依赖倒置原则和里氏替换原则。
+
+**缺点：**
+
+- 类的个数容易过多，增加复杂度
+- 增加了系统的抽象性和理解难度
+- 抽象产品只能生产一种产品，此弊端可使用抽象工厂模式解决。
+
+**应用场景：**
+
+- 客户只知道创建产品的工厂名，而不知道具体的产品名。如 TCL 电视工厂、海信电视工厂等。
+- 创建对象的任务由多个具体子工厂中的某一个完成，而抽象工厂只提供创建产品的接口。
+- 客户不关心创建产品的细节，只关心产品的品牌
+
+**模式的结构与实现：**
+
+工厂方法模式由抽象工厂、具体工厂、抽象产品和具体产品等4个要素构成。
+
+1. 抽象工厂（Abstract Factory）：提供了创建产品的接口，调用者通过它访问具体工厂的工厂方法 newProduct() 来创建产品。
+2. 具体工厂（ConcreteFactory）：主要是实现抽象工厂中的抽象方法，完成具体产品的创建。
+3. 抽象产品（Product）：定义了产品的规范，描述了产品的主要特性和功能。
+4. 具体产品（ConcreteProduct）：实现了抽象产品角色所定义的接口，由具体工厂来创建，它同具体工厂之间一一对应。
+
+![工厂方法模式的结构图](http://c.biancheng.net/uploads/allimg/181114/3-1Q114135A2M3.gif)
+
+```java
+//抽象产品类
+public interface Product {
+    void doSomething();
+    void doAnything();
+}
+
+//具体产品类
+public class ConcreteProductA implements Product {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductA doSomething");
+
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductA doAnything");
+    }
+}
+public class ConcreteProductB implements Product {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductB doSomething");
+
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductB doAnything");
+    }
+}
+
+//抽象工厂类
+public interface Creator {
+    Product createProduct();
+}
+
+//具体工厂类
+public class ConcreteCreatorA implements Creator {
+    @Override
+    public Product createProduct() {
+        return new ConcreteProductA();
+    }
+}
+public class ConcreteCreatorB implements Creator {
+    @Override
+    public Product createProduct() {
+        return new ConcreteProductB();
+    }
+}
+
+//客户端代码
+public static void main(String[] args) {
+        Creator creatorA = new ConcreteCreatorA();
+        Product productA = creatorA.createProduct();
+        productA.doSomething();
+        productA.doAnything();
+
+        Creator creatorB = new ConcreteCreatorB();
+        Product productB = creatorB.createProduct();
+        productB.doSomething();
+        productB.doAnything();
+    }
+```
+
+
+
+### 3. 抽象工厂模式
+
+抽象工厂模式是工厂方法模式的升级版本，工厂方法模式只生产一个等级的产品，而抽象工厂模式可生产多个等级的产品。
+
+使用抽象工厂模式一般要满足以下条件。
+
+- 系统中有多个产品族，每个具体工厂创建同一族但属于不同等级结构的产品。
+- 系统一次只可能消费其中某一族产品，即同族的产品一起使用。
+
+抽象工厂模式除了具有工厂方法模式的优点外，**其他主要优点:**
+
+- 可以在类的内部对产品族中相关联的多等级产品共同管理，而不必专门引入多个新的类来进行管理。
+- 当需要产品族时，抽象工厂可以保证客户端始终只使用同一个产品的产品组。
+- 抽象工厂增强了程序的可扩展性，当增加一个新的产品族时，不需要修改原代码，满足开闭原则。
+
+**缺点：**
+
+当产品族中需要增加一个新的产品时，所有的工厂类都需要进行修改。增加了系统的抽象性和理解难度。
+
+**应用场景：**
+
+抽象工厂模式最早的应用是用于创建属于不同操作系统的视窗构件。如Java的 AWT 中的 Button 和 Text 等构件在 Windows 和 UNIX 中的本地实现是不同的。
+
+抽象工厂模式通常适用于以下场景：
+
+1. 当需要创建的对象是一系列相互关联或相互依赖的产品族时，如电器工厂中的电视机、洗衣机、空调等。
+2. 系统中有多个产品族，但每次只使用其中的某一族产品。如有人只喜欢穿某一个品牌的衣服和鞋。
+3. 系统中提供了产品的类库，且所有产品的接口相同，客户端不依赖产品实例的创建细节和内部结构。
+
+**模式的结构与实现：**
+
+抽象工厂模式同工厂方法模式一样，也是由抽象工厂、具体工厂、抽象产品和具体产品等 4 个要素构成，但抽象工厂中方法个数不同，抽象产品的个数也不同。现在我们来分析其基本结构和实现方法。
+
+1. 抽象工厂（Abstract Factory）：提供了创建产品的接口，它包含多个创建产品的方法 newProduct()，可以创建多个不同等级的产品。
+2. 具体工厂（Concrete Factory）：主要是实现抽象工厂中的多个抽象方法，完成具体产品的创建。
+3. 抽象产品（Product）：定义了产品的规范，描述了产品的主要特性和功能，抽象工厂模式有多个抽象产品。
+4. 具体产品（ConcreteProduct）：实现了抽象产品角色所定义的接口，由具体工厂来创建，它同具体工厂之间是多对一的关系。
+
+![抽象工厂模式的结构图](http://c.biancheng.net/uploads/allimg/181114/3-1Q11416002NW.gif)
+
+
+
+````java
+//抽象产品类
+//产品A家族
+public interface ProductA {
+    void doSomething();
+    void doAnything();
+}
+
+//产品B家族
+public interface ProductB {
+    void doSomething();
+    void doAnything();
+}
+
+//具体产品类
+//产品A家族，产品等级1
+public class ConcreteProductA1 implements ProductA {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductA1 doSomething");
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductA1 doAnything");
+    }
+}
+
+//产品A家族，产品等级2
+public class ConcreteProductA2 implements ProductA {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductA2 doSomething");
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductA2 doAnything");
+    }
+}
+
+//产品B家族，产品等级2
+public class ConcreteProductB1 implements ProductB {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductB1 doSomething");
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductB1 doAnything");
+    }
+}
+
+//产品B家族，产品等级2
+public class ConcreteProductB2 implements ProductB {
+    @Override
+    public void doSomething() {
+        System.out.println("ConcreteProductB2 doSomething");
+    }
+
+    @Override
+    public void doAnything() {
+        System.out.println("ConcreteProductB2 doAnything");
+    }
+}
+
+//抽象工厂类
+public interface Creator {
+    /**
+     * 创建A产品家族
+     * @return
+     */
+    ProductA createProductA();
+
+    /**
+     * 创建B产品家族
+     * @return
+     */
+    ProductB createProductB();
+
+    // ...
+    // 有N个产品族，在抽象工厂类中就应该有N个创建方法
+}
+
+//有N个产品族，在抽象工厂类中就应该有N个创建方法
+//具体工厂类
+public class ConcreteCreator1 implements Creator {
+    @Override
+    public ProductA createProductA() {
+        return new ConcreteProductA1();
+    }
+
+    @Override
+    public ProductB createProductB() {
+        return new ConcreteProductB1();
+    }
+}
+public class ConcreteCreator2 implements Creator {
+    @Override
+    public ProductA createProductA() {
+        return new ConcreteProductA2();
+    }
+
+    @Override
+    public ProductB createProductB() {
+        return new ConcreteProductB2();
+    }
+}
+
+//有M个产品等级，就应该有M个具体工厂实现
+//客户端代码
+public class Client {
+    public static void main(String[] args) {
+        Creator creator1 = new ConcreteCreator1();
+
+        ProductA productA1 = creator1.createProductA();
+        productA1.doSomething();
+        productA1.doAnything();
+
+        ProductB productB1 = creator1.createProductB();
+        productB1.doSomething();
+        productB1.doAnything();
+
+        Creator creator2 = new ConcreteCreator2();
+
+        ProductA productA2 = creator2.createProductA();
+        productA2.doSomething();
+        productA2.doAnything();
+
+        ProductB productB2 = creator2.createProductB();
+        productB2.doSomething();
+        productB2.doAnything();
+    }
+}
+````
+
+
 
 ## 四、单例模式
 
-单例模式：确保一个类只有一个实例，并提供一个全局访问点
+**定义：**确保一个类只有一个实例，并提供一个全局访问点。
 
-多线程下的单例模式：
+> 一般情况下，建议使用饿汉方式。只有在要明确实现 lazy loading 效果时，才会使用静态内部类。如果涉及到反序列化创建对象时，可以尝试使用枚举方式。如果有其他特殊的需求，可以考虑使用DCL方式。
+
+**优点：**
+
+- 单例模式可以保证内存里只有一个实例，减少了内存的开销。
+- 可以避免对资源的多重占用。
+- 单例模式设置全局访问点，可以优化和共享资源的访问。
+
+**缺点：**
+
+- 单例模式一般没有接口，扩展困难。如果要扩展，则除了修改原来的代码，没有第二种途径，违背开闭原则。
+- 在并发测试中，单例模式不利于代码调试。在调试过程中，如果单例中的代码没有执行完，也不能模拟生成一个新的对象。
+- 单例模式的功能代码通常写在一个类中，如果功能设计不合理，则很容易违背单一职责原则。
+
+**应用场景**
+
+对于 Java来说，单例模式可以保证在一个 JVM 中只存在单一实例。
+
+- 需要频繁创建的一些类，使用单例可以降低系统的内存压力，减少 GC。
+- 某类只要求生成一个对象的时候，如一个班中的班长、每个人的身份证号等。
+- 某些类创建实例时占用资源较多，或实例化耗时较长，且经常使用。
+- 某类需要频繁实例化，而创建的对象又频繁被销毁的时候，如多线程的线程池、网络连接池等。
+- 频繁访问数据库或文件的对象。
+- 对于一些控制硬件级别的操作，或者从系统上来讲应当是单一控制逻辑的操作，如果有多个实例，则系统会完全乱套。
+- 当对象需要被共享的场合。由于单例模式只允许创建一个对象，共享该对象可以节省内存，并加快对象访问速度。如 Web 中的配置对象、数据库的连接池等。
+
+**结构与实现**
+
+- 单例类：包含一个实例且能自行创建这个实例的类。
+- 访问类：使用单例的类。
+
+![单例模式的结构图](http://c.biancheng.net/uploads/allimg/181113/3-1Q1131K441K2.gif)
+
+**多线程下的单例模式：**
 
 - 如果`getInstance()`的性能对应用不是很关键，就什么也别做
 - 使用“饿汉式”创建实例，而不用“懒汉式”实例化的做法
@@ -432,9 +871,7 @@ public class Singleton {
 }
 ```
 
-
-
-- 用“双重检查锁”，在`getInstance()`中减少使用同步
+- 用“双重检查锁DCL”，在`getInstance()`中减少使用同步
 
 ```java
 public class Singleton {
@@ -455,6 +892,42 @@ public class Singleton {
 }
 
 ```
+
+这种方式采用双锁机制，安全且在多线程情况下能保持高性能。getInstance() 的性能对应用程序很关键。
+
+- 静态内部类
+
+```java
+public class Singleton {  
+    private static class SingletonHolder {  
+         private static final Singleton INSTANCE = new Singleton();  
+    }  
+    private Singleton (){}  
+    public static final Singleton getInstance() {  
+    	return SingletonHolder.INSTANCE;  
+    }  
+}
+```
+
+这种方式能达到双检锁方式一样的功效，但实现更简单。对静态域使用延迟初始化，应使用这种方式而不是双检锁方式。
+
+- 枚举
+
+```java
+public enum Singleton {  
+    INSTANCE;  
+    public void whateverMethod() {  
+    }  
+}
+```
+
+这种实现方式没有被广泛采用，但这是实现单例模式的最佳方法。它更简洁，自动支持序列化机制，绝对防止多次实例化。
+
+Effective Java 作者 Josh Bloch 提倡的方式，它不仅能避免多线程同步问题，而且还自动支持序列化机制，防止反序列化重新创建新的对象，绝对防止多次实例化。
+
+不过，由于 JDK1.5 之后才加入 enum 特性，用这种方式写不免让人感觉生疏，在实际工作中，也很少用。
+
+不能通过 reflection attack 来调用私有构造方法。
 
 ## 五、命令模式
 
