@@ -9,7 +9,6 @@ OkHttp是一个高效的HTTP客户端，它有以下默认特性：
 
 当网络出现问题的时候OkHttp依然坚守自己的职责，它会自动恢复一般的连接问题，如果你的服务有多个IP地址，当第一个IP请求失败时，OkHttp会交替尝试你配置的其他IP，这对于使用IPv4+IPv6托管在冗余数据中心中的服务是必需的，OkHttp使用现代TLS技术(TLS 1.3、ALPN、证书固定)初始化新的连接，当握手失败时会回退到TLS 1.0。
 
-
  OkHttp官网地址：http://square.github.io/okhttp/ 
  OkHttp GitHub地址：https://github.com/square/okhttp 
 
@@ -26,7 +25,7 @@ implementation 'com.squareup.okhttp3:okhttp:3.14.2'
 
 需要在清单文件声明访问Internet的权限，如果使用缓存，那还得声明写外存的权限
 
-### 同步Get请求
+### 异步Get请求
 
 ```java
    /**
@@ -462,3 +461,195 @@ OkHttp的拦截器链可谓是其整个框架的精髓，用户可传入的 `int
 使用Call.cancel()可以立即停止掉一个正在执行的call。如果一个线程正在写请求或者读响应，将会引发IOException。当call没有必要的时候，使用这个api可以节约网络资源。例如当用户离开一个应用时。
 
 不管同步还是异步的call都可以取消。 
+
+你可以通过tags来同时取消多个请求。当你构建一请求时，使用RequestBuilder.tag(tag)来分配一个标签。之后你就可以用OkHttpClient.cancel(tag)来取消所有带有这个tag的call。.
+
+```java
+    /**
+     * 取消请求
+     */
+    private void cancelCall() {
+        final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
+        final OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url("https://httpbin.org/delay/2") // This URL is served with a 2 second delay.
+                .build();
+
+        final long startNanos = System.nanoTime();
+        final Call call = client.newCall(request);
+
+        StringBuffer buffer = new StringBuffer();
+        // Schedule a job to cancel the call in 1 second.
+        executor.schedule(new Runnable() {
+            @Override
+            public void run() {
+                buffer.append(String.format("%.2f Canceling call.%n",
+                        (System.nanoTime() - startNanos) / 1e9f));
+                call.cancel();
+                buffer.append(String.format("%.2f Canceled call.%n",
+                        (System.nanoTime() - startNanos) / 1e9f) );
+                runOnUiThread(() -> tvContent.setText(buffer));
+            }
+        }, 1, TimeUnit.SECONDS);
+
+        executor.schedule(new Runnable() {
+            @Override
+            public void run() {
+                buffer.append(String.format("%.2f Executing call.%n", (System.nanoTime() - startNanos) / 1e9f) );
+                try (Response response = call.execute()) {
+                    buffer.append(String.format("%.2f Call was expected to fail, but completed: %s%n",
+                            (System.nanoTime() - startNanos) / 1e9f, response));
+                } catch (IOException e) {
+                    buffer.append(String.format("%.2f Call failed as expected: %s%n",
+                            (System.nanoTime() - startNanos) / 1e9f, e) );
+                }
+            }
+        }, 0, TimeUnit.SECONDS);
+    }
+
+```
+
+### 超时
+
+OkHttp支持连接，读取和写入超时。
+
+```java
+    /**
+     *  超时
+     */
+    private void timeout() {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
+                .build();
+
+         Request request = new Request.Builder()
+                .url("https://httpbin.org/delay/12")
+                .get()
+                .build();
+        final Call call = client.newCall(request);
+
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> tvContent.setText("timeout onFailure: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                StringBuffer buffer = new StringBuffer();
+                buffer.append("timeout onResponse:   " + result + "\r\n");
+                runOnUiThread(() -> tvContent.setText(buffer));
+
+            }
+        });
+    }
+
+```
+
+### 每个call配置
+
+使用OkHttpClient，所有的HTTP Client配置包括代理设置、超时设置、缓存设置。当你需要为单个call改变配置的时候，clone 一个 OkHttpClient。这个api将会返回一个浅拷贝（shallow copy），你可以用来单独自定义。
+
+```java
+/**
+ * 每个call配置
+ */
+private void perCallConfiguration() {
+    OkHttpClient client = new OkHttpClient.Builder()
+            .build();
+
+    Request request = new Request.Builder()
+            .url("https://httpbin.org/delay/1")
+            .get()
+            .build();
+
+    OkHttpClient clientCopy = client.newBuilder()
+            .readTimeout(500, TimeUnit.MILLISECONDS)
+            .build();
+
+    final Call call = clientCopy.newCall(request);
+    StringBuffer buffer = new StringBuffer();
+    call.enqueue(new Callback() {
+        @Override
+        public void onFailure(Call call, IOException e) {
+            runOnUiThread(() -> tvContent.setText("perCallConfiguration onFailure: " + e.getMessage()));
+        }
+
+        @Override
+        public void onResponse(Call call, Response response) throws IOException {
+            String result = response.body().string();
+            buffer.append("perCallConfiguration onResponse:   " + result + "\r\n");
+            runOnUiThread(() -> tvContent.setText(buffer));
+
+        }
+    });
+}
+```
+### 处理身份验证
+
+OkHttp会自动重试未验证的请求。当响应是401 Not Authorized时，Authenticator会被要求提供证书。Authenticator的实现中需要建立一个新的包含证书的请求。如果没有证书可用，返回null来跳过尝试。
+
+```java
+    /**
+     * 处理身份验证
+     */
+    private void handlingAuthentication() {
+        StringBuffer buffer = new StringBuffer();
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .authenticator(new Authenticator() {
+
+                    @Override
+                    public Request authenticate(Route route, Response response) throws IOException {
+                        if (response.request().header("Authorization") != null) {
+                            return null; // Give up, we've already attempted to authenticate.
+                        }
+                        buffer.append("Authenticating for response: " + response + "\r\n");
+                        buffer.append("Challenges: " + response.challenges() + "\r\n");
+
+                        String credential = Credentials.basic("jesse", "password1");
+                        return response.request().newBuilder()
+                                .header("Authorization", credential)
+                                .build();
+                    }
+                })
+                .build();
+
+        Request request = new Request.Builder()
+                .url("http://publicobject.com/secrets/hellosecret.txt")
+                .get()
+                .build();
+
+        final Call call = client.newCall(request);
+
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> tvContent.setText("handlingAuthentication onFailure: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                buffer.append("handlingAuthentication onResponse:   " + result + "\r\n");
+                runOnUiThread(() -> tvContent.setText(buffer));
+
+            }
+        });
+    }
+```
+
+## 其他
+
+- 推荐让 `OkHttpClient`保持单例，用同一个 `OkHttpClient`实例来执行你的所有请求，因为每一个 `OkHttpClient`实例都拥有自己的连接池和线程池，重用这些资源可以减少延时和节省资源，如果为每个请求创建一个 `OkHttpClient`实例，显然就是一种资源的浪费。
+- 每一个Call（其实现是RealCall）只能执行一次，否则会报异常，具体参见 `RealCall#execute()`
+
+---
+
+**我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork**
+
+**欢迎关注我的公众号，持续分析优质技术文章**
+![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
