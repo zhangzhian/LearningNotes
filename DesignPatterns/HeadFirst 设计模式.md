@@ -821,8 +821,6 @@ public class Client {
 
 **定义：**确保一个类只有一个实例，并提供一个全局访问点。
 
-> 一般情况下，建议使用饿汉方式。只有在要明确实现 lazy loading 效果时，才会使用静态内部类。如果涉及到反序列化创建对象时，可以尝试使用枚举方式。如果有其他特殊的需求，可以考虑使用DCL方式。
-
 **优点：**
 
 - 单例模式可以保证内存里只有一个实例，减少了内存的开销。
@@ -846,6 +844,10 @@ public class Client {
 - 频繁访问数据库或文件的对象。
 - 对于一些控制硬件级别的操作，或者从系统上来讲应当是单一控制逻辑的操作，如果有多个实例，则系统会完全乱套。
 - 当对象需要被共享的场合。由于单例模式只允许创建一个对象，共享该对象可以节省内存，并加快对象访问速度。如 Web 中的配置对象、数据库的连接池等。
+
+**使用场景**
+
+一般情况下，建议使用饿汉方式。只有在要明确实现 lazy loading 效果时，才会使用静态内部类。如果涉及到反序列化创建对象时，可以尝试使用枚举方式。如果有其他特殊的需求，可以考虑使用DCL方式。
 
 **结构与实现**
 
@@ -931,23 +933,57 @@ Effective Java 作者 Josh Bloch 提倡的方式，它不仅能避免多线程�
 
 ## 五、命令模式
 
-封装调用
+**定义：**将请求封装成对象，以便使用不同的请求、队列或者日志来参数化其他对象。命令模式也支持可撤销的操作。
 
-定义：将请求封装成对象，以便使用不同的请求、队列或者日志来参数化其他对象。命令模式也支持可撤销的操作。
+>命令模式将发出请求的对象和执行请求的对象解偶，在被解耦的两者之间时通过命令对象进行沟通的，命令对象封装了接收者和一个或一组动作。
+>
+>调用者通过调用命令对象的execute() 发出请求，这会使接收者的动作被调用.
+>
+>当命令支持撤销时，该命令必须提供和execute() 方法相反的方法undo() 方法
+>
+>调用者可以接受命令当做参数，甚至可以在运行时动态进行。
+>
+>实际操作时，可以直接实现请求，而非将工作直接委托给接收者。
 
-空对象：当不想返回一个有意义的对象，可以使用空对象，将处理null的责任转移给空对象。
+- 空对象：当不想返回一个有意义的对象，可以使用空对象，将处理null的责任转移给空对象。
 
-当命令支持撤销时，该命令必须提供和execute()方法相反的方法undo() 方法
+- 宏命令：在命令中添加命令的集合，是命令的一种简单延伸，允许调用多个命令。支持撤销。
 
-宏命令：在命令中添加命令的集合，是命令的一种简单延伸，允许调用多个命令。支持注销
+**优点：**
 
-命令模式将发出请求的对象和执行请求的对象接偶，在被解耦的两者之间时通过命令对象进行沟通的，命令对象封装了接收者和一个或一组动作
+1. 通过引入中间件（抽象接口）降低系统的耦合度。
+2. 扩展性良好，增加或删除命令非常方便。采用命令模式增加与删除命令不会影响其他类，且满足“开闭原则”。
+3. 可以实现宏命令。命令模式可以与组合模式结合，将多个命令装配成一个组合命令，即宏命令。
+4. 方便实现 Undo 和 Redo 操作。命令模式可以与后面介绍的备忘录模式结合，实现命令的撤销与恢复。
+5. 可以在现有命令的基础上，增加额外功能。比如日志记录，结合装饰器模式会更加灵活。
 
-调用者通过调用命令对象的execute（）发出请求，这会使接收者的动作被调用
+**缺点：**
 
-调用者可以接受命令当做参数，甚至可以在运行时动态进行
+1. 可能产生大量具体的命令类。因为每一个具体操作都需要设计一个具体命令类，这会增加系统的复杂性。
+2. 命令模式的结果其实就是接收方的执行结果，但是为了以命令的形式进行架构、解耦请求与实现，引入了额外类型结构（引入了请求方与抽象命令接口），增加了理解上的困难。不过这也是设计模式的通病，抽象必然会额外增加类的数量，代码抽离肯定比代码聚合更加难理解。
 
-实际操作时，直接实现请求，而非将工作直接委托给接收者
+**应用实例**
+
+用命令模式实现客户去餐馆吃早餐的实例。分析：客户去餐馆可选择的早餐有肠粉、河粉和馄饨等，客户可向服务员选择以上早餐中的若干种，服务员将客户的请求交给相关的厨师去做。这里的点早餐相当于“命令”，服务员相当于“调用者”，厨师相当于“接收者”，所以用命令模式实现比较合适。
+
+**使用场景**
+
+认为是命令的地方都可以使用命令模式，比如： 1、GUI 中每一个按钮都是一条命令。 2、模拟 CMD。
+
+**命令模式的结构与实现**
+
+可以将系统中的相关操作抽象成命令，使调用者与实现者相关分离，其结构如下。
+
+命令模式包含以下主要角色。
+
+1. 抽象命令类（Command）角色：声明执行命令的接口，拥有执行命令的抽象方法 execute()。
+2. 具体命令类（Concrete Command）角色：是抽象命令类的具体实现类，它拥有接收者对象，并通过调用接收者的功能来完成命令要执行的操作。
+3. 实现者/接收者（Receiver）角色：执行命令功能的相关操作，是具体命令对象业务的真正实现者。
+4. 调用者/请求者（Invoker）角色：是请求的发送者，它通常拥有很多的命令对象，并通过访问命令对象来执行相关请求，它不直接访问接收者。
+
+
+
+
 
 ![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjExMzM1RTQ0LmdpZg)
 
@@ -989,7 +1025,7 @@ interface Command
 class ConcreteCommand implements Command
 {
     private Receiver receiver;
-    ConcreteCommand()
+    public ConcreteCommand()
     {
         receiver=new Receiver();
     }
@@ -1007,84 +1043,6 @@ class Receiver
     }
 }
 ```
-
-
-
-![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9jb21tYW5kX3BhdHRlcm5fdW1sX2RpYWdyYW0uanBn?x-oss-process=image/format,png)
-
-```java
-public interface Order {
-   void execute();
-}
-public class Stock {
-   
-   private String name = "ABC";
-   private int quantity = 10;
- 
-   public void buy(){
-      System.out.println("Stock [ Name: "+name+", 
-         Quantity: " + quantity +" ] bought");
-   }
-   public void sell(){
-      System.out.println("Stock [ Name: "+name+", 
-         Quantity: " + quantity +" ] sold");
-   }
-}
-public class BuyStock implements Order {
-   private Stock abcStock;
- 
-   public BuyStock(Stock abcStock){
-      this.abcStock = abcStock;
-   }
- 
-   public void execute() {
-      abcStock.buy();
-   }
-}
-public class SellStock implements Order {
-   private Stock abcStock;
- 
-   public SellStock(Stock abcStock){
-      this.abcStock = abcStock;
-   }
- 
-   public void execute() {
-      abcStock.sell();
-   }
-}
- 
-public class Broker {
-   private List<Order> orderList = new ArrayList<Order>(); 
- 
-   public void takeOrder(Order order){
-      orderList.add(order);      
-   }
- 
-   public void placeOrders(){
-      for (Order order : orderList) {
-         order.execute();
-      }
-      orderList.clear();
-   }
-}
-                         
-public class CommandPatternDemo {
-   public static void main(String[] args) {
-      Stock abcStock = new Stock();
- 
-      BuyStock buyStockOrder = new BuyStock(abcStock);
-      SellStock sellStockOrder = new SellStock(abcStock);
- 
-      Broker broker = new Broker();
-      broker.takeOrder(buyStockOrder);
-      broker.takeOrder(sellStockOrder);
- 
-      broker.placeOrders();
-   }
-}                         
-```
-
-
 
 ## 六、适配器模式与外观模式
 
@@ -1235,7 +1193,7 @@ class SubSystem03
 
 ## 七、模版方法模式
 
-模版方法定义了一个算法的步骤，并允许字类为一个或多个步骤提供实现。
+模版方法定义了一个算法的步骤，并允许子类为一个或多个步骤提供实现。
 
 模版方法模式在一个方法中定义了一个算法的骨架，而将一些步骤延迟到子类中。模版方法使得字类可以在不改变算法结构的情况下，重信定义算法中的某些步骤。
 
