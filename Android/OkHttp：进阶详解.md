@@ -557,37 +557,391 @@ OkHttp具有弹性，可以自动从某些连接故障中恢复。在这种情�
 
 ## 五、HTTPS
 
+OkHttp试图平衡两个相互冲突的问题：
 
+- **连接**到尽可能多的主机。其中包括运行最新版本的[boringssl](https://boringssl.googlesource.com/boringssl/)的高级主机，以及运行旧版本的[OpenSSL](https://www.openssl.org/)的过时主机。
+- 连接的**安全**性。这包括使用证书验证远程Web服务器，以及使用强密码交换的数据的私密性。
+
+在协商与HTTPS服务器的连接时，OkHttp需要知道要提供哪些[TLS版本](http://square.github.io/okhttp/3.x/okhttp/okhttp3/TlsVersion.html)和[加密序列](http://square.github.io/okhttp/3.x/okhttp/okhttp3/CipherSuite.html)。
+
+想要最大程度地提高连接性的客户端将包括过时的TLS版本和弱设计加密序列。
+
+想要最大程度提高安全性的严格客户端将仅限于最新的TLS版本和最强大的加密序列。
+
+特定的安全性与连接性决定由[ConnectionSpec](http://square.github.io/okhttp/3.x/okhttp/okhttp3/ConnectionSpec.html)实现。OkHttp包含四个内置连接规范：
+
+- `RESTRICTED_TLS` 是一种安全配置，旨在满足更严格的合规性要求。
+- `MODERN_TLS` 是连接到现代HTTPS服务器的安全配置。
+- `COMPATIBLE_TLS` 是一种安全配置，可连接到安全的但不是当前HTTPS的服务器。
+- `CLEARTEXT`是用于`http://`URL的不安全配置。
+
+这些宽松地遵循了[Google Cloud Policies中](https://cloud.google.com/load-balancing/docs/ssl-policies-concepts)设置的模型。后续会[跟踪](https://github.com/square/okhttp/blob/okhttp_3.14.x/TLS_CONFIGURATION_HISTORY.md)对此政策的更改。
+
+默认情况下，OkHttp将尝试`MODERN_TLS`连接。但是，如果配置失败，则可以通过配置客户端connectionSpecs来允许回退到`COMPATIBLE_TLS`连接。
+
+```java
+OkHttpClient client = new OkHttpClient.Builder()
+    .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+    .build();
+```
+
+每个规范中的TLS版本和密码套件可随每个发行版而更改。
+
+例如，在OkHttp 2.2中，为了应对[POODLE](http://googleonlinesecurity.blogspot.ca/2014/10/this-poodle-bites-exploiting-ssl-30.html)攻击，放弃了对SSL 3.0的支持。在OkHttp 2.3中，放弃了对[RC4](http://en.wikipedia.org/wiki/RC4#Security)的支持。与桌面Web浏览器一样，保持OkHttp的最新状态是确保安全的最佳方法。
+
+可以使用一组自定义的TLS版本和加密序列来构建自己的连接规范。例如，此配置仅限于三个备受推崇的密码套件。它的缺点是它需要Android 5.0+和类似的Web服务器。
+
+```java
+ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+    .tlsVersions(TlsVersion.TLS_1_2)
+    .cipherSuites(
+          CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+          CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+          CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
+    .build();
+
+OkHttpClient client = new OkHttpClient.Builder()
+    .connectionSpecs(Collections.singletonList(spec))
+    .build();
+```
+
+### 证书固定
+
+默认情况下，OkHttp信任主机平台的证书颁发机构。此策略可最大程度地提高连接性，但会受到诸如[2011 DigiNotar](http://www.computerworld.com/article/2510951/cybercrime-hacking/hackers-spied-on-300-000-iranians-using-fake-google-certificate.html)攻击之类的证书颁发机构的攻击。它还伪造您的HTTPS服务器的证书由证书颁发机构签名。
+
+使用[CertificatePinner](http://square.github.io/okhttp/3.x/okhttp/okhttp3/CertificatePinner.html)限制受信任的证书和证书颁发机构。证书固定可提高安全性，但会限制您的服务器团队更新其TLS证书的能力。**没有服务器的TLS管理员的许可，请勿使用证书固定！**
+
+```java
+public final class CertificatePinning {
+  private final OkHttpClient client = new OkHttpClient.Builder()
+      .certificatePinner(
+          new CertificatePinner.Builder()
+              .add("publicobject.com", "sha256/Vjs8r4z+80wjNcr1YKepWQboSIRi63WsWXhIMN+eWys=")
+              .build())
+      .build();
+
+  public void run() throws Exception {
+    Request request = new Request.Builder()
+        .url("https://publicobject.com/robots.txt")
+        .build();
+
+    try (Response response = client.newCall(request).execute()) {
+      if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+
+      for (Certificate certificate : response.handshake().peerCertificates()) {
+        System.out.println(CertificatePinner.pin(certificate));
+      }
+    }
+  }
+
+  public static void main(String... args) throws Exception {
+    new CertificatePinning().run();
+  }
+}
+```
+
+### 自定义可信证书
+
+[完整的代码示例](https://github.com/square/okhttp/blob/master/samples/guide/src/main/java/okhttp3/recipes/CustomTrust.java)显示了如何使用您自己的证书集替换主机平台的证书颁发机构。如上所述，**在没有服务器的TLS管理员祝福的许可下**，**请勿使用自定义证书！**
+
+```java
+  public CustomTrust() {
+    // This implementation just embeds the PEM files in Java strings; most applications will
+    // instead read this from a resource file that gets bundled with the application.
+
+    HandshakeCertificates certificates = new HandshakeCertificates.Builder()
+        .addTrustedCertificate(letsEncryptCertificateAuthority)
+        .addTrustedCertificate(entrustRootCertificateAuthority)
+        .addTrustedCertificate(comodoRsaCertificationAuthority)
+        // Uncomment if standard certificates are also required.
+        //.addPlatformTrustedCertificates()
+        .build();
+
+    client = new OkHttpClient.Builder()
+            .sslSocketFactory(certificates.sslSocketFactory(), certificates.trustManager())
+            .build();
+  }
+
+  public void run() throws Exception {
+    Request request = new Request.Builder()
+        .url("https://publicobject.com/helloworld.txt")
+        .build();
+
+    try (Response response = client.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        Headers responseHeaders = response.headers();
+        for (int i = 0; i < responseHeaders.size(); i++) {
+          System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
+        }
+
+        throw new IOException("Unexpected code " + response);
+      }
+
+      System.out.println(response.body().string());
+    }
+  }
+
+  public static void main(String... args) throws Exception {
+    new CustomTrust().run();
+  }
+}
+```
 
 ## 六、Interceptor
 
+拦截器是一种强大的机制，可以监视，重写和重试cell。这是一个简单的拦截器，用于记录传出请求和传入响应。
 
+```java
+class LoggingInterceptor implements Interceptor {
+  @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+    Request request = chain.request();
 
+    long t1 = System.nanoTime();
+    logger.info(String.format("Sending request %s on %s%n%s",
+        request.url(), chain.connection(), request.headers()));
 
+    Response response = chain.proceed(request);
 
-## 七、Recipes
+    long t2 = System.nanoTime();
+    logger.info(String.format("Received response for %s in %.1fms%n%s",
+        response.request().url(), (t2 - t1) / 1e6d, response.headers()));
 
+    return response;
+  }
+}
+```
 
+调用`chain.proceed(request)`是每个拦截器实现的关键部分。这种简单的方法是所有HTTP工作发生的地方，产生响应来满足请求。如果`chain.proceed(request)`被多次调用，则必须关闭先前的响应主体。
 
+拦截器可以链接。同时具有压缩拦截器和校验拦截器：将需要确定是先压缩数据然后进行校验，还是先对数据进行校验然后进行压缩。OkHttp使用列表来跟踪拦截器，并按顺序调用拦截器。
 
+![拦截器图](https://square.github.io/okhttp/images/interceptors%402x.png)
 
-## 八、Security
+### 应用拦截器
 
+拦截器被注册为 **应用拦截器** 或  **网络拦截器** 。我们将使用`LoggingInterceptor`上面的定义来显示差异。
 
+在`OkHttpClient.Builder`上调用`addInterceptor()`注册一个应用拦截器：
 
+```java
+OkHttpClient client = new OkHttpClient.Builder()
+    .addInterceptor(new LoggingInterceptor())
+    .build();
 
+Request request = new Request.Builder()
+    .url("http://www.publicobject.com/helloworld.txt")
+    .header("User-Agent", "OkHttp Example")
+    .build();
 
+Response response = client.newCall(request).execute();
+response.body().close();
+```
 
+该URL`http://www.publicobject.com/helloworld.txt`重定向到`https://publicobject.com/helloworld.txt`，并且OkHttp自动遵循此重定向。
 
+应用程序拦截器被调用**一次，**并且返回的响应`chain.proceed()`具有重定向的响应：
 
+```
+INFO: Sending request http://www.publicobject.com/helloworld.txt on null
+User-Agent: OkHttp Example
 
+INFO: Received response for https://publicobject.com/helloworld.txt in 1179.7ms
+Server: nginx/1.4.6 (Ubuntu)
+Content-Type: text/plain
+Content-Length: 1759
+Connection: keep-alive
+```
 
+可以看到被重定向了，因为`response.request().url()`和`request.url()`不同。这两个日志语句记录两个不同的URL。
 
+### 网络拦截器
 
+`addNetworkInterceptor()`代替`addInterceptor()`
 
+```java
+OkHttpClient client = new OkHttpClient.Builder()
+    .addNetworkInterceptor(new LoggingInterceptor())
+    .build();
 
+Request request = new Request.Builder()
+    .url("http://www.publicobject.com/helloworld.txt")
+    .header("User-Agent", "OkHttp Example")
+    .build();
 
+Response response = client.newCall(request).execute();
+response.body().close();
+```
 
+当我们运行此代码时，拦截器将运行两次。一次用于初始请求`http://www.publicobject.com/helloworld.txt`，另一个用于重定向到`https://publicobject.com/helloworld.txt`。
+
+```
+INFO: Sending request http://www.publicobject.com/helloworld.txt on Connection{www.publicobject.com:80, proxy=DIRECT hostAddress=54.187.32.157 cipherSuite=none protocol=http/1.1}
+User-Agent: OkHttp Example
+Host: www.publicobject.com
+Connection: Keep-Alive
+Accept-Encoding: gzip
+
+INFO: Received response for http://www.publicobject.com/helloworld.txt in 115.6ms
+Server: nginx/1.4.6 (Ubuntu)
+Content-Type: text/html
+Content-Length: 193
+Connection: keep-alive
+Location: https://publicobject.com/helloworld.txt
+
+INFO: Sending request https://publicobject.com/helloworld.txt on Connection{publicobject.com:443, proxy=DIRECT hostAddress=54.187.32.157 cipherSuite=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA protocol=http/1.1}
+User-Agent: OkHttp Example
+Host: publicobject.com
+Connection: Keep-Alive
+Accept-Encoding: gzip
+
+INFO: Received response for https://publicobject.com/helloworld.txt in 80.9ms
+Server: nginx/1.4.6 (Ubuntu)
+Content-Type: text/plain
+Content-Length: 1759
+Connection: keep-alive
+```
+
+网络请求还包含更多数据，例如`Accept-Encoding: gzip`这种OkHttp添加的对响应压缩的支持的标头。网络拦截器的`Chain`非空值`Connection`，可用于询问用于连接到Web服务器的IP地址和TLS配置。
+
+### 对比
+
+每个拦截器链都有相对的优点。
+
+**应用拦截器**
+
+- 无需担心中间响应，例如重定向和重试。
+- 即使从缓存提供HTTP响应，也总是被调用一次。
+- 遵守应用程序的原始意图。不关心OkHttp注入的标头，例如`If-None-Match`。
+- 允许短路而不是call `Chain.proceed()`。
+- 允许重试并多次call `Chain.proceed()`。
+- 可以使用withConnectTimeout，withReadTimeout，withWriteTimeout调整呼叫超时。
+
+**网络拦截器**
+
+- 能够对重定向和重试之类的中间响应进行操作。
+- 网络短路不会使缓存响应调用。
+- 观察数据，就像通过网络传输数据一样。
+- 访问`Connection`带有请求的。
+
+### 重写请求
+
+拦截器可以添加，删除或替换请求标头。他们还可以转换那些具有一个请求的主体。例如，如果要连接到已知支持请求主体的Web服务器，则可以使用应用程序拦截器来添加请求主体压缩。
+
+```java
+/** This interceptor compresses the HTTP request body. Many webservers can't handle this! */
+final class GzipRequestInterceptor implements Interceptor {
+  @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+    Request originalRequest = chain.request();
+    if (originalRequest.body() == null || originalRequest.header("Content-Encoding") != null) {
+      return chain.proceed(originalRequest);
+    }
+
+    Request compressedRequest = originalRequest.newBuilder()
+        .header("Content-Encoding", "gzip")
+        .method(originalRequest.method(), gzip(originalRequest.body()))
+        .build();
+    return chain.proceed(compressedRequest);
+  }
+
+  private RequestBody gzip(final RequestBody body) {
+    return new RequestBody() {
+      @Override public MediaType contentType() {
+        return body.contentType();
+      }
+
+      @Override public long contentLength() {
+        return -1; // We don't know the compressed length in advance!
+      }
+
+      @Override public void writeTo(BufferedSink sink) throws IOException {
+        BufferedSink gzipSink = Okio.buffer(new GzipSink(sink));
+        body.writeTo(gzipSink);
+        gzipSink.close();
+      }
+    };
+  }
+}
+```
+
+### 重写响应
+
+对称地，拦截器可以重写响应头并转换响应主体。这通常比重写请求标头更危险。
+
+例如，您可以修复服务器的错误配置的`Cache-Control`响应头，以实现更好的响应缓存：
+
+```java
+/** Dangerous interceptor that rewrites the server's cache-control header. */
+private static final Interceptor REWRITE_CACHE_CONTROL_INTERCEPTOR = new Interceptor() {
+  @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+    Response originalResponse = chain.proceed(chain.request());
+    return originalResponse.newBuilder()
+        .header("Cache-Control", "max-age=60")
+        .build();
+  }
+};
+```
+
+## 七、OkHttpClient
+
+Cell的工厂，可用于发送HTTP请求和读取其响应。
+
+### OkHttpClient应该共享
+
+创建单个`OkHttpClient`实例并将其用于所有HTTP调用时，OkHttp的性能最佳。这是因为每个客户端都拥有自己的连接池和线程池。重用连接和线程可减少延迟并节省内存。相反，为每个请求创建客户端都会浪费空闲池上的资源。
+
+用于使用`new OkHttpClient()`默认设置创建共享实例：
+
+```java
+// The singleton HTTP client.
+public final OkHttpClient client = new OkHttpClient();
+```
+
+或用于使用`new OkHttpClient.Builder()`自定义设置创建共享实例：
+
+```java
+// The singleton HTTP client.
+public final OkHttpClient client = new OkHttpClient.Builder()
+    .addInterceptor(new HttpLoggingInterceptor())
+    .cache(new Cache(cacheDir, cacheSize))
+    .build();
+```
+
+### 使用newBuilder()自定义客户
+
+可以使用[newBuilder](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-ok-http-client/new-builder/)自定义共享的OkHttpClient实例。这将构建共享的连接池，线程池和配置的客户端。使用构建器方法为特定目的配置派生的OkHttpClient。
+
+此示例显示一个短的500毫秒超时的呼叫：
+
+```
+OkHttpClient eagerClient = client.newBuilder()
+    .readTimeout(500, TimeUnit.MILLISECONDS)
+    .build();
+Response response = eagerClient.newCall(request).execute();
+```
+
+### 关机非必须
+
+如果保留的线程和连接保持空闲状态，它们将自动释放。但是，如果编写的应用程序需要主动释放未使用的资源，则可以这样做。
+
+使用[shutdown()](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html#shutdown())关闭调度程序的执行程序服务。这也将导致之后的cell被拒绝。
+
+```
+client.dispatcher().executorService().shutdown();
+```
+
+使用[evictAll()](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-connection-pool/evict-all/)清除连接池。请注意，连接池的守护程序线程可能不会立即退出。
+
+```
+client.connectionPool().evictAll();
+```
+
+如果您的客户端具有缓存，请调用[close()](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-cache/close/)。请注意，针对关闭的缓存创建cell是错误的，这样做会导致调用崩溃。
+
+```
+client.cache().close();
+```
+
+OkHttp还使用守护程序线程进行HTTP / 2连接。如果它们保持空闲状态，它们将自动退出。
 
 
 
