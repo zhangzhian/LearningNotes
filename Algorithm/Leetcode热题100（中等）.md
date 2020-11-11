@@ -383,11 +383,11 @@ public class Solution {
 以二进制形式检查 \[0, 3\]的范围：
 
 $$
-(0) = (0)_2
+(0) = (0)_2
 $$
 
 $$
-(1) = (1)_2
+(1) = (1)_2
 $$
 
 $$
@@ -488,3 +488,207 @@ public class Solution {
 
 时间复杂度：O(n) 。对每个整数 x ，我们只需要常数时间。
 空间复杂度：O(n) 。与方法二相同。
+
+### [005] 二叉树的中序遍历
+
+给定一个二叉树的根节点 root ，返回它的 中序 遍历。
+
+ 
+
+示例 1：
+
+![img](https://assets.leetcode.com/uploads/2020/09/15/inorder_1.jpg)
+
+```
+输入：root = [1,null,2,3]
+输出：[1,3,2]
+```
+
+示例 2：
+
+```
+输入：root = []
+输出：[]
+```
+
+示例 3：
+
+```
+输入：root = [1]
+输出：[1]
+```
+
+示例 4：
+
+![img](https://assets.leetcode.com/uploads/2020/09/15/inorder_5.jpg)
+
+```
+输入：root = [1,2]
+输出：[2,1]
+```
+
+示例 5：
+
+![img](https://assets.leetcode.com/uploads/2020/09/15/inorder_4.jpg)
+
+```
+输入：root = [1,null,2]
+输出：[1,2]
+```
+
+
+提示：
+
+- 树中节点数目在范围 [0, 100] 内
+- -100 <= Node.val <= 100
+
+
+进阶: 递归算法很简单，你可以通过迭代算法完成吗？
+
+方法一：递归
+
+```java
+class Solution {
+    public List<Integer> inorderTraversal(TreeNode root) {
+        List<Integer> res = new ArrayList<Integer>();
+        inorder(root, res);
+        return res;
+    }
+
+    public void inorder(TreeNode root, List<Integer> res) {
+        if (root == null) {
+            return;
+        }
+        inorder(root.left, res);
+        res.add(root.val);
+        inorder(root.right, res);
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(n) 
+
+方法二：栈（迭代）
+
+```java
+class Solution {
+    public List<Integer> inorderTraversal(TreeNode root) {
+        List<Integer> res = new ArrayList<Integer>();
+        Deque<TreeNode> stk = new LinkedList<TreeNode>();
+        while (root != null || !stk.isEmpty()) {
+            while (root != null) {
+                stk.push(root);
+                root = root.left;
+            }
+            root = stk.pop();
+            res.add(root.val);
+            root = root.right;
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(n) 
+
+方法三：Morris 中序遍历
+
+**Morris 遍历算法**是另一种遍历二叉树的方法，它能将非递归的中序遍历空间复杂度降为 O(1) 。
+
+Morris 遍历算法整体步骤如下（假设当前遍历到的节点为 x）：
+
+1. 如果 x 无左孩子，先将 x 的值加入答案数组，再访问 x 的右孩子，即 x*=*x*.*right。
+
+2. 如果 x 有左孩子，则找到 x 左子树上最右的节点（即左子树中序遍历的最后一个节点，x 在中序遍历中的前驱节点），我们记为 predecessor。根据predecessor 的右孩子是否为空，进行如下操作。
+   - 如果 predecessor 的右孩子为空，则将其右孩子指向 x，然后访问 x 的左孩子，即 x = x.left。
+   - 如果predecessor 的右孩子不为空，则此时其右孩子指向 x，说明我们已经遍历完 x 的左子树，我们将predecessor 的右孩子置空，将 x 的值加入答案数组，然后访问 x 的右孩子，即 x = x.right。
+
+3. 重复上述操作，直至访问完整棵树。
+
+```java
+class Solution {
+    public List<Integer> inorderTraversal(TreeNode root) {
+        List<Integer> res = new ArrayList<Integer>();
+        TreeNode predecessor = null;
+
+        while (root != null) {
+            if (root.left != null) {
+                // predecessor 节点就是当前 root 节点向左走一步，然后一直向右走至无法走为止
+                predecessor = root.left;
+                while (predecessor.right != null && predecessor.right != root) {
+                    predecessor = predecessor.right;
+                }
+                
+                // 让 predecessor 的右指针指向 root，继续遍历左子树
+                if (predecessor.right == null) {
+                    predecessor.right = root;
+                    root = root.left;
+                }
+                // 说明左子树已经访问完了，我们需要断开链接
+                else {
+                    res.add(root.val);
+                    predecessor.right = null;
+                    root = root.right;
+                }
+            }
+            // 如果没有左孩子，则直接访问右孩子
+            else {
+                res.add(root.val);
+                root = root.right;
+            }
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(1) 
+
+### [006] 组合总和
+
+给定一个无重复元素的数组 candidates 和一个目标数 target ，找出 candidates 中所有可以使数字和为 target 的组合。
+
+candidates 中的数字可以无限制重复被选取。
+
+说明：
+
+- 所有数字（包括 target）都是正整数。
+- 解集不能包含重复的组合。 
+
+示例 1：
+
+```
+输入：candidates = [2,3,6,7], target = 7,
+所求解集为：
+[
+  [7],
+  [2,2,3]
+]
+```
+
+示例 2：
+
+```
+输入：candidates = [2,3,5], target = 8,
+所求解集为：
+[
+  [2,2,2,2],
+  [2,3,3],
+  [3,5]
+]
+```
+
+
+提示：
+
+- 1 <= candidates.length <= 30
+- 1 <= candidates[i] <= 200
+- candidate 中的每个元素都是独一无二的。
+- 1 <= target <= 500
+
