@@ -2137,3 +2137,201 @@ class Solution {
 }
 ```
 
+### [025] 平衡二叉树
+
+输入一棵二叉树的根节点，判断该树是不是平衡二叉树。如果某二叉树中任意节点的左右子树的深度相差不超过1，那么它就是一棵平衡二叉树。
+
+ 示例 1:
+
+给定二叉树 [3,9,20,null,null,15,7]
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回 true 。
+
+示例 2:
+
+给定二叉树 [1,2,2,3,3,null,null,4,4]
+
+           1
+          / \
+         2   2
+        / \
+      3   3
+      / \
+     4   4
+返回 `false` 。
+
+**此树的深度** 等于 **左子树的深度** 与 **右子树的深度** 中的 **最大值** +1
+
+方法一：后序遍历 + 剪枝 （从底至顶）
+
+思路是对二叉树做后序遍历，从底至顶返回子树深度，若判定某子树不是平衡树则 “剪枝” ，直接向上返回。
+
+`recur(root) `函数：
+
+- 返回值：
+
+1. 当节点root 左 / 右子树的深度差 ≤1 ：则返回当前子树的深度，即节点 root 的左 / 右子树的深度最大值 +1 （ `max(left, right) + 1` ）；
+2. 当节点root 左 / 右子树的深度差 > 2>2 ：则返回 -1−1 ，代表 此子树不是平衡树 。
+
+- 终止条件：
+
+1. 当 root 为空：说明越过叶节点，因此返回高度 00 ；
+2. 当左（右）子树深度为 -1−1 ：代表此树的 左（右）子树 不是平衡树，因此剪枝，直接返回 -1−1 ；
+
+`isBalanced(root) `函数：
+
+返回值： 若 recur(root) != -1 ，则说明此树平衡，返回 true ； 否则返回  false 。
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public boolean isBalanced(TreeNode root) {
+        return recur(root) != -1;
+    }
+
+    private int recur(TreeNode root) {
+        if (root == null) return 0;
+        int left = recur(root.left);
+        if(left == -1) return -1;
+        int right = recur(root.right);
+        if(right == -1) return -1;
+        return Math.abs(left - right) < 2 ? Math.max(left, right) + 1 : -1;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(N) 
+
+方法二：先序遍历 + 判断深度 （从顶至底）
+
+通过比较某子树的左右子树的深度差 abs(depth(root.left) - depth(root.right)) <= 1 是否成立，来判断某子树是否是二叉平衡树。若所有子树都平衡，则此树平衡。
+
+**算法流程：**
+
+**isBalanced(root) 函数**： 判断树 root 是否平衡
+
+- 特例处理： 若树根节点 root 为空，则直接返回 truetrue ；
+- 返回值： 所有子树都需要满足平衡树性质，因此以下三者使用与逻辑 \&\&&& 连接；
+  1. abs(self.depth(root.left) - self.depth(root.right)) <= 1 ：判断 当前子树 是否是平衡树；
+  2. self.isBalanced(root.left) ： 先序遍历递归，判断 当前子树的左子树 是否是平衡树；
+  3. self.isBalanced(root.right) ： 先序遍历递归，判断 当前子树的右子树 是否是平衡树；
+
+**depth(root) 函数：** 计算树 root 的深度
+
+- 终止条件： 当 root 为空，即越过叶子节点，则返回高度 0 ；
+- 返回值： 返回左 / 右子树的深度的最大值 +1 。
+
+```java
+class Solution {
+    public boolean isBalanced(TreeNode root) {
+        if (root == null) return true;
+        return Math.abs(depth(root.left) - depth(root.right)) <= 1 && isBalanced(root.left) && isBalanced(root.right);
+    }
+
+    private int depth(TreeNode root) {
+        if (root == null) return 0;
+        return Math.max(depth(root.left), depth(root.right)) + 1;
+    }
+}
+```
+
+- 时间复杂度 O(NlogN) 
+
+- 空间复杂度 O(N) 
+
+### [026] 删除链表的节点
+
+给定单向链表的头指针和一个要删除的节点的值，定义一个函数删除该节点。
+
+返回删除后的链表的头节点。
+
+注意：此题对比原题有改动
+
+示例 1:
+
+```
+输入: head = [4,5,1,9], val = 5
+输出: [4,1,9]
+解释: 给定你链表中值为 5 的第二个节点，那么在调用了你的函数之后，该链表应变为 4 -> 1 -> 9.
+```
+
+示例 2:
+
+```
+输入: head = [4,5,1,9], val = 1
+输出: [4,5,9]
+解释: 给定你链表中值为 1 的第三个节点，那么在调用了你的函数之后，该链表应变为 4 -> 5 -> 9.
+```
+
+
+说明：
+
+- 题目保证链表中节点的值互不相同
+- 若使用 C 或 C++ 语言，你不需要 free 或 delete 被删除的节点
+
+方法一：递归
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public ListNode deleteNode(ListNode head, int val) {
+        if (head == null)
+            return head;
+        if (head.val == val)
+            return head.next;
+        head.next = deleteNode(head.next, val);
+        return head;
+    }
+}
+```
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(N) 
+
+方法二：
+
+```java
+class Solution {
+    public ListNode deleteNode(ListNode head, int val) {
+        if (head == null) return null;
+        if (head.val == val) return head.next;
+        ListNode cur = head;
+        ///找到要删除结点的上一个结点
+        while (cur.next != null && cur.next.val != val)
+            cur = cur.next;
+        if (cur.next != null)
+            cur.next = cur.next.next;
+        return head;
+    }
+}
+```
+
+注意删除节点是最后一个节点
+
+- 时间复杂度 O(N) 
+
+- 空间复杂度 O(1) 
