@@ -2335,3 +2335,236 @@ class Solution {
 - 时间复杂度 O(N) 
 
 - 空间复杂度 O(1) 
+
+### [027] 对称的二叉树
+
+请实现一个函数，用来判断一棵二叉树是不是对称的。如果一棵二叉树和它的镜像一样，那么它是对称的。
+
+例如，二叉树 [1,2,2,3,4,4,3] 是对称的。
+
+    	1
+       / \
+      2   2
+     / \ / \
+    3  4 4  3
+
+但是下面这个 [1,2,2,null,3,null,3] 则不是镜像对称的:
+
+    	1
+       / \
+      2   2
+       \   \
+       3    3
+示例 1：
+
+```
+输入：root = [1,2,2,3,4,4,3]
+输出：true
+```
+
+示例 2：
+
+```
+输入：root = [1,2,2,null,3,null,3]
+输出：false
+```
+
+
+限制：
+
+- 0 <= 节点个数 <= 1000
+
+方法一：递归
+
+递归函数，通过「同步移动」两个指针的方法来遍历这棵树，p 指针和 q 指针一开始都指向这棵树的根，随后 p 右移时，q 左移，p 左移时，q 右移。每次检查当前 p 和 q 节点的值是否相等，如果相等再判断左右子树是否对称。
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public boolean isSymmetric(TreeNode root) {
+        return check(root, root);
+    }
+
+    public boolean check(TreeNode p, TreeNode q) {
+        if (p == null && q == null) {
+            return true;
+        }
+        if (p == null || q == null) {
+            return false;
+        }
+        return p.val == q.val && check(p.left, q.right) && check(p.right, q.left);
+    }
+}
+```
+
+- 时间复杂度：这里遍历了这棵树，渐进时间复杂度为 O(n)
+- 空间复杂度：这里的空间复杂度和递归使用的栈空间有关，这里递归层数不超过 n，故渐进空间复杂度为 O(n)
+
+方法二：迭代
+
+首先我们引入一个队列，这是把递归程序改写成迭代程序的常用方法。初始化时我们把根节点入队两次。每次提取两个结点并比较它们的值（队列中每两个连续的结点应该是相等的，而且它们的子树互为镜像），然后将两个结点的左右子结点按相反的顺序插入队列中。当队列为空时，或者我们检测到树不对称（即从队列中取出两个不相等的连续结点）时，该算法结束。
+
+```java
+class Solution {
+    public boolean isSymmetric(TreeNode root) {
+        return check(root, root);
+    }
+
+    public boolean check(TreeNode u, TreeNode v) {
+        Queue<TreeNode> q = new LinkedList<TreeNode>();
+        q.offer(u);
+        q.offer(v);
+        while (!q.isEmpty()) {
+            u = q.poll();
+            v = q.poll();
+            if (u == null && v == null) {
+                continue;
+            }
+            if ((u == null || v == null) || (u.val != v.val)) {
+                return false;
+            }
+
+            q.offer(u.left);
+            q.offer(v.right);
+
+            q.offer(u.right);
+            q.offer(v.left);
+        }
+        return true;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+- 空间复杂度：这里需要用一个队列来维护节点，每个节点最多进队一次，出队一次，队列中最多不会超过 n 个点，故渐进空间复杂度为 O(n) 
+
+### [028] 包含min函数的栈
+
+定义栈的数据结构，请在该类型中实现一个能够得到栈的最小元素的 min 函数在该栈中，调用 min、push 及 pop 的时间复杂度都是 O(1)。
+
+ 示例:
+
+```
+MinStack minStack = new MinStack();
+minStack.push(-2);
+minStack.push(0);
+minStack.push(-3);
+minStack.min();   --> 返回 -3.
+minStack.pop();
+minStack.top();      --> 返回 0.
+minStack.min();   --> 返回 -2.
+```
+
+
+提示：
+
+- 各函数的调用总次数不超过 20000 次
+
+方法一：辅助栈
+
+普通栈的 push() 和 pop() 函数的复杂度为 O(1) ；而获取栈最小值 min() 函数需要遍历整个栈，复杂度为 O(N)。
+
+本题难点： 将 min() 函数复杂度降为 O(1)，可通过建立辅助栈实现；
+
+- 数据栈 A ： 栈 A 用于存储所有元素，保证入栈 push() 函数、出栈 pop() 函数、获取栈顶 top() 函数的正常逻辑。
+- 辅助栈 B ： 栈 B 中存储栈 A 中所有 非严格降序 的元素，则栈 A 中的最小元素始终对应栈 B 的栈顶元素，即 min() 函数只需返回栈 BB 的栈顶元素即可。
+
+![Picture1.png](https://pic.leetcode-cn.com/f31f4b7f5e91d46ea610b6685c593e12bf798a9b8336b0560b6b520956dd5272-Picture1.png)
+
+
+
+```java
+class MinStack {
+    Stack<Integer> A, B;
+    public MinStack() {
+        A = new Stack<>();
+        B = new Stack<>();
+    }
+    public void push(int x) {
+        A.add(x);
+        if(B.empty() || B.peek() >= x)
+            B.add(x);
+    }
+    public void pop() {
+        if(A.pop().equals(B.peek()))
+            B.pop();
+    }
+    public int top() {
+        return A.peek();
+    }
+    public int min() {
+        return B.peek();
+    }
+}
+```
+
+- 时间复杂度 O(1) ： push(), pop(), top(), min() 四个函数的时间复杂度均为常数级别。
+- 空间复杂度 O(N) ： 当共有 N 个待入栈元素时，辅助栈 B 最差情况下存储 N 个元素，使用 O(N) 额外空间。
+
+方法二：辅助类
+
+```java
+class MinStack {
+    //链表头，相当于栈顶
+    private ListNode head;
+
+    //压栈，需要判断栈是否为空
+    public void push(int x) {
+        if (empty())
+            head = new ListNode(x, x, null);
+        else
+            head = new ListNode(x, Math.min(x, head.min), head);
+    }
+
+    //出栈，相当于把链表头删除
+    public void pop() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        head = head.next;
+    }
+
+    //栈顶的值也就是链表头的值
+    public int top() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        return head.val;
+    }
+
+    //链表中头结点保存的是整个链表最小的值，所以返回head.min也就是
+    //相当于返回栈中最小的值
+    public int min() {
+        if (empty())
+            throw new IllegalStateException("栈为空……");
+        return head.min;
+    }
+
+    //判断栈是否为空
+    private boolean empty() {
+        return head == null;
+    }
+}
+
+class ListNode {
+    public int val;
+    public int min;//最小值
+    public ListNode next;
+
+    public ListNode(int val, int min, ListNode next) {
+        this.val = val;
+        this.min = min;
+        this.next = next;
+    }
+}
+```
+
+- 时间复杂度 O(1) 
+- 空间复杂度 O(N) 
+
