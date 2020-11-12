@@ -912,7 +912,7 @@ public final OkHttpClient client = new OkHttpClient.Builder()
 
 此示例显示一个短的500毫秒超时的呼叫：
 
-```
+```java
 OkHttpClient eagerClient = client.newBuilder()
     .readTimeout(500, TimeUnit.MILLISECONDS)
     .build();
@@ -925,49 +925,23 @@ Response response = eagerClient.newCall(request).execute();
 
 使用[shutdown()](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html#shutdown())关闭调度程序的执行程序服务。这也将导致之后的cell被拒绝。
 
-```
+```java
 client.dispatcher().executorService().shutdown();
 ```
 
 使用[evictAll()](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-connection-pool/evict-all/)清除连接池。请注意，连接池的守护程序线程可能不会立即退出。
 
-```
+```java
 client.connectionPool().evictAll();
 ```
 
 如果您的客户端具有缓存，请调用[close()](https://square.github.io/okhttp/4.x/okhttp/okhttp3/-cache/close/)。请注意，针对关闭的缓存创建cell是错误的，这样做会导致调用崩溃。
 
-```
+```java
 client.cache().close();
 ```
 
 OkHttp还使用守护程序线程进行HTTP / 2连接。如果它们保持空闲状态，它们将自动退出。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ---
 
