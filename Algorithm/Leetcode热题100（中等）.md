@@ -825,6 +825,200 @@ public class Solution {
 }
 ```
 
-- 时间复杂度：O(S)，其中 S 为所有可行解的长度之和
+### [007] 二叉树展开为链表
 
-- 空间复杂度：O(target)。除答案数组外，空间复杂度取决于递归的栈深度，在最差情况下需要递归 O(target) 层。
+给定一个二叉树，原地将它展开为一个单链表。
+
+ 例如，给定二叉树
+
+    	1
+       / \
+      2   5
+     / \   \
+    3   4   6
+
+将其展开为：
+
+```
+1
+ \
+  2
+   \
+    3
+     \
+      4
+       \
+        5
+         \
+          6
+```
+
+方法一：DFS 递归
+![114_1.png](https://pic.leetcode-cn.com/7427f6e30a8a6e3d44375579d00b9e6eec53500b67643868817b7ad775b82adb-114_1.png)
+
+其实是分为三步：
+
+- 首先将根节点的左子树变成链表
+- 其次将根节点的右子树变成链表
+- 最后将变成链表的右子树放在变成链表的左子树的最右边
+
+```java
+class Solution {
+    public void flatten(TreeNode root) {
+        if(root == null){
+            return ;
+        }
+        //将根节点的左子树变成链表
+        flatten(root.left);
+        //将根节点的右子树变成链表
+        flatten(root.right);
+        TreeNode temp = root.right;
+        //把树的右边换成左边的链表
+        root.right = root.left;
+        //记得要将左边置空
+        root.left = null;
+        //找到树的最右边的节点
+        while(root.right != null) root = root.right;
+        //把右边的链表接到刚才树的最右边的节点
+        root.right = temp;
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(n) 
+
+方法二：前序遍历
+
+可以对二叉树进行前序遍历，获得各节点被访问到的顺序。由于将二叉树展开为链表之后会破坏二叉树的结构，因此在前序遍历结束之后更新每个节点的左右子节点的信息，将二叉树展开为单链表。
+
+递归：
+
+```java
+class Solution {
+    public void flatten(TreeNode root) {
+        List<TreeNode> list = new ArrayList<TreeNode>();
+        preorderTraversal(root, list);
+        int size = list.size();
+        for (int i = 1; i < size; i++) {
+            TreeNode prev = list.get(i - 1);
+            TreeNode curr = list.get(i);
+            prev.left = null;
+            prev.right = curr;
+        }
+    }
+
+    public void preorderTraversal(TreeNode root, List<TreeNode> list) {
+        if (root != null) {
+            list.add(root);
+            preorderTraversal(root.left, list);
+            preorderTraversal(root.right, list);
+        }
+    }
+}
+```
+
+迭代
+
+```java
+class Solution {
+    public void flatten(TreeNode root) {
+        List<TreeNode> list = new ArrayList<TreeNode>();
+        Deque<TreeNode> stack = new LinkedList<TreeNode>();
+        TreeNode node = root;
+        while (node != null || !stack.isEmpty()) {
+            while (node != null) {
+                list.add(node);
+                stack.push(node);
+                node = node.left;
+            }
+            node = stack.pop();
+            node = node.right;
+        }
+        int size = list.size();
+        for (int i = 1; i < size; i++) {
+            TreeNode prev = list.get(i - 1), curr = list.get(i);
+            prev.left = null;
+            prev.right = curr;
+        }
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(n) 
+
+方法三：前序遍历和展开同步进行
+
+每次从栈内弹出一个节点作为当前访问的节点，获得该节点的子节点，如果子节点不为空，则依次将右子节点和左子节点压入栈内（注意入栈顺序）。
+
+展开为单链表的做法是，维护上一个访问的节点 prev，每次访问一个节点时，令当前访问的节点为 curr，将 prev 的左子节点设为 null 以及将 prev 的右子节点设为 curr，然后将 curr 赋值给 prev，进入下一个节点的访问，直到遍历结束。需要注意的是，初始时 prev 为 null，只有在 prev 不为 null 时才能对 prev 的左右子节点进行更新。
+
+```java
+class Solution {
+    public void flatten(TreeNode root) {
+        if (root == null) {
+            return;
+        }
+        Deque<TreeNode> stack = new LinkedList<TreeNode>();
+        stack.push(root);
+        TreeNode prev = null;
+        while (!stack.isEmpty()) {
+            TreeNode curr = stack.pop();
+            if (prev != null) {
+                prev.left = null;
+                prev.right = curr;
+            }
+            TreeNode left = curr.left
+            TreeNode right = curr.right;
+            if (right != null) {
+                stack.push(right);
+            }
+            if (left != null) {
+                stack.push(left);
+            }
+            prev = curr;
+        }
+    }
+}
+```
+
+- 时间复杂度：O(n) 
+
+- 空间复杂度：O(n) 
+
+方法四：寻找前驱节点
+
+注意到前序遍历访问各节点的顺序是根节点、左子树、右子树。如果一个节点的左子节点为空，则该节点不需要进行展开操作。如果一个节点的左子节点不为空，则该节点的左子树中的最后一个节点被访问之后，该节点的右子节点被访问。该节点的左子树中最后一个被访问的节点是左子树中的最右边的节点，也是该节点的前驱节点。因此，问题转化成寻找当前节点的前驱节点。
+
+具体做法是，对于当前节点，如果其左子节点不为空，则在其左子树中找到最右边的节点，作为前驱节点，将当前节点的右子节点赋给前驱节点的右子节点，然后将当前节点的左子节点赋给当前节点的右子节点，并将当前节点的左子节点设为空。对当前节点处理结束后，继续处理链表中的下一个节点，直到所有节点都处理结束。
+
+```java
+class Solution {
+    public void flatten(TreeNode root) {
+        TreeNode curr = root;
+        while (curr != null) {
+            if (curr.left != null) {
+                TreeNode next = curr.left;
+                TreeNode predecessor = next;
+                while (predecessor.right != null) {
+                    predecessor = predecessor.right;
+                }
+                predecessor.right = curr.right;
+                curr.left = null;
+                curr.right = next;
+            }
+            curr = curr.right;
+        }
+    }
+}
+```
+
+复杂度分析
+
+时间复杂度：O(n)，其中 n 是二叉树的节点数。展开为单链表的过程中，需要对每个节点访问一次，在寻找前驱节点的过程中，每个节点最多被额外访问一次。
+
+空间复杂度：O(1)s
+
