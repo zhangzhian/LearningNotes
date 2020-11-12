@@ -692,3 +692,139 @@ candidates 中的数字可以无限制重复被选取。
 - candidate 中的每个元素都是独一无二的。
 - 1 <= target <= 500
 
+[题解](https://leetcode-cn.com/problems/combination-sum/solution/hui-su-suan-fa-jian-zhi-python-dai-ma-java-dai-m-2/)
+
+思路分析：根据示例 1：输入: candidates = [2, 3, 6, 7]，target = 7。
+
+候选数组里有 2，如果找到了组合总和为 7 - 2 = 5 的所有组合，再在之前加上 2 ，就是 7 的所有组合；
+同理考虑 3，如果找到了组合总和为 7 - 3 = 4 的所有组合，再在之前加上 3 ，就是 7 的所有组合，依次这样找下去。
+
+这一类问题都需要先画出树形图，然后编码实现。
+
+编码通过 深度优先遍历 实现，使用一个列表，在 深度优先遍历 变化的过程中，遍历所有可能的列表并判断当前列表是否符合题目的要求，成为「回溯算法」
+
+![img](https://pic.leetcode-cn.com/1598091943-hZjibJ-file_1598091940241)
+
+这棵树有 44 个叶子结点的值 0，对应的路径列表是 [[2, 2, 3], [2, 3, 2], [3, 2, 2], [7]]，而示例中给出的输出只有 [[7], [2, 2, 3]]。即：题目中要求每一个符合要求的解是 不计算顺序 的。下面我们分析为什么会产生重复。
+
+产生重复的原因是：在每一个结点，做减法，展开分支的时候，由于题目中说 **每一个元素可以重复使用**，我们考虑了 **所有的** 候选数，因此出现了重复的列表。
+
+遇到这一类相同元素不计算顺序的问题，我们在搜索的时候就需要 **按某种顺序搜索**。具体的做法是：每一次搜索的时候设置 **下一轮搜索的起点** `begin`，请看下图。
+
+![img](https://pic.leetcode-cn.com/1598091943-GPoHAJ-file_1598091940246)
+
+即：从每一层的第 2 个结点开始，都不能再搜索产生同一层结点已经使用过的 `candidate` 里的元素。
+
+
+
+方法一：回溯
+
+```java
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+
+public class Solution {
+
+    public List<List<Integer>> combinationSum(int[] candidates, int target) {
+        int len = candidates.length;
+        List<List<Integer>> res = new ArrayList<>();
+        if (len == 0) {
+            return res;
+        }
+
+        Deque<Integer> path = new ArrayDeque<>();
+        dfs(candidates, 0, len, target, path, res);
+        return res;
+    }
+
+    /**
+     * @param candidates 候选数组
+     * @param begin      搜索起点
+     * @param len        冗余变量，是 candidates 里的属性，可以不传
+     * @param target     每减去一个元素，目标值变小
+     * @param path       从根结点到叶子结点的路径，是一个栈
+     * @param res        结果集列表
+     */
+    private void dfs(int[] candidates, int begin, int len, int target, Deque<Integer> path, List<List<Integer>> res) {
+        // target 为负数和 0 的时候不再产生新的孩子结点
+        if (target < 0) {
+            return;
+        }
+        if (target == 0) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+
+        // 重点理解这里从 begin 开始搜索的语意
+        for (int i = begin; i < len; i++) {
+            path.addLast(candidates[i]);
+
+            // 注意：由于每一个元素可以重复使用，下一轮搜索的起点依然是 i，这里非常容易弄错
+            dfs(candidates, i, len, target - candidates[i], path, res);
+
+            // 状态重置
+            path.removeLast();
+        }
+    }
+}
+```
+
+- 时间复杂度：O(S)，其中 S 为所有可行解的长度之和
+
+- 空间复杂度：O(target)。除答案数组外，空间复杂度取决于递归的栈深度，在最差情况下需要递归 O(target) 层。
+
+方法二：回溯+枝减
+
+根据上面画树形图的经验，如果 target 减去一个数得到负数，那么减去一个更大的树依然是负数，同样搜索不到结果。基于这个想法，我们可以对输入数组进行排序，添加相关逻辑达到进一步剪枝的目的；
+
+排序是为了提高搜索速度，对于解决这个问题来说非必要。但是搜索问题一般复杂度较高，能剪枝就尽量剪枝。实际工作中如果遇到两种方案拿捏不准的情况，都试一下。
+
+```java
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+
+public class Solution {
+
+    public List<List<Integer>> combinationSum(int[] candidates, int target) {
+        int len = candidates.length;
+        List<List<Integer>> res = new ArrayList<>();
+        if (len == 0) {
+            return res;
+        }
+
+        // 排序是剪枝的前提
+        Arrays.sort(candidates);
+        Deque<Integer> path = new ArrayDeque<>();
+        dfs(candidates, 0, len, target, path, res);
+        return res;
+    }
+
+    private void dfs(int[] candidates, int begin, int len, int target, Deque<Integer> path, List<List<Integer>> res) {
+        // 由于进入更深层的时候，小于 0 的部分被剪枝，因此递归终止条件值只判断等于 0 的情况
+        if (target == 0) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+
+        for (int i = begin; i < len; i++) {
+            // 重点理解这里剪枝，前提是候选数组已经有序，
+            if (target - candidates[i] < 0) {
+                break;
+            }
+            
+            path.addLast(candidates[i]);
+            dfs(candidates, i, len, target - candidates[i], path, res);
+            path.removeLast();
+        }
+    }
+}
+```
+
+- 时间复杂度：O(S)，其中 S 为所有可行解的长度之和
+
+- 空间复杂度：O(target)。除答案数组外，空间复杂度取决于递归的栈深度，在最差情况下需要递归 O(target) 层。
