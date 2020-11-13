@@ -2568,3 +2568,255 @@ class ListNode {
 - 时间复杂度 O(1) 
 - 空间复杂度 O(N) 
 
+### [029] 最小的k个数
+
+输入整数数组 arr ，找出其中最小的 k 个数。例如，输入4、5、1、6、2、7、3、8这8个数字，则最小的4个数字是1、2、3、4。
+
+ 示例 1：
+
+```
+输入：arr = [3,2,1], k = 2
+输出：[1,2] 或者 [2,1]
+```
+
+示例 2：
+
+```
+输入：arr = [0,1,2,1], k = 1
+输出：[0]
+```
+
+
+限制：
+
+- 0 <= k <= arr.length <= 10000
+- 0 <= arr[i] <= 10000
+
+方法一：排序
+
+```java
+class Solution {
+    public int[] getLeastNumbers(int[] arr, int k) {
+        int[] vec = new int[k];
+        Arrays.sort(arr);
+        for (int i = 0; i < k; ++i) {
+            vec[i] = arr[i];
+        }
+        return vec;
+    }
+}
+```
+
+时间复杂度：O(nlogn)，其中 n 是数组 arr 的长度。算法的时间复杂度即排序的时间复杂度。
+
+空间复杂度：O(logn)，排序所需额外的空间复杂度为 O(logn)
+
+方法二：堆
+
+```java
+class Solution {
+    public int[] getLeastNumbers(int[] arr, int k) {
+        int[] vec = new int[k];
+        if (k == 0) { // 排除 0 的情况
+            return vec;
+        }
+        PriorityQueue<Integer> queue = new PriorityQueue<Integer>(new Comparator<Integer>() {
+            public int compare(Integer num1, Integer num2) {
+                return num2 - num1;
+            }
+        });
+        for (int i = 0; i < k; ++i) {
+            queue.offer(arr[i]);
+        }
+        for (int i = k; i < arr.length; ++i) {
+            if (queue.peek() > arr[i]) {
+                queue.poll();
+                queue.offer(arr[i]);
+            }
+        }
+        for (int i = 0; i < k; ++i) {
+            vec[i] = queue.poll();
+        }
+        return vec;
+    }
+}
+```
+
+时间复杂度：O(nlogk)，其中 n 是数组 arr 的长度。由于大根堆实时维护前 k 小值，所以插入删除都是 O(logk) 的时间复杂度，最坏情况下数组里 n 个数都会插入，所以一共需要 O(nlogk) 的时间复杂度。
+
+空间复杂度：O(k)，因为大根堆里最多 k 个数。
+
+方法三：快排思想
+
+```java
+class Solution {
+    public int[] getLeastNumbers(int[] arr, int k) {
+        randomizedSelected(arr, 0, arr.length - 1, k);
+        int[] vec = new int[k];
+        for (int i = 0; i < k; ++i) {
+            vec[i] = arr[i];
+        }
+        return vec;
+    }
+
+    public void randomizedSelected(int[] arr, int l, int r, int k) {
+        if (l >= r) {
+            return;
+        }
+        int pos = randomizedPartition(arr, l, r);
+        int num = pos - l + 1;
+        if (k == num) {
+            return;
+        } else if (k < num) {
+            randomizedSelected(arr, l, pos - 1, k);
+        } else {
+            randomizedSelected(arr, pos + 1, r, k - num);
+        }
+    }
+
+    // 基于随机的划分
+    public int randomizedPartition(int[] nums, int l, int r) {
+        int i = new Random().nextInt(r - l + 1) + l;
+        swap(nums, r, i);
+        return partition(nums, l, r);
+    }
+
+    public int partition(int[] nums, int l, int r) {
+        int pivot = nums[r];
+        int i = l - 1;
+        for (int j = l; j <= r - 1; ++j) {
+            if (nums[j] <= pivot) {
+                i = i + 1;
+                swap(nums, i, j);
+            }
+        }
+        swap(nums, i + 1, r);
+        return i + 1;
+    }
+
+    private void swap(int[] nums, int i, int j) {
+        int temp = nums[i];
+        nums[i] = nums[j];
+        nums[j] = temp;
+    }
+}
+```
+
+- 时间复杂度：期望为 O*(*n) 。最坏情况下的时间复杂度为 O(n^2) 
+
+- 空间复杂度：期望为 O(logn)。最坏情况下的空间复杂度为 O(n) 
+
+方法四：
+
+```java
+class Solution {
+    public int[] getLeastNumbers(int[] arr, int k) {
+        if (k == 0 || arr.length == 0) {
+            return new int[0];
+        }
+        // 统计每个数字出现的次数
+        int[] counter = new int[10001];
+        for (int num: arr) {
+            counter[num]++;
+        }
+        // 根据counter数组从头找出k个数作为返回结果
+        int[] res = new int[k];
+        int idx = 0;
+        for (int num = 0; num < counter.length; num++) {
+            while (counter[num]-- > 0 && idx < k) {
+                res[idx++] = num;
+            }
+            if (idx == k) {
+                break;
+            }
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度：O(N)
+
+- 空间复杂度：O(N)
+
+### [030] 不用加减乘除做加法
+
+写一个函数，求两个整数之和，要求在函数体内不得使用 “+”、“-”、“*”、“/” 四则运算符号。
+
+示例:
+
+```
+输入: a = 1, b = 1
+输出: 2
+```
+
+
+提示：
+
+- a, b 均可能是负数或 0
+- 结果不会溢出 32 位整数
+
+方法一：位运算
+
+设两数字的二进制形式 a, b，其求和 s = a + b，a(i) 代表 a 的二进制第 i 位，则分为以下四种情况：
+
+| *a*(*i*) | b(i)*b*(*i*) | 无进位和 n(i) | 进位 c(i+1) |
+| -------- | ------------ | ------------- | ----------- |
+| 0        | 0            | 0             | 0           |
+| 0        | 1            | 1             | 0           |
+| 1        | 0            | 1             | 0           |
+| 1        | 1            | 0             | 1           |
+
+观察发现，**无进位和** 与 **异或运算** 规律相同，**进位** 和 **与运算** 规律相同（并需左移一位）。因此，无进位和 n 与进位 c 的计算公式如下；
+$$
+{ 
+n=a⊕b
+}
+$$
+
+$$
+c=a\&b<<1
+$$
+
+（和 s ）=（非进位和 n ）+（进位 c ）。即可将 s = a + b转化为：
+
+$$
+s = a + b \Rightarrow s = n + c
+$$
+循环求 n 和 c ，直至进位 c = 0  ；此时 s = n ，返回 n  即可。
+
+![Picture1.png](https://pic.leetcode-cn.com/56d56524d8d2b1318f78e209fffe0e266f97631178f6bfd627db85fcd2503205-Picture1.png)
+
+Q ： 若数字 a 和 bb中有负数，则变成了减法，如何处理？
+A ： 在计算机系统中，数值一律用 补码 来表示和存储。补码的优势： 加法、减法可以统一处理（CPU只有加法器）。因此，以上方法 同时适用于正数和负数的加法 。
+
+```java
+class Solution {
+    public int add(int a, int b) {
+        while(b != 0) { // 当进位为 0 时跳出
+            int c = (a & b) << 1;  // c = 进位
+            a ^= b; // a = 非进位和
+            b = c; // b = 进位
+        }
+        return a;
+    }
+}
+```
+
+递归写法
+
+```java
+class Solution {
+    public int add(int a, int b) {
+        if (b == 0) {
+            return a;
+        }
+        // 转换成非进位和 + 进位
+        return add(a ^ b, (a & b) << 1);
+    }
+}
+```
+
+时间复杂度 O(1) ： 最差情况下（例如 a =a= 0x7fffffff , b = 1b=1 时），需循环 32 次，使用 O(1) 时间；每轮中的常数次位操作使用 O(1)时间。
+空间复杂度 O(1) ： 使用常数大小的额外空间。
+
