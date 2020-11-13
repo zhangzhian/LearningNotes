@@ -1020,5 +1020,250 @@ class Solution {
 
 时间复杂度：O(n)，其中 n 是二叉树的节点数。展开为单链表的过程中，需要对每个节点访问一次，在寻找前驱节点的过程中，每个节点最多被额外访问一次。
 
-空间复杂度：O(1)s
+空间复杂度：O(1)
 
+### [008] 除自身以外数组的乘积
+
+给你一个长度为 n 的整数数组 nums，其中 n > 1，返回输出数组 output ，其中 output[i] 等于 nums 中除 nums[i] 之外其余各元素的乘积。
+
+示例:
+
+```
+输入: [1,2,3,4]
+输出: [24,12,8,6]
+```
+
+
+提示：题目数据保证数组之中任意元素的全部前缀元素和后缀（甚至是整个数组）的乘积都在 32 位整数范围内。
+
+说明: 请**不要使用除法**，且在 O(n) 时间复杂度内完成此题。
+
+进阶：你可以在常数空间复杂度内完成这个题目吗？
+
+方法一：左右乘积列表
+
+不必将所有数字的乘积除以给定索引处的数字得到相应的答案，而是利用索引左侧所有数字的乘积和右侧所有数字的乘积（即前缀与后缀）相乘得到答案。
+
+对于给定索引 i，我们将使用它左边所有数字的乘积乘以右边所有数字的乘积。
+
+```java
+class Solution {
+    public int[] productExceptSelf(int[] nums) {
+        int length = nums.length;
+
+        // L 和 R 分别表示左右两侧的乘积列表
+        int[] L = new int[length];
+        int[] R = new int[length];
+
+        int[] answer = new int[length];
+
+        // L[i] 为索引 i 左侧所有元素的乘积
+        // 对于索引为 '0' 的元素，因为左侧没有元素，所以 L[0] = 1
+        L[0] = 1;
+        for (int i = 1; i < length; i++) {
+            L[i] = nums[i - 1] * L[i - 1];
+        }
+
+        // R[i] 为索引 i 右侧所有元素的乘积
+        // 对于索引为 'length-1' 的元素，因为右侧没有元素，所以 R[length-1] = 1
+        R[length - 1] = 1;
+        for (int i = length - 2; i >= 0; i--) {
+            R[i] = nums[i + 1] * R[i + 1];
+        }
+
+        // 对于索引 i，除 nums[i] 之外其余各元素的乘积就是左侧所有元素的乘积乘以右侧所有元素的乘积
+        for (int i = 0; i < length; i++) {
+            answer[i] = L[i] * R[i];
+        }
+
+        return answer;
+    }
+}
+```
+
+- 时间复杂度：O(N) 
+- 空间复杂度：O(N) 
+
+方法二：空间复杂度 O(1) 的方法
+
+由于输出数组不算在空间复杂度内，那么我们可以将 L 或 R 数组用输出数组来计算。先把输出数组当作 L 数组来计算，然后再动态构造 R 数组得到结果。让我们来看看基于这个思想的算法。
+
+```java
+class Solution {
+    public int[] productExceptSelf(int[] nums) {
+        int length = nums.length;
+        int[] answer = new int[length];
+
+        // answer[i] 表示索引 i 左侧所有元素的乘积
+        // 因为索引为 '0' 的元素左侧没有元素， 所以 answer[0] = 1
+        answer[0] = 1;
+        for (int i = 1; i < length; i++) {
+            answer[i] = nums[i - 1] * answer[i - 1];
+        }
+
+        // R 为右侧所有元素的乘积
+        // 刚开始右边没有元素，所以 R = 1
+        int R = 1;
+        for (int i = length - 1; i >= 0; i--) {
+            // 对于索引 i，左边的乘积为 answer[i]，右边的乘积为 R
+            answer[i] = answer[i] * R;
+            // R 需要包含右边所有的乘积，所以计算下一个结果时需要将当前值乘到 R 上
+            R *= nums[i];
+        }
+        return answer;
+    }
+}
+```
+
+- 时间复杂度：O(N) 
+- 空间复杂度：O(1) 
+
+### [009] 旋转图像
+
+给定一个 n × n 的二维矩阵表示一个图像。
+
+将图像顺时针旋转 90 度。
+
+说明：
+
+你必须在原地旋转图像，这意味着你需要直接修改输入的二维矩阵。请不要使用另一个矩阵来旋转图像。
+
+示例 1:
+
+```
+给定 matrix = 
+[
+  [1,2,3],
+  [4,5,6],
+  [7,8,9]
+],
+
+原地旋转输入矩阵，使其变为:
+[
+  [7,4,1],
+  [8,5,2],
+  [9,6,3]
+]
+```
+
+示例 2:
+
+```
+给定 matrix =
+[
+  [ 5, 1, 9,11],
+  [ 2, 4, 8,10],
+  [13, 3, 6, 7],
+  [15,14,12,16]
+], 
+
+原地旋转输入矩阵，使其变为:
+[
+  [15,13, 2, 5],
+  [14, 3, 4, 1],
+  [12, 6, 8, 9],
+  [16, 7,10,11]
+]
+```
+
+方法 1 ：转置加翻转
+
+先转置矩阵，然后翻转每一行。这个简单的方法已经能达到最优的时间复杂度O(N^2)。
+
+```java
+class Solution {
+  public void rotate(int[][] matrix) {
+    int n = matrix.length;
+
+    // transpose matrix
+    for (int i = 0; i < n; i++) {
+      for (int j = i; j < n; j++) {
+        int tmp = matrix[j][i];
+        matrix[j][i] = matrix[i][j];
+        matrix[i][j] = tmp;
+      }
+    }
+    // reverse each row
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < n / 2; j++) {
+        int tmp = matrix[i][j];
+        matrix[i][j] = matrix[i][n - j - 1];
+        matrix[i][n - j - 1] = tmp;
+      }
+    }
+  }
+}
+```
+
+- 时间复杂度：O(N^2) 
+- 空间复杂度：O(1) 
+
+方法 2 ：旋转四个矩形
+
+![图片.png](https://pic.leetcode-cn.com/344be9af9ed8f74d23a1703a495aa812d14570b3a15afb990605ff4c8f404042-%E5%9B%BE%E7%89%87.png)
+
+对每个框框，其实都有 4 个顶点：
+
+![图片.png](https://pic.leetcode-cn.com/c834642c7749aa492982a1bf3ddc3a4dbebe518c8f6d13d75ecf8fa3072a925f-%E5%9B%BE%E7%89%87.png)
+
+剩下的就是交换这四个顶点的值：
+
+![图片.png](https://pic.leetcode-cn.com/b622b50a15760f5f369ac16600c9d1f180f087137a41e2144fbcffc69770ebe9-%E5%9B%BE%E7%89%87.png)
+
+交换完毕之后，再继续交换后四个顶点：
+
+![图片.png](https://pic.leetcode-cn.com/ac5d316abc1b607d3b69d80cb86d454ec92d1b02b50a1152cf4be4f1ad2bf7f3-%E5%9B%BE%E7%89%87.png)
+
+```java
+class Solution {
+  public void rotate(int[][] matrix) {
+    int n = matrix.length;
+    for (int i = 0; i < n / 2 + n % 2; i++) {
+      for (int j = 0; j < n / 2; j++) {
+        int[] tmp = new int[4];
+        int row = i;
+        int col = j;
+        for (int k = 0; k < 4; k++) {
+          tmp[k] = matrix[row][col];
+          int x = row;
+          row = col;
+          col = n - 1 - x;
+        }
+        for (int k = 0; k < 4; k++) {
+          matrix[row][col] = tmp[(k + 3) % 4];
+          int x = row;
+          row = col;
+          col = n - 1 - x;
+        }
+      }
+    }
+  }
+}
+```
+
+- 间复杂度：O(N^2) 
+- 空间复杂度：O(1) 
+
+方法 3：在单次循环中旋转 4 个矩形
+
+该想法和方法 2 相同，但是所有的操作可以在单次循环内完成并且这是更精简的方法。
+
+```java
+class Solution {
+  public void rotate(int[][] matrix) {
+    int n = matrix.length;
+    for (int i = 0; i < (n + 1) / 2; i ++) {
+      for (int j = 0; j < n / 2; j++) {
+        int temp = matrix[n - 1 - j][i];
+        matrix[n - 1 - j][i] = matrix[n - 1 - i][n - j - 1];
+        matrix[n - 1 - i][n - j - 1] = matrix[j][n - 1 -i];
+        matrix[j][n - 1 - i] = matrix[i][j];
+        matrix[i][j] = temp;
+      }
+    }
+  }
+}
+```
+
+时间复杂度：O(N^2)
+空间复杂度：O(1)
