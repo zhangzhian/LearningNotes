@@ -2,6 +2,10 @@
 
 > 源码基于okhttp3 java版本：3.14.x
 
+OkHttp整体架构：
+
+![okhttp](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91c2VyLWdvbGQtY2RuLnhpdHUuaW8vMjAyMC8zLzI1LzE3MTExMTY4NmYxNDc1NWE?x-oss-process=image/format,png#pic_center)
+
 首先，我们回顾一下基本的okhttp请求流程：
 
 Get异步请求：
