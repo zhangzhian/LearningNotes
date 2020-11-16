@@ -2820,3 +2820,388 @@ class Solution {
 时间复杂度 O(1) ： 最差情况下（例如 a =a= 0x7fffffff , b = 1b=1 时），需循环 32 次，使用 O(1) 时间；每轮中的常数次位操作使用 O(1)时间。
 空间复杂度 O(1) ： 使用常数大小的额外空间。
 
+### [031] 在排序数组中查找数字 I
+
+统计一个数字在排序数组中出现的次数。
+
+示例 1:
+
+```
+输入: nums = [5,7,7,8,8,10], target = 8
+输出: 2
+```
+
+示例 2:
+
+```
+输入: nums = [5,7,7,8,8,10], target = 6
+输出: 0
+```
+
+
+限制：
+
+- 0 <= 数组长度 <= 50000
+
+方法一：二分法迭代
+
+![Picture1.png](https://pic.leetcode-cn.com/b4521d9ba346cad9e382017d1abd1db2304b4521d4f2d839c32d0ecff17a9c0d-Picture1.png)
+
+- 初始化： 左边界 `i = 0` ，右边界` j = len(nums) - 1` 。
+- 循环二分： 当闭区间 `[i, j] `无元素时跳出；
+  - 计算中点 `m = (i + j) / 2`（向下取整）；
+  - 若 `nums[m] < target` ，则 target在闭区间` [m + 1, j] `中，因此执行` i = m + 1`；
+  - 若 `nums[m] > target` ，则 target 在闭区间` [i, m - 1]`中，因此执行 `j = m - 1`；
+  - 若 `nums[m] = target` ，则右边界 right 在闭区间` [m+1, j] `中；左边界 left 在闭区间` [i, m-1] `中。因此分为以下两种情况：
+    - 若查找 右边界 right ，则执行` i = m + 1` ；（跳出时 i 指向右边界）
+    - 若查找 左边界 left ，则执行` j = m - 1 `；（跳出时 j 指向左边界）
+- 返回值： 应用两次二分，分别查找 right 和 left ，最终返回` right - left - 1`即可。
+
+效率优化：
+
+> 以下优化基于：查找完右边界 right = i 后，则 nums[j]指向最右边的 target （若存在）。
+
+- 查找完右边界后，可用 `nums[j] = j`判断数组中是否包含 target ，若不包含则直接提前返回 0 ，无需后续查找左边界。
+- 查找完右边界后，左边界 left 一定在闭区间` [0, j][0,j] `中，因此直接从此区间开始二分查找即可。
+
+```java
+class Solution {
+    public int search(int[] nums, int target) {
+        // 搜索右边界 right
+        int i = 0, j = nums.length - 1;
+        while(i <= j) {
+            int m = (i + j) / 2;
+            if(nums[m] <= target) i = m + 1;
+            else j = m - 1;
+        }
+        int right = i;
+        // 若数组中无 target ，则提前返回
+        if(j >= 0 && nums[j] != target) return 0;
+        // 搜索左边界 right
+        i = 0; j = nums.length - 1;
+        while(i <= j) {
+            int m = (i + j) / 2;
+            if(nums[m] < target) i = m + 1;
+            else j = m - 1;
+        }
+        int left = j;
+        return right - left - 1;
+    }
+}
+```
+
+- 时间复杂度：o(logN)
+
+- 空间复杂度：o(1))
+
+方法二：二分法递归
+
+![Picture2.png](https://pic.leetcode-cn.com/bf124fb9feff173309e2a0c3d36d2a76d1a0a46cb34a78a5776ac255fd1fde1d-Picture2.png)
+
+```java
+class Solution {
+    public int search(int[] nums, int target) {
+        return helper(nums, target) - helper(nums, target - 1);
+    }
+    int helper(int[] nums, int tar) {
+        int i = 0, j = nums.length - 1;
+        while(i <= j) {
+            int m = (i + j) / 2;
+            if(nums[m] <= tar) i = m + 1;
+            else j = m - 1;
+        }
+        return i;
+    }
+}
+```
+
+### [032] 旋转数组的最小数字
+
+把一个数组最开始的若干个元素搬到数组的末尾，我们称之为数组的旋转。输入一个递增排序的数组的一个旋转，输出旋转数组的最小元素。例如，数组 [3,4,5,1,2] 为 [1,2,3,4,5] 的一个旋转，该数组的最小值为1。  
+
+示例 1：
+
+```
+输入：[3,4,5,1,2]
+输出：1
+```
+
+示例 2：
+
+```
+输入：[2,2,2,0,1]
+输出：0
+```
+
+
+
+方法一：二分
+
+![Picture1.png](https://pic.leetcode-cn.com/1599404042-JMvjtL-Picture1.png)
+
+算法流程：
+
+- 初始化： 声明 i, j 双指针分别指向 nums 数组左右两端；
+- 循环二分： 设` m = (i + j) / 2 `为每次二分的中点（ "/" 代表向下取整除法，因此恒有` i≤m<j `），可分为以下三种情况：
+  - 当`nums[m] > nums[j]` 时： m 一定在 左排序数组 中，即旋转点 x 一定在` [m + 1, j] `闭区间内，因此执行` i = m + 1`；
+  - 当 `nums[m] < nums[j]`时： m 一定在 右排序数组 中，即旋转点 x 一定在`[i, m] `闭区间内，因此执行` j = m`；
+  - 当` nums[m] = nums[j] `时： 无法判断 m 在哪个排序数组中，即无法判断旋转点 x 在` [i, m] `还是` [m + 1, j] `区间中。解决方案： 执行`j = j - 1 `缩小判断范围。
+- 返回值： 当 i = j 时跳出二分循环，并返回 旋转点的值 nums[i] 即可。
+
+```java
+class Solution {
+    public int minArray(int[] numbers) {
+        int i = 0, j = numbers.length - 1;
+        while (i < j) {
+            int m = (i + j) / 2;
+            if (numbers[m] > numbers[j]) i = m + 1;
+            else if (numbers[m] < numbers[j]) j = m;
+            else j--;
+        }
+        return numbers[i];
+    }
+}
+```
+
+- 时间复杂度 O(log2 N)： 在特例情况下，会退化到 O(N)
+- 空间复杂度 O(1) 
+
+当出现` nums[m] = nums[j] `时，一定有区间` [i, m] `内所有元素相等 或 区间` [m, j] `内所有元素相等（或两者皆满足）。对于寻找此类数组的最小值问题，可直接放弃二分查找，而使用线性查找替代。
+
+```java
+class Solution {
+    public int minArray(int[] numbers) {
+        int i = 0, j = numbers.length - 1;
+        while (i < j) {
+            int m = (i + j) / 2;
+            if (numbers[m] > numbers[j]) i = m + 1;
+            else if (numbers[m] < numbers[j]) j = m;
+            else {
+                int x = i;
+                for(int k = i + 1; k < j; k++) {
+                    if(numbers[k] < numbers[x]) x = k;
+                }
+                return numbers[x];
+            }
+        }
+        return numbers[i];
+    }
+}
+```
+
+### [033] 扑克牌中的顺子
+
+从扑克牌中随机抽5张牌，判断是不是一个顺子，即这5张牌是不是连续的。2～10为数字本身，A为1，J为11，Q为12，K为13，而大、小王为 0 ，可以看成任意数字。A 不能视为 14。
+
+ 
+
+示例 1:
+
+```
+输入: [1,2,3,4,5]
+输出: True
+```
+
+
+示例 2:
+
+```
+输入: [0,0,1,2,5]
+输出: True
+```
+
+
+限制：
+
+- 数组长度为 5 
+
+- 数组的数取值为 [0, 13]
+
+---
+
+此 5 张牌是顺子的 充分条件 如下：
+
+- 除大小王外，所有牌 无重复 ； 
+
+- 设此 5 张牌中最大的牌为 max，最小的牌为 min （大小王除外），则需满足：max−min<5 
+
+![Picture1.png](https://pic.leetcode-cn.com/df03847e2d04a3fcb5649541d4b6733fb2cb0d9293c3433823e04935826c33ef-Picture1.png)
+
+方法一： 集合 Set + 遍历
+
+遍历五张牌，遇到大小王（即 0 ）直接跳过。
+
+判别重复： 利用 Set 实现遍历判重， Set 的查找方法的时间复杂度为 O(1) ；
+
+获取最大 / 最小的牌： 借助辅助变量 ma 和 mi，遍历统计即可。 
+
+```java
+class Solution {
+    public boolean isStraight(int[] nums) {
+        Set<Integer> repeat = new HashSet<>();
+        int max = 0, min = 14;
+        for(int num : nums) {
+            if(num == 0) continue; // 跳过大小王
+            max = Math.max(max, num); // 最大牌
+            min = Math.min(min, num); // 最小牌
+            if(repeat.contains(num)) return false; // 若有重复，提前返回 false
+            repeat.add(num); // 添加此牌至 Set
+        }
+        return max - min < 5; // 最大牌 - 最小牌 < 5 则可构成顺子
+    }
+}
+```
+
+- 时间复杂度 O(N) = O(5) = O(1) ： 其中 NN 为 nums 长度，本题中 N≡5 ；遍历数组使用 O(N) 时间。
+- 空间复杂度 O(N) = O(5) = O(1)： 用于判重的辅助 Set 使用 O(N) 额外空间。
+
+方法二：排序 + 遍历
+
+先对数组执行排序。
+
+判别重复： 排序数组中的相同元素位置相邻，因此可通过遍历数组，判断 `nums[i] = nums[i + 1]`是否成立来判重。
+
+获取最大 / 最小的牌： 排序后，数组末位元素 `nums[4]` 为最大牌；元素 `nums[joker]`为最小牌，其中 joker 为大小王的数量。
+
+```java
+class Solution {
+    public boolean isStraight(int[] nums) {
+        int joker = 0;
+        Arrays.sort(nums); // 数组排序
+        for(int i = 0; i < 4; i++) {
+            if(nums[i] == 0) joker++; // 统计大小王数量
+            else if(nums[i] == nums[i + 1]) return false; // 若有重复，提前返回 false
+        }
+        return nums[4] - nums[joker] < 5; // 最大牌 - 最小牌 < 5 则可构成顺子
+    }
+}
+```
+
+- 时间复杂度 O(NlogN)=O(5log5)=O(1) ： 其中 N 为 nums长度，本题中 N≡5 ；数组排序使用 O(NlogN) 时间。
+- 空间复杂度 O(1) ： 变量 joker 使用 O(1) 大小的额外空间。 
+
+### [034] 顺时针打印矩阵
+
+输入一个矩阵，按照从外向里以顺时针的顺序依次打印出每一个数字。 
+
+示例 1：
+
+```
+输入：matrix = [[1,2,3],[4,5,6],[7,8,9]]
+输出：[1,2,3,6,9,8,7,4,5]
+```
+
+示例 2：
+
+```
+输入：matrix = [[1,2,3,4],[5,6,7,8],[9,10,11,12]]
+输出：[1,2,3,4,8,12,11,10,9,5,6,7]
+```
+
+
+限制：
+
+- 0 <= matrix.length <= 100
+- 0 <= matrix[i].length <= 100 
+
+
+
+方法一：
+
+![Picture1.png](https://pic.leetcode-cn.com/c6de3a1bc0f38820941dbcff0e17a49204eba91b967d4ccc0d5485e68a4fcc95-Picture1.png)
+
+**空值处理：** 当 `matrix` 为空时，直接返回空列表 `[]` 即可
+
+**初始化：** 矩阵 左、右、上、下 四个边界 `l` , `r` , `t` , `b` ，用于打印的结果列表 `res` 。
+
+**循环打印：** “从左向右、从上向下、从右向左、从下向上” 四个方向循环，每个方向打印中做以下三件事
+
+1. 根据边界打印，即将元素按顺序添加至列表 `res` 尾部；
+2. 边界向内收缩 1 （代表已被打印）；
+3. 判断是否打印完毕（边界是否相遇），若打印完毕则跳出。
+
+**返回值：** 返回 `res` 即可。
+
+```java
+class Solution {
+    public int[] spiralOrder(int[][] matrix) {
+        if(matrix.length == 0) return new int[0];
+        int l = 0, r = matrix[0].length - 1, t = 0, b = matrix.length - 1, x = 0;
+        int[] res = new int[(r + 1) * (b + 1)];
+        while(true) {
+            for(int i = l; i <= r; i++) res[x++] = matrix[t][i]; // left to right.
+            if(++t > b) break;
+            for(int i = t; i <= b; i++) res[x++] = matrix[i][r]; // top to bottom.
+            if(l > --r) break;
+            for(int i = r; i >= l; i--) res[x++] = matrix[b][i]; // right to left.
+            if(t > --b) break;
+            for(int i = b; i >= t; i--) res[x++] = matrix[i][l]; // bottom to top.
+            if(++l > r) break;
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(MN) ： M, N 分别为矩阵行数和列数。
+- 空间复杂度 O(1) ： 四个边界 l , r , t , b 使用常数大小的 额外 空间（ res 为必须使用的空间）。
+
+### [035] 滑动窗口的最大值
+
+给定一个数组 nums 和滑动窗口的大小 k，请找出所有滑动窗口里的最大值。
+
+示例:
+
+```
+输入: nums = [1,3,-1,-3,5,3,6,7], 和 k = 3
+输出: [3,3,5,5,6,7] 
+解释: 
+
+  滑动窗口的位置                最大值
+
+---------------               -----
+
+[1  3  -1] -3  5  3  6  7       3
+ 1 [3  -1  -3] 5  3  6  7       3
+ 1  3 [-1  -3  5] 3  6  7       5
+ 1  3  -1 [-3  5  3] 6  7       5
+ 1  3  -1  -3 [5  3  6] 7       6
+ 1  3  -1  -3  5 [3  6  7]      7
+```
+
+
+提示：
+
+你可以假设 k 总是有效的，在输入数组不为空的情况下，1 ≤ k ≤ 输入数组的大小。
+
+方法一：
+
+[题解](https://leetcode-cn.com/problems/hua-dong-chuang-kou-de-zui-da-zhi-lcof/solution/mian-shi-ti-59-i-hua-dong-chuang-kou-de-zui-da-1-6/)
+
+```java
+class Solution {
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        if(nums.length == 0 || k == 0) return new int[0];
+        Deque<Integer> deque = new LinkedList<>();
+        int[] res = new int[nums.length - k + 1];
+        for(int i = 0; i < k; i++) { // 未形成窗口
+            while(!deque.isEmpty() && deque.peekLast() < nums[i])
+                deque.removeLast();
+            deque.addLast(nums[i]);
+        }
+        res[0] = deque.peekFirst();
+        for(int i = k; i < nums.length; i++) { // 形成窗口后
+            if(deque.peekFirst() == nums[i - k])
+                deque.removeFirst();
+            while(!deque.isEmpty() && deque.peekLast() < nums[i])
+                deque.removeLast();
+            deque.addLast(nums[i]);
+            res[i - k + 1] = deque.peekFirst();
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(n)： 其中 n 为数组 nums 长度；线性遍历 nums 占用 O(N) ；每个元素最多仅入队和出队一次，因此单调队列 deque 占用 O(2N) 。
+- 空间复杂度 O(k)： 双端队列 deque 中最多同时存储 k 个元素（即窗口大小）。
