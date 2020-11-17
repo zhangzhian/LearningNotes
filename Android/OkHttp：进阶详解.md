@@ -1,10 +1,10 @@
 # OkHttp：进阶详解
 
-在《OkHttp：基本使用详解》中描述了OkHttp的基本使用方法。已掌握了如何使用OkHttp进行基本的网络请求，但这只是最基础的使用，想要在实际的开发项目中应用我们还需知道OkHttp的底层实现方式。
+在[《OkHttp：基本使用详解》](https://blog.csdn.net/baidu_32237719/article/details/100125359)中描述了OkHttp的基本使用方法。已掌握了如何使用OkHttp进行基本的网络请求，但这只是最基础的使用，想要在实际的开发项目中应用我们还需知道OkHttp的底层实现方式。
 
-本文《OkHttp：进阶详解》主要详细的描述OkHttp的在设计和使用时涉及到的相关概念，为后续阅读源码打下基础。
+本文[《OkHttp：进阶详解》](https://blog.csdn.net/baidu_32237719/article/details/109743388)主要详细的描述OkHttp的在设计和使用时涉及到的相关概念，为后续阅读源码打下基础。
 
-接下来通过《OkHttp：源码详解》一系列文章分析源码。
+接下来通过[《OkHttp：源码详解》](https://blog.csdn.net/baidu_32237719/article/details/109743808)一系列文章分析源码。
 
 ## 一、Call
 
