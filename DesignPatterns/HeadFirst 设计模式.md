@@ -39,7 +39,60 @@
 
 **好莱坞原则**：别调用我们，我们会调用你。允许低层组件将自己挂钩到系统上，但是高层组件会决定when和how使用这些低层组件。
 
-当一个模块或一个类被设计成只支持一组相关功能时，具有高内聚；反之，被设计成支持一组不想管功能时，具有低内聚。
+## 设计模式的分类
+
+#### 根据目的来分
+
+根据模式是用来完成什么工作来划分，这种方式可分为创建型模式、结构型模式和行为型模式 3 种。
+
+1. 创建型模式：用于描述“怎样创建对象”，它的主要特点是“将对象的创建与使用分离”。GoF 中提供了单例、原型、工厂方法、抽象工厂、建造者等 5 种创建型模式。
+2. 结构型模式：用于描述如何将类或对象按某种布局组成更大的结构，GoF 中提供了代理、适配器、桥接、装饰、外观、享元、组合等 7 种结构型模式。
+3. 行为型模式：用于描述类或对象之间怎样相互协作共同完成单个对象都无法单独完成的任务，以及怎样分配职责。GoF 中提供了模板方法、策略、命令、职责链、状态、观察者、中介者、迭代器、访问者、备忘录、解释器等 11 种行为型模式。
+
+#### 根据作用范围来分
+
+根据模式是主要用于类上还是主要用于对象上来分，这种方式可分为类模式和对象模式两种。
+
+1. 类模式：用于处理类与子类之间的关系，这些关系通过继承来建立，是静态的，在编译时刻便确定下来了。GoF中的工厂方法、（类）适配器、模板方法、解释器属于该模式。
+2. 对象模式：用于处理对象之间的关系，这些关系可以通过组合或聚合来实现，在运行时刻是可以变化的，更具动态性。GoF 中除了以上 4 种，其他的都是对象模式。
+
+#### GoF的23种设计模式的功能
+
+前面说明了 GoF 的 23 种设计模式的分类，现在对各个模式的功能进行介绍。
+
+- 单例（Singleton）模式：某个类只能生成一个实例，该类提供了一个全局访问点供外部获取该实例，其拓展是有限多例模式。
+
+- 原型（Prototype）模式：将一个对象作为原型，通过对其进行复制而克隆出多个和原型类似的新实例。
+
+- 工厂方法（Factory Method）模式：定义一个用于创建产品的接口，由子类决定生产什么产品。
+
+- 抽象工厂（AbstractFactory）模式：提供一个创建产品族的接口，其每个子类可以生产一系列相关的产品。
+
+- 建造者（Builder）模式：将一个复杂对象分解成多个相对简单的部分，然后根据不同需要分别创建它们，最后构建成该复杂对象。
+
+1. 代理（Proxy）模式：为某对象提供一种代理以控制对该对象的访问。即客户端通过代理间接地访问该对象，从而限制、增强或修改该对象的一些特性。
+2. 适配器（Adapter）模式：将一个类的接口转换成客户希望的另外一个接口，使得原本由于接口不兼容而不能一起工作的那些类能一起工作。
+3. 桥接（Bridge）模式：将抽象与实现分离，使它们可以独立变化。它是用组合关系代替继承关系来实现，从而降低了抽象和实现这两个可变维度的耦合度。
+4. 装饰（Decorator）模式：动态的给对象增加一些职责，即增加其额外的功能。
+5. 外观（Facade）模式：为多个复杂的子系统提供一个一致的接口，使这些子系统更加容易被访问。
+6. 享元（Flyweight）模式：运用共享技术来有效地支持大量细粒度对象的复用。
+7. 组合（Composite）模式：将对象组合成树状层次结构，使用户对单个对象和组合对象具有一致的访问性。
+8. 模板方法（TemplateMethod）模式：定义一个操作中的算法骨架，而将算法的一些步骤延迟到子类中，使得子类可以不改变该算法结构的情况下重定义该算法的某些特定步骤。
+9. 策略（Strategy）模式：定义了一系列算法，并将每个算法封装起来，使它们可以相互替换，且算法的改变不会影响使用算法的客户。
+10. 命令（Command）模式：将一个请求封装为一个对象，使发出请求的责任和执行请求的责任分割开。
+11. 职责链（Chain of Responsibility）模式：把请求从链中的一个对象传到下一个对象，直到请求被响应为止。通过这种方式去除对象之间的耦合。
+12. 状态（State）模式：允许一个对象在其内部状态发生改变时改变其行为能力。
+13. 观察者（Observer）模式：多个对象间存在一对多关系，当一个对象发生改变时，把这种改变通知给其他多个对象，从而影响其他对象的行为。
+14. 中介者（Mediator）模式：定义一个中介对象来简化原有对象之间的交互关系，降低系统中对象间的耦合度，使原有对象之间不必相互了解。
+15. 迭代器（Iterator）模式：提供一种方法来顺序访问聚合对象中的一系列数据，而不暴露聚合对象的内部表示。
+16. 访问者（Visitor）模式：在不改变集合元素的前提下，为一个集合中的每个元素提供多种访问方式，即每个元素有多个访问者对象访问。
+17. 备忘录（Memento）模式：在不破坏封装性的前提下，获取并保存一个对象的内部状态，以便以后恢复它。
+18. 解释器（Interpreter）模式：提供如何定义语言的文法，以及对语言句子的解释方法，即解释器。
+
+
+必须指出，这 23 种设计模式不是孤立存在的，很多模式之间存在一定的关联关系，在大的系统开发中常常同时使用多种设计模式，希望读者认真学好它们。
+
+
 
 ## 零、策略模式
 
@@ -1892,48 +1945,91 @@ class Proxy implements Subject
 
 ### 1. 桥接模式
 
-桥接模式(Bridge Pattern)：将抽象部分与它的实现部分分离，使它们都可以独立地变化。
+**定义**：桥接模式(Bridge Pattern)将抽象部分与它的实现部分分离，使它们都可以独立地变化。
 
 桥接模式，不只改变实现，还能改变抽象
 
-优点：将实现解耦；抽象和实现可以独立扩展；对于“具体的抽象类”所做的改变，不会影响到客户
+**优点：**
 
-用途：适合使用载需要跨越多个平台的图形和窗口系统上；当需要用于不同的方式改变接口和实现时
+- 抽象与实现分离，扩展能力强
+- 符合开闭原则
+- 符合合成复用原则
+- 其实现细节对客户透明
 
-缺点：增加了复杂度
+**缺点：**由于聚合关系建立在抽象层，要求开发者针对抽象化进行设计与编程，能正确地识别出系统中两个独立变化的维度，这增加了系统的理解与设计难度。
 
-![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9pbWcyMDE4LmNuYmxvZ3MuY29tL2Jsb2cvMTQ3NTU3MS8yMDE5MDEvMTQ3NTU3MS0yMDE5MDExMjE4MDUyNjExMy0xMjA0NjI2NDI1LnBuZw?x-oss-process=image/format,png)
+**应用实例：**
+
+墙上的开关，可以看到的开关是抽象的，不用管里面具体怎么实现的。
+
+**使用场景：** 
+
+- 如果一个系统需要在构件的抽象化角色和具体化角色之间增加更多的灵活性，避免在两个层次之间建立静态的继承联系，通过桥接模式可以使它们在抽象层建立一个关联关系。
+
+- 对于那些不希望使用继承或因为多层次继承导致系统类的个数急剧增加的系统，桥接模式尤为适用。
+
+- -一个类存在两个独立变化的维度，且这两个维度都需要进行扩展。
+
+**桥接模式的结构与实现**
+
+1. 抽象化（Abstraction）角色：定义抽象类，并包含一个对实现化对象的引用。
+2. 扩展抽象化（Refined Abstraction）角色：是抽象化角色的子类，实现父类中的业务方法，并通过组合关系调用实现化角色中的业务方法。
+3. 实现化（Implementor）角色：定义实现化角色的接口，供扩展抽象化角色调用。
+4. 具体实现化（Concrete Implementor）角色：给出实现化角色接口的具体实现。
+
+![桥接模式的结构图](http://c.biancheng.net/uploads/allimg/181115/3-1Q115125253H1.gif)
 
 
 
 ```java
-public interface Implementor
+public class BridgeTest
 {
-    public void operationImpl();
-} 
-
-public abstract class Abstraction
-{
-    protected Implementor impl;
-    
-    public void setImpl(Implementor impl)
+    public static void main(String[] args)
     {
-        this.impl=impl;
+        Implementor imple=new ConcreteImplementorA();
+        Abstraction abs=new RefinedAbstraction(imple);
+        abs.Operation();
     }
-    
-    public abstract void operation();
 }
-
-public class RefinedAbstraction extends Abstraction
+//实现化角色
+interface Implementor
 {
-    public void operation()
+    public void OperationImpl();
+}
+//具体实现化角色
+class ConcreteImplementorA implements Implementor
+{
+    public void OperationImpl()
     {
-        //代码
-        impl.operationImpl();
-        //代码
+        System.out.println("具体实现化(Concrete Implementor)角色被访问" );
     }
+}
+//抽象化角色
+abstract class Abstraction
+{
+   protected Implementor imple;
+   protected Abstraction(Implementor imple)
+   {
+       this.imple=imple;
+   }
+   public abstract void Operation();   
+}
+//扩展抽象化角色
+class RefinedAbstraction extends Abstraction
+{
+   protected RefinedAbstraction(Implementor imple)
+   {
+       super(imple);
+   }
+   public void Operation()
+   {
+       System.out.println("扩展抽象化(Refined Abstraction)角色被访问" );
+       imple.OperationImpl();
+   }
 }
 ```
+
+**实例**
 
 ![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly9pbWcyMDE4LmNuYmxvZ3MuY29tL2Jsb2cvMTQ3NTU3MS8yMDE5MDEvMTQ3NTU3MS0yMDE5MDExMjE4MDcxMjIwOC01MDU3ODY4MTkucG5n?x-oss-process=image/format,png)
 
@@ -2051,117 +2147,171 @@ public class Client
 
 
 
-### 2. 生成器模式
+### 2. 建造者模式
 
-使用生成器模式封装一个产品的构造过程，并允许按步骤构造
+**定义：**使用生成器模式封装一个产品的构造过程，并允许按步骤构造
 
-优点：将一个复杂对象的创建过程封装起来；允许对象通过多个步骤创建，并且可以改变过程；向客户隐藏产品内部的表现；产品的实现可以被替换，因为客户只看到一个抽象的接口
+**优点：**
 
-用途：经常被用来创建组合结构
+1. 封装性好，构建和表示分离。
+2. 扩展性好，各个具体的建造者相互独立，有利于系统的解耦。
+3. 客户端不必知道产品内部组成的细节，建造者可以对创建过程逐步细化，而不对其它模块产生任何影响，便于控制细节风险。
 
-缺点：与工厂模式相比，采用生成器创建对象的客户，需要更多的领域知识
+**缺点：**
 
-![](https://img-blog.csdnimg.cn/20190603112106513.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3Rhbmd5dXpoaWRhbw==,size_16,color_FFFFFF,t_70)
+1. 产品的组成部分必须相同，这限制了其使用范围。
+2. 如果产品的内部变化复杂，如果产品内部发生变化，则建造者也要同步修改，后期维护成本较大。
+
+**应用实例：** 
+
+- 去肯德基，汉堡、可乐、薯条、炸鸡翅等是不变的，而其组合是经常变化的，生成出所谓的"套餐"。
+
+- JAVA 中的 StringBuilder。
+
+**使用场景：** 
+
+- 需要生成的对象具有复杂的内部结构。
+- 需要生成的对象内部属性本身相互依赖。
+
+**模式的结构与实现**
+
+1. 产品角色（Product）：它是包含多个组成部件的复杂对象，由具体建造者来创建其各个零部件。
+2. 抽象建造者（Builder）：它是一个包含创建产品各个子部件的抽象方法的接口，通常还包含一个返回复杂产品的方法 getResult()。
+3. 具体建造者(Concrete Builder）：实现 Builder 接口，完成复杂产品的各个部件的具体创建方法。
+4. 指挥者（Director）：它调用建造者对象中的部件构造与装配方法完成复杂对象的创建，在指挥者中不涉及具体产品的信息。
+
+![建造者模式的结构图](http://c.biancheng.net/uploads/allimg/181114/3-1Q1141H441X4.gif)
+
+
 
 ```java
-//抽象类或接口
-public abstract class Builder {
+// 产品角色：包含多个组成部件的复杂对象。
+class Product
+{
+    private String partA;
+    private String partB;
+    private String partC;
+    public void setPartA(String partA)
+    {
+        this.partA=partA;
+    }
+    public void setPartB(String partB)
+    {
+        this.partB=partB;
+    }
+    public void setPartC(String partC)
+    {
+        this.partC=partC;
+    }
+    public void show()
+    {
+        //显示产品的特性
+    }
+}
 
+//抽象建造者：包含创建产品各个子部件的抽象方法。
+abstract class Builder
+{
+    //创建产品对象
+    protected Product product=new Product();
     public abstract void buildPartA();
     public abstract void buildPartB();
-    public abstract Product getBuildResult();
-    
-}
-//指挥者类，用来指挥建造过程
-public class Director {
-    public void construct(Builder builder) {
-	    builder.buildPartA();
-	    builder.buildPartB();
+    public abstract void buildPartC();
+    //返回产品对象
+    public Product getResult()
+    {
+        return product;
     }
 }
-//具体建造者类
-public class ConcreteBuilder1 extends Builder {
-    private Product product = new Product();
 
-    @Override
-    public void buildPartA() {
-	    product.add("部件A");
+//具体建造者：实现了抽象建造者接口。
+public class ConcreteBuilder extends Builder
+{
+    public void buildPartA()
+    {
+        product.setPartA("建造 PartA");
     }
-
-    @Override
-    public void buildPartB() {
-	    product.add("部件B");
+    public void buildPartB()
+    {
+        product.setPartB("建造 PartB");
     }
-
-    @Override
-    public Product getBuildResult() {
-	    return product;
+    public void buildPartC()
+    {
+        product.setPartC("建造 PartC");
     }
 }
-// 具体建造者类，建造的对象时Product，通过build使Product完善
-public class ConcreteBuilder2 extends Builder {
-    private Product product = new Product();
 
-    @Override
-    public void buildPartA() {
-	    product.add("部件X");
+//指挥者：调用建造者中的方法完成复杂对象的创建。
+class Director
+{
+    private Builder builder;
+    public Director(Builder builder)
+    {
+        this.builder=builder;
     }
-
-    @Override
-    public void buildPartB() {
-	    product.add("部件Y");
-    }
-
-    @Override
-    public Product getBuildResult() {
-	   return product;
-    }
-}
-//产品类，由多个部件组成
-public class Product {
-    List<String> parts = new ArrayList<String>();
-
-    // 添加产品部件
-    public void add(String part) {
-	    parts.add(part);
-    }
-
-    // 列举所有的产品部件
-    public void show() {
-	    System.out.println("---产品 创建---");
-
-		for (String part : parts) {
-		    System.out.println(part);
-		}
+    //产品构建与组装方法
+    public Product construct()
+    {
+        builder.buildPartA();
+        builder.buildPartB();
+        builder.buildPartC();
+        return builder.getResult();
     }
 }
-//建造客户端
-public class BuilderClient {
 
-    public static void main(String[] args) {
-	    Director director = new Director();
-	    Builder builder1 = new ConcreteBuilder1();
-	    Builder builder2 = new ConcreteBuilder2();
-
-      director.construct(builder1);
-      Product product = builder1.getBuildResult();
-      product.show();
-      
+//客户类。
+public class Client
+{
+    public static void main(String[] args)
+    {
+        Builder builder=new ConcreteBuilder();
+        Director director=new Director(builder);
+        Product product=director.construct();
+        product.show();
     }
 }
 ```
 
 ### 3. 责任链模式
 
-当你想要让一个以上的对象有机会能够处理某个请求的时候，就使用责任链模式。
+**定义：**为了避免请求发送者与多个请求处理者耦合在一起，于是将所有请求的处理者通过前一对象记住其下一个对象的引用而连成一条链；当有请求发生时，可将请求沿着这条链传递，直到有对象处理它为止。
 
-优点：将请求的发送者和接受者解耦；可以简化你的对象，因为不需要知道链的机构；通过改变链内的成员或调动它们的次序，允许动态地新增或者删除责任
+**优点：**
 
-用途：经常被使用在窗口系统中，处理鼠标和键盘之类的事件；
+- 将请求的发送者和接受者解耦；
+- 可以简化你的对象，因为不需要知道链的机构；
+- 通过改变链内的成员或调动它们的次序，允许动态地新增或者删除责任
 
-缺点：并不保证请求一定被执行；如果哪有任何对象处理它的话，可能落到链尾短之外；可能不容易观察运行时的特征，有碍于除错
+**缺点：**
 
-![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91cGxvYWQtaW1hZ2VzLmppYW5zaHUuaW8vdXBsb2FkX2ltYWdlcy80ODA3NjU0LWY5Y2UwZmQ3YjE5YmU1MjkucG5n?x-oss-process=image/format,png)
+- 并不保证请求一定被执行；
+- 如果哪有任何对象处理它的话，可能落到链尾短之外；
+- 可能不容易观察运行时的特征，有碍于除错
+
+**应用实例：**
+
+- 红楼梦中的"击鼓传花"。
+- JS 中的事件冒泡。
+
+**使用场景：**
+
+- 有多个对象可以处理同一个请求，具体哪个对象处理该请求由运行时刻自动确定。
+- 在不明确指定接收者的情况下，向多个对象中的一个提交一个请求。 3、可动态指定一组对象处理请求。
+
+**模式的结构与实现**
+
+1. 抽象处理者（Handler）角色：定义一个处理请求的接口，包含抽象处理方法和一个后继连接。
+2. 具体处理者（Concrete Handler）角色：实现抽象处理者的处理方法，判断能否处理本次请求，如果可以处理请求则处理，否则将该请求转给它的后继者。
+3. 客户类（Client）角色：创建处理链，并向链头的具体处理者对象提交请求，它不关心处理细节和请求的传递过程。
+
+![责任链模式的结构图](http://c.biancheng.net/uploads/allimg/181116/3-1Q116135Z11C.gif)
+
+图1 责任链模式的结构图
+
+
+
+![责任链](http://c.biancheng.net/uploads/allimg/181116/3-1Q11613592TF.gif)
+图2 责任链
 
 ```java
 /**
@@ -2185,7 +2335,7 @@ public abstract class Handler {
 /**
  * 具体处理器.
  */
-public class ConcreteHandler extends Handler {
+public class ConcreteHandler1 extends Handler {
 
     @Override
     public void handleRequest() {
@@ -2196,21 +2346,34 @@ public class ConcreteHandler extends Handler {
     }
 
 }
+/**
+ * 具体处理器.
+ */
+public class ConcreteHandler2 extends Handler {
 
+    @Override
+    public void handleRequest() {
+        System.out.println(this.toString()+"处理器处理");
+        if (getNextHandler()!=null){   //判断是否存在下一个处理器
+            getNextHandler().handleRequest();   //存在则调用下一个处理器
+        }
+    }
+
+}
 /**
  * 测试
  */
 public class Client {
     public static void main(String[] args) {
-        Handler h1 = new ConcreteHandler();
-        Handler h2 = new ConcreteHandler();
+        Handler h1 = new ConcreteHandler1();
+        Handler h2 = new ConcreteHandler2();
         h1.setNextHandler(h2);   //h1的下一个处理器是h2
         h1.handleRequest();
     }
 }
 ```
 
-
+**实例**
 
 ![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9jaGFpbl9wYXR0ZXJuX3VtbF9kaWFncmFtLmpwZw?x-oss-process=image/format,png)
 
@@ -2318,13 +2481,54 @@ public class Main {
 
 ### 4. 蝇量模式（享元模式）
 
-如果相让某个类的一个实例能用来提供许多“虚拟实例”，就使用蝇量模式
+**定义：**享元模式让某个类的一个实例能用来提供许多“虚拟实例”
 
-优点：减少运行时对象实例的个数，节省内存；将需多“虚拟”对象的状态集中管理
+**优点：**
 
-用途：当一个类游许多的实例，而这些实例能被同一方法控制的时候，我们就可以使用蝇量模式
+- 减少运行时对象实例的个数，节省内存
+- 将需多“虚拟”对象的状态集中管理
 
-缺点：一旦实现了它，单个逻辑实例将无法拥有独立而不同的行为
+**缺点：**
+
+- 为了使对象可以共享，需要将一些不能共享的状态外部化，这将增加程序的复杂性。
+
+- 读取享元模式的外部状态会使得运行时间稍微变长。
+
+**应用实例：** 
+
+- JAVA 中的 String，如果有则返回，如果没有则创建一个字符串保存在字符串缓存池里面
+- 数据库的数据池。
+
+**使用场景：**
+
+- 系统有大量相似对象
+- 需要缓冲池的场景
+
+**享元模式的结构与实现**
+
+享元模式的定义提出了两个要求，细粒度和共享对象。因为要求细粒度，所以不可避免地会使对象数量多且性质相近，此时我们就将这些对象的信息分为两个部分：内部状态和外部状态。
+
+- 内部状态指对象共享出来的信息，存储在享元信息内部，并且不回随环境的改变而改变；
+- 外部状态指对象得以依赖的一个标记，随环境的改变而改变，不可共享。
+
+比如，连接池中的连接对象，保存在连接对象中的用户名、密码、连接URL等信息，在创建对象的时候就设置好了，不会随环境的改变而改变，这些为内部状态。而当每个连接要被回收利用时，我们需要将它标记为可用状态，这些为外部状态。
+
+享元模式的本质是缓存共享对象，降低内存消耗。
+
+享元模式的主要角色有如下。
+
+1. 抽象享元角色（Flyweight）：是所有的具体享元类的基类，为具体享元规范需要实现的公共接口，非享元的外部状态以参数的形式通过方法传入。
+2. 具体享元（Concrete Flyweight）角色：实现抽象享元角色中所规定的接口。
+3. 非享元（Unsharable Flyweight)角色：是不可以共享的外部状态，它以参数的形式注入具体享元的相关方法中。
+4. 享元工厂（Flyweight Factory）角色：负责创建和管理享元角色。当客户对象请求一个享元对象时，享元工厂检査系统中是否存在符合要求的享元对象，如果存在则提供给客户；如果不存在的话，则创建一个新的享元对象。
+
+下图是享元模式的结构图，其中：
+
+- UnsharedConcreteFlyweight 是非享元角色，里面包含了非共享的外部状态信息 info；
+- Flyweight 是抽象享元角色，里面包含了享元方法 operation(UnsharedConcreteFlyweight state)，非享元的外部状态以参数的形式通过该方法传入；
+- ConcreteFlyweight 是具体享元角色，包含了关键字 key，它实现了抽象享元接口；
+- FlyweightFactory 是享元工厂角色，它是关键字 key 来管理具体享元；
+- 客户角色通过享元工厂获取具体享元，并访问具体享元的相关方法。
 
 ![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTUvMy0xUTExNTE2MTM0MjI0Mi5naWY)
 
@@ -2403,6 +2607,8 @@ class FlyweightFactory
     }
 }
 ```
+
+**实例**
 
 ![](https://imgconvert.csdnimg.cn/aHR0cHM6Ly93d3cucnVub29iLmNvbS93cC1jb250ZW50L3VwbG9hZHMvMjAxNC8wOC9mbHl3ZWlnaHRfcGF0dGVybl91bWxfZGlhZ3JhbS0xLmpwZw?x-oss-process=image/format,png)
 
@@ -2485,13 +2691,38 @@ public class FlyweightPatternDemo {
 
 ### 5. 解释器模式
 
-使用解释器模式为语言创建解释器
+**定义：**给分析对象定义一个语言，并定义该语言的文法表示，再设计一个解析器来解释语言中的句子。
 
-优点：将每一个语法规则表示成一个类，方便实现语言；因为语法由许多类表示，所以可以轻松改变或扩展此语言；通过在类的结构中加入新的方法，可以在解释的同时增加新的行为，例如打印格式的美化或者进行复杂的程序验证
+> 使用解释器模式为语言创建解释器
 
-用途：实现一个简单语言；有一个简单语法，而且简单比效率重要；可以处理脚本语言和编程语言
+**优点：**
 
-缺点：语法规则的数目太大时，这个模式可能会变得非常繁杂。在这种情况下，使用解析器/编译器的产生器可能更适合。
+1. 扩展性好。由于在解释器模式中使用类来表示语言的文法规则，因此可以通过继承等机制来改变或扩展文法。
+2. 容易实现。在语法树中的每个表达式节点类都是相似的，所以实现其文法较为容易。
+
+**缺点：**
+
+1. 执行效率较低。解释器模式中通常使用大量的循环和递归调用，当要解释的句子较复杂时，其运行速度很慢，且代码的调试过程也比较麻烦。
+2. 会引起类膨胀。解释器模式中的每条规则至少需要定义一个类，当包含的文法规则很多时，类的个数将急剧增加，导致系统难以管理与维护。
+3. 可应用的场景比较少。在软件开发中，需要定义语言文法的应用实例非常少，所以这种模式很少被使用到。
+
+**应用实例：**编译器、运算表达式计算。
+
+**使用场景：**
+
+- 可以将一个需要解释执行的语言中的句子表示为一个抽象语法树。
+
+- 一些重复出现的问题可以用一种简单的语言来进行表达。
+
+- 一个简单语法需要解释的场景。
+
+**模式的结构与实现**
+
+1. 抽象表达式（Abstract Expression）角色：定义解释器的接口，约定解释器的解释操作，主要包含解释方法 interpret()。
+2. 终结符表达式（Terminal  Expression）角色：是抽象表达式的子类，用来实现文法中与终结符相关的操作，文法中的每一个终结符都有一个具体终结表达式与之相对应。
+3. 非终结符表达式（Nonterminal Expression）角色：也是抽象表达式的子类，用来实现文法中与非终结符相关的操作，文法中的每条规则都对应于一个非终结符表达式。
+4. 环境（Context）角色：通常包含各个解释器需要的数据或是公共的功能，一般用来传递被所有解释器共享的数据，后面的解释器可以从这里获取这些值。
+5. 客户端（Client）：主要任务是将需要分析的句子或表达式转换成使用解释器对象描述的抽象语法树，然后调用解释器的解释方法，当然也可以通过环境角色间接访问解释器的解释方法。
 
 ![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTE1MDYyNjQyMi5naWY)
 
@@ -2624,13 +2855,36 @@ class Context
 
 ### 6. 中介者模式
 
-使用中介者模式来集中相关对象之间复杂的沟通和控制方式
+中介者模式的定义：定义一个中介对象来封装一系列对象之间的交互，使原有对象之间的耦合松散，且可以独立地改变它们之间的交互。中介者模式又叫调停模式，它是迪米特法则的典型应用。
 
-优点：通过将对象彼此解耦，可以增加对象的复用性；通过将控制逻辑集中，可以简化系统维护；可以让对象之间所传递的消息变得简单而且大幅度减少
+> 使用中介者模式来集中相关对象之间复杂的沟通和控制方式
 
-用途：中介者常常被用来协调相关的GUI组件
+**优点：**
 
-缺点：如果设计不当，中介者对象本身会变得过于复杂
+1. 降低了对象之间的耦合性，使得对象易于独立地被复用。
+2. 将对象间的一对多关联转变为一对一的关联，提高系统的灵活性，使得系统易于维护和扩展。
+
+**缺点：** 如果设计不当，中介者对象本身会变得过于复杂
+
+**应用实例：**
+
+- 中国加入 WTO 之前是各个国家相互贸易，结构复杂，现在是各个国家通过 WTO 来互相贸易。
+- 机场调度系统。
+- MVC 框架，其中C（控制器）就是 M（模型）和 V（视图）的中介者。
+
+**使用场景：**
+
+- 系统中对象之间存在比较复杂的引用关系，导致它们之间的依赖关系结构混乱而且难以复用该对象。
+- 想通过一个中间类来封装多个类中的行为，而又不想生成太多的子类。
+
+**模式的结构与实现**
+
+1. 抽象中介者（Mediator）角色：它是中介者的接口，提供了同事对象注册与转发同事对象信息的抽象方法。
+2. 具体中介者（ConcreteMediator）角色：实现中介者接口，定义一个 List 来管理同事对象，协调各个同事角色之间的交互关系，因此它依赖于同事角色。
+3. 抽象同事类（Colleague）角色：定义同事类的接口，保存中介者对象，提供同事对象交互的抽象方法，实现所有相互影响的同事类的公共功能。
+4. 具体同事类（Concrete Colleague）角色：是抽象同事类的实现者，当需要与其他同事对象交互时，由中介者对象负责后续的交互。
+
+
 
 ![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTYvMy0xUTExNjFJNTMyVjAuZ2lm)
 
@@ -2723,13 +2977,33 @@ class ConcreteColleague2 extends Colleague
 
 ### 7. 备忘录模式
 
-当你需要让对象返回之前的状态时，就使用备忘录模式
+**定义：**在不破坏封装性的前提下，捕获一个对象的内部状态，并在该对象之外保存这个状态，以便以后当需要时能将该对象恢复到原先保存的状态。该模式又叫快照模式。
 
-优点：将被存储的状态放在外面，不要和关键对象混在一起，这样可以帮助维护内聚；保持关键对象的数据封装；提供了容易实现的恢复能力
+**优点：**
 
-用途：备忘录用户存储状态
+- 提供了一种可以恢复状态的机制。当用户需要时能够比较方便地将数据恢复到某个历史的状态。
+- 实现了内部状态的封装。除了创建它的发起人之外，其他对象都不能够访问这些状态信息。
+- 简化了发起人类。发起人不需要管理和保存其内部状态的各个备份，所有状态信息都保存在备忘录中，并由管理者进行管理，这符合单一职责原则。
 
-缺点：使用备忘录时，存储和恢复状态的过程可能相当耗时；在Java系统中可以考虑使用序列化机制存储系统状态
+**缺点：** 资源消耗大。如果要保存的内部状态信息过多或者特别频繁，将会占用比较大的内存资源。
+
+**应用实例：**
+
+- 打游戏时的存档。
+
+- Windows 里的 ctri + z
+
+**使用场景：**
+
+- 需要保存/恢复数据的相关状态场景
+
+- 提供一个可回滚的操作。
+
+**模式的结构与实现**
+
+1. 发起人（Originator）角色：记录当前时刻的内部状态信息，提供创建备忘录和恢复备忘录数据的功能，实现其他业务功能，它可以访问备忘录里的所有信息。
+2. 备忘录（Memento）角色：负责存储发起人的内部状态，在需要的时候提供这些内部状态给发起人。
+3. 管理者（Caretaker）角色：对备忘录进行管理，提供保存与获取备忘录的功能，但其不能对备忘录的内容进行访问与修改。
 
 ![](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTEzMDQxMzkyNy5naWY)
 
@@ -2806,13 +3080,42 @@ class Caretaker
 
 ### 8. 原型模式
 
-当创建给定类的实例过程很昂贵或很复杂时，就使用原型模式
+**定义：**用一个已经创建的实例作为原型，通过复制该原型对象来创建一个和原型相同或相似的新对象。
 
-优点：向客户隐藏制造新实例的复杂性；提供让客户能够产生未知类型对象的选项；在某些环境下，复杂对象比创建新对象更有效
+**优点：**
 
-用途：在一个复杂的类层次中，当系统必须从其中的许多类型创建新对象时，可以考虑原型。
+- Java自带的原型模式基于内存二进制流的复制，在性能上比直接 new 一个对象更加优良。
+- 可以使用深克隆方式保存对象的状态，使用原型模式将对象复制一份，并将其状态保存起来，简化了创建对象的过程，以便在需要的时候使用（例如恢复到历史某一状态），可辅助实现撤销操作。
 
-缺点：对象的复制有时有点复杂
+**缺点：**
+
+- 需要为每一个类都配置一个 clone 方法
+- clone 方法位于类的内部，当对已有类进行改造的时候，需要修改代码，违背了开闭原则。
+- 当实现深克隆时，需要编写较为复杂的代码，而且当对象之间存在多重嵌套引用时，为了实现深克隆，每一层对象对应的类都必须支持深克隆，实现起来会比较麻烦。因此，深克隆、浅克隆需要运用得当。
+
+**应用实例：** 
+
+- 细胞分裂
+- JAVA 中的 Object clone() 方法。
+
+**使用场景：**
+
+- 资源优化场景
+- 类初始化需要消化非常多的资源，这个资源包括数据、硬件资源等
+- 性能和安全要求的场景。
+
+**原型模式的结构与实现**
+
+由于 Java 提供了对象的 clone() 方法，所以用 Java 实现原型模式很简单。
+
+1. 抽象原型类：规定了具体原型对象必须实现的接口。
+2. 具体原型类：实现抽象原型类的 clone() 方法，它是可被复制的对象。
+3. 访问类：使用具体原型类中的 clone() 方法来复制新的对象。
+
+原型模式的克隆分为浅克隆和深克隆。
+
+- 浅克隆：创建一个新对象，新对象的属性和原来对象完全相同，对于非基本类型属性，仍指向原有属性所指向的对象的内存地址。
+- 深克隆：创建一个新对象，属性中引用的其他对象也会被克隆，不再指向原有对象地址。
 
 ![原型模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTQvMy0xUTExNDEwMUZhMjIuZ2lm)
 
@@ -2848,11 +3151,34 @@ public class PrototypeTest
 
 ### 9. 访问者模式
 
-当你想要为一个对象的组合增加新的能力，且封装并不重要时，就使用访问者模式
+**定义：**将作用于某种数据结构中的各元素的操作分离出来封装成独立的类，使其在不改变数据结构的前提下可以添加作用于这些元素的新的操作，为数据结构中的每个元素提供多种访问方式。
 
-优点：允许你对组合结构加入新的操作，而无需改变结构本身；想要加入新的操作，相对容易；访问者所进行的操作，其代码是集中在一起的
+> 当你想要为一个对象的组合增加新的能力，且封装并不重要时，就使用访问者模式
 
-缺点：当采用访问者模式的时候，就会打破组合类的封装；对组合结构的改变更加困难
+**优点：**
+
+1. 扩展性好。能够在不修改对象结构中的元素的情况下，为对象结构中的元素添加新的功能。
+2. 复用性好。可以通过访问者来定义整个对象结构通用的功能，从而提高系统的复用程度。
+3. 灵活性好。访问者模式将数据结构与作用于结构上的操作解耦，使得操作集合可相对自由地演化而不影响系统的数据结构。
+4. 符合单一职责原则。访问者模式把相关的行为封装在一起，构成一个访问者，使每一个访问者的功能都比较单一。
+
+**缺点：**
+
+1. 增加新的元素类很困难。在访问者模式中，每增加一个新的元素类，都要在每一个具体访问者类中增加相应的具体操作，这违背了“开闭原则”。
+2. 破坏封装。访问者模式中具体元素对访问者公布细节，这破坏了对象的封装性。
+3. 违反了依赖倒置原则。访问者模式依赖了具体类，而没有依赖抽象类。
+
+**应用实例：**您在朋友家做客，您是访问者，朋友接受您的访问，您通过朋友的描述，然后对朋友的描述做出一个判断，这就是访问者模式。
+
+**使用场景：** 1、对象结构中对象对应的类很少改变，但经常需要在此对象结构上定义新的操作。 2、需要对一个对象结构中的对象进行很多不同的并且不相关的操作，而需要避免让这些操作"污染"这些对象的类，也不希望在增加新操作时修改这些类。
+
+**模式的结构与实现**
+
+1. 抽象访问者（Visitor）角色：定义一个访问具体元素的接口，为每个具体元素类对应一个访问操作 visit() ，该操作中的参数类型标识了被访问的具体元素。
+2. 具体访问者（ConcreteVisitor）角色：实现抽象访问者角色中声明的各个访问操作，确定访问者访问一个元素时该做什么。
+3. 抽象元素（Element）角色：声明一个包含接受操作 accept() 的接口，被接受的访问者对象作为 accept() 方法的参数。
+4. 具体元素（ConcreteElement）角色：实现抽象元素角色提供的 accept() 操作，其方法体通常都是 visitor.visit(this) ，另外具体元素中可能还包含本身业务逻辑的相关操作。
+5. 对象结构（Object Structure）角色：是一个包含元素角色的容器，提供让访问者对象遍历容器中的所有元素的方法，通常由 List、Set、Map 等聚合类实现。
 
 ![访问者（Visitor）模式的结构图](https://imgconvert.csdnimg.cn/aHR0cDovL2MuYmlhbmNoZW5nLm5ldC91cGxvYWRzL2FsbGltZy8xODExMTkvMy0xUTExOTEwMTM1WTI1LmdpZg)
 
@@ -2952,6 +3278,14 @@ class ObjectStructure
     }
 }
 ```
+
+
+
+
+
+---
+
+**我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork**
 
 **欢迎关注我的公众号，持续分析优质技术文章**
 ![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
