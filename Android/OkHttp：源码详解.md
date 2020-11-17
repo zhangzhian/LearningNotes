@@ -2,23 +2,23 @@
 
 > 源码基于okhttp3 java版本：3.14.x
 
-在《OkHttp：基本使用详解》和 《OkHttp：进阶详解》中描述了OkHttp的基本使用方法。自此我们了解了OkHttp的基础使用和了解了使用中设计到的相关概念。
+在[《OkHttp：基本使用详解》](https://blog.csdn.net/baidu_32237719/article/details/100125359)和 [《OkHttp：进阶详解》](https://blog.csdn.net/baidu_32237719/article/details/109743388)中描述了OkHttp的基本使用方法。自此我们了解了OkHttp的基础使用和了解了使用中设计到的相关概念。
 
-接下来我们通过《OkHttp：源码详解》一系列文章从源码的角度来阐述OkHttp的工作流程和设计思想。
+接下来我们通过[《OkHttp：源码详解》](https://blog.csdn.net/baidu_32237719/article/details/109743808)一系列文章从源码的角度来阐述OkHttp的工作流程和设计思想。
 
 本系列文章分为六部分
 
-OkHttp：源码详解之核心流程（一）
+[OkHttp：源码详解之核心流程（一）](https://blog.csdn.net/baidu_32237719/article/details/109743564)
 
-OkHttp：源码详解之重试重定向拦截器（二）
+[OkHttp：源码详解之重试重定向拦截器（二）](https://blog.csdn.net/baidu_32237719/article/details/109743605)
 
-OkHttp：源码详解之桥拦截器（三）
+[OkHttp：源码详解之桥拦截器（三）](https://blog.csdn.net/baidu_32237719/article/details/109743649)
 
-OkHttp：源码详解之缓存拦截器（四）
+[OkHttp：源码详解之缓存拦截器（四）](https://blog.csdn.net/baidu_32237719/article/details/109743672)
 
-OkHttp：源码详解之连接拦截器（五）
+[OkHttp：源码详解之连接拦截器（五）](https://blog.csdn.net/baidu_32237719/article/details/109743702)
 
-OkHttp：源码详解之请求服务拦截器（六）
+[OkHttp：源码详解之请求服务拦截器（六）](https://blog.csdn.net/baidu_32237719/article/details/109743719)
 
 这六篇文章涵盖了OkHttp源码的核心流程，尽可能详细的去描述，力求读者在阅读并理解后即可对OkHttp的设计思想和工作流程有一个清晰的认知。
 
