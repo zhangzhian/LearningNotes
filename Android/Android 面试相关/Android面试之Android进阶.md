@@ -178,7 +178,7 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 ## 二、Android权限处理
 
 ## 三、多线程断点续传
-#### (1) 多线程断点续传r？
+#### (1) 多线程断点续传？
 
 基础知识：
 
@@ -218,11 +218,267 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 
 #### (3) OkHttp怎么实现连接池?里面怎么处理SSL？
 
+- 为什么需要连接池？
+
+频繁的进行建立`Sokcet`连接和断开`Socket`是非常消耗网络资源和浪费时间的，所以HTTP中的`keepalive`连接对于降低延迟和提升速度有非常重要的作用。`keepalive机制`是什么呢？也就是可以在一次TCP连接中可以持续发送多份数据而不会断开连接。所以连接的多次使用，也就是复用就变得格外重要了，而复用连接就需要对连接进行管理，于是就有了连接池的概念。
+
+OkHttp中使用`ConectionPool`实现连接池，默认支持5个并发`KeepAlive`，默认链路生命为5分钟。
+
+- 怎么实现的？
+
+1）首先，`ConectionPool`中维护了一个双端队列`Deque`，也就是两端都可以进出的队列，用来存储连接。
+2）然后在`ConnectInterceptor`，也就是负责建立连接的拦截器中，首先会找可用连接，也就是从连接池中去获取连接，具体的就是会调用到`ConectionPool`的get方法。
+
+```java
+RealConnection get(Address address, StreamAllocation streamAllocation, Route route) {
+    assert (Thread.holdsLock(this));
+    for (RealConnection connection : connections) {
+      if (connection.isEligible(address, route)) {
+        streamAllocation.acquire(connection, true);
+        return connection;
+      }
+    }
+    return null;
+  }
+```
+
+也就是遍历了双端队列，如果连接有效，就会调用acquire方法计数并返回这个连接。
+
+3）如果没找到可用连接，就会创建新连接，并会把这个建立的连接加入到双端队列中，同时开始运行线程池中的线程，其实就是调用了`ConectionPool`的put方法。
+
+```java
+public final class ConnectionPool {
+    void put(RealConnection connection) {
+        if (!cleanupRunning) {
+            //没有连接的时候调用
+            cleanupRunning = true;
+            executor.execute(cleanupRunnable);
+        }
+        connections.add(connection);
+    }
+}
+```
+
+3）其实这个线程池中只有一个线程，是用来清理连接的，也就是上述的`cleanupRunnable`
+
+```java
+private final Runnable cleanupRunnable = new Runnable() {
+        @Override
+        public void run() {
+            while (true) {
+                //执行清理，并返回下次需要清理的时间。
+                long waitNanos = cleanup(System.nanoTime());
+                if (waitNanos == -1) return;
+                if (waitNanos > 0) {
+                    long waitMillis = waitNanos / 1000000L;
+                    waitNanos -= (waitMillis * 1000000L);
+                    synchronized (ConnectionPool.this) {
+                        //在timeout时间内释放锁
+                        try {
+                            ConnectionPool.this.wait(waitMillis, (int) waitNanos);
+                        } catch (InterruptedException ignored) {
+                        }
+                    }
+                }
+            }
+        }
+    };
+```
+
+这个`runnable`会不停的调用cleanup方法清理线程池，并返回下一次清理的时间间隔，然后进入wait等待。
+
+怎么清理的呢？看看源码：
+
+```java
+long cleanup(long now) {
+    synchronized (this) {
+      //遍历连接
+      for (Iterator<RealConnection> i = connections.iterator(); i.hasNext(); ) {
+        RealConnection connection = i.next();
+
+        //检查连接是否是空闲状态，
+        //不是，则inUseConnectionCount + 1
+        //是 ，则idleConnectionCount + 1
+        if (pruneAndGetAllocationCount(connection, now) > 0) {
+          inUseConnectionCount++;
+          continue;
+        }
+
+        idleConnectionCount++;
+
+        // If the connection is ready to be evicted, we're done.
+        long idleDurationNs = now - connection.idleAtNanos;
+        if (idleDurationNs > longestIdleDurationNs) {
+          longestIdleDurationNs = idleDurationNs;
+          longestIdleConnection = connection;
+        }
+      }
+
+      //如果超过keepAliveDurationNs或maxIdleConnections，
+      //从双端队列connections中移除
+      if (longestIdleDurationNs >= this.keepAliveDurationNs
+          || idleConnectionCount > this.maxIdleConnections) {      
+        connections.remove(longestIdleConnection);
+      } else if (idleConnectionCount > 0) {      //如果空闲连接次数>0,返回将要到期的时间
+        // A connection will be ready to evict soon.
+        return keepAliveDurationNs - longestIdleDurationNs;
+      } else if (inUseConnectionCount > 0) {
+        // 连接依然在使用中，返回保持连接的周期5分钟
+        return keepAliveDurationNs;
+      } else {
+        // No connections, idle or in use.
+        cleanupRunning = false;
+        return -1;
+      }
+    }
+
+    closeQuietly(longestIdleConnection.socket());
+
+    // Cleanup again immediately.
+    return 0;
+  }
+```
+
+也就是当如果空闲连接`maxIdleConnections`超过5个或者keepalive时间大于5分钟，则将该连接清理掉。
+
+4）**这里有个问题，怎样属于空闲连接？**
+
+其实就是有关刚才说到的一个方法`acquire`计数方法：
+
+```java
+  public void acquire(RealConnection connection, boolean reportedAcquired) {
+    assert (Thread.holdsLock(connectionPool));
+    if (this.connection != null) throw new IllegalStateException();
+
+    this.connection = connection;
+    this.reportedAcquired = reportedAcquired;
+    connection.allocations.add(new StreamAllocationReference(this, callStackTrace));
+  }
+```
+
+在`RealConnection`中，有一个`StreamAllocation`虚引用列表`allocations`。每创建一个连接，就会把连接对应的`StreamAllocationReference`添加进该列表中，如果连接关闭以后就将该对象移除。
+
+5）连接池的工作就这么多，并不复杂，主要就是管理双端队列`Deque<RealConnection>`，可以用的连接就直接用，然后定期清理连接，同时通过对`StreamAllocation`的引用计数实现自动回收
+
 #### (4) 如果让你来实现一个网络框架，你会考虑什么
 
-#### (5) OkHttp网络拦截器，应用拦截器?OKHttp有哪些拦截器，分别起什么作用
+#### (5) OKHttp有哪些拦截器，分别起什么作用？
+
+`OKHTTP`的拦截器是把所有的拦截器放到一个list里，然后每次依次执行拦截器，并且在每个拦截器分成三部分：
+
+- 预处理拦截器内容
+- 通过`proceed`方法把请求交给下一个拦截器
+- 下一个拦截器处理完成并返回，后续处理工作。
+
+这样依次下去就形成了一个链式调用，看看源码，具体有哪些拦截器：
+
+```java
+  Response getResponseWithInterceptorChain() throws IOException {
+    // Build a full stack of interceptors.
+    List<Interceptor> interceptors = new ArrayList<>();
+    interceptors.addAll(client.interceptors());
+    interceptors.add(retryAndFollowUpInterceptor);
+    interceptors.add(new BridgeInterceptor(client.cookieJar()));
+    interceptors.add(new CacheInterceptor(client.internalCache()));
+    interceptors.add(new ConnectInterceptor(client));
+    if (!forWebSocket) {
+      interceptors.addAll(client.networkInterceptors());
+    }
+    interceptors.add(new CallServerInterceptor(forWebSocket));
+
+    Interceptor.Chain chain = new RealInterceptorChain(
+        interceptors, null, null, null, 0, originalRequest);
+    return chain.proceed(originalRequest);
+  }
+```
+
+根据源码可知，一共七个拦截器：
+
+- `addInterceptor(Interceptor)`，这是由开发者设置的，会按照开发者的要求，在所有的拦截器处理之前进行最早的拦截处理，比如一些公共参数，Header都可以在这里添加。
+- `RetryAndFollowUpInterceptor`，这里会对连接做一些初始化工作，以及请求失败的充实工作，重定向的后续请求工作。跟他的名字一样，就是做重试工作还有一些连接跟踪工作。
+- `BridgeInterceptor`，这里会为用户构建一个能够进行网络访问的请求，同时后续工作将网络请求回来的响应Response转化为用户可用的Response，比如添加文件类型，content-length计算添加，gzip解包。
+- `CacheInterceptor`，这里主要是处理cache相关处理，会根据OkHttpClient对象的配置以及缓存策略对请求值进行缓存，而且如果本地有了可⽤的Cache，就可以在没有网络交互的情况下就返回缓存结果。
+- `ConnectInterceptor`，这里主要就是负责建立连接了，会建立TCP连接或者TLS连接，以及负责编码解码的HttpCodec
+- `networkInterceptors`，这里也是开发者自己设置的，所以本质上和第一个拦截器差不多，但是由于位置不同，所以用处也不同。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。
+- `CallServerInterceptor`，这里就是进行网络数据的请求和响应了，也就是实际的网络I/O操作，通过socket读写数据。
 
 #### (6) OkHttp里面用到了什么设计模式
+
+- 责任链模式
+
+这个不要太明显，可以说是okhttp的精髓所在了，主要体现就是拦截器的使用，具体代码可以看看上述的拦截器介绍。
+
+- 建造者模式
+
+在Okhttp中，建造者模式也是用的挺多的，主要用处是将对象的创建与表示相分离，用Builder组装各项配置。
+ 比如Request：
+
+```java
+public class Request {
+  public static class Builder {
+    @Nullable HttpUrl url;
+    String method;
+    Headers.Builder headers;
+    @Nullable RequestBody body;
+    public Request build() {
+      return new Request(this);
+    }
+  }
+}
+```
+
+- 工厂模式
+
+工厂模式和建造者模式类似，区别就在于工厂模式侧重点在于对象的生成过程，而建造者模式主要是侧重对象的各个参数配置。
+ 例子有CacheInterceptor拦截器中又个CacheStrategy对象：
+
+
+
+```java
+    CacheStrategy strategy = new CacheStrategy.Factory(now, chain.request(), cacheCandidate).get();
+
+    public Factory(long nowMillis, Request request, Response cacheResponse) {
+      this.nowMillis = nowMillis;
+      this.request = request;
+      this.cacheResponse = cacheResponse;
+
+      if (cacheResponse != null) {
+        this.sentRequestMillis = cacheResponse.sentRequestAtMillis();
+        this.receivedResponseMillis = cacheResponse.receivedResponseAtMillis();
+        Headers headers = cacheResponse.headers();
+        for (int i = 0, size = headers.size(); i < size; i++) {
+          String fieldName = headers.name(i);
+          String value = headers.value(i);
+          if ("Date".equalsIgnoreCase(fieldName)) {
+            servedDate = HttpDate.parse(value);
+            servedDateString = value;
+          } else if ("Expires".equalsIgnoreCase(fieldName)) {
+            expires = HttpDate.parse(value);
+          } else if ("Last-Modified".equalsIgnoreCase(fieldName)) {
+            lastModified = HttpDate.parse(value);
+            lastModifiedString = value;
+          } else if ("ETag".equalsIgnoreCase(fieldName)) {
+            etag = value;
+          } else if ("Age".equalsIgnoreCase(fieldName)) {
+            ageSeconds = HttpHeaders.parseSeconds(value, -1);
+          }
+        }
+      }
+    }
+```
+
+- 观察者模式
+
+Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进行监听，这里是用到了观察者模式：
+
+```java
+  final WebSocketListener listener;
+  @Override public void onReadMessage(String text) throws IOException {
+    listener.onMessage(this, text);
+  }
+```
+
+- 单例模式
 
 #### (7) okhttp 在 response 返回后，调用了 response.toString()，后面再使用 response 会用什么问题？
 
