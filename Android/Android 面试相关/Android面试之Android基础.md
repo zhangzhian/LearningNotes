@@ -9,20 +9,21 @@
 
 #### 1. Activity A 跳转Activity B，Activity B再按back键回退，两个过程各自的生命周期
 
-(1) ActivityA跳转ActivityB的过程中,各自生命周期的执行顺序?
+**(1) ActivityA跳转ActivityB的过程中,各自生命周期的执行顺序?**
 
 执行顺序如下： A.onPause －> B.onCreate －> B.onStart－> B.onResume－> A.onStop
 
-(2) ActivityB 按back键呢?
+**(2) ActivityB按back键呢?**
 
 按下back键后： B.onPause－>A.onRestart－>A.onStart－>A.onResume－>B.onStop－>B.onDestory
 
-(3) ActivityB是个窗口Activity的情况下，(1)、(2)的结论呢？
+**(3) ActivityB是个窗口Activity的情况下，(1)、(2)的结论呢？**
 
 ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会调用onStop，此时生命周期顺序： A.onPause －> B.onCreate －> B.onStart－> B.onResume
+
 按下Back键后：B.onPause－>A.onResume－>B.onStop－>B.onDestory
 
-(4) 切换横竖屏时，onCreate会调用吗？几次？
+**(4) 切换横竖屏时，onCreate会调用吗？几次？**
 
 程序在运行时，一些设备的配置可能会改变，如：横竖屏的切换、键盘的可用性或语言的切换等，此时Activity会重新启动。
 
@@ -45,19 +46,55 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 首先，Activity有三类：
 
-前台Activity：活跃的Activity，正在和用户交互的Activity。
-可见但非前台的Activity：常见于栈顶的Activity背景透明，处在其下面的Activity就是可见但是不可和用户交互。
-后台Activity：已经被暂停的Activity，比如已经执行了onStop方法。
+**前台Activity**：活跃的Activity，正在和用户交互的Activity。
 
-所以，onStart和onStop通常指的是当前活动是否位于前台这个角度，而onResume和onPause从是否可见这个角度来讲的。
+**可见非前台Activity**：常见于栈顶的Activity背景透明，处在其下面的Activity就是可见但是不可和用户交互。
 
-#### 4. 如何求当前Activity View的深度
+**后台Activity**：已经被暂停的Activity，比如已经执行了onStop方法。
 
+所以，onStart和onStop是从activity是否可见的角度来回调的。onResume和onPause是从activity是否定位于前台这个角度来回调的。
 
+#### 4. 多进程怎么实现？如果启动一个多进程APP，会有几个进程运行？
 
-#### 5. 多进程怎么实现？如果启动一个多进程APP，会有几个进程运行？
+`android:process`属性。给android的组件设置`android:process`属性来使其运行在指定的进程中。
 
-#### 6. Activity与AppCompactActivity区别，Activity会打包到包里面去吗？
+- AndroidMantifest.xml中的activity、service、receiver和provider均支持`android:process`属性
+- 设置该属性可以使每个组件均在各自的进程中运行，或者使一些组件共享一个进程
+- AndroidMantifest.xml中的application元素也支持`android:process`属性，可以修改应用程序的默认进程名（默认值为包名）
+
+如果`android:process`的值以冒号开头的话，那么该进程就是**私有进程**；以小写字母开头，那么就是**公有进程**，`android:process`值一定要有个点号。其他应用通过设置相同的ShareUID可以和它跑在同一个进程。
+
+Android中，默认一个APK包就对应一个进程。Android平台对每个进程有内存限制，如果一个app有多个进程，那么总的内存就是所有进程的内存的总和，使用多进程，可以提高我们APP占用的最高内存。进程个数和`android:process`指定的进程名相关。
+
+#### 6. Activity与AppCompactActivity区别？
+
+AppCompactActivity最终继承了Activity，但做了很多对低版本的兼容措施。
+
+- 主界面带有标题栏
+- AppCompactActivity兼容低版本
+
+去掉AppcompaActivity的标题栏方法：
+
+```java
+//方式一：这句代码必须写在setContentView()方法的后面
+getSupportActionBar().hide();
+
+//方式二：这句代码必须写在setContentView()方法的前面
+supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
+
+//清单文件（manifest.xml）里面实现
+android:theme="@style/Theme.AppCompat.NoActionBar"
+```
+
+Activity去标题栏：
+
+```java
+//这句代码必须写在setContentView()前面
+requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+//清单文件（manifest.xml）里面实现
+<android:theme="@android:style/Theme.NoTitleBar"> 
+```
 
 #### 7. Activity 按 back 键退出，与强杀进程退出有啥区别？
 
@@ -68,7 +105,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 - 当应用回到前台时，如果C页面中有静态变量或有些Application的全局变量，就NullPointer了；
 - C页面不会正常走完生命周期onStop & onDestory
 
-（2）按 Back 键回退
+（2）按 Back 键回退，有序的退栈操作。
 
 - 应用进程不会被杀掉；Activity 栈由 A -> B -> C 变成 A -> B；
 - C页面会正常走完生命周期onStop & onDestory
@@ -81,7 +118,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 - 启动A的过程，生命周期调用是 (A)onCreate→(A)onStart→(A)onResume
 - 再启动B的过程，生命周期调用是 (A)onPause→(B)onCreate→(B)onStart→(B)onResume→(A)onStop
-- B→C的过程同上
+- B→C的过程同上，(B)onPause→(C)onCreate→(C)onStart→(C)onResume→(B)onStop
 - C→B的过程，由于B启动模式为singleTask，所以B会调用onNewIntent，并且将B之上的实例移除，也就是C会被移出栈。所以生命周期调用是 (C)onPause→(B)onNewIntent→(B)onRestart→(B)onStart→(B)onResume→(C)onStop→(C)onDestory
 
 2)A→B→C→B,B启动模式为`singleInstance`
@@ -91,7 +128,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 3)A→B→C,B启动模式为`singleInstance`,点击两次返回键
 
 - 如果B为singleInstance，A→B→C的过程，生命周期还是同前面一样正常调用。但是点击返回的时候，由于AC同任务栈，所以C点击返回，会回到A，再点击返回才回到B。所以生命周期是：(C)onPause→(A)onRestart→(A)onStart→(A)onResume→(C)onStop→(C)onDestory。
-- 再次点击返回，就会回到B，所以生命周期是：**(A)onPause→(B)onRestart→(B)onStart→(B)onResume→(A)onStop→(A)onDestory**。
+- 再次点击返回，就会回到B，所以生命周期是：(A)onPause→(B)onRestart→(B)onStart→(B)onResume→(A)onStop→(A)onDestory。
 
 #### 9. 屏幕旋转时Activity的生命周期，如何防止Activity重建。
 
@@ -108,13 +145,39 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 #### 1. Activity怎么启动Service，Activity与Service交互，Service与Thread的区别
 
+2种方式：
+
+```java
+private ServiceConnection con = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            BackService.MyBinder myBinder = (BackService.MyBinder) service;
+            myBinder.showTip();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+        }
+};
+
+bindService(mIntent,conn,BIND_AUTO_CREATE);
+
+startService(mIntent)
+```
+
+**Activity与Service交互：**Intent，Binder，跨进程通信方式都可
+
+**Service与Thread区别：**
+
+Service：在后台用来操作时间跨度较长的工作应用组件；Service的生命周期方法在主线程中执行，如果想执行一个长时间的工作，需要开启一个分线程（Thread）；远程服务在应用退出，Service不会停止，再次启动应用时，还可以以正在运行的Service通信。
+
+Thread：用来开启一个分线程的类，做一个长时间的工作；Thread类的run( )在分线程中执行；应用退出，Thread也不会停止；再次启动应用，不能再控制之前的Thread对象。
+
 #### 2. Service 一定没界面吗，Activity 一定有界面吗？
 
 - Activity 不是一定有界面。比如一个跳转逻辑控制类（机票的支付中间类）、透明页
-
-- [Service 也不是一定没界面](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F5dbe43cf518825244b38a6c8)。Service 并不依赖于用户可视的 UI 界面，但这也不是绝对的，如前台 Service 就是与 Notification 界面结合使用的；Service 中也可以弹 Toast；
-
-- [Service中执行 LayoutInflate 是合法的](https://www.jianshu.com/p/94e0f9ab3f1d)，但是会使用系统默认的主题样式，如果你自定义了某些样式可能不会被使用。所以从理论上看也是可以有界面的
+- Service 也不是一定没界面。Service 并不依赖于用户可视的 UI 界面，但这也不是绝对的，如前台 Service 就是与 Notification 界面结合使用的；Service 中也可以弹 Toast；
+- Service中执行 LayoutInflate 是合法的，但是会使用系统默认的主题样式，如果你自定义了某些样式可能不会被使用。所以从理论上看也是可以有界面的
 
 ## 三、BroadcaseReceiver
 
@@ -150,7 +213,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 - `show()`: 不调用任何生命周期方法，调用该方法的前提是要显示的 Fragment已经被添加到容器，只是纯粹把Fragment UI的setVisibility为true。
 - `hide()`: 不调用任何生命周期方法，调用该方法的前提是要显示的Fragment已经被添加到容器，只是纯粹把Fragment UI的setVisibility为false。
 
-#### 2. ViewPager切换Fragment遇到过什么问题吗?什么最耗时？
+#### 2. ViewPager切换Fragment遇到过什么问题吗? 什么最耗时？
 
 - 滑动的时候，调用setCurrentItem方法，要注意第二个参数`smoothScroll`。传false，就是直接跳到fragment，传true，就是平滑过去。一般主页切换页面都是用false。
 - 禁止预加载的话，调用`setOffscreenPageLimit(0)`是无效的，因为方法里面会判断是否小于1。需要重写`setUserVisibleHint`方法，判断fragment是否可见。
@@ -171,11 +234,11 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 #### 3. Activity 与 Fragment，Fragment 与 Fragment之间怎么交互通信。
 
-- Activity 与 Fragment通信
+**Activity 与 Fragment通信**
 
 Activity有Fragment的实例，所以可以执行Fragment的方法，或者传入一个接口。同样，Fragment可以通过`getActivity()`获取Activity的实例，也是可以执行方法。
 
-- Fragment 与 Fragment之间通信
+**Fragment 与 Fragment之间通信**
 
 1）直接获取另一个Fragmetn的实例
 
@@ -189,15 +252,13 @@ getActivity().getSupportFragmentManager().findFragmentByTag("mainFragment");
 
 3）Eventbus等框架。
 
-
-
 ## 六、屏幕适配
 
-参考：Android屏幕适配方案详解
+见《Android屏幕适配方案详解》
 
 #### 1. 你们 Android 开发的时候，对于 UI 稿的 px 是如何适配的？
 
-今日头条 AndroidAutoSize和smallestWidth方案
+今日头条 AndroidAutoSize和smallestWidth方案。
 
 ####  2. 平时如何有使用屏幕适配吗？原理是什么呢？
 
@@ -211,11 +272,9 @@ px = dp * density
 
 假设UI给的设计图屏幕宽度基于360dp，那么设备宽的像素点已知，即px，dp也已知，360dp，所以`density = px / dp`，之后根据这个修改系统中跟`density`相关的点即可。
 
-
-
 ## 七、Lrucache
 
-
+见《Android基础》中LruCache原理解析章节
 
 ## 八、Android消息机制
 
@@ -224,9 +283,10 @@ px = dp * density
 Android消息机制中的四大概念：
 
 - `ThreadLocal`：当前线程存储的数据仅能从当前线程取出。
-- `MessageQueue`：具有时间优先级的消息队列。
+- `MessageQueue`：具有时间优先级的消息队列（单链表）。
 - `Looper`：轮询消息队列，看是否有新的消息到来。
 - `Handler`：具体处理逻辑的地方。
+- `Message`：需要传递的消息，可以传递数据；
 
 过程：
 
@@ -269,31 +329,225 @@ Looper.myQueue().addIdleHandler(new IdleHandler() {
 
 会不会发生死循环： 答案是否定的，`MessageQueue`使用计数的方法保证一次调用`MessageQueue#next`方法只会使用一次的`IdleHandler`集合。
 
-#### 4. 同步屏障
+#### 4. 同步屏障?
 
-#### 5. 如何修复匿名内部类 Handler 造成的内存泄露？
+屏障消息就是为了确保异步消息的优先级，设置了屏障后，只能处理其后的异步消息，同步消息会被挡住，除非撤销屏障。
 
-#### 6. Handler 机制中是怎么保证每个线程的 Looper 是唯一的？
+同步屏障是通过MessageQueue的postSyncBarrier方法插入到消息队列的:
 
+- 屏障消息和普通消息的区别在于屏障没有tartget，普通消息有target是因为它需要将消息分发给对应的target，而屏障不需要被分发，它就是用来挡住普通消息来保证异步消息优先处理的。
+- 屏障和普通消息一样可以根据时间来插入到消息队列中的适当位置，并且只会挡住它后面的同步消息的分发。
+- postSyncBarrier返回一个int类型的数值，通过这个数值可以撤销屏障。
+- postSyncBarrier方法是私有的，如果我们想调用它就得使用反射。
+- 插入普通消息会唤醒消息队列，但是插入屏障不会。
 
+屏障就遍历整个消息链表找到最近的一条异步消息，在遍历的过程中只有异步消息才会被处理执行到。可以看到通过这种方式就挡住了所有的普通消息。
 
-#### Handler机制整体流程；
+发送异步消息：
 
-#### postDelay()的具体实现；
+- 构造器传入：
 
-#### post()与sendMessage()区别；
+```
+     /**
+      * @hide
+      */
+    public Handler(boolean async) {}
 
-#### 使用Handler需要注意什么问题，怎么解决的?
+    /**
+     * @hide
+     */
+    public Handler(Callback callback, boolean async) { }
 
+    /**
+     * @hide
+     */
+    public Handler(Looper looper, Callback callback, boolean async) {}
+```
 
+当调用handler.sendMessage(msg)发送消息，最终会走到：
 
-#### 简单描述下Handler,Handler是怎么切换线程的,Handler同步屏障
+```java
+private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
+        msg.target = this;
+        if (mAsynchronous) {
+            msg.setAsynchronous(true);//把消息设置为异步消息
+        }
+        return queue.enqueueMessage(msg, uptimeMillis);
+    }
+```
 
+- 公开的方法：在发送消息时通过 message.setAsynchronous(true)将消息设为异步的，这个方法是公开的，我们可以正常使用。
 
+```java
+	    Message message=Message.obtain();
+        message.setAsynchronous(true);
+        handler.sendMessage(message);
+```
 
-#### Handler机制了解吗？一个线程有几个Looper？为什么？
+移除屏障：移除屏障可以通过MessageQueue的removeSyncBarrier(int token) 方法。
 
+#### 5. postDelay()的具体实现？
 
+```java
+ 	public final boolean postDelayed(Runnable r, long delayMillis)
+    {
+        return sendMessageDelayed(getPostMessage(r), delayMillis);
+    }
+```
+
+如下
+
+#### 6. post()与sendMessage()区别？
+
+在子线程中通过Handler的post\(\)方式或send\(\)方式发送消息，最终都是调用了`sendMessageAtTime()`方法。
+
+post的参数是RunRnable，通过getPostMessage封装为Message，sendMessage的参数是Message。
+
+```java
+//post方法
+	public final boolean post(RunRnable r)
+    {
+       return  sendMessageDelayed(getPostMessage(r), 0);
+    }
+//send方法
+	public final boolean sendMessage(Message msg)
+    {
+        return sendMessageDelayed(msg, 0);
+    }
+```
+
+底层都是通过sendMessageAtTime()->enqueueMessage()->enqueueMessage():
+
+```java
+    public final boolean sendMessageDelayed(Message msg, long delayMillis)
+    {
+        if (delayMillis < 0) {
+            delayMillis = 0;
+        }
+        return sendMessageAtTime(msg, SystemClock.uptimeMillis() + delayMillis);
+    }
+	public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
+        MessageQueue queue = mQueue;
+        if (queue == null) {
+            RuntimeException e = new RuntimeException(
+                    this + " sendMessageAtTime() called with no mQueue");
+            Log.w("Looper", e.getMessage(), e);
+            return false;
+        }
+        return enqueueMessage(queue, msg, uptimeMillis);
+    }
+ 	private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
+        msg.target = this;
+        if (mAsynchronous) {
+            msg.setAsynchronous(true);
+        }
+        //调用MessageQueue的enqueueMessage方法
+        return queue.enqueueMessage(msg, uptimeMillis);
+    }
+```
+
+#### 7. 使用Handler需要注意什么问题，怎么解决的? 如何修复匿名内部类 Handler 造成的内存泄露？
+
+非静态内部类他会持有他外部类的强引用，所以就有可能导致非静态内部类的生命周期可能比外部类更长，容易造成内存泄漏，最常见的就是`Handler`。
+
+**怎么修改？**改成静态内部类，然后弱引用方式修饰外部类
+
+**为何handler要定义为static?** 因为静态内部类不持有外部类的引用，所以使用静态的handler不会导致activity的泄露
+
+**还要用WeakReference 包裹外部类的对象?** 这是因为我们需要使用外部类的成员，可以通过"activity. "获取变量方法等，如果直接使用强引用，显然会导致activity泄露。
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    private TextView mTextView;
+    private MyHandler mMyHandler;
+    
+    private static class MyHandler extends Handler {
+        private WeakReference<MainActivity> mWeakReference;
+
+        public MyHandler(MainActivity activity) {
+            mWeakReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            MainActivity mainActivity = mWeakReference.get();
+            switch (msg.what) {
+                case 1:
+                    if (mainActivity != null) 
+                        mainActivity.mTextView.setText(msg.obj + "");
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        mTextView = findViewById(R.id.tv_handler);
+        mMyHandler = new MyHandler(MainActivity.this);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //模拟耗时操作
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                //耗时操作完成，发送消息给UI线程
+                Message msg = Message.obtain();
+                msg.what = 1;
+                msg.obj = "更新UI";
+                mMyHandler.sendMessage(msg);
+            }
+        }).start();
+    }
+}
+```
+
+#### 8. 一个线程有几个Looper？为什么？
+
+一个线程只能有一个Looper。
+
+首先使用Looper必须要先调用**Looper.prepare()**：
+
+```java
+	public static void prepare() {
+        prepare(true);
+	}
+
+    private static void prepare(boolean quitAllowed) {
+        if (sThreadLocal.get() != null) {	//多次调用prepare抛出异常
+            throw new RuntimeException("Only one Looper may be created per thread");
+        }
+        sThreadLocal.set(new Looper(quitAllowed));
+    }
+```
+
+关键性的`sThreadLocal.set(new Looper(quitAllowed))`，先看sThreadLocal：
+
+```java
+static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<Looper>();
+```
+
+ThreadLocal：代表了一个线程局部的变量，每条线程都只能看到自己的值，并不会意识到其它的线程中也存在该变量。
+
+在这里ThreadLocal的作用是保证了每个线程都有各自的Looper。
+
+#### 9.消息分发的优先级？
+
+Message的回调方法：`message.callback.run()`，优先级最高；  
+
+Handler中Callback的回调方法：`Handler.mCallback.handleMessage(msg)`，优先级仅次于1；  
+
+Handler的默认方法：`Handler.handleMessage(msg)`，优先级最低。
+
+对于很多情况下，消息分发后的处理方法是第3种情况，即`Handler.handleMessage()`，一般地往往通过覆写该方法从而实现自己的业务逻辑。
 
 ## 九、View事件分发机制
 
@@ -306,8 +560,6 @@ Looper.myQueue().addIdleHandler(new IdleHandler() {
 如果当前是`viewgroup`层级，就会判断 `onInterceptTouchEvent`是否为true，如果为true，则代表事件要消费在这一层级，不再往下传递。接着便执行当前 viewgroup 的onTouchEvent方法。如果`onInterceptTouchEvent`为false，则代表事件继续传递到下一层级的 `dispatchTouchEvent`方法，接着一样的代码逻辑，一直到最里面一层的view。
 
 伪代码解释：
-
-
 
 ```java
 public boolean dispatchTouchEvent(MotionEvent event) {
@@ -333,8 +585,6 @@ public boolean dispatchTouchEvent(MotionEvent event) {
 
 伪代码解释：
 
-
-
 ```java
 public void handleTouchEvent(MotionEvent event) {
     if (!onTouchEvent(event)) {
@@ -348,8 +598,6 @@ public void handleTouchEvent(MotionEvent event) {
 当某一层viewGroup的`onInterceptTouchEvent`为true，则代表当前层级要消费事件。如果它的`onTouchListener`被设置了的话，则onTouch会被调用，如果onTouch的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置onTouchListener，则会继续调用onTouchEvent。而onClick方法则是设置了`onClickListener`则会被正常调用。
 
 伪代码解释：
-
-
 
 ```java
 public void consumeEvent(MotionEvent event) {
@@ -368,23 +616,105 @@ public void consumeEvent(MotionEvent event) {
 }
 ```
 
-
-
 #### 2.dispatchTouchEvent,onInterceptEvent,onTouchEvent顺序，关系
 
+Android事件分发顺序：**Activity（Window） -> ViewGroup -> View**
+
+![](http://upload-images.jianshu.io/upload_images/944365-aa8416fc6d2e5ecd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
 #### 3. 代码实现一个长按事件
+
+```java
+public class LongPressView2 extends View{  
+    private int mLastMotionX, mLastMotionY;  
+    //是否移动了  
+    private boolean isMoved;  
+    //长按的runnable  
+    private Runnable mLongPressRunnable;  
+    //移动的阈值  
+    private static final int TOUCH_SLOP = 20;  
+  
+    public LongPressView(Context context) {  
+        super(context);  
+        mLongPressRunnable = new Runnable() {  
+              
+            @Override  
+            public void run() {               
+                performLongClick();  
+            }  
+        };  
+    }  
+  
+    public boolean dispatchTouchEvent(MotionEvent event) {  
+        int x = (int) event.getX();  
+        int y = (int) event.getY();  
+          
+        switch(event.getAction()) {  
+        case MotionEvent.ACTION_DOWN:  
+            mLastMotionX = x;  
+            mLastMotionY = y;  
+            isMoved = false;  
+            postDelayed(mLongPressRunnable, ViewConfiguration.getLongPressTimeout());  
+            break;  
+        case MotionEvent.ACTION_MOVE:  
+            if(isMoved) break;  
+            if(Math.abs(mLastMotionX-x) > TOUCH_SLOP   
+                    || Math.abs(mLastMotionY-y) > TOUCH_SLOP) {  
+                //移动超过阈值，则表示移动了  
+                isMoved = true;  
+                removeCallbacks(mLongPressRunnable);  
+            }  
+            break;  
+        case MotionEvent.ACTION_UP:  
+            //释放了  
+            removeCallbacks(mLongPressRunnable);  
+            break;  
+        }  
+        return true;  
+    }  
+}  
+
+```
 
 #### 4. 手势操作ActionCancel后怎么取消
 
 https://www.jianshu.com/p/3581fcf302fd
 
+如果某一个子View处理了Down事件，那么随之而来的Move和Up事件也会交给它处理。但是交给它处理之前，父View还是可以拦截事件的，如果拦截了事件，那么子View就会收到一个Cancel事件，并且不会收到后续的Move和Up事件。
+
+手势操作ActionCancel是ViewGroup拦截了Move事件，这个Move事件将会转化为Cancel事件传递给子View
+
+取消2种方式：
+
+- 修改ViewGroup不拦截Move事件
+- 子View可以通过设置`requestDisallowInterceptTouchEvent(true)`来达到禁止父ViewGroup拦截事件的目的。
+
+[Android事件分发之ACTION_CANCEL机制及作用](https://blog.csdn.net/cufelsd/article/details/89471402)
+
 #### 5. setOnTouchListener,onClickeListener和onTouchEvent的关系
 
+如果它的`onTouchListener`被设置了的话，则onTouch会被调用，如果onTouch的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置onTouchListener，则会继续调用onTouchEvent。而onClick方法则是设置了`onClickListener`则会被正常调用。
+
+伪代码解释：
+
+```java
+public void consumeEvent(MotionEvent event) {
+    if (setOnTouchListener) {
+        int tag = onTouch();
+        if (!tag) {
+            onTouchEvent(event);
+        }
+    } else {
+        onTouchEvent(event);
+    }
+
+    if (setOnClickListener) {
+        onClick();
+    }
+}
+```
+
 #### 6. 横向 ScrollView、纵向 ListView 怎么处理滑动冲突?
-
-> [Android 实践之 ScrollView 中滑动冲突处理](https://links.jianshu.com/go?to=https%3A%2F%2Fblog.csdn.net%2Fxiaohanluo%2Farticle%2Fdetails%2F52130923)
-
-**解决滑动冲突的办法。**
 
 解决滑动冲突的根本就是要在适当的位置进行拦截，那么就有两种解决办法：
 
@@ -595,6 +925,8 @@ private void performTraversals() {
 #### 7. 自定义LinearLayout，怎么测量子View宽高
 
 #### 8. setFactory和setFactory2有什么区别？
+
+#### 9. 如何求当前Activity View的深度
 
 
 
