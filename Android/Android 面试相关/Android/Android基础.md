@@ -5811,8 +5811,7 @@ protected boolean setFrame(int left, int top, int right, int bottom) {
 确定了自身的位置后，就要通过onLayout()确定子View的布局。onLayout()是一个可继承的空方法。
 
 ```java
-protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-    }
+protected void onLayout(boolean changed, int left, int top, int right, int bottom) {}
 ```
 
 **如果当前View就是一个单一的View，那么没有子View，就不需要实现该方法。**

@@ -159,6 +159,8 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 > [Android Context 熟悉还是陌生](https://www.jianshu.com/p/cc0bb2a71ee8)
 
+Context的数量等于Activity的个数 + Service的个数 +1，这个1为Application。
+
 #### (3) Context 的使用上如何避免内存泄漏？
 
 #### (4) 如何跨进程拿 Context？如 Activity 还没启动的时候如何拿 Context？
@@ -167,7 +169,13 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 **Application 中方法的执行顺序为**：Application 构造方法 → attachBaseContext() → onCreate()。如果在 attachBaseContext() 中或执行前，调用 getApplicationContext() 得到的值为null
 
+#### (5) ApplicationContext和ActivityContext的区别
 
+这是两种不同的context，也是最常见的两种。第一种中context的生命周期与Application的生命周期相关的，context随着Application的销毁而销毁，伴随application的一生，与activity的生命周期无关.第二种中的context跟Activity的生命周期是相关的，但是对一个Application来说，Activity可以销毁几次，那么属于Activity的context就会销毁多次。至于用哪种context，得看应用场景。还有就是，在使用context的时候，小心内存泄露，防止内存泄露，注意一下几个方面：
+
+- 不要让生命周期长的对象引用activity context，即保证引用activity的对象要与activity本身生命周期是一样的。
+- 对于生命周期长的对象，可以使用application context。
+- 避免非静态的内部类，尽量使用静态类，避免生命周期问题，注意内部类对外部对象引用导致的生命周期变化。
 
 ### 7. AIDL
 
@@ -745,7 +753,7 @@ public class MainActivity extends AppCompatActivity {
 - Service 执行完后忘记 `stopSelf()`
 - EventBus 等观察者模式的框架忘记手动解除注册
 
-### 该怎么发现和解决内存泄漏？
+#### 该怎么发现和解决内存泄漏？
 
 1、使用工具，比如`Memory Profiler`，可以查看app的内存实时情况，捕获堆转储，就生成了一个内存快照，`hprof`文件。通过查看文件，可以看到哪些类发生了内存泄漏。
 
@@ -875,11 +883,43 @@ void test(){
 ### 7. 线程优化
 ### 8. RecycleView优化
 
-#### 
+
 
 ### 9.其他
 
-#### 1. ANR了解过吗？有没有实际的ANR定位问题的经历
+#### 1. 什么是ANR 如何避免它？有没有实际的ANR定位问题的经历
+
+答：在Android上，如果你的应用程序有一段时间响应不够灵敏，系统会向用户显示一个对话框，这个对话框称作应用程序无响应（ANR：Application NotResponding）对话框。
+
+用户可以选择让程序继续运行，但是，他们在使用你的应用程序时，并不希望每次都要处理这个对话框。因此，在程序里对响应性能的设计很重要这样，这样系统就不会显示ANR给用户。
+
+不同的组件发生ANR的时间不一样，Activity是5秒，BroadCastReceiver是10秒，Service是20秒（均为前台）。
+
+如果开发机器上出现问题，我们可以通过查看/data/anr/traces.txt即可，最新的ANR信息在最开始部分。
+
+- 主线程被IO操作（从4.0之后网络IO不允许在主线程中）阻塞。
+- 主线程中存在耗时的计算
+- 主线程中错误的操作，比如Thread.wait或者Thread.sleep等 Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框
+- 应用在5秒内未响应用户的输入事件（如按键或者触摸）
+- BroadcastReceiver未在10秒内完成相关的处理
+- Service在特定的时间内无法处理完成 20秒
+
+修正：
+
+1、使用AsyncTask处理耗时IO操作。
+
+2、使用Thread或者HandlerThread时，调用Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。
+
+3、使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
+
+4、Activity的onCreate和onResume回调中尽量避免耗时的代码。
+BroadcastReceiver中onReceive代码也要尽量减少耗时，建议使用IntentService处理。
+
+解决方案：
+
+将所有耗时操作，比如访问网络，Socket通信，查询大量SQL 语句，复杂逻辑计算等都放在子线程中去，然后通过handler.sendMessage、runonUIThread、AsyncTask、RxJava等方式更新UI。无论如何都要确保用户界面的流畅度。如果耗时操作需要让用户等待，那么可以在界面上显示度条。
+
+[深入回答](http://mp.weixin.qq.com/s?__biz=MzIwMTAzMTMxMg==&mid=2649493643&idx=1&sn=34b51d1f61bd2ecaa8fd0a2d39c4d1d1&chksm=8eec9b74b99b126246acc4547597dfe55c836b8f689b2d1a65bdf1ee2054ced2fc070bfa2678&mpshare=1&scene=24&srcid=0116vzNfMMv2dLizhAT8mEYq#rd)
 
 #### 2. 哪些原因会导致 oom？
 
@@ -893,7 +933,7 @@ void test(){
 
 为了整个Android系统的内存控制需要，Android 系统为每一个应用程序都设置了一个硬性的Dalvik Heap Size 最大限制阈值，这个阈值在不同的设备上会因为 RAM 大小不同而各有差异。如果应用占用内存空间已经接近这个阈值，此时再尝试分配内存的话，很容易引起OutOfMemoryError 的错误。
 
-#### debug 包有什么修改方式使不出现 oom？
+#### 4. debug 包有什么修改方式使不出现 oom？
 
 Android为每个进程分配内存时，采用弹性的分配方式，即刚开始并不会给应用分配很多的内存，而是给每一个进程[分配一个“够用”的内存大小](https://www.jianshu.com/p/500ab0f48dc3)，这个值由具体的设备决定
 
@@ -901,7 +941,13 @@ Android为每个进程分配内存时，采用弹性的分配方式，即刚开�
 
 这个内存限制的值是在 /system/build.prop文件中可以[查看与修改](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.droidviews.com%2Fedit-build-prop-file-on-android%2F)
 
+#### 5. Android怎么加速启动Activity？
 
+- onCreate() 中不执行耗时操作：把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 减少主线程阻塞时间。
+- 提高 Adapter 和 AdapterView 的效率。
+- 优化布局文件。
 
 ## 六、插件化
 #### 1. 为什么需要插件化？插件化的主要优点和缺点是什么？
@@ -1428,11 +1474,43 @@ System.exit(0)
 
 #### 1. MVC、MVP和MVVM是什么？
 
-图片已有，不再给出
-
 - MVC：Model-View-Controller，是一种分层解偶的框架，Model层提供本地数据和网络请求，View层处理视图，Controller处理逻辑，存在问题是Controller层和View层的划分不明显，Model层和View层的存在耦合。
 - MVP：Model-View-Presenter，是对MVC的升级，Model层和View层与MVC的意思一致，但Model层和View层不再存在耦合，而是通过Presenter层这个桥梁进行交流。
 - MVVM：Model-View-ViewModel，不同于上面的两个框架，ViewModel持有数据状态，当数据状态改变的时候，会自动通知View层进行更新。
+
+MVC:
+
+- 视图层(View)
+  对应于xml布局文件和java代码动态view部分
+- 控制层(Controller)
+  MVC中Android的控制层是由Activity来承担的，Activity本来主要是作为初始化页面，展示数据的操作，但是因为XML视图功能太弱，所以Activity既要负责视图的显示又要加入控制逻辑，承担的功能过多。
+- 模型层(Model)
+  针对业务模型，建立数据结构和相关的类，它主要负责网络请求，数据库处理，I/O的操作。
+
+具有一定的分层，model彻底解耦，controller和view并没有解耦
+层与层之间的交互尽量使用回调或者去使用消息机制去完成，尽量避免直接持有
+controller和view在android中无法做到彻底分离，但在代码逻辑层面一定要分清
+业务逻辑被放置在model层，能够更好的复用和修改增加业务。
+
+MVP：
+
+通过引入接口BaseView，让相应的视图组件如Activity，Fragment去实现BaseView，实现了视图层的独立，通过中间层Preseter实现了Model和View的完全解耦。MVP彻底解决了MVC中View和Controller傻傻分不清楚的问题，但是随着业务逻辑的增加，一个页面可能会非常复杂，UI的改变是非常多，会有非常多的case，这样就会造成View的接口会很庞大。
+
+MVVM：
+
+MVP中我们说过随着业务逻辑的增加，UI的改变多的情况下，会有非常多的跟UI相关的case，这样就会造成View的接口会很庞大。而MVVM就解决了这个问题，通过双向绑定的机制，实现数据和UI内容，只要想改其中一方，另一方都能够及时更新的一种设计理念，这样就省去了很多在View层中写很多case的情况，只需要改变数据就行。
+
+MVVM与DataBinding的关系？
+
+MVVM是一种思想，DataBinding是谷歌推出的方便实现MVVM的工具。
+
+看起来MVVM很好的解决了MVC和MVP的不足，但是由于数据和视图的双向绑定，导致出现问题时不太好定位来源，有可能数据问题导致，也有可能业务逻辑中对视图属性的修改导致。如果项目中打算用MVVM的话可以考虑使用官方的架构组件ViewModel、LiveData、DataBinding去实现MVVM。
+
+三者如何选择？
+
+- 如果项目简单，没什么复杂性，未来改动也不大的话，那就不要用设计模式或者架构方法，只需要将每个模块封装好，方便调用即可，不要为了使用设计模式或架构方法而使用。
+- 对于偏向展示型的app，绝大多数业务逻辑都在后端，app主要功能就是展示数据，交互等，建议使用mvvm。
+- 对于工具类或者需要写很多业务逻辑app，使用mvp或者mvvm都可。
 
 #### 2. MVC和MVP的区别是什么？
 
