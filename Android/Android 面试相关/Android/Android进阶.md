@@ -661,8 +661,6 @@ MVP模式通过Presenter实现数据和视图之间的交互，简化了Activity
 
 下面以代码的形式一一展开。
 
-
-
 ①实体类bean
 
 ```java
