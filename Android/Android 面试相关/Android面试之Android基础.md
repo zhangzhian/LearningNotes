@@ -756,6 +756,8 @@ MessageQueue#enqueueMessage()内部通过synchronized关键字保证线程安全
 
 
 
+
+
 ## 九、View事件分发机制
 
 #### 1. 自定义View,事件分发机制讲一讲
@@ -1132,6 +1134,12 @@ private void performTraversals() {
 ```
 
 可以看到在`performTraversals`方法中执行了，但是在view绘制之前，这是因为在绘制之前就把需要执行的`runnable`封装成Message发送到`MessageQueue`里排队了，但是Looper不会马上去取这个消息，因为`Looper`会按顺序取消息，主线程还有什么消息没执行完呢？其实就是当前的这个`performTraversals`所在的任务，所以要等下面的·performMeasure，performLayout，performDraw·都执行完，也就是view绘制完毕了，才会去执行之前我们post的那个runnable，也就是我们能在`view.post`方法里的`runnable`能获取宽高的主要原因了。
+
+View.post()的原理：**以Handler为基础，View.post() 将传入任务添加到 View绘制任务所在的消息队列尾部，从而保证View.post() 任务的执行时机是在View 绘制任务完成之后的。** 其中，几个关键点：
+
+- View.post()实际操作：将view.post()传入的任务保存到一个数组里 
+- View.post()添加的任务 添加到 View绘制任务所在的消息队列尾部的时机：View 绘制流程的开始阶段，即 ViewRootImpl.performTraversals()
+- View.post()添加的任务执行时机：在View绘制任务之后
 
 #### 7. 自定义LinearLayout，怎么测量子View宽高
 
