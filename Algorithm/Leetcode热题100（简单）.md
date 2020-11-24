@@ -80,26 +80,32 @@ class Solution {
         while (!queue1.isEmpty() && !queue2.isEmpty()) {
             TreeNode node = queue.poll(), node1 = queue1.poll(), node2 = queue2.poll();
             TreeNode left1 = node1.left, left2 = node2.left, right1 = node1.right, right2 = node2.right;
+           
             if (left1 != null || left2 != null) {
+                //如果左子树都不为空，就放到队列中
                 if (left1 != null && left2 != null) {
                     TreeNode left = new TreeNode(left1.val + left2.val);
                     node.left = left;
                     queue.offer(left);
                     queue1.offer(left1);
                     queue2.offer(left2);
+                //如果t1的左子树不为空，就把t1的左子树挂到merged的左子树上
                 } else if (left1 != null) {
                     node.left = left1;
+                //如果t2的左子树不为空，就把t2的左子树挂到merged的左子树上
                 } else if (left2 != null) {
                     node.left = left2;
                 }
             }
             if (right1 != null || right2 != null) {
+                 //如果右子树都不为空，就放到队列中
                 if (right1 != null && right2 != null) {
                     TreeNode right = new TreeNode(right1.val + right2.val);
                     node.right = right;
                     queue.offer(right);
                     queue1.offer(right1);
                     queue2.offer(right2);
+                //同理
                 } else if (right1 != null) {
                     node.right = right1;
                 } else {
@@ -306,7 +312,9 @@ class Solution {
 }
 ```
 
+时间复杂度：O(N)
 
+空间复杂度：O(N)
 
 ### [004] 二叉树的最大深度
 
@@ -440,10 +448,10 @@ class Solution {
         ListNode prev = null;
         ListNode curr = head;
         while (curr != null) {
-            ListNode nextTemp = curr.next;
-            curr.next = prev;
-            prev = curr;
-            curr = nextTemp;
+            ListNode nextTemp = curr.next;//保持cur的下一个节点
+            curr.next = prev;//curr的下一个节点执行prev
+            prev = curr;//prev移动curr
+            curr = nextTemp;//curr移动到原本的下一个节点
         }
         return prev;
     }
