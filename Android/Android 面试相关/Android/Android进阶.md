@@ -1465,8 +1465,6 @@ Serializable序列化不保存静态变量，可以使用Transient关键字对�
 
 ⑧到此，App便正式启动，开始进入Activity生命周期，执行完onCreate/onStart/onResume方法，UI渲染结束后便可以看到App的主界面。
 
-上面的一些列步骤简单介绍了一个APP启动到主页面显示的过程，可能这些流程中的一些术语看的有些懵，什么是Launcher，什么是zygote，什么是applicationThread.....
-
 下面我们一一介绍。
 
 ### 2. 理论基础
@@ -1537,7 +1535,7 @@ public final class Launcher extends Activity
                    }
 ```
 
-Launcher实现了点击、长按等回调接口，来接收用户的输入。既然是普通的App，那么我们的开发经验在这里就仍然适用，比如，我们点击图标的时候，是怎么开启的应用呢？**捕捉图标点击事件，然后startActivity()发送对应的Intent请求呗！是的，Launcher也是这么做的，就是这么easy！**
+Launcher实现了点击、长按等回调接口，来接收用户的输入。既然是普通的App，那么我们的开发经验在这里就仍然适用，**捕捉图标点击事件，然后startActivity()发送对应的Intent请求**
 
 #### 5) Instrumentation和ActivityThread
 
@@ -1572,7 +1570,7 @@ ActivityThread，依赖于UI线程。App和AMS是通过Binder传递信息的，�
   class ApplicationThreadProxy implements IApplicationThread {}
 ```
 
-**好了，前面罗里吧嗦的一大堆，介绍了一堆名词，可能不太清楚，没关系，下面结合流程图介绍。**
+**下面结合流程图介绍。**
 
 ### 3. 启动流程
 
@@ -1594,7 +1592,7 @@ ActivityThread，依赖于UI线程。App和AMS是通过Binder传递信息的，�
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-ed91fd7c240e6bd3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-①App发起进程：当从桌面启动应用，则发起进程便是Launcher所在进程；当从某App内启动远程进程，则发送进程便是该App所在进程。发起进程先通过binder发送消息给system_server进程；
+①App发起进程：当从桌面启动应用，则发起进程便是Launcher所在进程；当从某App内启动远程进程 ，则发送进程便是该App所在进程。发起进程先通过binder发送消息给system_server进程；
 
 ②system_server进程：调用Process.start()方法，通过socket向zygote进程发送创建新进程的请求；
 
