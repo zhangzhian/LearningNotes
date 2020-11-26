@@ -449,7 +449,7 @@ class Solution {
         ListNode curr = head;
         while (curr != null) {
             ListNode nextTemp = curr.next;//保持cur的下一个节点
-            curr.next = prev;//curr的下一个节点执行prev
+            curr.next = prev;//curr的下一个节点指向prev
             prev = curr;//prev移动curr
             curr = nextTemp;//curr移动到原本的下一个节点
         }
