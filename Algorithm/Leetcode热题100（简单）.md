@@ -1085,7 +1085,9 @@ minStack.getMin();   --> 返回 -2.
 
 pop、top 和 getMin 操作总是在 非空栈 上调用。
 
-方法一
+方法一：辅助栈
+
+设计一个数据结构，使得每个元素 a 与其相应的最小值 m 时刻保持一一对应。因此我们可以使用一个辅助栈，与元素栈同步插入与删除，用于存储与每个元素对应的最小值。
 
 ```java
 class MinStack {
@@ -1180,7 +1182,7 @@ public class Solution {
 - 时间复杂度：O(n^2) 
 - 空间复杂度：O(1) 
 
-方法二：一次遍历
+方法二：一次遍历 贪心
 
 我们需要遍历价格数组一遍，记录历史最低点，然后在每一天考虑这么一个问题：如果我是在历史最低点买进的，那么我今天卖出能赚多少钱？当考虑完所有天数之时，我们就得到了最好的答案。
 
@@ -1203,6 +1205,112 @@ public class Solution {
 
 - 时间复杂度：O(n) 
 - 空间复杂度：O(1) 
+
+方法三：动态规划
+
+状态定义：
+
+`dp[i][j]`：下标为 i 这一天结束的时候，手上持股状态为 j 时，我们持有的现金数。
+
+- j = 0，表示当前不持股；
+- j = 1，表示当前持股。
+
+推导状态转移方程：
+
+`dp[i][0]`：规定了今天不持股，有以下两种情况：
+
+- 昨天不持股，今天什么都不做；
+
+- 昨天持股，今天卖出股票（现金数增加）;
+
+`dp[i][1]`：规定了今天持股，有以下两种情况：
+
+- 昨天持股，今天什么都不做（现金数增加）；
+
+- 昨天不持股，今天买入股票（注意：只允许交易一次，因此手上的现金数就是当天的股价的相反数）。
+
+```java
+public class Solution {
+
+    public int maxProfit(int[] prices) {
+        int len = prices.length;
+        // 特殊判断
+        if (len < 2) {
+            return 0;
+        }
+        int[][] dp = new int[len][2];
+
+        // dp[i][0] 下标为 i 这天结束的时候，不持股，手上拥有的现金数
+        // dp[i][1] 下标为 i 这天结束的时候，持股，手上拥有的现金数
+
+        // 初始化：不持股显然为 0，持股就需要减去第 1 天（下标为 0）的股价
+        dp[0][0] = 0;
+        dp[0][1] = -prices[0];
+
+        // 从第 2 天开始遍历
+        for (int i = 1; i < len; i++) {
+            dp[i][0] = Math.max(dp[i - 1][0], dp[i - 1][1] + prices[i]);
+            dp[i][1] = Math.max(dp[i - 1][1], -prices[i]);
+        }
+        return dp[len - 1][0];
+    }
+}
+```
+
+- 时间复杂度：O(N)，遍历股价数组可以得到最优解
+- 空间复杂度：O(N))，状态数组的长度为 N
+
+优化1：
+
+```java
+public class Solution {
+
+    public int maxProfit(int[] prices) {
+        int len = prices.length;
+        if (len < 2) {
+            return 0;
+        }
+
+        int[][] dp = new int[2][2];
+        dp[0][0] = 0;
+        dp[0][1] = -prices[0];
+        for (int i = 1; i < len; i++) {
+            dp[i % 2][0] = Math.max(dp[(i - 1) % 2][0], dp[(i - 1) % 2][1] + prices[i]);
+            dp[i % 2][1] = Math.max(dp[(i - 1) % 2][1], -prices[i]);
+        }
+        return dp[(len - 1) & 1][0];
+    }
+}
+```
+
+优化2：
+
+
+```java
+public class Solution {
+
+    public int maxProfit(int[] prices) {
+        int len = prices.length;
+        if (len < 2) {
+            return 0;
+        }
+
+        int[] dp = new int[2];
+        dp[0] = 0;
+        dp[1] = -prices[0];
+        for (int i = 1; i < len; i++) {
+            dp[0] = Math.max(dp[0], dp[1] + prices[i]);
+            dp[1] = Math.max(dp[1], -prices[i]);
+        }
+        return dp[0];
+    }
+}
+```
+
+- 时间复杂度：O(N)，遍历股价数组可以得到最优解
+- 空间复杂度：O(1)
+
+
 
 ### [014] 对称二叉树
 
