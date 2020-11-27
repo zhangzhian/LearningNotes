@@ -3668,7 +3668,7 @@ ViewGroup的dispatchTouchEvent()源码分析,该方法比较复杂，篇幅有�
         }
 ```
 
-这一段的内容主要是为判断是否拦截。如果当前事件的MotionEvent.ACTION_DOWN，则进入判断，调用ViewGroup onInterceptTouchEvent()方法的值，判断是否拦截。如果mFirstTouchTarget != null，即已经发生过MotionEvent.ACTION_DOWN，并且该事件已经有ViewGroup的子View进行处理了，那么也进入判断，调用ViewGroup onInterceptTouchEvent()方法的值，判断是否拦截。如果不是以上两种情况，即已经是MOVE或UP事件了，并且之前的事件没有对象进行处理，则设置成true，开始拦截接下来的所有事件。**这也就解释了如果子View的onTouchEvent()方法返回false，那么接下来的一些列事件都不会交给他处理。如果VieGroup的onInterceptTouchEvent()第一次执行为true，则mFirstTouchTarget = null，则也会使得接下来不会调用onInterceptTouchEvent()，直接将拦截设置为true。**
+这一段的内容主要是为判断是否拦截。如果当前事件的MotionEvent.ACTION_DOWN，则进入判断，调用ViewGroup onInterceptTouchEvent()方法的值，判断是否拦截。如果mFirstTouchTarget != null，即已经发生过MotionEvent.ACTION_DOWN，并且该事件已经有ViewGroup的子View进行处理了，那么也进入判断，调用ViewGroup onInterceptTouchEvent()方法的值，判断是否拦截。如果不是以上两种情况，即已经是MOVE或UP事件了，并且之前的事件没有对象进行处理，则设置成true，开始拦截接下来的所有事件。**这也就解释了如果子View的onTouchEvent()方法返回false，那么接下来的一些列事件都不会交给他处理。如果ViewGroup的onInterceptTouchEvent()第一次执行为true，则mFirstTouchTarget = null，则也会使得接下来不会调用onInterceptTouchEvent()，直接将拦截设置为true。**
 
 当ViewGroup不拦截事件的时候，事件会向下分发交由它的子View或ViewGroup进行处理。
 
@@ -5031,7 +5031,7 @@ public void onDestroy() {
 
   从上面源码可以看出，IntentService本质是采用Handler & HandlerThread方式：
 
-    1. 通过HandlerThread单独开启一个名为**IntentService**的线程
+    1. 通过HandlerThread单独开启一个名为 IntentService 的线程
     2. 创建一个名叫ServiceHandler的内部Handler
     3. 把内部Handler与HandlerThread所对应的子线程进行绑定
     4. 通过onStartCommand()传递给服务intent，**依次**插入到工作队列中，并逐个发送给onHandleIntent()
