@@ -604,11 +604,11 @@ public class CrashApplication extends Application {
 
 **MVC，全称Model-View-Controller，即模型-视图-控制器。** 具体如下：
 
-**View：对应于布局文件**
+- View：对应于布局文件
 
-Model：业务逻辑和实体模型
+- Model：业务逻辑和实体模型 
 
-Controllor：对应于Activity
+- Controllor：对应于Activity 
 
 但是View对应于布局文件，其实能做的事情特别少，实际上关于该布局文件中的数据绑定的操作，事件处理的代码都在Activity中，造成了Activity既像View又像Controller，使得Activity变得臃肿。
 
@@ -653,11 +653,11 @@ MVP模式通过Presenter实现数据和视图之间的交互，简化了Activity
 在本例中，Model层负责对从登录页面获取地帐号密码进行验证（一般需要请求服务器进行验证，本例直接模拟这一过程）。
 从上图的包结构图中可以看出，Model层包含内容：
 
-①实体类bean
+**① 实体类bean**
 
-②接口，表示Model层所要执行的业务逻辑
+**② 接口，表示Model层所要执行的业务逻辑**
 
-③接口实现类，具体实现业务逻辑，包含的一些主要方法
+**③ 接口实现类，具体实现业务逻辑，包含的一些主要方法**
 
 下面以代码的形式一一展开。
 
@@ -742,9 +742,9 @@ public class LoginModelImpl implements LoginModel {
 
 从上图的包结构图中可以看出，View包含内容：
 
-①接口，上面我们说过Presenter与View交互是通过接口。其中接口中方法的定义是根据Activity用户交互需要展示的控件确定的。
+**①接口，上面我们说过Presenter与View交互是通过接口。其中接口中方法的定义是根据Activity用户交互需要展示的控件确定的。**
 
-②接口实现类，将上述定义的接口中的方法在Activity中对应实现具体操作。
+**②接口实现类，将上述定义的接口中的方法在Activity中对应实现具体操作。**
 
 下面以代码的形式一一展开。
 
@@ -836,12 +836,11 @@ View层实现Presenter层需要调用的控件操作，方便Presenter层根据M
 
 **3.Presenter层**
 
-Presenter是用作Model和View之间交互的桥梁。
-从上图的包结构图中可以看出，Presenter包含内容：
+Presenter是用作Model和View之间交互的桥梁。从上图的包结构图中可以看出，Presenter包含内容：
 
-①接口，包含Presenter需要进行Model和View之间交互逻辑的接口，以及上面提到的Model层数据请求完成后回调的接口。
+**①接口，包含Presenter需要进行Model和View之间交互逻辑的接口，以及上面提到的Model层数据请求完成后回调的接口。**
 
-②接口实现类，即实现具体的Presenter类逻辑。
+**②接口实现类，即实现具体的Presenter类逻辑。**
 
 下面以代码的形式一一展开。
 
@@ -924,12 +923,6 @@ public class LoginPresenterImpl implements LoginPresenter, OnLoginFinishedListen
 
 presenter里面有个OnLoginFinishedListener， 其在Presenter层实现，给Model层回调，更改View层的状态， 确保 Model层不直接操作View层。
 
-**示例展示：**
-
-![img](http://upload-images.jianshu.io/upload_images/3985563-216404156964b311.gif?imageMogr2/auto-orient/strip)
-
-[代码地址](https://github.com/LRH1993/MVPdemo)
-
 ### 3. 总结
 
 MVP模式的整个核心流程：
@@ -972,7 +965,7 @@ Binder通信采用C/S架构，从组件视角来说，包含Client、Server、Se
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-5ff2c4816543c433.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-**Binder通信的四个角色**
+**1）Binder通信的四个角色：**
 
 **Client进程**：使用服务的进程。
 
@@ -982,7 +975,7 @@ Binder通信采用C/S架构，从组件视角来说，包含Client、Server、Se
 
 **Binder驱动**：驱动负责进程之间Binder通信的建立，Binder在进程之间的传递，Binder引用计数管理，数据包在进程之间的传递和交互等一系列底层支持。
 
-**Binder运行机制**
+**2）Binder运行机制：**
 
 图中Client/Server/ServiceManage之间的相互通信都是基于Binder机制。既然基于Binder机制通信，那么同样也是C/S架构，则图中的3大步骤都有相应的Client端与Server端。
 
@@ -992,9 +985,11 @@ Binder通信采用C/S架构，从组件视角来说，包含Client、Server、Se
 
 **使用服务**：Client根据得到的Service信息建立与Service所在的Server进程通信的通路，然后就可以直接与Service交互。该过程：Client是客户端，Server是服务端。
 
-图中的Client，Server，Service Manager之间交互都是虚线表示，是由于它们彼此之间不是直接交互的，而是都通过与Binder驱动进行交互的，从而实现IPC通信（Interprocess Communication）方式。其中Binder驱动位于内核空间，Client，Server，Service Manager位于用户空间。Binder驱动和Service Manager可以看做是Android平台的基础架构，而Client和Server是Android的应用层，开发人员只需自定义实现Client、Server端，借助Android的基本平台架构便可以直接进行IPC通信。
+图中的Client，Server，Service Manager之间交互都是虚线表示，是由于它们彼此之间不是直接交互的，而是都通过与Binder驱动进行交互的，从而实现IPC通信方式。
 
-**Binder运行的实例解释**
+其中Binder驱动位于内核空间，Client，Server，Service Manager位于用户空间。Binder驱动和Service Manager可以看做是Android平台的基础架构，而Client和Server是Android的应用层，开发人员只需自定义实现Client、Server端，借助Android的基本平台架构便可以直接进行IPC通信。
+
+**3）Binder运行的实例解释**
 
 首先我们看看我们的程序跨进程调用系统服务的简单示例，实现浮动窗口部分代码：
 
@@ -1013,7 +1008,7 @@ wm.addView(view, layoutParams);
 
 **使用服务：** 通过这个引用向具体的服务端发送请求，服务端执行完成后就返回。即第6行调用WindowManager的addView函数，将触发远程调用，调用的是运行在systemServer进程中的WindowManager的addView函数。
 
-**使用服务的具体执行过程**
+**4）使用服务的具体执行过程**
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-727dd63017d2113b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
@@ -1028,7 +1023,7 @@ wm.addView(view, layoutParams);
 
 AIDL (Android Interface Definition Language) 是一种接口定义语言，用于生成可以在Android设备上两个进程之间进行进程间通信(Interprocess Communication, IPC)的代码。如果在一个进程中（例如Activity）要调用另一个进程中（例如Service）对象的操作，就可以使用AIDL生成可序列化的参数，来完成进程间通信。
 
-**简言之，AIDL能够实现进程间通信，其内部是通过Binder机制来实现的，后面会具体介绍，现在先介绍AIDL的使用。**
+**简言之，AIDL能够实现进程间通信，其内部是通过Binder机制来实现的。**
 
 ### 4. AIDL的具体使用
 
@@ -1037,6 +1032,7 @@ AIDL的实现一共分为三部分，一部分是客户端，调用远程服务�
 先在服务端创建AIDL部分代码。
 
 **AIDL文件**
+
 通过如下方式新建一个AIDL文件
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-4ea35902ebf6fa51.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
@@ -1248,6 +1244,7 @@ if (mIBookManager != null) {
 ### 5. AIDL的工作原理
 
 Binder机制的运行主要包括三个部分：注册服务、获取服务和使用服务。
+
 其中注册服务和获取服务的流程涉及C的内容，由于个人能力有限，就不予介绍了。
 
 本篇文章主要介绍使用服务时，AIDL的工作原理。
@@ -1266,12 +1263,12 @@ Binder中两个关键方法：
 public class Binder implement IBinder {
     void attachInterface(IInterface plus, String descriptor)
 
-    IInterface queryLocalInterface(Stringdescriptor) //从IBinder中继承而来
+    IInterface queryLocalInterface(String descriptor) //从IBinder中继承而来
     ..........................
 }
 ```
 
-Binder具有被跨进程传输的能力是因为它实现了IBinder接口。系统会为每个实现了该接口的对象提供跨进程传输，这是系统给我们的一个很大的福利。
+Binder具有被跨进程传输的能力是因为它实现了IBinder接口。系统会为每个实现了该接口的对象提供跨进程传输。
 
 **Binder具有的完成特定任务的能力是通过它的IInterface的对象获得的**，我们可以简单理解attachInterface方法会将（descriptor，plus）作为（key,value）对存入Binder对象中的一个Map<String,IInterface>对象中，Binder对象可通过attachInterface方法持有一个IInterface对象（即plus）的引用，并依靠它获得完成特定任务的能力。queryLocalInterface方法可以认为是根据key值（即参数 descriptor）查找相应的IInterface对象。
 
@@ -1335,7 +1332,7 @@ public static com.lvr.aidldemo.IBookManager asInterface(android.os.IBinder obj) 
 ```java
     @Override public void addBook(com.lvr.aidldemo.Book book) throws android.os.RemoteException
     {
-        ..........
+        ......
         //第一个参数：识别调用哪一个方法的ID
         //第二个参数：Book的序列化传入数据
         //第三个参数：调用方法后返回的数据
@@ -1343,7 +1340,7 @@ public static com.lvr.aidldemo.IBookManager asInterface(android.os.IBinder obj) 
         mRemote.transact(Stub.TRANSACTION_addBook, _data, _reply, 0);
         _reply.readException();
     }
-    ..........
+    ......
 }
 ```
 
