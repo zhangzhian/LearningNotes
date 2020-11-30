@@ -30,7 +30,7 @@ EventBus是一种用于Android/Java的事件发布-订阅总线框架。
 
 - 具有高级功能，如传递线程、订阅服务器优先级等。
 
-查看源码详解请看：《EventBus：源码详解》
+查看源码详解请看：[《EventBus：源码详解》](https://blog.csdn.net/baidu_32237719/article/details/110409856)
 
 ##  二、导入库
 
