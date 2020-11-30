@@ -1,4 +1,6 @@
-## 简介
+# EventBus：基本使用详解
+
+## 一、简介
 
 EventBus项目：https://github.com/greenrobot/EventBus 
 
@@ -28,9 +30,9 @@ EventBus是一种用于Android/Java的事件发布-订阅总线框架。
 
 - 具有高级功能，如传递线程、订阅服务器优先级等。
 
+查看源码详解请看：《EventBus：源码详解》
 
-
-##  导入库
+##  二、导入库
 
 **Gradle:**
 
@@ -50,7 +52,7 @@ implementation 'org.greenrobot:eventbus:3.1.1'
 
 **通过Maven Central下载 [最新 JAR](https://search.maven.org/remote_content?g=org.greenrobot&a=eventbus&v=LATEST)**
 
-## 使用步骤
+## 三、使用步骤
 
 ### 1. 定义事件
 
@@ -89,9 +91,70 @@ public void onMessageEvent(MessageEvent event) {/* Do something */};
  EventBus.getDefault().post(new MessageEvent());
 ```
 
-## 使用详解
+### 4. 简单使用实例
 
-### 传递线程（ThreadMode）
+1）构造事件（Event）对象。也就是发送消息类
+每一个消息类，对应一种事件。这里我们定义两个消息发送类。后面讲解具体作用。
+
+```java
+public class ToastEvent {
+    private String content;
+
+    public ToastEvent(String content) {
+        this.content = content;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+}
+```
+
+2）注册/解除事件订阅（Subscriber）
+
+```
+EventBus.getDefault().register(this);//注册事件 其中this代表订阅者
+```
+
+具体注册了对什么事件的订阅，这个需要onEvent()方法来说明。在EventBus 3.0之前，onEvent()方法是用来接收指定事件（Event）类型对象，然后进行相关处理操作。在EventBus 3.0之后，onEvent()方法可以自定义方法名，不过要加入注解@Subscribe。
+
+```java
+@Subscribe
+    public void onToastEvent(ToastEvent event){
+        Toast.makeText(MainActivity.this,event.getContent(),Toast.LENGTH_SHORT).show();
+    }
+```
+
+通过register(this)来表示该订阅者进行了订阅，通过onToastEvent(ToastEvent event)表示指定对事件ToastEvent的订阅。到这里订阅就完成了。
+
+需要注意的是：一般在onCreate()方法中进行注册订阅。在onDestory()方法中进行解除订阅。
+
+```java
+@Override
+    protected void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
+```
+
+3）发送消息
+订阅已经完成，那么便可以发送订阅了。
+
+```java
+EventBus.getDefault().post(new ToastEvent("Toast,发个提示，祝大家新年快乐！"));
+```
+
+那么onToastEvent(ToastEvent event)会收到事件，并弹出提示。
+
+EventBus的基础使用流程就是这样的。
+
+## 四、使用详解
+
+### 1. ThreadMode
 
 EventBus可以处理线程：事件可以在不同于发布线程的线程中发布。
 
@@ -190,7 +253,21 @@ public void onMessage(MessageEvent event){
 }
 ```
 
-### 配置
+#### 总结
+
+- ThreadMode.POSTING:默认的模式,开销最小的模式,因为声明为POSTING的订阅者会在发布的同一个线程调用，发布者在主线程那么订阅者也就在主线程,反之亦,避免了线程切换,如果不确定是否有耗时操作，谨慎使用，因为可能是在主线程发布
+
+- ThreadMode.MAIN:主线程调用，视发布线程不同处理不同,如果发布者在主线程那么直接调用(非阻塞式),如果发布者不在主线程那么阻塞式调用
+
+- ThreadMode.MAIN_ORDERED:和MAIN差不多,主线程调用，和MAIN不同的是他保证了post是非阻塞式的(默认走MAIN的非主线程的逻辑，所以可以做到非阻塞)
+
+- ThreadMode.BACKGROUND:在子线程调用,如果发布在子线程那么直接在发布线程调用,如果发布在主线程那么将开启一个子线程来调用,这个子线程是阻塞式的,按顺序交付所有事件,所以也不适合做耗时任务,因为多个事件共用这一个后台线程
+
+- ThreadMode.ASYNC: 在子线程调用,总是开启一个新的线程来调用,适用于做耗时任务,比如数据库操作,网络请求等，不适合做计算任务,会导致开启大量线程
+
+
+
+### 2. 配置
 
 EventBusBuilder类配置EventBus的各个方面。
 
@@ -225,7 +302,7 @@ EventBus.builder().throwSubscriberException(BuildConfig.DEBUG).installDefaultEve
 
 *注意：只能在第一次使用默认EventBus实例之前完成一次。随后对installDefaultEventBus()的调用将引发异常。这样可以确保您的应用程序中行为一致。Application类是在使用之前配置默认EventBus实例的好地方。*
 
-### 粘性事件
+### 3. 粘性事件
 
 在发布事件后，某些事件会携带需要的信息。例如，一个事件表示某些初始化已完成。或者，如果有一些传感器或位置数据，并且想要保留最新值。除了使用自己的缓存之外，还可以使用粘性事件。
 
@@ -284,7 +361,7 @@ if(stickyEvent != null) {
 }
 ```
 
-### 优先事项和活动取消
+### 4. 优先事项和活动取消
 
 大多数EventBus用例不需要优先级或事件取消，但在某些特殊情况下它们可能会派上用场。
 
@@ -320,7 +397,7 @@ public void onEvent(MessageEvent event){
 
 事件通常由优先级较高的订阅者取消。取消仅限于在发布线程中运行的事件处理方法（ThreadMode.PostThread）。
 
-### 订阅者索引
+### 5. 订阅者索引
 
 订阅者索引是EventBus3的新功能。它是一项**可选的优化，可加快初始订阅者注册的速度**。
 
@@ -429,7 +506,7 @@ EventBus eventBus = EventBus.builder()
     .addIndex(new MyEventBusLibIndex()).build();
 ```
 
-### 代码混淆
+### 6. 代码混淆
 
 在开发中使用代码混淆的时候需要加上:
 
@@ -448,7 +525,7 @@ EventBus eventBus = EventBus.builder()
 
 *注意：无论是否使用订阅者索引都将需要此配置。*
 
-### AsyncExecutor
+### 7. AsyncExecutor
 
 AsyncExecutor就像一个线程池，但是具有异常处理。故障会引发异常，AsyncExecutor会将这些异常包装在事件中，该事件会自动发布。
 
@@ -495,11 +572,9 @@ public void handleFailureEvent(ThrowableFailureEvent event) {
 
 如果您的自定义失败事件类实现了[HasExecutionScope](http://greenrobot.org/files/eventbus/javadoc/3.0/org/greenrobot/eventbus/util/HasExecutionScope.html)接口，则AsyncExecutor将自动设置执行范围。这样，您的订户可以查询失败事件的执行范围，并据此作出反应。
 
+---
 
-
-后续会输出EventBus使用Demo相关的文档，请持续关注。
-
-
+**我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork**
 
 **欢迎关注我的公众号，持续分析优质技术文章**
 ![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
