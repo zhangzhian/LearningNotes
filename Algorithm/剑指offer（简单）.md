@@ -291,6 +291,10 @@ class Solution {
 }
 ```
 
+时间复杂度：O(N)
+
+空间复杂度：O(N)
+
 ### [004] 链表中倒数第k个节点
 
 输入一个链表，输出该链表中倒数第k个节点。为了符合大多数人的习惯，本题从1开始计数，即链表的尾节点是倒数第1个节点。例如，一个链表有6个节点，从头节点开始，它们的值依次是1、2、3、4、5、6。这个链表的倒数第3个节点是值为4的节点。
@@ -350,6 +354,10 @@ class Solution {
     }
 }
 ```
+
+时间复杂度：O(N)
+
+空间复杂度：O(1)
 
 方法三：反转2次
 
@@ -419,7 +427,7 @@ class Solution {
 }
 ```
 
-### [005] 打印从1到最大的n位数
+### [005※] 打印从1到最大的n位数
 
 输入数字 n，按顺序打印出从 1 到最大的 n 位十进制数。比如输入 3，则打印出 1、2、3 一直到最大的 3 位数 999。
 
@@ -434,7 +442,7 @@ class Solution {
 说明：
 
 - 用返回一个整数列表来代替打印
-- 4n 为正整数
+- n 为正整数
 
 方法一：直接计算
 
@@ -454,17 +462,52 @@ class Solution {
 
 空间复杂度 O(1)
 
-方法二：[大数打印解法](https://leetcode-cn.com/problems/da-yin-cong-1dao-zui-da-de-nwei-shu-lcof/solution/mian-shi-ti-17-da-yin-cong-1-dao-zui-da-de-n-wei-2/)
+**方法二：[大数打印解法](https://leetcode-cn.com/problems/da-yin-cong-1dao-zui-da-de-nwei-shu-lcof/solution/mian-shi-ti-17-da-yin-cong-1-dao-zui-da-de-n-wei-2/)**
 
 实际上，本题的主要考点是大数越界情况下的打印。需要解决以下三个问题：
 
-1. 表示大数的变量类型：大数的表示应用字符串 String 类型。
+1. 表示大数的变量类型：无论是 short / int / long ... 任意变量类型，数字的取值范围都是有限的。大数的表示应用字符串 String 类型。
 2. 生成数字的字符串集：生成的列表实际上是 n 位 00 - 99 的 全排列 ，因此可避开进位操作，通过递归生成数字的 String 列表。
 
 3. 递归生成全排列：
 基于分治算法的思想，先固定高位，向低位递归，当个位已被固定时，添加数字的字符串。例如当 n = 2 时（数字范围 1 - 99），固定十位为 00 - 99 ，按顺序依次开启递归，固定个位 00 - 99 ，终止递归并添加数字字符串。
 
 ![Picture1.png](https://pic.leetcode-cn.com/83f4b5930ddc1d42b05c724ea2950ee7f00427b11150c86b45bd88405f8c7c87-Picture1.png)
+
+为 **正确表示大数** ，以下代码的返回值为数字字符串集拼接而成的长字符串。
+
+```java
+class Solution {
+    StringBuilder res;
+    int nine = 0, count = 0, start, n;
+    char[] num, loop = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    public String printNumbers(int n) {
+        this.n = n;
+        res = new StringBuilder();
+        num = new char[n];
+        start = n - 1;
+        dfs(0);
+        res.deleteCharAt(res.length() - 1);
+        return res.toString();
+    }
+    void dfs(int x) {
+        if(x == n) {
+            String s = String.valueOf(num).substring(start);
+            if(!s.equals("0")) res.append(s + ",");
+            if(n - start == nine) start--;
+            return;
+        }
+        for(char i : loop) {
+            if(i == '9') nine++;
+            num[x] = i;
+            dfs(x + 1);
+        }
+        nine--;
+    }
+}
+```
+
+本题要求输出 int 类型数组。为 **运行通过** ，可在添加数字字符串 s*s* 前，将其转化为 int 类型。代码如下所示：
 
 ```java
 class Solution {
@@ -580,6 +623,26 @@ class Solution {
 方法一：递归
 
 ```java
+class Solution {
+    ArrayList<Integer> tmp = new ArrayList<Integer>();
+    public int[] reversePrint(ListNode head) {
+        recur(head);
+        int[] res = new int[tmp.size()];
+        for(int i = 0; i < res.length; i++)
+            res[i] = tmp.get(i);
+        return res;
+    }
+    void recur(ListNode head) {
+        if(head == null) return;
+        recur(head.next);
+        tmp.add(head.val);
+    }
+}
+```
+
+不需要重新遍历ArrayList
+
+```java
 /**
  * Definition for singly-linked list.
  * public class ListNode {
@@ -608,11 +671,13 @@ class Solution {
 }
 ```
 
+
+
 时间复杂度：O(n)
 
 空间复杂度：O(n)
 
-方法二：
+方法二：辅助栈法
 
 ```java
 class Solution {
@@ -631,7 +696,7 @@ class Solution {
 ```
 
 - 时间复杂度：O(n) 
-- 空间复杂度：O(1) 
+- 空间复杂度：O(n) 
 
 ### [008] 反转链表
 
