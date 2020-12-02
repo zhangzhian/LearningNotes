@@ -832,10 +832,12 @@ class Solution {
         return res;
     }
     void dfs(TreeNode root) {
-        if(root == null) return;
+        if(root == null || k == 0) return;//当root为空或者已经找到了res时，直接返回
         dfs(root.right);
-        if(k == 0) return;
-        if(--k == 0) res = root.val;
+        if(--k == 0) {
+            res = root.val;
+            return;
+        }
         dfs(root.left);
     }
 }
@@ -1039,6 +1041,8 @@ public class Solution {
 - 如果 stack2 为空，则将 stack1 里的所有元素弹出插入到 stack2 里
 - 如果 stack2 仍为空，则返回 -1，否则从 stack2 弹出一个元素并返回
 
+![fig1](https://assets.leetcode-cn.com/solution-static/jianzhi_09/jianzhi_9.gif)
+
 ```java
 class CQueue {
     Deque<Integer> stack1;
@@ -1125,7 +1129,7 @@ class CQueue {
 - 当 left 和 right 同时不为空 ：说明 p, q 分列在 root 的 异侧 （分别在 左 / 右子树），因此 root 为最近公共祖先，返回 root ；
 
 - 当 left 为空 ，right 不为空 ：p,q 都不在 root 的左子树中，直接返回 right 。具体可分为两种情况：
-  - p,q 其中一个在 root 的 右子树 中，此时 right 指向 pp（假设为 pp ）；
+  - p,q 其中一个在 root 的 右子树 中，此时 right 指向 p（假设为 p ）；
   - p,q 两节点都在 root 的 右子树 中，此时的 right 指向 最近公共祖先节点 ；
 
 - 当 left 不为空 ， right 为空 ：与情况 3. 同理；
@@ -1138,9 +1142,9 @@ class Solution {
         if(root == null || root == p || root == q) return root;
         TreeNode left = lowestCommonAncestor(root.left, p, q);
         TreeNode right = lowestCommonAncestor(root.right, p, q);
-        if(left == null) return right;
-        if(right == null) return left;
-        return root;
+        if(left == null) return right;//左子树没查到，在右子树
+        if(right == null) return left;//右子树没查到，在左子树
+        return root;//分别在左右子树中
     }
 }
 ```
@@ -1255,38 +1259,45 @@ class Solution {
 
 **方法三：双指针（滑动窗口）**
 
-https://leetcode-cn.com/problems/he-wei-sde-lian-xu-zheng-shu-xu-lie-lcof/solution/shi-yao-shi-hua-dong-chuang-kou-yi-ji-ru-he-yong-h/
+对于这道题来说，数组就是正整数序列[1,2,3,…,n]。我们设滑动窗口的左边界为 i，右边界为 j，则滑动窗口框起来的是一个左闭右开区间 [i, j)。注意，为了编程的方便，滑动窗口一般表示成一个左闭右开区间。
+
+滑动窗口的重要性质是：**窗口的左边界和右边界永远只能向右移动**，而不能向左移动。
+
+在这道题中，我们关注的是滑动窗口中所有数的和。当滑动窗口的右边界向右移动时，也就是 j = j + 1，窗口中多了一个数字 j，窗口的和也就要加上 j。当滑动窗口的左边界向右移动时，也就是 i = i + 1，窗口中少了一个数字 i，窗口的和也就要减去 i。
+
+![proof](https://pic.leetcode-cn.com/728c705889a672d5a85709cb3fd157216bb1a41dc377dcc125818d9e18b8dd55.jpg)
 
  ```java
-public int[][] findContinuousSequence(int target) {
-    int i = 1; // 滑动窗口的左边界
-    int j = 1; // 滑动窗口的右边界
-    int sum = 0; // 滑动窗口中数字的和
-    List<int[]> res = new ArrayList<>();
+class Solution {
+    public int[][] findContinuousSequence(int target) {
+        int i = 1; // 滑动窗口的左边界
+        int j = 1; // 滑动窗口的右边界
+        int sum = 0; // 滑动窗口中数字的和
+        List<int[]> res = new ArrayList<>();
 
-    while (i <= target / 2) {
-        if (sum < target) {
-            // 右边界向右移动
-            sum += j;
-            j++;
-        } else if (sum > target) {
-            // 左边界向右移动
-            sum -= i;
-            i++;
-        } else {
-            // 记录结果
-            int[] arr = new int[j-i];
-            for (int k = i; k < j; k++) {
-                arr[k-i] = k;
+        while (i <= target / 2) {//i>target/2,再加上一个比它大的数，必然不符合条件
+            if (sum < target) {
+                // 右边界向右移动
+                sum += j;
+                j++;
+            } else if (sum > target) {
+                // 左边界向右移动
+                sum -= i;
+                i++;
+            } else {
+                // 记录结果
+                int[] arr = new int[j-i];
+                for (int k = i; k < j; k++) {
+                    arr[k-i] = k;
+                }
+                res.add(arr);
+                // 右边界向右移动
+                sum -= i;
+                i++;
             }
-            res.add(arr);
-            // 右边界向右移动
-            sum -= i;
-            i++;
         }
+        return res.toArray(new int[res.size()][]);
     }
-
-    return res.toArray(new int[res.size()][]);
 }
  ```
 
@@ -1446,12 +1457,12 @@ class Solution {
 
 - 节点总数 <= 1000
 
-方法一：
+方法一：迭代
 
 ```java
 class Solution {
     public List<List<Integer>> levelOrder(TreeNode root) {
-        Queue<TreeNode> queue = new LinkedList<>();
+        LinkedList<TreeNode> queue = new LinkedList<>();
         List<List<Integer>> res = new ArrayList<>();
         if(root != null) queue.add(root);
         while(!queue.isEmpty()) {
@@ -1470,7 +1481,35 @@ class Solution {
 ```
 
 - 时间复杂度 O(N) 
+- 空间复杂度 O(N)
 
+方法二：递归
+
+```java
+public class Solution {
+    private List<List<Integer>> ret;
+
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        ret = new ArrayList<>();
+        dfs(0, root);
+        return ret;
+    }
+
+    private void dfs(int depth, TreeNode root) {
+        if (root == null) {
+            return;
+        }
+        if (ret.size() == depth) {
+            ret.add(new ArrayList<>());
+        }
+        ret.get(depth).add(root.val);
+        dfs(depth + 1, root.left);
+        dfs(depth + 1, root.right);
+    }
+}
+```
+
+- 时间复杂度 O(N) 
 - 空间复杂度 O(N)
 
 ### [017] 数组中出现次数超过一半的数字
