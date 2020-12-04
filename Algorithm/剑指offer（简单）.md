@@ -2333,7 +2333,7 @@ class Solution {
 
 方法二：先序遍历 + 判断深度 （从顶至底）
 
-通过比较某子树的左右子树的深度差 abs(depth(root.left) - depth(root.right)) <= 1 是否成立，来判断某子树是否是二叉平衡树。若所有子树都平衡，则此树平衡。
+通过比较某子树的左右子树的深度差 `abs(depth(root.left) - depth(root.right)) <= 1` 是否成立，来判断某子树是否是二叉平衡树。若所有子树都平衡，则此树平衡。
 
 **算法流程：**
 
@@ -2341,9 +2341,9 @@ class Solution {
 
 - 特例处理： 若树根节点 root 为空，则直接返回 truetrue ；
 - 返回值： 所有子树都需要满足平衡树性质，因此以下三者使用与逻辑 \&\&&& 连接；
-  1. abs(self.depth(root.left) - self.depth(root.right)) <= 1 ：判断 当前子树 是否是平衡树；
-  2. self.isBalanced(root.left) ： 先序遍历递归，判断 当前子树的左子树 是否是平衡树；
-  3. self.isBalanced(root.right) ： 先序遍历递归，判断 当前子树的右子树 是否是平衡树；
+  1. `abs(self.depth(root.left) - self.depth(root.right)) <= 1 `：判断 当前子树 是否是平衡树；
+  2. `self.isBalanced(root.left) `： 先序遍历递归，判断 当前子树的左子树 是否是平衡树；
+  3. `self.isBalanced(root.right) `： 先序遍历递归，判断 当前子树的右子树 是否是平衡树；
 
 **depth(root) 函数：** 计算树 root 的深度
 
@@ -2433,7 +2433,7 @@ class Solution {
         if (head == null) return null;
         if (head.val == val) return head.next;
         ListNode cur = head;
-        ///找到要删除结点的上一个结点
+        //找到要删除结点的上一个结点
         while (cur.next != null && cur.next.val != val)
             cur = cur.next;
         if (cur.next != null)
@@ -2507,13 +2507,9 @@ class Solution {
     }
 
     public boolean check(TreeNode p, TreeNode q) {
-        if (p == null && q == null) {
-            return true;
-        }
-        if (p == null || q == null) {
-            return false;
-        }
-        return p.val == q.val && check(p.left, q.right) && check(p.right, q.left);
+        if (p == null && q == null) return true;
+        if (p == null || q == null || p.val != q.val) return false;   
+        return check(p.left, q.right) && check(p.right, q.left);
     }
 }
 ```
@@ -2533,10 +2529,10 @@ class Solution {
 
     public boolean check(TreeNode u, TreeNode v) {
         Queue<TreeNode> q = new LinkedList<TreeNode>();
-        q.offer(u);
+        q.offer(u);//放2个root
         q.offer(v);
         while (!q.isEmpty()) {
-            u = q.poll();
+            u = q.poll();//取2次
             v = q.poll();
             if (u == null && v == null) {
                 continue;
@@ -2545,10 +2541,10 @@ class Solution {
                 return false;
             }
 
-            q.offer(u.left);
+            q.offer(u.left);//u的left和v的right放进去，后续成对取出，作比较
             q.offer(v.right);
 
-            q.offer(u.right);
+            q.offer(u.right);//同上
             q.offer(v.left);
         }
         return true;
@@ -2891,16 +2887,13 @@ $$
 c=a\&b<<1
 $$
 
-（和 s ）=（非进位和 n ）+（进位 c ）。即可将 s = a + b转化为：
+（和 s ）=（非进位和 n ）+（进位 c ）。即可将 s = a + b转化为：s=a+b⇒s=n+c
 
-$$
-s = a + b \Rightarrow s = n + c
-$$
 循环求 n 和 c ，直至进位 c = 0  ；此时 s = n ，返回 n  即可。
 
 ![Picture1.png](https://pic.leetcode-cn.com/56d56524d8d2b1318f78e209fffe0e266f97631178f6bfd627db85fcd2503205-Picture1.png)
 
-Q ： 若数字 a 和 bb中有负数，则变成了减法，如何处理？
+Q ： 若数字 a 和 b中有负数，则变成了减法，如何处理？
 A ： 在计算机系统中，数值一律用 补码 来表示和存储。补码的优势： 加法、减法可以统一处理（CPU只有加法器）。因此，以上方法 同时适用于正数和负数的加法 。
 
 ```java
@@ -3007,9 +3000,11 @@ class Solution {
 
 - 空间复杂度：o(1))
 
-方法二：二分法递归
+方法二：二分法优化
 
 ![Picture2.png](https://pic.leetcode-cn.com/bf124fb9feff173309e2a0c3d36d2a76d1a0a46cb34a78a5776ac255fd1fde1d-Picture2.png)
+
+由于数组 nums 中元素都为整数，因此可以分别二分查找 target 和 target - 1 的右边界，将两结果相减并返回即可。
 
 ```java
 class Solution {
