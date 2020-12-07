@@ -3054,7 +3054,7 @@ class Solution {
   - 当`nums[m] > nums[j]` 时： m 一定在 左排序数组 中，即旋转点 x 一定在` [m + 1, j] `闭区间内，因此执行` i = m + 1`；
   - 当 `nums[m] < nums[j]`时： m 一定在 右排序数组 中，即旋转点 x 一定在`[i, m] `闭区间内，因此执行` j = m`；
   - 当` nums[m] = nums[j] `时： 无法判断 m 在哪个排序数组中，即无法判断旋转点 x 在` [i, m] `还是` [m + 1, j] `区间中。解决方案： 执行`j = j - 1 `缩小判断范围。
-- 返回值： 当 i = j 时跳出二分循环，并返回 旋转点的值 nums[i] 即可。
+- 返回值： 当 `i = j` 时跳出二分循环，并返回 旋转点的值 `nums[i]` 即可。
 
 ```java
 class Solution {
@@ -3100,8 +3100,6 @@ class Solution {
 ### [033] 扑克牌中的顺子
 
 从扑克牌中随机抽5张牌，判断是不是一个顺子，即这5张牌是不是连续的。2～10为数字本身，A为1，J为11，Q为12，K为13，而大、小王为 0 ，可以看成任意数字。A 不能视为 14。
-
- 
 
 示例 1:
 
@@ -3212,8 +3210,6 @@ class Solution {
 - 0 <= matrix.length <= 100
 - 0 <= matrix[i].length <= 100 
 
-
-
 方法一：
 
 ![Picture1.png](https://pic.leetcode-cn.com/c6de3a1bc0f38820941dbcff0e17a49204eba91b967d4ccc0d5485e68a4fcc95-Picture1.png)
@@ -3285,6 +3281,28 @@ class Solution {
 方法一：
 
 [题解](https://leetcode-cn.com/problems/hua-dong-chuang-kou-de-zui-da-zhi-lcof/solution/mian-shi-ti-59-i-hua-dong-chuang-kou-de-zui-da-1-6/)
+
+![Picture1.png](https://pic.leetcode-cn.com/bab293bfd2fd6b1c2e41409c70b4201160c6433f3ecdf9c431fd5b99cf201409-Picture1.png)
+
+**难点：** 如何在每次窗口滑动后，将 “获取窗口内最大值” 的时间复杂度从 O(k) 降低至 O(1)。
+
+遍历数组时，每轮保证单调队列 deque ：
+
+- deque 内 仅包含窗口内的元素 ⇒ 每轮窗口滑动移除了元素 `nums[i - 1]`，需将 deque 内的对应元素一起删除。
+- deque 内的元素 非严格递减 ⇒ 每轮窗口滑动添加了元素 `nums[j + 1]`，需将 deque 内所有 < `nums[j + 1]`的元素删除。
+
+**算法流程：**
+
+**初始化：** 双端队列 deque ，结果列表 res，数组长度 n ；
+
+**滑动窗口：** 左边界范围 `i∈[1−k,n+1−k]` ，右边界范围 `j∈[0,n−1]` ；
+
+- 若 i > 0 且 队首元素 `deque[0]` == 被删除元素`nums[i−1] `：则队首元素出队；
+- 删除 deque 内所有 <`nums[j] `的元素，以保持 deque 递减；
+- 将 `nums[j] `添加至 deque 尾部；
+- 若已形成窗口（即 `i≥0` ）：将窗口最大值（即队首元素 `deque[0]` ）添加至列表 res 。
+
+**返回值：** 返回结果列表 res。
 
 ```java
 class Solution {
