@@ -121,7 +121,7 @@ class Solution {
 
 方法二： 迭代
 
-**问题**： 循环必须使用 **while 或 fo**r，因此本方法不可取，直接排除。
+**问题**： 循环必须使用 **while 或 for**，因此本方法不可取，直接排除。
 
 ```java
 public int sumNums(int n) {
@@ -164,14 +164,15 @@ n > 1 && sumNums(n - 1) // 当 n = 1 时 n > 1 不成立 ，此时 “短路” 
 
 ```java
 class Solution {
-    int res = 0;
     public int sumNums(int n) {
-        boolean x = n > 1 && sumNums(n - 1) > 0;
-        res += n;
-        return res;
+        boolean flag = n > 1 && (n += sumNums(n - 1)) > 0;
+        return n;
     }
 }
 ```
+
+>Java 中，为构成语句，需加一个辅助布尔量 xx ，否则会报错；
+>Java 中，开启递归函数需改写为 sumNums(n - 1) > 0 ，此整体作为一个布尔量输出，否则会报错；
 
 复杂度分析：
 
