@@ -132,7 +132,7 @@ public int sumNums(int n) {
 }
 ```
 
-方法三： 递归（推介）
+方法三： 递归（推荐）
 
 **问题：** 终止条件需要使用 if，因此本方法不可取。
 
@@ -440,15 +440,167 @@ class Solution {
 - **时间复杂度 O(N)：** 三轮遍历链表，使用 O(N)时间。
 - **空间复杂度 O(1) ：** 节点引用变量使用常数大小的额外空间。
 
+### [004] 数组中数字出现的次数
+
+一个整型数组 nums 里除两个数字之外，其他数字都出现了两次。请写程序找出这两个只出现一次的数字。要求时间复杂度是O(n)，空间复杂度是O(1)。
+
+示例 1：
+
+```
+输入：nums = [4,1,4,6]
+输出：[1,6] 或 [6,1]
+```
+
+示例 2：
+
+```
+输入：nums = [1,2,10,4,1,4,3,3]
+输出：[2,10] 或 [10,2]
+```
 
 
+限制：
 
+- 2 <= nums.length <= 10000
 
+方法一：
 
+先对所有数字进行一次异或，得到两个出现一次的数字的异或值。
 
+在异或结果中找到任意为 1 的位。
 
+根据这一位对所有的数字进行分组。
 
+> 把所有数字分成两组，使得：
+>
+> 1. 两个只出现一次的数字在不同的组中；
+>
+> 2. 相同的数字会被分到相同的组中。
+>
+> 那么对两个组分别进行异或操作，即可得到答案的两个数字。这是解决这个问题的关键。
+>
+> 根据"任意为 1 的位"进行分组，这一位为1说明一个数字该位为1，另一个数字该位为0，可以确保2个数字分布在2组中。
 
+在每个组内进行异或操作，得到两个数字。g
+
+```java
+class Solution {
+    public int[] singleNumbers(int[] nums) {
+        int ret = 0;
+        for (int n : nums) {
+            ret ^= n;
+        }
+        int div = 1;
+        while ((div & ret) == 0) {
+            div <<= 1;
+        }
+        int a = 0, b = 0;
+        for (int n : nums) {
+            if ((div & n) != 0) {
+                a ^= n;
+            } else {
+                b ^= n;
+            }
+        }
+        return new int[]{a, b};
+    }
+}
+```
+
+- 时间复杂度：O(n)，我们只需要遍历数组两次。
+- 空间复杂度：O(1)，只需要常数的空间存放若干变量。
+
+### [005] 重建二叉树
+
+输入某二叉树的前序遍历和中序遍历的结果，请重建该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。
+
+例如，给出
+
+```java
+前序遍历 preorder = [3,9,20,15,7]
+中序遍历 inorder = [9,3,15,20,7]
+```
+
+返回如下的二叉树：
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+限制：
+
+- 0 <= 节点个数 <= 5000
+
+方法一：
+
+算法分析：
+
+前序遍历性质： 节点按照 `[ 根节点 | 左子树 | 右子树 ]` 排序。
+中序遍历性质： 节点按照 `[ 左子树 | 根节点 | 右子树 ]` 排序。
+
+根据以上性质，可得出以下推论：
+
+- 前序遍历的首元素 为 树的根节点 node 的值。
+- 在中序遍历中搜索根节点 node 的索引 ，可将 中序遍历 划分为 `[ 左子树 | 根节点 | 右子树 ]` 
+- 根据中序遍历中的左 / 右子树的节点数量，可将 前序遍历 划分为 `[ 根节点 | 左子树 | 右子树 ]` 
+
+**递推参数：** 根节点在前序遍历的索引 root 、子树在中序遍历的左边界 left 、子树在中序遍历的右边界 right ；
+
+**终止条件：** 当 left > right ，代表已经越过叶节点，此时返回 null ；
+
+**递推工作：**
+
+1. **建立根节点 `node` ：** 节点值为 `preorder[root]` ；
+2. **划分左右子树：** 查找根节点在中序遍历 `inorder` 中的索引 `i` ；
+3. **构建左右子树：** 开启左右子树递归；
+
+|        | 根节点索引          | 中序遍历左边界 | 中序遍历右边界 |
+| ------ | ------------------- | -------------- | -------------- |
+| 左子树 | root + 1            | left           | i - 1          |
+| 右子树 | root + i - left + 1 | i + 1          | right          |
+
+> i - left + root + 1含义为 根节点索引 + 左子树长度 + 1
+
+**返回值：** 回溯返回 node ，作为上一层递归中根节点的左 / 右子节点；
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    int[] preorder;
+    HashMap<Integer, Integer> dic = new HashMap<>();
+    public TreeNode buildTree(int[] preorder, int[] inorder) {
+        this.preorder = preorder;
+        for(int i = 0; i < inorder.length; i++)
+            dic.put(inorder[i], i);
+        return recur(0,0,inorder.length-1);
+    }
+
+    public TreeNode recur(int root, int left, int right) {
+        if(left > right) return null;
+        int head_val = preorder[root];
+        int head_index = dic.get(head_val);
+        TreeNode head = new TreeNode(head_val);
+        head.left = recur(root + 1, left, head_index - 1);
+        head.right = recur(root + head_index - left + 1,head_index + 1,right);
+        return head;
+    }
+}
+```
+
+> 注意：本文方法只适用于 “无重复节点值” 的二叉树。
+
+- 时间复杂度 O(N) ： 其中 N 为树的节点数量。初始化 HashMap 需遍历 inorder ，占用 O(N)。递归共建立 N 个节点，每层递归中的节点建立、搜索操作占用 O(1)，因此使用 O(N) 时间。
+- 空间复杂度 O(N) ： HashMap 使用 O(N) 额外空间。最差情况下，树退化为链表，递归深度达到 N ，占用 O(N) 额外空间；最好情况下，树为满二叉树，递归深度为logN ，占用 O(logN) 额外空间。
 
 
 
