@@ -603,5 +603,157 @@ class Solution {
 - 时间复杂度 O(N) ： 其中 N 为树的节点数量。初始化 HashMap 需遍历 inorder ，占用 O(N)。递归共建立 N 个节点，每层递归中的节点建立、搜索操作占用 O(1)，因此使用 O(N) 时间。
 - 空间复杂度 O(N) ： HashMap 使用 O(N) 额外空间。最差情况下，树退化为链表，递归深度达到 N ，占用 O(N) 额外空间；最好情况下，树为满二叉树，递归深度为logN ，占用 O(logN) 额外空间。
 
+### [006] 礼物的最大价值
+
+在一个 m*n 的棋盘的每一格都放有一个礼物，每个礼物都有一定的价值（价值大于 0）。你可以从棋盘的左上角开始拿格子里的礼物，并每次向右或者向下移动一格、直到到达棋盘的右下角。给定一个棋盘及其上面的礼物的价值，请计算你最多能拿到多少价值的礼物？
+
+示例 1:
+
+```
+输入: 
+[
+  [1,3,1],
+  [1,5,1],
+  [4,2,1]
+]
+输出: 12
+解释: 路径 1→3→5→2→1 可以拿到最多价值的礼物
+```
 
 
+提示：
+
+- 0 < grid.length <= 200
+- 0 < grid[0].length <= 200
+
+方法一：动态规划
+
+根据题目说明，单元格只可能从上边单元格或左边单元格到达。
+
+设` f(i, j)` 为从棋盘左上角走至单元格 (i ,j) 的礼物最大累计价值，易得到以下递推关系：`f(i,j)` 等于` f(i,j-1) `和 `f(i-1,j)` 中的较大值加上当前单元格礼物价值 `grid(i,j) `。
+$$
+f(i,j) = \max[f(i,j-1), f(i-1,j)] + grid(i,j)
+$$
+因此，可用动态规划解决此问题，以上公式便为转移方程。
+
+![Picture1.png](https://pic.leetcode-cn.com/73153e75d74b1f48ac47244681caacc8ad20ca2ffd2dee2f70a2768dee09d073-Picture1.png)
+
+**状态定义：** 设动态规划矩阵 dp ，`dp(i,j)` 代表从棋盘的左上角开始，到达单元格` (i,j) `时能拿到礼物的最大累计价值。
+
+**转移方程：**
+
+- 当 i = 0 且 j = 0 时，为起始元素；
+- 当 i = 0 且 j != 0 时，为矩阵第一行元素，只可从左边到达；
+- 当 i != 0 且 j = 0 时，为矩阵第一列元素，只可从上边到达；
+- 当 i != 0 且 j != 0 时，可从左边或上边到达；
+
+![img](https://pic.leetcode-cn.com/67cf85128a890bac4a7e38062f728ce536ebecd6c3595dd99e94f7f4cb2edd9f-Picture2.png)
+
+初始状态： `dp[0][0] = grid[0][0]` ，即到达单元格 (0,0) 时能拿到礼物的最大累计价值为 `grid[0][0]` ；
+返回值： `dp[m-1][n-1]` ，m, n 分别为矩阵的行高和列宽，即返回 dp 矩阵右下角元素。
+
+**空间复杂度优化：**
+
+由于 `dp[i][j] `只与 `dp[i-1][j]`, `dp[i][j-1]` , `grid[i][j]` 有关系，因此可以将原矩阵 grid 用作 dp 矩阵，即直接在 grid上修改即可。
+
+应用此方法可省去 dp 矩阵使用的额外空间，因此空间复杂度从 O(MN) 降至 O(1)。
+
+```java
+class Solution {
+    public int maxValue(int[][] grid) {
+        int m = grid.length, n = grid[0].length;
+        for(int i = 0; i < m; i++) {
+            for(int j = 0; j < n; j++) {
+                if(i == 0 && j == 0) continue;
+                if(i == 0) grid[i][j] += grid[i][j - 1] ;
+                else if(j == 0) grid[i][j] += grid[i - 1][j];
+                else grid[i][j] += Math.max(grid[i][j - 1], grid[i - 1][j]);
+            }
+        }
+        return grid[m - 1][n - 1];
+    }
+}
+```
+
+以上代码逻辑清晰，和转移方程直接对应，但仍可提升效率：当 grid 矩阵很大时， i = 0 或 j = 0 的情况仅占极少数，相当循环每轮都冗余了一次判断。因此，可先初始化矩阵第一行和第一列，再开始遍历递推。
+
+```java
+class Solution {
+    public int maxValue(int[][] grid) {
+        int m = grid.length, n = grid[0].length;
+        for(int j = 1; j < n; j++) // 初始化第一行
+            grid[0][j] += grid[0][j - 1];
+        for(int i = 1; i < m; i++) // 初始化第一列
+            grid[i][0] += grid[i - 1][0];
+        for(int i = 1; i < m; i++)
+            for(int j = 1; j < n; j++) 
+                grid[i][j] += Math.max(grid[i][j - 1], grid[i - 1][j]);
+        return grid[m - 1][n - 1];
+    }
+}
+```
+
+复杂度分析：
+
+- 时间复杂度： O(MN)，M, N 分别为矩阵行高、列宽；动态规划需遍历整个 grid 矩阵，使用 O(MN) 时间。
+
+- 空间复杂度：O(1)，原地修改使用常数大小的额外空间。
+
+### [007] 从上到下打印二叉树
+
+从上到下打印出二叉树的每个节点，同一层的节点按照从左到右的顺序打印。
+
+例如:
+
+给定二叉树: [3,9,20,null,null,15,7],
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回：
+
+`[3,9,20,15,7]`
+
+
+提示：
+
+- 节点总数 <= 1000
+
+方法一：BFS
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int[] levelOrder(TreeNode root) {
+        if(root == null) return new int[0];
+        List<Integer> ans = new ArrayList<>();
+        Queue<TreeNode> queue = new LinkedList<>();
+        queue.add(root);
+        while(!queue.isEmpty()) {
+            TreeNode node = queue.poll();
+            ans.add(node.val);
+            if(node.left != null) queue.add(node.left);
+            if(node.right != null) queue.add(node.right);
+        }
+        int[] res = new int[ans.size()];
+        for(int i = 0; i < ans.size(); i++)
+            res[i] = ans.get(i);
+        
+        return res;
+    }
+}
+```
+
+时间复杂度 O(N) ： N 为二叉树的节点数量，即 BFS 需循环 N 次。
+空间复杂度 O(N) ： 最差情况下，即当树为平衡二叉树时，最多有 N/2 个树节点同时在 queue 中，使用 O(N) 大小的额外空间。
