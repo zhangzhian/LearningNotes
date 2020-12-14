@@ -778,7 +778,7 @@ class Solution {
 
 方法一：动态规划
 
-丑数的递推性质： 丑数只包含因子 2, 3, 5 ，因此有 “丑数 == 某较小丑数 * 某因子” （例如：10 = 5×2）。
+> 丑数的递推性质： 丑数只包含因子 2, 3, 5 ，因此有 “丑数 == 某较小丑数 * 某因子” （例如：10 = 5×2）。
 
 ![Picture1.png](https://pic.leetcode-cn.com/837411664f096417badf857fa51e77fd30cb1309a5637c37d24d8a4a48a42b03-Picture1.png)
 
@@ -786,11 +786,9 @@ class Solution {
 
 **转移方程：**
 
-当索引 a, b, c 满足以下条件时， dp[i] 为三种情况的最小值；
+1. 当索引 a, b, c 满足以下条件时， dp[i] 为三种情况的最小值；
 
-每轮计算 dp[i] 后，需要更新索引 a, b, c 的值，使其始终满足方程条件。
-
-实现方法：分别独立判断 dp[i] 和 dp[a]×2 , dp[b]×3 , dp[c]×5 的大小关系，若相等则将对应索引 a , b , c 加 1 。
+2. 每轮计算 dp[i] 后，需要更新索引 a, b, c 的值，使其始终满足方程条件。实现方法：分别独立判断 dp[i] 和 `dp[a]×2` , `dp[b]×3` , `dp[c]×5` 的大小关系，若相等则将对应索引 a , b , c 加 1 。
 
 ```
 dp[a]×2>dp[i−1]≥dp[a−1]×2
@@ -826,31 +824,331 @@ class Solution {
 - 时间复杂度 O(N)： 其中 N = n ，动态规划需遍历计算 dp 列表。
 - 空间复杂度 O(N) ： 长度为 N 的 dp 列表使用 O(N)) 的额外空间。
 
+### [009] 二叉搜索树与双向链表
+
+输入一棵二叉搜索树，将该二叉搜索树转换成一个排序的循环双向链表。要求不能创建任何新的节点，只能调整树中节点指针的指向。
+
+为了让您更好地理解问题，以下面的二叉搜索树为例：
+
+ ![img](https://assets.leetcode.com/uploads/2018/10/12/bstdlloriginalbst.png)
+
+我们希望将这个二叉搜索树转化为双向循环链表。链表中的每个节点都有一个前驱和后继指针。对于双向循环链表，第一个节点的前驱是最后一个节点，最后一个节点的后继是第一个节点。
+
+下图展示了上面的二叉搜索树转化成的链表。“head” 表示指向链表中有最小元素的节点。
+
+![img](https://assets.leetcode.com/uploads/2018/10/12/bstdllreturndll.png)
+
+ 
+
+特别地，我们希望可以就地完成转换操作。当转化完成以后，树中节点的左指针需要指向前驱，树中节点的右指针需要指向后继。还需要返回链表中的第一个节点的指针。
+
+方法一：
+
+本文解法基于性质：二叉搜索树的中序遍历为 **递增序列** 。
+
+将 二叉搜索树 转换成一个 “排序的循环双向链表” ，其中包含三个要素：
+
+- 排序链表： 节点应从小到大排序，因此应使用中序遍历 “从小到大”访问树的节点；
+- 双向链表： 在构建相邻节点（设前驱节点 pre ，当前节点 cur ）关系时，不仅应 pre.right = cur ，也应 cur.left = pre。
+- 循环链表： 设链表头节点 headhead 和尾节点 tail ，则应构建 head.left = tail 和 tail.right = head 。
+
+![Picture14.png](https://pic.leetcode-cn.com/963f2da36712b57f870a5e81d839a03737a347f19bab268cf1fd6fd60649711e-Picture14.png)
 
 
 
+```java
+/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public Node left;
+    public Node right;
+
+    public Node() {}
+
+    public Node(int _val) {
+        val = _val;
+    }
+
+    public Node(int _val,Node _left,Node _right) {
+        val = _val;
+        left = _left;
+        right = _right;
+    }
+};
+*/
+class Solution {
+    Node head, pre;
+    public Node treeToDoublyList(Node root) {
+        if(root==null) return null;
+        dfs(root);
+        //进行头节点和尾节点的相互指向，顺序可以颠倒
+        pre.right = head;
+        head.left =pre;
+        return head;
+    }
+
+    public void dfs(Node cur){
+        if(cur==null) return;
+        dfs(cur.left);
+        //pre用于记录双向链表中位于cur左侧的节点，即上一次迭代中的cur
+        //当pre==null时，cur左侧没有节点,即此时cur为双向链表中的头节点
+        if(pre==null) head = cur;
+        //反之，pre!=null时，cur左侧存在节点pre，需要进行pre.right=cur的操作。
+        else pre.right = cur;     
+        cur.left = pre;//pre是否为null对这句没有影响,且这句放在上面两句if else之前也是可以的。
+        pre = cur;//pre指向当前的cur
+        dfs(cur.right);//全部迭代完成后，pre指向双向链表中的尾节点
+    }
+}
+```
+
+- 时间复杂度 O(N) ： N 为二叉树的节点数，中序遍历需要访问所有节点。
+- 空间复杂度 O(N) ： 最差情况下，即树退化为链表时，递归深度达到 N，系统使用 O(N) 栈空间。
+
+### [010] 股票的最大利润
+
+假设把某股票的价格按照时间先后顺序存储在数组中，请问买卖该股票一次可能获得的最大利润是多少？
+
+示例 1:
+
+```
+输入: [7,1,5,3,6,4]
+输出: 5
+解释: 在第 2 天（股票价格 = 1）的时候买入，在第 5 天（股票价格 = 6）的时候卖出，最大利润 = 6-1 = 5 。
+     注意利润不能是 7-1 = 6, 因为卖出价格需要大于买入价格。
+```
+
+示例 2:
+
+```
+输入: [7,6,4,3,1]
+输出: 0
+解释: 在这种情况下, 没有交易完成, 所以最大利润为 0。
+```
+
+
+限制：
+
+0 <= 数组长度 <= 10^5
+
+方法一：动态规划
+
+**状态定义：** 设动态规划列表 dp ，dp[i] 代表以 prices[i] 为结尾的子数组的最大利润（以下简称为 前 i 日的最大利润 ）
+
+**转移方程：** 由于题目限定 “买卖该股票一次” ，因此前 i 日最大利润 dp[i] 等于前 i - 1 日最大利润 dp[i-1] 和第 i 日卖出的最大利润中的最大值。
+$$
+前i日最大利润=max(前(i−1)日最大利润,第i日价格−前i日最低价格)
+$$
+
+$$
+dp[i]=max(dp[i−1],prices[i]−min(prices[0:i]))
+$$
+
+**初始状态**： dp[0] = 0 ，即首日利润为 0 ；
+
+**返回值**： dp[n - 1] ，其中 n 为 dp 列表长度。
+
+![Picture1.png](https://pic.leetcode-cn.com/4880911383c41712612103c612e390f1ee271e4eb921f22476836dc46aa3a58a-Picture1.png)
 
 
 
+```java
+class Solution {
+    public int maxProfit(int[] prices) {
+        int cost = Integer.MAX_VALUE, profit = 0;
+        for(int price : prices) {
+            cost = Math.min(cost, price);
+            profit = Math.max(profit, price - cost);
+        }
+        return profit;
+    }
+}
+```
+
+- 时间复杂度 O(N) ： 其中 N 为 prices 列表长度，动态规划需遍历 prices 。
+- 空间复杂度 O(1)： 变量 cost 和 profit 使用常数大小的额外空间。
+
+### [011] 栈的压入、弹出序列
+
+输入两个整数序列，第一个序列表示栈的压入顺序，请判断第二个序列是否为该栈的弹出顺序。假设压入栈的所有数字均不相等。例如，序列 {1,2,3,4,5} 是某栈的压栈序列，序列 {4,5,3,2,1} 是该压栈序列对应的一个弹出序列，但 {4,3,5,1,2} 就不可能是该压栈序列的弹出序列。 
+
+示例 1：
+
+```
+输入：pushed = [1,2,3,4,5], popped = [4,5,3,2,1]
+输出：true
+解释：我们可以按以下顺序执行：
+push(1), push(2), push(3), push(4), pop() -> 4,
+push(5), pop() -> 5, pop() -> 3, pop() -> 2, pop() -> 1
+```
+
+示例 2：
+
+```
+输入：pushed = [1,2,3,4,5], popped = [4,3,5,1,2]
+输出：false
+解释：1 不能在 2 之前弹出。
+```
 
 
+提示：
+
+- 0 <= pushed.length == popped.length <= 1000
+- 0 <= pushed[i], popped[i] < 1000
+- pushed 是 popped 的排列。
+
+方法一：辅助栈
+
+借用一个辅助栈 stack ，模拟 压入 / 弹出操作的排列。根据是否模拟成功，即可得到结果。
+
+入栈操作： 按照压栈序列的顺序执行。
+
+出栈操作： 每次入栈后，循环判断 “栈顶元素 == 弹出序列的当前元素” 是否成立，将符合弹出序列顺序的栈顶元素全部弹出。
+
+> 由于题目规定 栈的所有数字均不相等 ，因此在循环入栈中，每个元素出栈的位置的可能性是唯一的（若有重复数字，则具有多个可出栈的位置）。因而，在遇到 “栈顶元素 == 弹出序列的当前元素” 就应立即执行出栈。
+
+算法流程：
+
+- **初始化**： 辅助栈 stack，弹出序列的索引 i 
+
+- **遍历压栈序列**： 各元素记为 num 
+  - 元素 num 入栈
+  - 循环出栈：若 stack 的栈顶元素 == 弹出序列元素 popped[i] ，则执行出栈与 i++
+
+- **返回值**： 若 stack 为空，则此弹出序列合法
+
+```java
+class Solution {
+    public boolean validateStackSequences(int[] pushed, int[] popped) {
+        Stack<Integer> stack = new Stack<>();
+        int i = 0;
+        for(int num : pushed) {
+            stack.push(num); // num 入栈
+            while(!stack.isEmpty() && stack.peek() == popped[i]) { // 循环判断与出栈
+                stack.pop();
+                i++;
+            }
+        }
+        return stack.isEmpty();
+    }
+}
+```
+
+- 时间复杂度 O(N) ： 其中 N 为列表 pushed 的长度；每个元素最多入栈与出栈一次，即最多共 2N 次出入栈操作。
+- 空间复杂度 O(N) ： 辅助栈 stack 最多同时存储 N 个元素。
+
+方法二：辅助数组
+
+原理同上
+
+```java
+class Solution {
+    public boolean validateStackSequences(int[] pushed, int[] popped) {
+        int x = 0;
+        int[] t = new int[pushed.length];
+
+        for (int i = 0, j = 0; i < pushed.length; i++, x++) {
+            t[x] = pushed[i];//模拟入栈
+            while (x >= 0 && j < popped.length && t[x] == popped[j]) {// 循环判断与模拟出栈
+                j++;
+                x--;
+            }
+        }
+        return x == 0;
+    }
+}
+```
+
+- 时间复杂度 O(N)
+- 空间复杂度 O(N) 
+
+### [012] 构建乘积数组
+
+给定一个数组 `A[0,1,…,n-1]`，请构建一个数组 `B[0,1,…,n-1]`，其中 B 中的元素 `B[i]=A[0]×A[1]×…×A[i-1]×A[i+1]×…×A[n-1]`。不能使用除法。
+
+ 示例:
+
+```
+输入: [1,2,3,4,5]
+输出: [120,60,40,30,24]
+```
 
 
+提示：
 
+- 所有元素乘积之和不会溢出 32 位整数
+- a.length <= 100000
 
+方法一：
 
+难点在于 不能使用除法 ，即需要 只用乘法 生成数组 BB 。根据题目对 B[i]B[i] 的定义，可列表格，如下图所示。
 
+根据表格的主对角线（全为 1 ），可将表格分为 上三角 和 下三角 两部分。分别迭代计算下三角和上三角两部分的乘积，即可 不使用除法 就获得结果。
 
+![Picture1.png](https://pic.leetcode-cn.com/6056c7a5009cb7a4674aab28505e598c502a7f7c60c45b9f19a8a64f31304745-Picture1.png)
 
+算法流程：
 
+- 初始化：数组 B ，其中 B[0] = 1；辅助变量 tmp = 1；
+- 计算 B[i] 的 下三角 各元素的乘积，直接乘入 B[i] ；
+- 计算 B[i] 的 上三角 各元素的乘积，记为 tmp ，并乘入 B[i] ；
+- 返回 B 。
 
+基础实现：
 
+```java
+class Solution {
+    public int[] constructArr(int[] a) {
+        if(a == null || a.length == 0) return new int[0];
+        int len = a.length;
+        int[] left = new int[len];
+        int[] right = new int[len];
+        left[0] = right[len - 1] = 1;
 
+        //下三角
+        for (int i = 1; i < len; i++) {
+            left[i] = left[i - 1] * a[i - 1];
+        }
+        //上三角
+        for (int i = len - 2; i >= 0; i--) {
+            right[i] = right[i + 1] * a[i + 1];
+        }
+		//求乘积
+        int[] ans = new int[len];
+        for (int i = 0; i < len; i++) {
+            ans[i] = left[i] * right[i];
+        }
+        return ans;
+    }
+}
+```
 
+- 时间复杂度 O(N) ，遍历了3次数组，最后一次求乘积可放在上三角的遍历中，可优化为2次。
+- 空间复杂度 O(N) ，使用了2个额外数组，可直接在返回数组中操作，有优化为O(1)。
 
+**优化**
 
+```java
+class Solution {
+    public int[] constructArr(int[] a) {
+        if(a == null || a.length == 0) return new int[0];
+        int[] b = new int[a.length];
+        b[0] = 1;
+        int tmp = 1;
+        //计算下三角
+        for(int i = 1; i < a.length; i++) {
+            b[i] = b[i - 1] * a[i - 1];
+        }
+        //计算上三角
+        for(int i = a.length - 2; i >= 0; i--) {
+            tmp *= a[i + 1];
+            b[i] *= tmp;
+        }
+        return b;
+    }
+}
+```
 
-
-
-
-
+- 时间复杂度 O(N) ： 其中 N 为数组长度，两轮遍历数组 a ，使用 O(N) 时间。
+- 空间复杂度 O(1)： 变量 tmp 使用常数大小额外空间（数组 b 作为返回值，不计入复杂度考虑）。
