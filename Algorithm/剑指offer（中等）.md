@@ -1152,3 +1152,225 @@ class Solution {
 
 - 时间复杂度 O(N) ： 其中 N 为数组长度，两轮遍历数组 a ，使用 O(N) 时间。
 - 空间复杂度 O(1)： 变量 tmp 使用常数大小额外空间（数组 b 作为返回值，不计入复杂度考虑）。
+
+### [013] 从上到下打印二叉树 III
+
+请实现一个函数按照之字形顺序打印二叉树，即第一行按照从左到右的顺序打印，第二层按照从右到左的顺序打印，第三行再按照从左到右的顺序打印，其他行以此类推。
+
+例如:
+
+给定二叉树: [3,9,20,null,null,15,7],
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回其层次遍历结果：
+
+```
+[
+  [3],
+  [20,9],
+  [15,7]
+]
+```
+
+
+提示：
+
+- 节点总数 <= 1000
+
+方法一：层序遍历 + 双端队列
+
+注意：本题额外要求 **打印顺序交替变化**
+
+利用双端队列的两端皆可添加元素的特性，设打印列表（双端队列） `tmp` ，并规定：
+
+- 奇数层 则添加至 `tmp` **尾部** ，
+- 偶数层 则添加至 `tmp` **头部** 。
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        Queue<TreeNode> queue = new LinkedList<>();
+        List<List<Integer>> res = new ArrayList<>();
+        if(root != null) queue.add(root);
+        while(!queue.isEmpty()) {
+            LinkedList<Integer> tmp = new LinkedList<>();
+            for(int i = queue.size(); i > 0; i--) {
+                TreeNode node = queue.poll();
+                if(res.size() % 2 == 0) tmp.addLast(node.val); // 偶数层 -> 队列头部
+                else tmp.addFirst(node.val); // 奇数层 -> 队列尾部
+                if(node.left != null) queue.add(node.left);
+                if(node.right != null) queue.add(node.right);
+            }
+            res.add(tmp);
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(N) ： N 为二叉树的节点数量，即 BFS 需循环 N 次，占用 O(N)；双端队列的队首和队尾的添加和删除操作的时间复杂度均为 O(1)。
+- 空间复杂度 O(N) ： 最差情况下，即当树为满二叉树时，最多有 N/2 个树节点 同时 在 deque 中，使用 O(N) 大小的额外空间。
+
+方法二：层序遍历 + 双端队列（奇偶层逻辑分离）
+
+> 方法一代码简短、容易实现；但需要判断每个节点的所在层奇偶性，即冗余了 N*N* 次判断。通过将奇偶层逻辑拆分，可以消除冗余的判断。
+
+**BFS 循环**： 循环打印奇 / 偶数层，当 deque 为空时跳出；
+
+- 打印奇数层： 从左向右 打印，先左后右 加入下层节点；
+- 若 deque 为空，说明向下无偶数层，则跳出；
+- 打印偶数层： 从右向左 打印，先右后左 加入下层节点；
+
+```java
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        Deque<TreeNode> deque = new LinkedList<>();
+        List<List<Integer>> res = new ArrayList<>();
+        if(root != null) deque.add(root);
+        while(!deque.isEmpty()) {
+            // 打印奇数层
+            List<Integer> tmp = new ArrayList<>();
+            for(int i = deque.size(); i > 0; i--) {
+                // 从左向右打印
+                TreeNode node = deque.removeFirst();
+                tmp.add(node.val);
+                // 先左后右加入下层节点
+                if(node.left != null) deque.addLast(node.left);
+                if(node.right != null) deque.addLast(node.right);
+            }
+            res.add(tmp);
+            if(deque.isEmpty()) break; // 若为空则提前跳出
+            // 打印偶数层
+            tmp = new ArrayList<>();
+            for(int i = deque.size(); i > 0; i--) {
+                // 从右向左打印
+                TreeNode node = deque.removeLast();
+                tmp.add(node.val);
+                // 先右后左加入下层节点
+                if(node.right != null) deque.addFirst(node.right);
+                if(node.left != null) deque.addFirst(node.left);
+            }
+            res.add(tmp);
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(N)：同方法一。
+- 空间复杂度 O(N)：同方法一。
+
+方法三：层序遍历 + 倒序
+
+> 此方法的优点是只用列表即可，无需其他数据结构。
+>
+> 偶数层倒序：若 `res` 的长度为 **奇数** ，说明当前是偶数层，则对 `tmp` 执行 **倒序** 操作。
+
+```java
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        Queue<TreeNode> queue = new LinkedList<>();
+        List<List<Integer>> res = new ArrayList<>();
+        if(root != null) queue.add(root);
+        while(!queue.isEmpty()) {
+            List<Integer> tmp = new ArrayList<>();
+            for(int i = queue.size(); i > 0; i--) {
+                TreeNode node = queue.poll();
+                tmp.add(node.val);
+                if(node.left != null) queue.add(node.left);
+                if(node.right != null) queue.add(node.right);
+            }
+            if(res.size() % 2 == 1) Collections.reverse(tmp);
+            res.add(tmp);
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度 O(N)： N 为二叉树的节点数量，即 BFS 需循环 N 次，占用 O(N) 。共完成 少于 N 个节点的倒序操作，占用 O(N) 。
+空间复杂度 O(N)： 最差情况下，即当树为满二叉树时，最多有 N/2 个树节点同时在 queue 中，使用 O(N) 大小的额外空间。
+
+### [014] 二叉树中和为某一值的路径
+
+输入一棵二叉树和一个整数，打印出二叉树中节点值的和为输入整数的所有路径。从树的根节点开始往下一直到叶节点所经过的节点形成一条路径。 
+
+示例:
+给定如下二叉树，以及目标和 sum = 22，
+
+              5
+             / \
+            4   8
+           /   / \
+          11  13  4
+         /  \    / \
+        7    2  5   1
+返回:
+
+```
+[
+   [5,4,11,2],
+   [5,8,4,5]
+]
+```
+
+
+提示：
+
+- 节点总数 <= 10000
+
+方法一：
+
+> 本问题是典型的二叉树方案搜索问题，使用回溯法解决，其包含 **先序遍历 + 路径记录** 两部分。
+
+**先序遍历**： 按照 “根、左、右” 的顺序，遍历树的所有节点。
+
+**路径记录**： 在先序遍历中，记录从根节点到当前节点的路径。当路径为满足根节点到叶节点形成的路径且各节点值的和等于目标值 sum 时，将此路径加入结果列表。
+
+**递推工作**：
+
+- 路径更新： 将当前节点值 root.val 加入路径 path ；
+- 目标值更新： tar = tar - root.val（即目标值 tar 从 sum 减至 00 ）；
+- 路径记录： 当 ① root 为叶节点 且 ② 路径和等于目标值 ，则将此路径 path 加入 res 。
+- 先序遍历： 递归左 / 右子节点。
+- 路径恢复： 向上回溯前，需要将当前节点从路径 path 中删除，即执行 path.pop() 。
+
+```java
+class Solution {
+    LinkedList<List<Integer>> res = new LinkedList<>();
+    LinkedList<Integer> path = new LinkedList<>(); 
+    public List<List<Integer>> pathSum(TreeNode root, int sum) {
+        recur(root, sum);
+        return res;
+    }
+    void recur(TreeNode root, int tar) {
+        if(root == null) return;
+        path.add(root.val);
+        tar -= root.val;
+        if(tar == 0 && root.left == null && root.right == null)
+            res.add(new LinkedList(path));
+        recur(root.left, tar);
+        recur(root.right, tar);
+        path.removeLast();
+    }
+}
+```
+
+- 时间复杂度 O(N)： N 为二叉树的节点数，先序遍历需要遍历所有节点。
+
+- 空间复杂度 O(N)： 最差情况下，即树退化为链表时，path 存储所有树节点，使用 O(N) 额外空间。
+
