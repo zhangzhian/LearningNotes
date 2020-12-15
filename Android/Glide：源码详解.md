@@ -696,20 +696,129 @@ apply是将默认选项应用于请求，实现如下：
 调用了父类BaseRequestOptions的 apply 方法：
 
 ```java
+  public T apply(@NonNull BaseRequestOptions<?> o) {
+    // 配置选项有很多，包括磁盘缓存策略，加载中的占位图，加载失败的占位图等
+    if (isAutoCloneEnabled) {
+      return clone().apply(o);
+    }
+    BaseRequestOptions<?> other = o;
 
+    if (isSet(other.fields, SIZE_MULTIPLIER)) {
+      sizeMultiplier = other.sizeMultiplier;
+    }
+    if (isSet(other.fields, USE_UNLIMITED_SOURCE_GENERATORS_POOL)) {
+      useUnlimitedSourceGeneratorsPool = other.useUnlimitedSourceGeneratorsPool;
+    }
+    if (isSet(other.fields, USE_ANIMATION_POOL)) {
+      useAnimationPool = other.useAnimationPool;
+    }
+    if (isSet(other.fields, DISK_CACHE_STRATEGY)) {
+      diskCacheStrategy = other.diskCacheStrategy;
+    }
+    if (isSet(other.fields, PRIORITY)) {
+      priority = other.priority;
+    }
+    if (isSet(other.fields, ERROR_PLACEHOLDER)) {
+      errorPlaceholder = other.errorPlaceholder;
+      errorId = 0;
+      fields &= ~ERROR_ID;
+    }
+    if (isSet(other.fields, ERROR_ID)) {
+      errorId = other.errorId;
+      errorPlaceholder = null;
+      fields &= ~ERROR_PLACEHOLDER;
+    }
+    if (isSet(other.fields, PLACEHOLDER)) {
+      placeholderDrawable = other.placeholderDrawable;
+      placeholderId = 0;
+      fields &= ~PLACEHOLDER_ID;
+    }
+    if (isSet(other.fields, PLACEHOLDER_ID)) {
+      placeholderId = other.placeholderId;
+      placeholderDrawable = null;
+      fields &= ~PLACEHOLDER;
+    }
+    if (isSet(other.fields, IS_CACHEABLE)) {
+      isCacheable = other.isCacheable;
+    }
+    if (isSet(other.fields, OVERRIDE)) {
+      overrideWidth = other.overrideWidth;
+      overrideHeight = other.overrideHeight;
+    }
+    if (isSet(other.fields, SIGNATURE)) {
+      signature = other.signature;
+    }
+    if (isSet(other.fields, RESOURCE_CLASS)) {
+      resourceClass = other.resourceClass;
+    }
+    if (isSet(other.fields, FALLBACK)) {
+      fallbackDrawable = other.fallbackDrawable;
+      fallbackId = 0;
+      fields &= ~FALLBACK_ID;
+    }
+    if (isSet(other.fields, FALLBACK_ID)) {
+      fallbackId = other.fallbackId;
+      fallbackDrawable = null;
+      fields &= ~FALLBACK;
+    }
+    if (isSet(other.fields, THEME)) {
+      theme = other.theme;
+    }
+    if (isSet(other.fields, TRANSFORMATION_ALLOWED)) {
+      isTransformationAllowed = other.isTransformationAllowed;
+    }
+    if (isSet(other.fields, TRANSFORMATION_REQUIRED)) {
+      isTransformationRequired = other.isTransformationRequired;
+    }
+    if (isSet(other.fields, TRANSFORMATION)) {
+      transformations.putAll(other.transformations);
+      isScaleOnlyOrNoTransform = other.isScaleOnlyOrNoTransform;
+    }
+    if (isSet(other.fields, ONLY_RETRIEVE_FROM_CACHE)) {
+      onlyRetrieveFromCache = other.onlyRetrieveFromCache;
+    }
+
+    // Applying options with dontTransform() is expected to clear our transformations.
+    if (!isTransformationAllowed) {
+      transformations.clear();
+      fields &= ~TRANSFORMATION;
+      isTransformationRequired = false;
+      fields &= ~TRANSFORMATION_REQUIRED;
+      isScaleOnlyOrNoTransform = true;
+    }
+
+    fields |= other.fields;
+    options.putAll(other.options);
+
+    return selfOrThrowIfLocked();
+  }
 ```
 
-
-
-
-
-
-
-
+配置选项有很多，包括磁盘缓存策略，加载中的占位图，加载失败的占位图等。 到这里 asDrawable() 方法完成了。接下来查看load部分。
 
 #### 2.2 RequestBuilder#load()
 
+```java
+  public RequestBuilder<TranscodeType> load(@Nullable String string) {
+    //调用了 loadGeneric() 方法
+    return loadGeneric(string);
+  }
 
+  @NonNull
+  private RequestBuilder<TranscodeType> loadGeneric(@Nullable Object model) {
+    // 将传进来的图片资源赋值给了变量 model
+    this.model = model;
+    // isModelSet 标记已经调用过 load() 方法
+    isModelSet = true;
+    return this;
+  }
+```
+
+个方法非常简单，首先调用了 loadGeneric() 方法，然后 loadGeneric() 方法中将传进来的图片资源赋值给了变量 model，最后用 isModelSet 标记已经调用过 load() 方法了。
+
+#### 2.3 总结
+
+load() 方法比较简单，主要是通过前面实例化的 Glide 与 RequestManager 来创建 RequestBuilder，然后将传进来的参数赋值给 model。
 
 ### 3. into()
 
