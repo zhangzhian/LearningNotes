@@ -1480,3 +1480,183 @@ class Solution {
 - 时间复杂度 O(NlogN)
 
 - 空间复杂度 O(N) 
+
+### [016] 剪绳子※
+
+给你一根长度为 n 的绳子，请把绳子剪成整数长度的 m 段（m、n都是整数，n>1并且m>1），每段绳子的长度记为 `k[0],k[1]...k[m-1]` 。请问 `k[0]*k[1]*...*k[m-1]` 可能的最大乘积是多少？例如，当绳子的长度是8时，我们把它剪成长度分别为2、3、3的三段，此时得到的最大乘积是18。
+
+示例 1：
+
+```
+输入: 2
+输出: 1
+解释: 2 = 1 + 1, 1 × 1 = 1
+```
+
+示例 2:
+
+```
+输入: 10
+输出: 36
+解释: 10 = 3 + 3 + 4, 3 × 3 × 4 = 36
+```
+
+提示：
+
+- 2 <= n <= 58
+
+[官方题解](https://leetcode-cn.com/problems/integer-break/solution/zheng-shu-chai-fen-by-leetcode-solution/)
+
+方法一：动态规划
+
+dp定义：dp[i] 表示将正整数 i 拆分成至少两个正整数的和之后，这些正整数的最大乘积。
+
+边界条件：dp[1] = dp[2] = 1，表示长度为 2 的绳子最大乘积为 1；
+
+状态转移方程：`dp[i] = max(dp[i], max((i - j) * j, j * dp[i - j]))`，可以这样理解：
+
+
+![14.jpg](https://pic.leetcode-cn.com/82b25ac6bcb742f31e5202e4af993d98abfea6a0c385379b214440bbb84b9bb4-14.jpg)
+
+```java
+class Solution {
+    public int integerBreak(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 2; i <= n; i++) {
+            int curMax = 0;
+            for (int j = 1; j < i; j++) {
+                curMax = Math.max(curMax, Math.max(j * (i - j), j * dp[i - j]));
+            }
+            dp[i] = curMax;
+        }
+        return dp[n];
+    }
+}
+```
+
+时间复杂度：O(n^2)
+
+空间复杂度：O(n)
+
+方法二：优化的动态规划
+
+```java
+class Solution {
+    public int integerBreak(int n) {
+        if (n < 4) {
+            return n - 1;
+        }
+        int[] dp = new int[n + 1];
+        dp[2] = 1;
+        for (int i = 3; i <= n; i++) {
+            dp[i] = Math.max(Math.max(2 * (i - 2), 2 * dp[i - 2]), Math.max(3 * (i - 3), 3 * dp[i - 3]));
+        }
+        return dp[n];
+    }
+}
+```
+
+时间复杂度：O(n)
+
+空间复杂度：O(n)
+
+方法三：数学
+
+```java
+class Solution {
+    public int integerBreak(int n) {
+        if (n <= 3) {
+            return n - 1;
+        }
+        int quotient = n / 3;
+        int remainder = n % 3;
+        if (remainder == 0) {
+            return (int) Math.pow(3, quotient);
+        } else if (remainder == 1) {
+            return (int) Math.pow(3, quotient - 1) * 4;
+        } else {
+            return (int) Math.pow(3, quotient) * 2;
+        }
+    }
+}
+```
+
+- 时间复杂度：O(1)。涉及到的操作包括计算商和余数，以及幂次运算，时间复杂度都是常数。
+
+- 空间复杂度：O(1)。只需要使用常数复杂度的额外空间。
+
+### [017] 字符串的排列
+
+输入一个字符串，打印出该字符串中字符的所有排列。 
+
+你可以以任意顺序返回这个字符串数组，但里面不能有重复元素。
+
+示例:
+
+```
+输入：s = "abc"
+输出：["abc","acb","bac","bca","cab","cba"]
+```
+
+限制：
+
+- 1 <= s 的长度 <= 8
+
+方法一：
+
+排列方案数量： 对于一个长度为 n 的字符串（假设字符互不重复），其排列共有 n×(n−1)×(n−2)…×2×1 种方案。
+
+![Picture1.png](https://pic.leetcode-cn.com/dc4659dbda6d54f50a8c897647fb7c52e2b8200e741c4d6e25306dfe51f93bb6-Picture1.png)
+
+重复方案与剪枝： 当字符串存在重复字符时，排列方案中也存在重复方案。为排除重复方案，需在固定某位字符时，保证 “每种字符只在此位固定一次” ，即遇到重复字符时不交换，直接跳过。从 DFS 角度看，此操作称为 “剪枝” 。
+
+![Picture2.png](https://pic.leetcode-cn.com/edbbe4db611791ca63e582e8b0c754261e8d7464edace38420ce3087eb96d9a5-Picture2.png)
+
+递归解析：
+
+- **终止条件**： 当 x = len(c) - 1 时，代表所有位已固定（最后一位只有 1 种情况），则将当前组合 c 转化为字符串并加入 res，并返回；
+
+- **递推参数**： 当前固定位 x ；
+
+- **递推工作**： 初始化一个 Set ，用于排除重复的字符；将第 xx 位字符与 i \in [x, len(c)]i∈[x,len(c)] 字符分别交换，并进入下层递归；
+  - 剪枝： 若 c[i] 在 Set 中，代表其是重复字符，因此“剪枝”；
+  - 将 c[i] 加入 Set ，以便之后遇到重复字符时剪枝；
+  - 固定字符： 将字符 c[i] 和 c[x]] 交换，即固定 c[i] 为当前位字符；
+  - 开启下层递归： 调用 dfs(x + 1)) ，即开始固定第 x + 1 个字符；
+  - 还原交换： 将字符 c[i] 和 c[x] 交换（还原之前的交换）；
+
+
+
+```java
+class Solution {
+    List<String> res = new LinkedList<>();
+    char[] c;
+    public String[] permutation(String s) {
+        c = s.toCharArray();
+        dfs(0);
+        return res.toArray(new String[res.size()]);
+    }
+    void dfs(int x) {
+        if(x == c.length - 1) {
+            res.add(String.valueOf(c)); // 添加排列方案
+            return;
+        }
+        HashSet<Character> set = new HashSet<>();
+        for(int i = x; i < c.length; i++) {
+            if(set.contains(c[i])) continue; // 重复，因此剪枝
+            set.add(c[i]);
+            swap(i, x); // 交换，将 c[i] 固定在第 x 位 
+            dfs(x + 1); // 开启固定第 x + 1 位字符
+            swap(i, x); // 恢复交换
+        }
+    }
+    void swap(int a, int b) {
+        char tmp = c[a];
+        c[a] = c[b];
+        c[b] = tmp;
+    }
+}
+```
+
+时间复杂度 O(N!) ： 
+空间复杂度 O(N^2) ： 全排列的递归深度为 N ，系统累计使用栈空间大小为 O(N) ；递归中辅助 Set 累计存储的字符数量最多为 N + (N-1) + ... + 2 + 1 = (N+1)N/2，即占用 O(N^2)的额外空间。
