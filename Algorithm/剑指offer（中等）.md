@@ -1831,37 +1831,232 @@ class Solution {
 
 - 空间复杂度为 O(N)，这里用了滚动数组，动态规划部分的空间代价是 O(1) 的，但是这里用了一个临时变量把数字转化成了字符串，故空间复杂度也是N。
 
+### [020] 二叉搜索树的后序遍历序列
+
+输入一个整数数组，判断该数组是不是某二叉搜索树的后序遍历结果。如果是则返回 true，否则返回 false。假设输入的数组的任意两个数字都互不相同。
+
+ 
+
+参考以下这颗二叉搜索树：
+
+         5
+        / \
+       2   6
+      / \
+     1   3
+
+示例 1：
+
+```
+输入: [1,6,3,2,5]
+输出: false
+```
+
+示例 2：
+
+```
+输入: [1,3,2,6,5]
+输出: true
+```
 
 
+提示：
 
+- 数组长度 <= 1000
 
+方法一：递归分治
 
+后序遍历定义： [ 左子树 | 右子树 | 根节点 ] ，即遍历顺序为 “左、右、根” 。
 
+二叉搜索树定义： 左子树中所有节点的值 < 根节点的值；右子树中所有节点的值 > 根节点的值；其左、右子树也分别为二叉搜索树。
 
+根据二叉搜索树的定义，可以通过递归，判断所有子树的 **正确性** （即其后序遍历是否满足二叉搜索树的定义） ，若所有子树都正确，则此序列为二叉搜索树的后序遍历。
 
+```java
+class Solution {
+    public boolean verifyPostorder(int[] postorder) {
+        return recur(postorder, 0, postorder.length - 1);
+    }
+    boolean recur(int[] postorder, int i, int j) {
+        if(i >= j-1) return true;//任意两个数都可以构成搜索树的后序遍历
+        int p = i;
+        while(postorder[p] < postorder[j]) p++;
+        int m = p;
+        while(postorder[p] > postorder[j]) p++;
+        return p == j && recur(postorder, i, m - 1) && recur(postorder, m, j - 1);
+    }
+}
+```
 
+- 时间复杂度 O(N^2)： 每次调用 `recur(i,j) `减去一个根节点，因此递归占用 O(N) ；最差情况下（即当树退化为链表），每轮递归都需遍历树所有节点，占用 O(N) 。
+- 空间复杂度 O(N) ： 最差情况下（即当树退化为链表），递归深度将达到 N 。
 
+方法二：辅助单调栈
 
+后序遍历倒序： [ 根节点 | 右子树 | 左子树 ] 。类似 先序遍历的镜像 ，即先序遍历为 “根、左、右” 的顺序，而后序遍历的倒序为 “根、右、左” 顺序。
 
+[参考](https://leetcode-cn.com/problems/er-cha-sou-suo-shu-de-hou-xu-bian-li-xu-lie-lcof/solution/mian-shi-ti-33-er-cha-sou-suo-shu-de-hou-xu-bian-6/)
 
+算法流程：
 
+1. 初始化： 单调栈 stack，父节点值 root=+∞ （初始值为正无穷大，可把树的根节点看为此无穷大节点的左孩子）；
+2. 倒序遍历 postorder ：记每个节点为 r_i
+   - 判断： 若 r_i>root ，说明此后序遍历序列不满足二叉搜索树定义，直接返回 false
+   - 更新父节点 root ： 当栈不为空 且 r_i<stack.peek() 时，循环执行出栈，并将出栈节点赋给 root
+   - 入栈： 将当前节点 r_i入栈
+3. 若遍历完成，则说明后序遍历满足二叉搜索树定义，返回 true 。
 
+```java
+class Solution { 
+    public boolean verifyPostorder(int[] postorder) {
+        Stack<Integer> stack = new Stack<>();
+        int root = Integer.MAX_VALUE;
+        for(int i = postorder.length - 1; i >= 0; i--) {
+            if(postorder[i] > root) return false;
+            while(!stack.isEmpty() && stack.peek() > postorder[i])
+            	root = stack.pop();
+            stack.add(postorder[i]);
+        }
+        return true;
+    }
+}
+```
 
+- 时间复杂度 O(N)： 遍历 postorder 所有节点，各节点均入栈 / 出栈一次，使用 O(N) 时间。
+- 空间复杂度 O(N)： 最差情况下，单调栈 stackstack 存储所有节点，使用 O(N) 额外空间。
 
+### [021] 机器人的运动范围
 
+地上有一个m行n列的方格，从坐标 [0,0] 到坐标 [m-1,n-1] 。一个机器人从坐标 [0, 0] 的格子开始移动，它每次可以向左、右、上、下移动一格（不能移动到方格外），也不能进入行坐标和列坐标的数位之和大于k的格子。例如，当k为18时，机器人能够进入方格 [35, 37] ，因为3+5+3+7=18。但它不能进入方格 [35, 38]，因为3+5+3+8=19。请问该机器人能够到达多少个格子？
 
+示例 1：
 
+```
+输入：m = 2, n = 3, k = 1
+输出：3
+```
 
+示例 2：
 
+```
+输入：m = 3, n = 1, k = 0
+输出：1
+```
 
+提示：
 
+- 1 <= n,m <= 100
+- 0 <= k <= 20
 
+方法一：广度优先搜索
 
+将行坐标和列坐标数位之和大于 `k` 的格子看作障碍物，那么这道题就是一道传统的搜索题目。
 
+搜索的过程中搜索方向可以缩减为向右和向下，而不必再向上和向左进行搜索。
 
+```java
+class Solution {
+    public int movingCount(int m, int n, int k) {
+        if (k == 0) {
+            return 1;
+        }
+        Queue<int[]> queue = new LinkedList<int[]>();
+        // 向右和向下的方向数组
+        int[] dx = {0, 1};
+        int[] dy = {1, 0};
+        boolean[][] vis = new boolean[m][n];
+        queue.offer(new int[]{0, 0});
+        vis[0][0] = true;
+        int ans = 1;
+        while (!queue.isEmpty()) {
+            int[] cell = queue.poll();
+            int x = cell[0], y = cell[1];
+            for (int i = 0; i < 2; ++i) {
+                int tx = dx[i] + x;
+                int ty = dy[i] + y;
+                if (tx < 0 || tx >= m || ty < 0 || ty >= n || vis[tx][ty] || get(tx) + get(ty) > k) {
+                    continue;
+                }
+                queue.offer(new int[]{tx, ty});
+                vis[tx][ty] = true;
+                ans++;
+            }
+        }
+        return ans;
+    }
 
+    private int get(int x) {
+        int res = 0;
+        while (x != 0) {
+            res += x % 10;
+            x /= 10;
+        }
+        return res;
+    }
+}
+```
 
+- 时间复杂度：O(mn)，其中 m 为方格的行数，n 为方格的列数。考虑所有格子都能进入，那么搜索的时候一个格子最多会被访问的次数为常数，所以时间复杂度为 O(2mn)=O(mn)。
 
+- 空间复杂度：O(mn)，其中 m 为方格的行数，n 为方格的列数。搜索的时候需要一个大小为 O(mn) 的标记结构用来标记每个格子是否被走过。
+
+方法二：递推
+
+方法一提到搜索的方向只需要朝下或朝右，可以得出一种递推的求解方法。
+
+定义 `vis[i][j]` 为 `(i, j)`坐标是否可达，如果可达返回 1，否则返回 0。
+
+首先 `(i, j)` 本身需要可以进入，因此需要先判断 i 和 j 的数位之和是否大于 k ，如果大于的话直接设置 `vis[i][j]` 为不可达即可。
+
+否则，前面提到搜索方向只需朝下或朝右，因此 `(i, j)` 的格子只会从 `(i - 1, j)` 或者 `(i, j - 1)` 两个格子走过来（不考虑边界条件），那么 `vis[i][j]` 是否可达的状态则可由如下公式计算得到：
+
+`vis[i][j]=vis[i−1][j] or vis[i][j−1]`
+
+即只要有一个格子可达，那么 `(i, j)` 这个格子就是可达的，因此我们只要遍历所有格子，递推计算出它们是否可达然后用变量 ans 记录可达的格子数量即可。
+
+初始条件 `vis[i][j] = 1` ，递推计算的过程中注意边界的处理。
+
+```java
+class Solution {
+    public int movingCount(int m, int n, int k) {
+        if (k == 0) {
+            return 1;
+        }
+        boolean[][] vis = new boolean[m][n];
+        int ans = 1;
+        vis[0][0] = true;
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if ((i == 0 && j == 0) || get(i) + get(j) > k) {
+                    continue;
+                }
+                // 边界判断
+                if (i - 1 >= 0) {
+                    vis[i][j] |= vis[i - 1][j];
+                }
+                if (j - 1 >= 0) {
+                    vis[i][j] |= vis[i][j - 1];
+                }
+                ans += vis[i][j] ? 1 : 0;
+            }
+        }
+        return ans;
+    }
+
+    private int get(int x) {
+        int res = 0;
+        while (x != 0) {
+            res += x % 10;
+            x /= 10;
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度：O(mn)，其中 m 为方格的行数， n 为方格的列数。一共有 O(mn) 个状态需要计算，每个状态递推计算的时间复杂度为 O(1)，所以总时间复杂度为 O(mn)。
+
+- 空间复杂度：O(mn)，其中 m 为方格的行数，n 为方格的列数。我们需要 O(mn) 大小的结构来记录每个位置是否可达。
 
 
 
