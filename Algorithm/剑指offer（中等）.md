@@ -2058,9 +2058,87 @@ class Solution {
 
 - 空间复杂度：O(mn)，其中 m 为方格的行数，n 为方格的列数。我们需要 O(mn) 大小的结构来记录每个位置是否可达。
 
+### [022] 队列的最大值
+
+请定义一个队列并实现函数 max_value 得到队列里的最大值，要求函数max_value、push_back 和 pop_front 的**均摊**时间复杂度都是O(1)。
+
+若队列为空，pop_front 和 max_value 需要返回 -1
+
+示例 1：
+
+```
+输入: 
+["MaxQueue","push_back","push_back","max_value","pop_front","max_value"]
+[[],[1],[2],[],[],[]]
+输出: [null,null,null,2,1,2]
+```
+
+示例 2：
+
+```
+输入: 
+["MaxQueue","pop_front","max_value"]
+[[],[],[]]
+输出: [null,-1,-1]
+```
 
 
+限制：
+
+- 1 <= push_back,pop_front,max_value的总操作数 <= 10000
+- 1 <= value <= 10^5
+
+方法一：维护一个单调的双端队列
+
+```java
+class MaxQueue {
+    Queue<Integer> q;
+    Deque<Integer> d;
+
+    public MaxQueue() {
+        q = new LinkedList<Integer>();
+        d = new LinkedList<Integer>();
+    }
+    
+    public int max_value() {
+        if (d.isEmpty()) {
+            return -1;
+        }
+        return d.peekFirst();
+    }
+    
+    public void push_back(int value) {
+        while (!d.isEmpty() && d.peekLast() < value) {
+            d.pollLast();
+        }
+        d.offerLast(value);
+        q.offer(value);
+    }
+    
+    public int pop_front() {
+        if (q.isEmpty()) {
+            return -1;
+        }
+        int ans = q.poll();
+        if (ans == d.peekFirst()) {
+            d.pollFirst();
+        }
+        return ans;
+    }
+}
 
 
+/**
+ * Your MaxQueue object will be instantiated and called as such:
+ * MaxQueue obj = new MaxQueue();
+ * int param_1 = obj.max_value();
+ * obj.push_back(value);
+ * int param_3 = obj.pop_front();
+ */
+```
 
+- 时间复杂度：O(1)（插入，删除，求最大值）
+  删除操作于求最大值操作显然只需要 O(1) 的时间。
+  而插入操作虽然看起来有循环，做一个插入操作时最多可能会有 n 次出队操作。但要注意，由于每个数字只会出队一次，因此对于所有的 n 个数字的插入过程，对应的所有出队操作也不会大于 n 次。因此将出队的时间均摊到每个插入操作上，时间复杂度为 O(1)。
+- 空间复杂度：O(n)，需要用队列存储所有插入的元素。
 
