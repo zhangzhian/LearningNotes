@@ -2142,3 +2142,178 @@ class MaxQueue {
   而插入操作虽然看起来有循环，做一个插入操作时最多可能会有 n 次出队操作。但要注意，由于每个数字只会出队一次，因此对于所有的 n 个数字的插入过程，对应的所有出队操作也不会大于 n 次。因此将出队的时间均摊到每个插入操作上，时间复杂度为 O(1)。
 - 空间复杂度：O(n)，需要用队列存储所有插入的元素。
 
+### [023] 树的子结构
+
+输入两棵二叉树A和B，判断B是不是A的子结构。(约定空树不是任意一个树的子结构)
+
+B是A的子结构， 即 A中有出现和B相同的结构和节点值。
+
+例如:
+给定的树 A:
+
+         3
+        / \
+       4   5
+      / \
+     1   2
+
+给定的树 B：
+
+```
+   4 
+  /
+ 1
+```
+
+返回 true，因为 B 与 A 的一个子树拥有相同的结构和节点值。
+
+示例 1：
+
+```
+输入：A = [1,2,3], B = [3,1]
+输出：false
+```
+
+示例 2：
+
+```
+输入：A = [3,4,5,1,2], B = [4,1]
+输出：true
+```
+
+限制：
+
+- 0 <= 节点个数 <= 10000
+
+方法一：
+
+若树 B 是树 A 的子结构，则子结构的根节点可能为树 A 的任意一个节点。因此，判断树 B 是否是树 A 的子结构，需完成以下两步工作：
+
+- 先序遍历树 A 中的每个节点 n_A；（对应函数 isSubStructure(A, B)）
+- 判断树 A 中 以 n_A为根节点的子树 是否包含树 B 。（对应函数 recur(A, B)）
+
+![Picture1.png](https://pic.leetcode-cn.com/27d9f65b79ae4982fb58835d468c2a23ec2ac399ba5f38138f49538537264d03-Picture1.png)
+
+**recur(A, B)** 函数：
+
+终止条件：
+
+- 当节点 B 为空：说明树 B 已匹配完成（越过叶子节点），因此返回 true ；
+- 当节点 A 为空：说明已经越过树 A 叶子节点，即匹配失败，返回 false ；
+- 当节点 A 和 B 的值不同：说明匹配失败，返回 false ；
+
+返回值：
+
+- 判断 A 和 B 的左子节点是否相等，即 recur(A.left, B.left) ；
+- 判断 A 和 B 的右子节点是否相等，即 recur(A.right, B.right) ；
+
+**isSubStructure(A, B)** 函数：
+
+特例处理： 当 树 A 为空 或 树 B 为空 时，直接返回 false ；
+
+返回值： 若树 B 是树 A 的子结构，则必满足以下三种情况之一，因此用或 || 连接；
+
+- 以 节点 A 为根节点的子树 包含树 B ，对应 recur(A, B)；
+- 树 B 是 树 A 左子树 的子结构，对应 isSubStructure(A.left, B)；
+- 树 B 是 树 A 右子树 的子结构，对应 isSubStructure(A.right, B)；
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public boolean isSubStructure(TreeNode A, TreeNode B) {
+        return (A != null && B != null) 
+            	&& (recur(A, B) 
+                || isSubStructure(A.left, B) 
+                || isSubStructure(A.right, B));
+    }
+    boolean recur(TreeNode A, TreeNode B) {
+        if(B == null) return true;
+        if(A == null || A.val != B.val) return false;
+        return recur(A.left, B.left) && recur(A.right, B.right);
+    }
+}
+```
+
+- 时间复杂度 O(MN) ： 其中 M,N 分别为树 A 和 树 B 的节点数量；先序遍历树 A 占用 O(M) ，每次调用 recur(A, B) 判断占用 O(N)。
+- 空间复杂度 O(M) ： 当树 A 和树 B 都退化为链表时，递归调用深度最大。当 M≤N 时，遍历树 A 与递归判断的总递归深度为 M ；当 M>N 时，最差情况为遍历至树 A 叶子节点，此时总递归深度为 M。
+
+### [024] 最长不含重复字符的子字符串
+
+请从字符串中找出一个最长的不包含重复字符的子字符串，计算该最长子字符串的长度。
+
+示例 1:
+
+```
+输入: "abcabcbb"
+输出: 3 
+解释: 因为无重复字符的最长子串是 "abc"，所以其长度为 3。
+```
+
+示例 2:
+
+```
+输入: "bbbbb"
+输出: 1
+解释: 因为无重复字符的最长子串是 "b"，所以其长度为 1。
+```
+
+示例 3:
+
+```
+输入: "pwwkew"
+输出: 3
+解释: 因为无重复字符的最长子串是 "wke"，所以其长度为 3。
+     请注意，你的答案必须是 子串 的长度，"pwke" 是一个子序列，不是子串。
+```
+
+
+提示：
+
+- s.length <= 40000
+
+方法一：滑动窗口+HashMap
+
+```java
+class Solution {
+    public int lengthOfLongestSubstring(String s) {
+        //使用哈希表map统计各字符最后一次出现的索引位置
+        Map<Character, Integer> dic = new HashMap<>();
+        int i = -1, res = 0;
+        for(int j = 0; j < s.length(); j++) {
+            if(dic.containsKey(s.charAt(j)))
+                i = Math.max(i, dic.get(s.charAt(j))); // 更新左指针 i
+            dic.put(s.charAt(j), j); // 哈希表记录
+            res = Math.max(res, j - i); // 更新结果
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(N) ： 其中 N 为字符串长度
+- 空间复杂度 O(1) ： 字符的 ASCII 码范围为0 ~ 127 ，哈希表 dic 最多使用 O(128) = O(1) 大小的额外空间。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
