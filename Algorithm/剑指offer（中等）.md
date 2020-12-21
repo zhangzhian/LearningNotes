@@ -2286,12 +2286,14 @@ class Solution {
     public int lengthOfLongestSubstring(String s) {
         //使用哈希表map统计各字符最后一次出现的索引位置
         Map<Character, Integer> dic = new HashMap<>();
+        // 左指针 i, 最大值 res
         int i = -1, res = 0;
         for(int j = 0; j < s.length(); j++) {
-            if(dic.containsKey(s.charAt(j)))
-                i = Math.max(i, dic.get(s.charAt(j))); // 更新左指针 i
-            dic.put(s.charAt(j), j); // 哈希表记录
-            res = Math.max(res, j - i); // 更新结果
+            char c = s.charAt(j);
+            if(dic.containsKey(c))//如果存在当前字符c
+                i = Math.max(i, dic.get(c)); // 更新左指针 i
+            dic.put(c, j); // 哈希表记录
+            res = Math.max(res, j - i); // 更新结果，j代表右指针
         }
         return res;
     }
@@ -2301,15 +2303,73 @@ class Solution {
 - 时间复杂度 O(N) ： 其中 N 为字符串长度
 - 空间复杂度 O(1) ： 字符的 ASCII 码范围为0 ~ 127 ，哈希表 dic 最多使用 O(128) = O(1) 大小的额外空间。
 
+### [025] 矩阵中的路径
 
+请设计一个函数，用来判断在一个矩阵中是否存在一条包含某字符串所有字符的路径。路径可以从矩阵中的任意一格开始，每一步可以在矩阵中向左、右、上、下移动一格。如果一条路径经过了矩阵的某一格，那么该路径不能再次进入该格子。例如，在下面的3×4的矩阵中包含一条字符串“bfce”的路径。
 
+```
+[["a","b","c","e"],
+["s","f","c","s"],
+["a","d","e","e"]]
+```
 
+但矩阵中不包含字符串“abfb”的路径，因为字符串的第一个字符b占据了矩阵中的第一行第二个格子之后，路径不能再次进入这个格子。 
 
+示例 1：
 
+```
+输入：board = [["A","B","C","E"],["S","F","C","S"],["A","D","E","E"]], word = "ABCCED"
+输出：true
+```
 
+示例 2：
 
+```
+输入：board = [["a","b"],["c","d"]], word = "abcd"
+输出：false
+```
 
+提示：
 
+- 1 <= board.length <= 200
+- 1 <= board[i].length <= 200
+
+方法一：DFS + 剪枝
+
+![Picture0.png](https://pic.leetcode-cn.com/1604944042-glmqJO-Picture0.png)
+
+```java
+class Solution {
+    public boolean exist(char[][] board, String word) {
+        char[] words = word.toCharArray();
+        for(int i = 0; i < board.length; i++) {
+            for(int j = 0; j < board[0].length; j++) {
+                if(dfs(board, words, i, j, 0)) return true;
+            }
+        }
+        return false;
+    }
+    boolean dfs(char[][] board, char[] word, int i, int j, int k) {
+        if(i >= board.length || i < 0 || j < 0
+           || j >= board[0].length
+           || board[i][j] != word[k]) return false;
+        if(k == word.length - 1) return true;
+        board[i][j] = '\0';//临时赋值成‘/’，用来标记已访问的元素
+        boolean res = dfs(board, word, i + 1, j, k + 1) 
+            || dfs(board, word, i - 1, j, k + 1) 
+            || dfs(board, word, i, j + 1, k + 1) 
+            || dfs(board, word, i , j - 1, k + 1);
+        board[i][j] = word[k];
+        return res;
+    }
+}
+```
+
+> *M*,*N* 分别为矩阵行列大小， K 为字符串 `word` 长度。
+
+- 时间复杂度 O(3^KMN)：最差情况下，需要遍历矩阵中长度为 K 字符串的所有方案，时间复杂度为 O(3^K)；矩阵中共有 MN 个起点，时间复杂度为 O(MN) 。
+
+- 空间复杂度 O(K) ： 搜索过程中的递归深度不超过 K ，因此系统因函数调用累计使用的栈空间占用 O(K)（因为函数返回后，系统调用的栈空间会释放）。最坏情况下 K = MN，递归深度为 MN，此时系统栈使用 O(MN)的额外空间。
 
 
 
