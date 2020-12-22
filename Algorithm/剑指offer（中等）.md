@@ -2371,9 +2371,138 @@ class Solution {
 
 - 空间复杂度 O(K) ： 搜索过程中的递归深度不超过 K ，因此系统因函数调用累计使用的栈空间占用 O(K)（因为函数返回后，系统调用的栈空间会释放）。最坏情况下 K = MN，递归深度为 MN，此时系统栈使用 O(MN)的额外空间。
 
+### [026] 二维数组中的查找
+
+在一个 n * m 的二维数组中，每一行都按照从左到右递增的顺序排序，每一列都按照从上到下递增的顺序排序。请完成一个高效的函数，输入这样的一个二维数组和一个整数，判断数组中是否含有该整数。
+
+ 示例:
+
+现有矩阵 matrix 如下：
+
+```
+[
+  [1,   4,  7, 11, 15],
+  [2,   5,  8, 12, 19],
+  [3,   6,  9, 16, 22],
+  [10, 13, 14, 17, 24],
+  [18, 21, 23, 26, 30]
+]
+```
+
+给定 target = 5，返回 true。
+
+给定 target = 20，返回 false。
+
+限制：
+
+- 0 <= n <= 1000
+
+- 0 <= m <= 1000
+
+方法一：暴力
+
+```java
+class Solution {
+    public boolean findNumberIn2DArray(int[][] matrix, int target) {
+        if (matrix == null || matrix.length == 0 || matrix[0].length == 0) {
+            return false;
+        }
+        int rows = matrix.length, columns = matrix[0].length;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < columns; j++) {
+                if (matrix[i][j] == target) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
+```
+
+时间复杂度：O(nm)。二维数组中的每个元素都被遍历，因此时间复杂度为二维数组的大小。
+空间复杂度：O(1)。
+
+方法二：线性查找
+
+算法流程：
+
+从矩阵 matrix 左下角元素（索引设为 (i, j) ）开始遍历，并与目标值对比：
+
+- 当 `matrix[i][j] > target` 时，执行 i-- ，即消去第 i 行元素；
+- 当 `matrix[i][j] < target` 时，执行 j++ ，即消去第 j 列元素；
+- 当 `matrix[i][j] = target` 时，返回 true，代表找到目标值。
+
+若行索引或列索引越界，则代表矩阵中无目标值，返回 false。
+
+> 右上角同理
+
+```java
+class Solution {
+    public boolean findNumberIn2DArray(int[][] matrix, int target) {
+        int i = matrix.length - 1, j = 0;
+        while(i >= 0 && j < matrix[0].length)
+        {
+            if(matrix[i][j] > target) i--;
+            else if(matrix[i][j] < target) j++;
+            else return true;
+        }
+        return false;
+    }
+}
+
+```
+
+时间复杂度：O(n+m)。访问到的下标的行最多增加 n 次，列最多减少 m 次，因此循环体最多执行 n + m 次。
+空间复杂度：O(1)。
+
+### [027] 数字序列中某一位的数字
+
+数字以0123456789101112131415…的格式序列化到一个字符序列中。在这个序列中，第5位（从下标0开始计数）是5，第13位是1，第19位是4，等等。
+
+请写一个函数，求任意第n位对应的数字。
+
+示例 1：
+
+```
+输入：n = 3
+输出：3
+```
+
+示例 2：
+
+```
+输入：n = 11
+输出：0
+```
 
 
+限制：
 
+- 0 <= n < 2^31
 
+方法一：
 
+```java
+class Solution {
+    public int findNthDigit(int n) {
+        int digit = 1;
+        long start = 1;
+        long count = 9;
+        while (n > count) { // 1.
+            n -= count;
+            digit += 1;
+            start *= 10;
+            count = digit * start * 9;
+        }
+        long num = start + (n - 1) / digit; // 2.
+        return Long.toString(num).charAt((n - 1) % digit) - '0'; // 3.
+    }
+}
+```
 
+时间复杂度 O(logn)
+
+空间复杂度 O(logn)
+
+### [028] 数值的整数次方
