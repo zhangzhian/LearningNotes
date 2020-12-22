@@ -2622,3 +2622,213 @@ class Solution {
   - 幂运算：查阅资料，提到浮点取幂为 O(1) 。
 - 空间复杂度 O(1)： 变量 a, b, p, x, rem 使用常数大小额外空间。
 
+### [030] 把字符串转换成整数
+
+写一个函数 StrToInt，实现把字符串转换成整数这个功能。不能使用 atoi 或者其他类似的库函数。
+
+首先，该函数会根据需要丢弃无用的开头空格字符，直到寻找到第一个非空格的字符为止。
+
+当我们寻找到的第一个非空字符为正或者负号时，则将该符号与之后面尽可能多的连续数字组合起来，作为该整数的正负号；假如第一个非空字符是数字，则直接将其与之后连续的数字字符组合起来，形成整数。
+
+该字符串除了有效的整数部分之后也可能会存在多余的字符，这些字符可以被忽略，它们对于函数不应该造成影响。
+
+注意：假如该字符串中的第一个非空格字符不是一个有效整数字符、字符串为空或字符串仅包含空白字符时，则你的函数不需要进行转换。
+
+在任何情况下，若函数不能进行有效的转换时，请返回 0。
+
+说明：
+
+假设我们的环境只能存储 32 位大小的有符号整数，那么其数值范围为 [−231,  231 − 1]。如果数值超过这个范围，请返回  INT_MAX (231 − 1) 或 INT_MIN (−231) 。
+
+示例 1:
+
+```java
+输入: "42"
+输出: 42
+```
+
+示例 2:
+
+```
+输入: "   -42"
+输出: -42
+解释: 第一个非空白字符为 '-', 它是一个负号。
+     我们尽可能将负号与后面所有连续出现的数字组合起来，最后得到 -42 。
+```
+
+示例 3:
+
+```
+输入: "4193 with words"
+输出: 4193
+解释: 转换截止于数字 '3' ，因为它的下一个字符不为数字。
+```
+
+示例 4:
+
+```
+输入: "words and 987"
+输出: 0
+解释: 第一个非空字符是 'w', 但它不是数字或正、负号。
+     因此无法执行有效的转换。
+```
+
+示例 5:
+
+```
+输入: "-91283472332"
+输出: -2147483648
+解释: 数字 "-91283472332" 超过 32 位有符号整数范围。 
+     因此返回 INT_MIN (−2^31) 。
+```
+
+方法一：
+
+[分析](https://leetcode-cn.com/problems/ba-zi-fu-chuan-zhuan-huan-cheng-zheng-shu-lcof/solution/mian-shi-ti-67-ba-zi-fu-chuan-zhuan-huan-cheng-z-4/)
+
+```java
+class Solution {
+    public int strToInt(String str) {
+        int res = 0, bndry = Integer.MAX_VALUE / 10;
+        int i = 0, sign = 1, length = str.length();
+        if(length == 0) return 0;
+        while(str.charAt(i) == ' ')
+            if(++i == length) return 0;
+        if(str.charAt(i) == '-') sign = -1;
+        if(str.charAt(i) == '-' || str.charAt(i) == '+') i++;
+        for(int j = i; j < length; j++) {
+            if(str.charAt(j) < '0' || str.charAt(j) > '9') break;
+            if(res > bndry || res == bndry && str.charAt(j) > '7')
+                return sign == 1 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+            res = res * 10 + (str.charAt(j) - '0');
+        }
+        return sign * res;
+    }
+}
+```
+
+- 时间复杂度 O(N) ： 其中 N 为字符串长度，线性遍历字符串占用 O(N) 时间。
+- 空间复杂度 O(N) ： 删除首尾空格后需建立新字符串，最差情况下占用 O(N) 额外空间。
+
+### [031] 表示数值的字符串
+
+请实现一个函数用来判断字符串是否表示数值（包括整数和小数）。例如，字符串"+100"、"5e2"、"-123"、"3.1416"、"-1E-16"、"0123"都表示数值，但"12e"、"1a3.14"、"1.2.3"、"+-5"及"12e+5.4"都不是。
+
+方法一：
+
+[分析](https://leetcode-cn.com/problems/biao-shi-shu-zhi-de-zi-fu-chuan-lcof/solution/biao-shi-shu-zhi-de-zi-fu-chuan-by-leetcode-soluti/)
+
+```java
+class Solution {
+    public boolean isNumber(String s) {
+        Map<State, Map<CharType, State>> transfer = new HashMap<State, Map<CharType, State>>();
+        Map<CharType, State> initialMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_SPACE, State.STATE_INITIAL);
+            put(CharType.CHAR_NUMBER, State.STATE_INTEGER);
+            put(CharType.CHAR_POINT, State.STATE_POINT_WITHOUT_INT);
+            put(CharType.CHAR_SIGN, State.STATE_INT_SIGN);
+        }};
+        transfer.put(State.STATE_INITIAL, initialMap);
+        Map<CharType, State> intSignMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_INTEGER);
+            put(CharType.CHAR_POINT, State.STATE_POINT_WITHOUT_INT);
+        }};
+        transfer.put(State.STATE_INT_SIGN, intSignMap);
+        Map<CharType, State> integerMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_INTEGER);
+            put(CharType.CHAR_EXP, State.STATE_EXP);
+            put(CharType.CHAR_POINT, State.STATE_POINT);
+            put(CharType.CHAR_SPACE, State.STATE_END);
+        }};
+        transfer.put(State.STATE_INTEGER, integerMap);
+        Map<CharType, State> pointMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_FRACTION);
+            put(CharType.CHAR_EXP, State.STATE_EXP);
+            put(CharType.CHAR_SPACE, State.STATE_END);
+        }};
+        transfer.put(State.STATE_POINT, pointMap);
+        Map<CharType, State> pointWithoutIntMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_FRACTION);
+        }};
+        transfer.put(State.STATE_POINT_WITHOUT_INT, pointWithoutIntMap);
+        Map<CharType, State> fractionMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_FRACTION);
+            put(CharType.CHAR_EXP, State.STATE_EXP);
+            put(CharType.CHAR_SPACE, State.STATE_END);
+        }};
+        transfer.put(State.STATE_FRACTION, fractionMap);
+        Map<CharType, State> expMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_EXP_NUMBER);
+            put(CharType.CHAR_SIGN, State.STATE_EXP_SIGN);
+        }};
+        transfer.put(State.STATE_EXP, expMap);
+        Map<CharType, State> expSignMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_EXP_NUMBER);
+        }};
+        transfer.put(State.STATE_EXP_SIGN, expSignMap);
+        Map<CharType, State> expNumberMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_NUMBER, State.STATE_EXP_NUMBER);
+            put(CharType.CHAR_SPACE, State.STATE_END);
+        }};
+        transfer.put(State.STATE_EXP_NUMBER, expNumberMap);
+        Map<CharType, State> endMap = new HashMap<CharType, State>() {{
+            put(CharType.CHAR_SPACE, State.STATE_END);
+        }};
+        transfer.put(State.STATE_END, endMap);
+
+        int length = s.length();
+        State state = State.STATE_INITIAL;
+
+        for (int i = 0; i < length; i++) {
+            CharType type = toCharType(s.charAt(i));
+            if (!transfer.get(state).containsKey(type)) {
+                return false;
+            } else {
+                state = transfer.get(state).get(type);
+            }
+        }
+        return state == State.STATE_INTEGER || state == State.STATE_POINT || state == State.STATE_FRACTION || state == State.STATE_EXP_NUMBER || state == State.STATE_END;
+    }
+
+    public CharType toCharType(char ch) {
+        if (ch >= '0' && ch <= '9') {
+            return CharType.CHAR_NUMBER;
+        } else if (ch == 'e' || ch == 'E') {
+            return CharType.CHAR_EXP;
+        } else if (ch == '.') {
+            return CharType.CHAR_POINT;
+        } else if (ch == '+' || ch == '-') {
+            return CharType.CHAR_SIGN;
+        } else if (ch == ' ') {
+            return CharType.CHAR_SPACE;
+        } else {
+            return CharType.CHAR_ILLEGAL;
+        }
+    }
+
+    enum State {
+        STATE_INITIAL,
+        STATE_INT_SIGN,
+        STATE_INTEGER,
+        STATE_POINT,
+        STATE_POINT_WITHOUT_INT,
+        STATE_FRACTION,
+        STATE_EXP,
+        STATE_EXP_SIGN,
+        STATE_EXP_NUMBER,
+        STATE_END,
+    }
+
+    enum CharType {
+        CHAR_NUMBER,
+        CHAR_EXP,
+        CHAR_POINT,
+        CHAR_SIGN,
+        CHAR_SPACE,
+        CHAR_ILLEGAL,
+    }
+}
+```
+
+时间复杂度：O(N)，其中 N 为字符串的长度。我们需要遍历字符串的每个字符，其中状态转移所需的时间复杂度为 O(1)。
+空间复杂度：O(1)。只需要创建固定大小的状态转移表。
