@@ -2483,6 +2483,8 @@ class Solution {
 
 方法一：
 
+[分析](https://leetcode-cn.com/problems/shu-zi-xu-lie-zhong-mou-yi-wei-de-shu-zi-lcof/solution/mian-shi-ti-44-shu-zi-xu-lie-zhong-mou-yi-wei-de-6/)
+
 ```java
 class Solution {
     public int findNthDigit(int n) {
@@ -2506,3 +2508,112 @@ class Solution {
 空间复杂度 O(logn)
 
 ### [028] 数值的整数次方
+
+实现函数`double Power(double base, int exponent)`，求base的exponent次方。不得使用库函数，同时不需要考虑大数问题。
+
+示例 1:
+
+```
+输入: 2.00000, 10
+输出: 1024.00000
+```
+
+示例 2:
+
+```
+输入: 2.10000, 3
+输出: 9.26100
+```
+
+示例 3:
+
+```
+输入: 2.00000, -2
+输出: 0.25000
+解释: 2-2 = 1/22 = 1/4 = 0.25
+```
+
+
+说明:
+
+- -100.0 < x < 100.0
+- n 是 32 位有符号整数，其数值范围是 [−231, 231 − 1] 。
+
+方法一：
+
+> 最简单的方法是通过循环将 nn 个 xx 乘起来，依次求 x^1, x^2, ..., x^{n-1}, x^nx，时间复杂度为 O(n)。
+> 快速幂法可将时间复杂度降低至 O(logn) 
+
+[分析](https://leetcode-cn.com/problems/shu-zhi-de-zheng-shu-ci-fang-lcof/solution/mian-shi-ti-16-shu-zhi-de-zheng-shu-ci-fang-kuai-s/)
+
+```java
+class Solution {
+    public double myPow(double x, int n) {
+        if(x == 0) return 0;
+        long b = n;
+        double res = 1.0;
+        if(b < 0) {
+            x = 1 / x;
+            b = -b;
+        }
+        while(b > 0) {
+            if((b & 1) == 1) res *= x;
+            x *= x;
+            b >>= 1;
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度 O(logn) ： 二分的时间复杂度为对数级别。
+空间复杂度 O(1) ： 占用常数大小额外空间。
+
+### [029] 剪绳子 II
+
+给你一根长度为 n 的绳子，请把绳子剪成整数长度的 m 段（m、n都是整数，n>1并且m>1），每段绳子的长度记为 `k[0],k[1]...k[m - 1]` 。请问 `k[0]*k[1]*...*k[m - 1]` 可能的最大乘积是多少？例如，当绳子的长度是8时，我们把它剪成长度分别为2、3、3的三段，此时得到的最大乘积是18。
+
+答案需要取模 1e9+7（1000000007），如计算初始结果为：1000000008，请返回 1。
+
+示例 1：
+
+```
+输入: 2
+输出: 1
+解释: 2 = 1 + 1, 1 × 1 = 1
+```
+
+示例 2:
+
+```
+输入: 10
+输出: 36
+解释: 10 = 3 + 3 + 4, 3 × 3 × 4 = 36
+```
+
+
+提示：
+
+- 2 <= n <= 1000
+
+方法一：
+
+[分析](https://leetcode-cn.com/problems/jian-sheng-zi-ii-lcof/solution/mian-shi-ti-14-ii-jian-sheng-zi-iitan-xin-er-fen-f/)
+
+```java
+class Solution {
+    public int cuttingRope(int n) {
+        if(n <= 3) return n - 1;
+        int b = n % 3, p = 1000000007;
+        long rem = 1, x = 3;
+        for(int a = n / 3 - 1; a > 0; a /= 2) {
+            if(a % 2 == 1) rem = (rem * x) % p;
+            x = (x * x) % p;
+        }
+        if(b == 0) return (int)(rem * 3 % p);
+        if(b == 1) return (int)(rem * 4 % p);
+        return (int)(rem * 6 % p);
+    }
+}
+```
+
