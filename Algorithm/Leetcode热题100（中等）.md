@@ -1267,3 +1267,298 @@ class Solution {
 
 时间复杂度：O(N^2)
 空间复杂度：O(1)
+
+### [010] 根据身高重建队列
+
+假设有打乱顺序的一群人站成一个队列，数组 people 表示队列中一些人的属性（不一定按顺序）。每个 `people[i] = [hi, ki]`表示第 i 个人的身高为 hi ，前面 正好 有 ki 个身高大于或等于 hi 的人。
+
+请你重新构造并返回输入数组 people 所表示的队列。返回的队列应该格式化为数组 queue ，其中 `queue[j] = [hj, kj]` 是队列中第 j 个人的属性（queue[0] 是排在队列前面的人）。
+
+示例 1：
+
+```
+输入：people = [[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]
+输出：[[5,0],[7,0],[5,2],[6,1],[4,4],[7,1]]
+解释：
+编号为 0 的人身高为 5 ，没有身高更高或者相同的人排在他前面。
+编号为 1 的人身高为 7 ，没有身高更高或者相同的人排在他前面。
+编号为 2 的人身高为 5 ，有 2 个身高更高或者相同的人排在他前面，即编号为 0 和 1 的人。
+编号为 3 的人身高为 6 ，有 1 个身高更高或者相同的人排在他前面，即编号为 1 的人。
+编号为 4 的人身高为 4 ，有 4 个身高更高或者相同的人排在他前面，即编号为 0、1、2、3 的人。
+编号为 5 的人身高为 7 ，有 1 个身高更高或者相同的人排在他前面，即编号为 1 的人。
+因此 [[5,0],[7,0],[5,2],[6,1],[4,4],[7,1]] 是重新构造后的队列。
+```
+
+示例 2：
+
+```
+输入：people = [[6,0],[5,0],[4,0],[3,2],[2,2],[1,4]]
+输出：[[4,0],[5,0],[2,2],[3,2],[1,4],[6,0]]
+```
+
+
+提示：
+
+- 1 <= people.length <= 2000
+- 0 <= hi <= 106
+- 0 <= ki < people.length
+- 题目数据确保队列可以被重建
+
+方法一·: 从高到低考虑
+
+将每个人按照身高从大到小进行排序，处理身高相同的人使用的方法类似，即：按照 h_i为第一关键字降序，k_i为第二关键字升序进行排序。
+
+然后次将每个人放入队列中，可以采用「插空」的方法，依次给每一个人在当前的队列中选择一个插入的位置。
+
+```java
+class Solution {
+    public int[][] reconstructQueue(int[][] people) {
+        //排序前		：[[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]
+        //people排序后	：[[7,0],[7,1],[6,1],[5,0],[5,2],[4,4]]
+        Arrays.sort(people, new Comparator<int[]>() {
+            public int compare(int[] person1, int[] person2) {
+                if (person1[0] != person2[0]) {
+                    return person2[0] - person1[0];
+                } else {
+                    return person1[1] - person2[1];
+                }
+            }
+        });
+        
+        List<int[]> ans = new ArrayList<int[]>();
+        for (int[] person : people) {
+            //在指定位置插入元素
+            ans.add(person[1], person);
+        }
+        //结果[[5,0],[7,0],[5,2],[6,1],[4,4],[7,1]]
+        return ans.toArray(new int[ans.size()][]);
+    }
+}
+```
+
+- 时间复杂度：O(n^2)，其中 n 是数组 people 的长度。我们需要 O(nlogn) 的时间进行排序，随后需要 O(n^2)的时间遍历每一个人并将他们放入队列中。由于前者在渐近意义下小于后者，因此总时间复杂度为 O(n^2)。
+
+- 空间复杂度：O(logn)。
+
+### [011] 实现 Trie (前缀树)
+
+实现一个 Trie (前缀树)，包含 insert, search, 和 startsWith 这三个操作。
+
+示例:
+
+```
+Trie trie = new Trie();
+
+trie.insert("apple");
+trie.search("apple");   // 返回 true
+trie.search("app");     // 返回 false
+trie.startsWith("app"); // 返回 true
+trie.insert("app");   
+trie.search("app");     // 返回 true
+```
+
+说明:
+
+- 你可以假设所有的输入都是由小写字母 a-z 构成的。
+- 保证所有输入均为非空字符串。
+
+方法一：
+
+Trie (发音为 "try") 或前缀树是一种树数据结构，用于检索字符串数据集中的键。
+
+Trie 树的结点结构:
+
+Trie 树是一个有根的树，其结点具有以下字段：。
+
+- 最多 R 个指向子结点的链接，其中每个链接对应字母表数据集中的一个字母。本文中假定 R 为 26，小写拉丁字母的数量。
+
+- 布尔字段，以指定节点是对应键的结尾还是只是键前缀。
+
+**向 Trie 树中插入键**
+
+我们通过搜索 Trie 树来插入一个键。我们从根开始搜索它对应于第一个键字符的链接。有两种情况：
+
+- 链接存在。沿着链接移动到树的下一个子层。算法继续搜索下一个键字符。
+- 链接不存在。创建一个新的节点，并将它与父节点的链接相连，该链接与当前的键字符相匹配。
+
+重复以上步骤，直到到达键的最后一个字符，然后将当前节点标记为结束节点，算法完成。
+
+- 时间复杂度：O(m)，其中 m 为键长。在算法的每次迭代中，我们要么检查要么创建一个节点，直到到达键尾。只需要 m 次操作。
+
+- 空间复杂度：O(m)。最坏的情况下，新插入的键和 Trie 树中已有的键没有公共前缀。此时需要添加 m 个结点，使用 O(m) 空间。
+
+**在 Trie 树中查找键**
+
+每个键在 trie 中表示为从根到内部节点或叶的路径。我们用第一个键字符从根开始。检查当前节点中与键字符对应的链接。有两种情况：
+
+- 存在链接。我们移动到该链接后面路径中的下一个节点，并继续搜索下一个键字符。
+- 不存在链接。若已无键字符，且当前结点标记为 isEnd，则返回 true。否则有两种可能，均返回 false :
+  - 还有键字符剩余，但无法跟随 Trie 树的键路径，找不到键。
+  - 没有键字符剩余，但当前结点没有标记为 isEnd。也就是说，待查找键只是Trie树中另一个键的前缀。
+
+- 时间复杂度 : O(m)。算法的每一步均搜索下一个键字符。最坏的情况下需要 m 次操作。
+- 空间复杂度 : O(1)。
+
+**查找 Trie 树中的键前缀**
+
+该方法与在 Trie 树中搜索键时使用的方法非常相似。我们从根遍历 Trie 树，直到键前缀中没有字符，或者无法用当前的键字符继续 Trie 中的路径。与上面提到的“搜索键”算法唯一的区别是，到达键前缀的末尾时，总是返回 true。我们不需要考虑当前 Trie 节点是否用 “isend” 标记，因为我们搜索的是键的前缀，而不是整个键。
+
+- 时间复杂度 : O(m)。
+- 空间复杂度 : O(1)。
+
+```java
+class Trie {
+    class TrieNode {
+        // R links to node children
+        private TrieNode[] links;
+
+        private final int R = 26;
+
+        private boolean isEnd;
+
+        public TrieNode() {
+            links = new TrieNode[R];
+        }
+
+        public boolean containsKey(char ch) {
+            return links[ch -'a'] != null;
+        }
+        public TrieNode get(char ch) {
+            return links[ch -'a'];
+        }
+        public void put(char ch, TrieNode node) {
+            links[ch -'a'] = node;
+        }
+        public void setEnd() {
+            isEnd = true;
+        }
+        public boolean isEnd() {
+            return isEnd;
+        }
+    }
+
+    private TrieNode root;
+    /** Initialize your data structure here. */
+    public Trie() {
+        root = new TrieNode();
+    }
+    
+    /** Inserts a word into the trie. */
+    public void insert(String word) {
+        TrieNode node = root;
+        for (int i = 0; i < word.length(); i++) {
+            char currentChar = word.charAt(i);
+            if (!node.containsKey(currentChar)) {
+                node.put(currentChar, new TrieNode());
+            }
+            node = node.get(currentChar);
+        }
+        node.setEnd();
+    }
+
+    private TrieNode searchPrefix(String word) {
+        TrieNode node = root;
+        for (int i = 0; i < word.length(); i++) {
+           char curLetter = word.charAt(i);
+           if (node.containsKey(curLetter)) {
+               node = node.get(curLetter);
+           } else {
+               return null;
+           }
+        }
+        return node;
+    }
+
+    /** Returns if the word is in the trie. */
+    public boolean search(String word) {
+        TrieNode node = searchPrefix(word);
+        return node != null && node.isEnd();
+    }
+    
+    /** Returns if there is any word in the trie that starts with the given prefix. */
+    public boolean startsWith(String prefix) {
+        TrieNode node = searchPrefix(prefix);
+        return node != null;
+    }
+}
+
+/**
+ * Your Trie object will be instantiated and called as such:
+ * Trie obj = new Trie();
+ * obj.insert(word);
+ * boolean param_2 = obj.search(word);
+ * boolean param_3 = obj.startsWith(prefix);
+ */
+```
+
+### [012] 不同的二叉搜索树
+
+给定一个整数 n，求以 1 ... n 为节点组成的二叉搜索树有多少种？
+
+示例:
+
+```
+输入: 3
+输出: 5
+解释:
+给定 n = 3, 一共有 5 种不同结构的二叉搜索树:
+	1         3     3      2      1
+    \       /     /      / \      \
+     3     2     1      1   3      2
+    /     /       \                 \
+   2     1         2                 3
+```
+
+方法一：动态规划
+
+题目要求是计算不同二叉搜索树的个数。为此，我们可以定义两个函数：
+
+1. `G(n)`: 长度为 n 的序列能构成的不同二叉搜索树的个数。
+
+2. `F(i, n)`: 以 i 为根、序列长度为 n 的不同二叉搜索树个数`(1≤i≤n)`。
+
+`G(n)` 是我们求解需要的函数。
+
+同的二叉搜索树的总数 `G(n)`，是对遍历所有 `(1≤i≤n)` 的 `F(i, n)` 之和。换言之：
+$$
+G(n)= \sum_{i=1}^n F(i,n)
+$$
+对于边界情况，当序列长度为 1（只有根）或为 0（空树）时，只有一种情况，即：G(0)=1,G(1)=1。
+
+给定序列 1⋯n，我们选择数字 i 作为根，则根为 i 的所有二叉搜索树的集合是左子树集合和右子树集合的笛卡尔积，对于笛卡尔积中的每个元素，加上根节点之后形成完整的二叉搜索树，如下图所示：
+
+![fig1](https://assets.leetcode-cn.com/solution-static/96/96_fig1.png)
+
+举例而言，创建以 3 为根、长度为 7 的不同二叉搜索树，整个序列是 `[1, 2, 3, 4, 5, 6, 7]`，我们需要从左子序列 `[1, 2]` 构建左子树，从右子序列`[4, 5, 6, 7]` 构建右子树，然后将它们组合（即笛卡尔积）。
+
+对于这个例子，不同二叉搜索树的个数为 `F(3, 7)`。我们将 `[1,2]` 构建不同左子树的数量表示为` G(2)`, 从 `[4, 5, 6, 7]` 构建不同右子树的数量表示为`G(4)`，注意到 `G(n)` 和序列的内容无关，只和序列的长度有关。于是，`F(3,7)=G(2)⋅G(4)`。 
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+$$
+F(i,n)=G(i−1)⋅G(n−i)
+$$
+将公式以上结合，可以得到 G(n)的递归表达式：
+$$
+G(n)= \sum_{i=1}^nG(i−1)⋅G(n−i)
+$$
+至此，我们从小到大计算G函数即可，因为 G(n)的值依赖于 `G(0) G(0)⋯G(n−1)`
+
+```java
+class Solution {
+    public int numTrees(int n) {
+        int[] G = new int[n + 1];
+        G[0] = 1;
+        G[1] = 1;
+
+        for (int i = 2; i <= n; ++i) {
+            for (int j = 1; j <= i; ++j) {
+                G[i] += G[j - 1] * G[i - j];
+            }
+        }
+        return G[n];
+    }
+}
+```
+
+间复杂度 : O(n^2)，其中 n 表示二叉搜索树的节点个数。G(n) 函数一共有 n 个值需要求解，每次求解需要 O(n) 的时间复杂度，因此总时间复杂度为 O(n^2)。
+
+空间复杂度 : O(n)。我们需要 O(n) 的空间存储 G 数组。
