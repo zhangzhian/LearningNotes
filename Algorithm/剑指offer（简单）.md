@@ -101,7 +101,7 @@ class Solution {
 
 
 
-### [002]   二叉树的深度
+### [002] 二叉树的深度
 
 输入一棵二叉树的根节点，求该树的深度。从根节点到叶节点依次经过的节点（含根、叶节点）形成树的一条路径，最长路径的长度为树的深度。
 
@@ -493,31 +493,32 @@ class Solution {
     char[] num, loop = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
     public String printNumbers(int n) {
         this.n = n;
-        res = new StringBuilder();
-        num = new char[n];
-        start = n - 1;
-        dfs(0);
-        res.deleteCharAt(res.length() - 1);
-        return res.toString();
+        res = new StringBuilder();			// 数字字符串集
+        num = new char[n];					// 定义长度为 n 的字符列表
+        start = n - 1;						// 非0左边界 start
+        dfs(0);								// 开启全排列递归
+        res.deleteCharAt(res.length() - 1);	// 删除最后多余的逗号
+        return res.toString();				// 转化为字符串并返回
     }
     void dfs(int x) {
-        if(x == n) {
+        if(x == n) {						// 终止条件：已固定完所有位
             String s = String.valueOf(num).substring(start);
+            // 拼接 num 并添加至 res 尾部，使用逗号隔开
             if(!s.equals("0")) res.append(s + ",");
-            if(n - start == nine) start--;
+            if(n - start == nine) start--;	// 所有位都为 9
             return;
         }
-        for(char i : loop) {
-            if(i == '9') nine++;
-            num[x] = i;
-            dfs(x + 1);
-        }
-        nine--;
+        for(char i : loop) {				// 遍历 ‘0‘ - ’9‘
+            if(i == '9') nine++;			// 数字各位中 9 的数量为 nine
+            num[x] = i;						// 固定第 x 位为 i
+            dfs(x + 1);						// 开启固定第 x + 1 位
+        }				
+        nine--;								// 回溯前恢复
     }
 }
 ```
 
-本题要求输出 int 类型数组。为 **运行通过** ，可在添加数字字符串 s*s* 前，将其转化为 int 类型。代码如下所示：
+本题要求输出 int 类型数组。为 **运行通过** ，可在添加数字字符串 s 前，将其转化为 int 类型。代码如下所示：
 
 ```java
 class Solution {
@@ -650,17 +651,12 @@ class Solution {
 }
 ```
 
-不需要重新遍历ArrayList
+- 时间复杂度 O(N)：遍历链表，递归 N 次。
+- 空间复杂度 O(N)：系统递归需要使用 O(N) 的栈空间。
+
+不需要重新遍历ArrayList。
 
 ```java
-/**
- * Definition for singly-linked list.
- * public class ListNode {
- *     int val;
- *     ListNode next;
- *     ListNode(int x) { val = x; }
- * }
- */
 class Solution {
     int[] res;
     int i = 0, j = 0;
@@ -681,11 +677,9 @@ class Solution {
 }
 ```
 
+- 时间复杂度：O(n)
 
-
-时间复杂度：O(n)
-
-空间复杂度：O(n)
+- 空间复杂度：O(n)
 
 方法二：辅助栈法
 
@@ -725,7 +719,7 @@ class Solution {
 0 <= 节点个数 <= 5000
 ```
 
-方法一：递归
+方法一：递归，从后往前
 
 ```java
 /**
@@ -753,7 +747,7 @@ class Solution {
 
 空间复杂度：O(n)
 
-方法二：
+方法二：遍历，从前往后
 
 ```java
 class Solution {
