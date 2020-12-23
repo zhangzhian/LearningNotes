@@ -99,8 +99,6 @@ class Solution {
 
 ![Picture4.png](https://pic.leetcode-cn.com/ef68413b3366b97af3ed76037c6a9d1e40ac09c74fd6e5cb6d5173cbd7116beb-Picture4.png)
 
-
-
 ### [002] 二叉树的深度
 
 输入一棵二叉树的根节点，求该树的深度。从根节点到叶节点依次经过的节点（含根、叶节点）形成树的一条路径，最长路径的长度为树的深度。
@@ -799,7 +797,7 @@ class Solution {
 
 - 1 ≤ k ≤ 二叉搜索树元素个数
 
-方法一：dfs
+方法一：
 
 ```java
 /**
@@ -812,6 +810,7 @@ class Solution {
  * }
  */
 class Solution {
+    //DFS增序
     public int kthLargest(TreeNode root, int k) {
         List<Integer> list = new ArrayList();
         dfs(list,root);
@@ -820,6 +819,7 @@ class Solution {
 
     void dfs(List list, TreeNode root){
         if (root == null) return;
+        //注意先左后右
         dfs(list,root.left);
         list.add(root.val);
         dfs(list,root.right);
@@ -829,6 +829,26 @@ class Solution {
 
 ```java
 class Solution {
+	//降序
+    public int kthLargest1(TreeNode root, int k) {
+        List<Integer> list = new ArrayList();
+        dfs1(list, root);
+        return list.get(k - 1);//直接k-1
+    }
+
+    public void dfs1(List list, TreeNode root) {
+        if (root == null) return;
+        //注意先右后左
+        dfs1(list, root.right);
+        list.add(root.val);
+        dfs1(list, root.left);
+    }
+}
+```
+
+```java
+class Solution {
+    //降序
     int res, k;
     public int kthLargest(TreeNode root, int k) {
         this.k = k;
@@ -837,6 +857,7 @@ class Solution {
     }
     void dfs(TreeNode root) {
         if(root == null || k == 0) return;//当root为空或者已经找到了res时，直接返回
+        //注意先右后左
         dfs(root.right);
         if(--k == 0) {
             res = root.val;
@@ -847,11 +868,10 @@ class Solution {
 }
 ```
 
-- 时间复杂度 O(N) 
+- 时间复杂度：O(n) 
+- 空间复杂度：O(n) 
 
-- 空间复杂度 O(N) 
-
-方法二：
+方法二：BFS
 
 ```java
 class Solution {
@@ -890,7 +910,7 @@ class Solution {
 
 - 0 <= 链表长度 <= 1000
 
-方法一：递归
+方法一：递归，从尾部到头部
 
 ```java
 /**
@@ -924,7 +944,7 @@ class Solution {
 
 空间复杂度：O(n + m) 
 
-方法二：迭代
+方法二：迭代，从头部到尾部
 
 ```java
 class Solution {
