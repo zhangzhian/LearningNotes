@@ -33,9 +33,9 @@ class Solution {
 }
 ```
 
-时间复杂度 O(N)
+时间复杂度 O(N)：其中 N 为字符串 s 的长度，字符串切片函数为线性时间复杂度
 
-空间复杂度 O(N)
+空间复杂度 O(N)：两个字符串切片的总长度为 N
 
 方法二：列表遍历拼接
 
@@ -64,9 +64,9 @@ class Solution {
 }
 ```
 
-时间复杂度 O(N)
+时间复杂度 O(N)：线性遍历 s 并添加，使用线性时间
 
-空间复杂度 O(N)
+空间复杂度 O(N)：新建的辅助 res 使用 O(N) 大小的额外空间
 
 方法三：字符串遍历拼接
 
@@ -94,7 +94,12 @@ class Solution {
 }
 ```
 
+时间复杂度 O(N) ： 线性遍历 s 并添加，使用线性时间；
+空间复杂度 O(N)： 假设循环过程中内存会被及时回收，内存中至少同时存在长度为 N 和 N-1 的两个字符串（新建长度为 N 的 res 需要使用前一个长度 N-1 的 res ），因此至少使用 O(N) 的额外空间。
+
 ![Picture4.png](https://pic.leetcode-cn.com/ef68413b3366b97af3ed76037c6a9d1e40ac09c74fd6e5cb6d5173cbd7116beb-Picture4.png)
+
+
 
 ### [002]   二叉树的深度
 
@@ -110,7 +115,9 @@ class Solution {
         /  \
        15   7
     返回它的最大深度 3 。
-方法一：递归，深度优先
+方法一：递归，深度优先，后序遍历
+
+**树的深度** 等于 **左子树的深度** 与 **右子树的深度** 中的 **最大值** +1
 
 ```java
 /**
@@ -147,7 +154,7 @@ class Solution {
         if (root == null) {
             return 0;
         }
-        Queue<TreeNode> queue = new LinkedList<TreeNode>();
+        LinkedList<TreeNode> queue = new LinkedList<TreeNode>();
         queue.offer(root);//添加失败返回false。add抛出异常
         int ans = 0;
         while (!queue.isEmpty()) {
@@ -229,6 +236,9 @@ class Solution {
     }
 }
 ```
+
+>Q： 为何需要暂存 root 的左子节点？
+>A： 在递归右子节点 `root.left = mirrorTree(root.right);` 执行完毕后， `root.left` 的值已经发生改变，此时递归左子节点 `mirrorTree(root.left)` 则会出问题。
 
 递归-从上到下
 
