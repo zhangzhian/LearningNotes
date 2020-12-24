@@ -1585,3 +1585,99 @@ class Solution {
 
 - 时间复杂度 : O(n)，其中 n 表示二叉搜索树的节点个数。我们只需要循环遍历一次即可。
 - 空间复杂度 : O(1)。我们只需要常数空间存放若干变量。
+
+### [013] 从前序与中序遍历序列构造二叉树
+
+根据一棵树的前序遍历与中序遍历构造二叉树。
+
+注意:
+你可以假设树中没有重复的元素。
+
+例如，给出
+
+```
+前序遍历 preorder = [3,9,20,15,7]
+中序遍历 inorder = [9,3,15,20,7]
+```
+
+返回如下的二叉树：
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+方法一：
+
+解题思路确定根节点的值，把根节点做出来，然后递归构造左右子树即可
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6zvlia07hHvYB5JTKLTHCAmDW9I8dX8c8LmSo1ibejUHGibgH6zhMXBCmw/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于代码中的`rootVal`和`index`变量，就是下图这种情况：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6cuUtHIdXvXjbicaaZnpBWzEO1ZLfCGn9ntniaEicl5Et2wiarGaSq2GCZw/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于左右子树对应的`inorder`数组的起始索引和终止索引比较容易确定：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6BFJp9KicjbvfTdvhU3vaDFEqaUiaNF1q3HzkyFjnpypG8XrGzJXdpeLg/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于`preorder`数组，可以通过左子树的节点数推导出来，假设左子树的节点数为`leftSize = index - inStart;`，确定左右数组对应的起始索引和终止索引：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6Awr35eI0tibAJ2qW6pDUpgWTv5icgDhRhniaIJg3dpYib7Ph5kqDneL08A/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    //用map保持索引，避免每次查找
+    Map<Integer,Integer> map = new HashMap();
+    public TreeNode buildTree(int[] preorder, int[] inorder){
+        for (int i = 0; i < inorder.length; i++) {
+            map.put(inorder[i],i);
+        }
+        return build(preorder, 0, preorder.length - 1,
+                inorder, 0, inorder.length - 1);
+    }
+
+    TreeNode build(int[] preorder, int preStart, int preEnd,
+                   int[] inorder, int inStart, int inEnd) {
+
+        if (preStart > preEnd)  return null;
+        
+        // root 节点对应的值就是前序遍历数组的第一个元素
+        int rootVal = preorder[preStart];
+        // rootVal 在中序遍历数组中的索引
+        int index = map.get(rootVal);
+        //或使用如下代码不需要占用额外空间
+//        for (int i = inStart; i <= inEnd; i++) {
+//            if (inorder[i] == rootVal) {
+//                index = i;
+//                break;
+//            }
+//        }
+        int leftSize = index - inStart;
+
+        // 先构造出当前根节点
+        TreeNode root = new TreeNode(rootVal);
+        // 递归构造左右子树
+        root.left = build(preorder, preStart + 1, preStart + leftSize,
+                inorder, inStart, index - 1);
+
+        root.right = build(preorder, preStart + leftSize + 1, preEnd,
+                inorder, index + 1, inEnd);
+        return root;
+    }
+}
+```
+
+时间复杂度：O(n)，其中 n 是树中的节点个数。
+
+空间复杂度：O(n)，除去存储哈希映射 O(n) 空间之外，我们还需要使用 O(h)（其中 h 是树的高度）的空间存储栈。这里 h < n，所以（在最坏情况下）总空间复杂度为 O(n)。
+
