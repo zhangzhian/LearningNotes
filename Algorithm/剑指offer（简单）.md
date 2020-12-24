@@ -998,7 +998,7 @@ public class Solution {
 
 - 空间复杂度 O(1) 
 
-方法二：巧用 n \& (n - 1)n&(n−1)
+方法二：巧用 n \& (n - 1) 
 
 ![Picture10.png](https://pic.leetcode-cn.com/9bc8ab7ba242888d5291770d35ef749ae76ee2f1a51d31d729324755fc4b1b1c-Picture10.png)
 
@@ -1098,11 +1098,13 @@ class CQueue {
 }
 ```
 
-时间复杂度：对于插入和删除操作，时间复杂度均为 O(1)。插入不多说，对于删除操作，虽然看起来是 O(n)的时间复杂度，但是仔细考虑下每个元素只会「至多被插入和弹出 stack2 一次」，因此均摊下来每个元素被删除的时间复杂度仍为 O(1)
+- 时间复杂度：对于插入和删除操作，时间复杂度均为 O(1)。插入不多说，对于删除操作，虽然看起来是 O(n)的时间复杂度，但是仔细考虑下每个元素只会「至多被插入和弹出 stack2 一次」，因此均摊下来每个元素被删除的时间复杂度仍为 O(1)
 
-空间复杂度：O(n)。需要使用两个栈存储已有的元素。
+- 空间复杂度：O(n)。需要使用两个栈存储已有的元素。
 
 ### [013] 二叉树的最近公共祖先
+
+> 013 二叉树的最近公共祖先 015 二叉搜索树的最近公共祖先
 
 给定一个二叉树, 找到该树中两个指定节点的最近公共祖先。
 
@@ -1158,7 +1160,7 @@ class CQueue {
 
 - 当 left 不为空 ， right 为空 ：与情况 3. 同理；
 
-观察发现， 情况 1. 可合并至 3. 和 4. 内。
+观察发现， 情况 1  可合并至 3  和 4 内。
 
 ```java
 class Solution {
@@ -1325,17 +1327,18 @@ class Solution {
 }
  ```
 
-时间复杂度：由于两个指针移动均单调不减，且最多移动
+- 时间复杂度：由于两个指针移动均单调不减，且最多移动
+
 $$
 \lfloor\frac{\textit{target}}{2}\rfloor
 $$
 次，即方法一提到的枚举的上界，所以时间复杂度为 O(target) 。
 
-空间复杂度：O(1) ，除了答案数组只需要常数的空间存放若干变量。
+- 空间复杂度：O(1) ，除了答案数组只需要常数的空间存放若干变量。
 
 ### [015] 二叉搜索树的最近公共祖先
 
-> **[013] 二叉树的最近公共祖先**
+> 013 二叉树的最近公共祖先 015 二叉搜索树的最近公共祖先
 
 给定一个二叉搜索树, 找到该树中两个指定节点的最近公共祖先。
 
@@ -1426,7 +1429,7 @@ class Solution {
 }
 ```
 
-优化：若可保证 p.val < q.val，则在循环中可减少判断条件。
+优化：若可保证 `p.val < q.val`，则在循环中可减少判断条件。
 
 ```java
 class Solution {
@@ -1519,10 +1522,12 @@ public class Solution {
         return ret;
     }
 
+    //需要带上depth，根据depth确定保存的位置
     private void dfs(int depth, TreeNode root) {
         if (root == null) {
             return;
         }
+        //每次depth第一次进入添加一个空list，供后续添加数据
         if (ret.size() == depth) {
             ret.add(new ArrayList<>());
         }
@@ -1732,7 +1737,7 @@ class Solution {
 
 - 2 <= n <= 100000
 
-方法一：遍历数组
+方法一：遍历数组Set/Map
 
 ```java
 class Solution {
@@ -1754,7 +1759,7 @@ class Solution {
 
 空间复杂度：O(n)
 
-方法二：
+方法二：原地交换
 
 如果没有重复数字，那么正常排序后，数字i应该在下标为i的位置
 
@@ -1858,7 +1863,9 @@ class Solution {
 ```java
 class Solution {
     public int[] exchange(int[] nums) {
-        int i = 0, j = nums.length - 1, tmp;
+	   int i = 0; //偶数指针
+       int j = nums.length-1;//奇数指针
+       int temp = 0;
         while(i < j) {
             while(i < j && (nums[i] & 1) == 1) i++;
             while(i < j && (nums[j] & 1) == 0) j--;
