@@ -1760,3 +1760,354 @@ class Solution {
 
 - 时间复杂度 O(M×N) ： 遍历整个 grid 矩阵元素。
 - 空间复杂度 OO(1) ： 直接修改原矩阵，不使用额外空间。
+
+### [015] 排序链表
+
+给你链表的头结点 head ，请将其按 升序 排列并返回 排序后的链表 。
+
+进阶：
+
+你可以在 O(n log n) 时间复杂度和常数级空间复杂度下，对链表进行排序吗？
+
+
+示例 1：
+
+```
+输入：head = [4,2,1,3]
+输出：[1,2,3,4]
+```
+
+示例 2：
+
+```
+输入：head = [-1,5,3,4,0]
+输出：[-1,0,3,4,5]
+```
+
+示例 3：
+
+```
+输入：head = []
+输出：[]
+```
+
+
+提示：
+
+- 链表中节点的数目在范围 [0, 5 * 10^4] 内
+- -10^5 <= Node.val <= 10^5
+
+方法一：归并排序（从底至顶直接合并）
+
+![Picture1.png](https://pic.leetcode-cn.com/c1d5347aa56648afdec22372ee0ed13cf4c25347bd2bb9727b09327ce04360c2-Picture1.png)
+
+```java
+public class Solution {
+    // 自底向上归并排序
+    public ListNode sortList(ListNode head) {
+        if(head == null){
+            return head;
+        }
+
+        // 1. 首先从头向后遍历,统计链表长度
+        int length = 0; // 用于统计链表长度
+        ListNode node = head;
+        while(node != null){
+            length++;
+            node = node.next;
+        }
+
+        // 2. 初始化 引入dummynode
+        ListNode dummyHead = new ListNode(0);
+        dummyHead.next = head;
+
+        // 3. 每次将链表拆分成若干个长度为subLen的子链表 , 并按照每两个子链表一组进行合并
+        for(int subLen = 1;subLen < length;subLen <<= 1){ // subLen每次左移一位（即sublen = sublen*2） PS:位运算对CPU来说效率更高
+            ListNode prev = dummyHead;
+            ListNode curr = dummyHead.next;     // curr用于记录拆分链表的位置
+
+            while(curr != null){               // 如果链表没有被拆完
+                // 3.1 拆分subLen长度的链表1
+                ListNode head_1 = curr;        // 第一个链表的头 即 curr初始的位置
+                for(int i = 1; i < subLen && curr != null && curr.next != null; i++){     // 拆分出长度为subLen的链表1
+                    curr = curr.next;
+                }
+
+                // 3.2 拆分subLen长度的链表2
+                ListNode head_2 = curr.next;  // 第二个链表的头  即 链表1尾部的下一个位置
+                curr.next = null;             // 断开第一个链表和第二个链表的链接
+                curr = head_2;                // 第二个链表头 重新赋值给curr
+                for(int i = 1;i < subLen && curr != null && curr.next != null;i++){      // 再拆分出长度为subLen的链表2
+                    curr = curr.next;
+                }
+
+                // 3.3 再次断开 第二个链表最后的next的链接
+                ListNode next = null;
+                if(curr != null){
+                    next = curr.next;   // next用于记录 拆分完两个链表的结束位置
+                    curr.next = null;   // 断开连接
+                }
+
+                // 3.4 合并两个subLen长度的有序链表
+                ListNode merged = mergeTwoLists(head_1,head_2);
+                prev.next = merged;        // prev.next 指向排好序链表的头
+                while(prev.next != null){  // while循环 将prev移动到 subLen*2 的位置后去
+                    prev = prev.next;
+                }
+                curr = next;              // next用于记录 拆分完两个链表的结束位置
+            }
+        }
+        // 返回新排好序的链表
+        return dummyHead.next;
+    }
+
+
+    // 此处是Leetcode21 --> 合并两个有序链表
+    public ListNode mergeTwoLists(ListNode l1,ListNode l2){
+        ListNode dummy = new ListNode(0);
+        ListNode curr  = dummy;
+
+        while(l1 != null && l2!= null){ // 退出循环的条件是走完了其中一个链表
+            // 判断l1 和 l2大小
+            if (l1.val < l2.val){
+                // l1 小 ， curr指向l1
+                curr.next = l1;
+                l1 = l1.next;       // l1 向后走一位
+            }else{
+                // l2 小 ， curr指向l2
+                curr.next = l2;
+                l2 = l2.next;       // l2向后走一位
+            }
+            curr = curr.next;       // curr后移一位
+        }
+
+        // 退出while循环之后,比较哪个链表剩下长度更长,直接拼接在排序链表末尾
+        if(l1 == null) curr.next = l2;
+        if(l2 == null) curr.next = l1;
+
+        // 最后返回合并后有序的链表
+        return dummy.next;
+    }
+}
+```
+
+- 时间复杂度O(nlogn)
+
+- 空间复杂度O(1)
+
+方法二：自顶向下归并排序
+
+![Picture2.png](https://pic.leetcode-cn.com/8c47e58b6247676f3ef14e617a4686bc258cc573e36fcf67c1b0712fa7ed1699-Picture2.png)
+
+```java
+class Solution {
+    public ListNode sortList(ListNode head) {
+        return sortList(head, null);
+    }
+
+    public ListNode sortList(ListNode head, ListNode tail) {
+        if (head == null) {
+            return head;
+        }
+        if (head.next == tail) {
+            head.next = null;
+            return head;
+        }
+        ListNode slow = head, fast = head;
+        while (fast != tail) {
+            slow = slow.next;
+            fast = fast.next;
+            if (fast != tail) {
+                fast = fast.next;
+            }
+        }
+        ListNode mid = slow;
+        ListNode list1 = sortList(head, mid);
+        ListNode list2 = sortList(mid, tail);
+        ListNode sorted = merge(list1, list2);
+        return sorted;
+    }
+
+    public ListNode merge(ListNode head1, ListNode head2) {
+        ListNode dummyHead = new ListNode(0);
+        ListNode temp = dummyHead, temp1 = head1, temp2 = head2;
+        while (temp1 != null && temp2 != null) {
+            if (temp1.val <= temp2.val) {
+                temp.next = temp1;
+                temp1 = temp1.next;
+            } else {
+                temp.next = temp2;
+                temp2 = temp2.next;
+            }
+            temp = temp.next;
+        }
+        if (temp1 != null) {
+            temp.next = temp1;
+        } else if (temp2 != null) {
+            temp.next = temp2;
+        }
+        return dummyHead.next;
+    }
+}
+```
+
+- 时间复杂度O(nlogn)
+
+- 空间复杂度O(logn)
+
+### [016] 寻找重复数
+
+给定一个包含 n + 1 个整数的数组 nums，其数字都在 1 到 n 之间（包括 1 和 n），可知至少存在一个重复的整数。假设只有一个重复的整数，找出这个重复的数。
+
+示例 1:
+
+```
+输入: [1,3,4,2,2]
+输出: 2
+```
+
+示例 2:
+
+```java
+输入: [3,1,3,4,2]
+输出: 3
+```
+
+说明：
+
+- 不能更改原数组（假设数组是只读的）。
+- 只能使用额外的 O(1) 的空间。
+- 时间复杂度小于 O(n^2) 。
+- 数组中只有一个重复的数字，但它可能不止重复出现一次。
+
+方法一：原地置换（题目不允许修改原数组）
+
+遍历交换元素到其索引位置（值1->index0 值2->index1 ...）
+
+```java
+class Solution {
+    public int findDuplicate(int[] nums) {
+        int temp;
+        for (int i = 0; i < nums.length; i++) {
+            while (nums[i]-1 != i){
+                //索引 与 索引对应的值 相等， 该数字已经存在了
+                if(nums[i] == nums[nums[i] -1]){
+                    return nums[i];
+                }
+                temp=nums[i];
+                nums[i]=nums[temp -1];
+                nums[temp-1]=temp;
+            }
+        }
+        return -1;
+    }
+}
+```
+
+- 时间复杂度：O(n)
+
+- 空间复杂度：O(1)
+
+方法二：快慢指针
+
+「Floyd 判圈算法」（又称龟兔赛跑算法），检测链表是否有环的算法
+
+先设置慢指针 slow 和快指针 fast ，慢指针每次走一步，快指针每次走两步，根据「Floyd 判圈算法」两个指针在有环的情况下一定会相遇，此时我们再将 slow 放置起点 0，两个指针每次同时移动一步，相遇的点就是答案。
+
+```java
+class Solution {
+    public int findDuplicate(int[] nums) {
+        int slow = 0, fast = 0;
+        do {
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+        } while (slow != fast);//相遇点
+        slow = 0;
+        while (slow != fast) {
+            slow = nums[slow];
+            fast = nums[fast];
+        }//环点
+        return slow;
+    }
+}
+
+```
+
+- 时间复杂度：O(n)。「Floyd 判圈算法」时间复杂度为线性的时间复杂度。
+- 空间复杂度：O(1)。我们只需要常数空间存放若干变量。
+
+方法三：二分查找
+
+```java
+class Solution {
+    public int findDuplicate(int[] nums) {
+        int n = nums.length;
+        int l = 1, r = n - 1, ans = -1;
+        while (l <= r) {
+            int mid = (l + r) >> 1;
+            int cnt = 0;
+            for (int i = 0; i < n; ++i) {
+                if (nums[i] <= mid) {
+                    cnt++;
+                }
+            }
+            if (cnt <= mid) {
+                l = mid + 1;
+            } else {
+                r = mid - 1;
+                ans = mid;
+            }
+        }
+        return ans;
+    }
+}
+```
+
+- 时间复杂度：O(nlogn)，其中 n 为 nums[] 数组的长度。二分查找最多需要二分 O(logn) 次，每次判断的时候需要O(n) 遍历 nums[] 数组求解小于等于 mid 的数的个数，因此总时间复杂度为 O(nlogn)。
+- 空间复杂度：O(1)。我们只需要常数空间存放若干变量。
+
+方法四：二进制
+
+```java
+class Solution {
+    public int findDuplicate(int[] nums) {
+        int n = nums.length, ans = 0;
+        int bit_max = 31;
+        while (((n - 1) >> bit_max) == 0) {
+            bit_max -= 1;
+        }
+        for (int bit = 0; bit <= bit_max; ++bit) {
+            int x = 0, y = 0;
+            for (int i = 0; i < n; ++i) {
+                if ((nums[i] & (1 << bit)) != 0) {
+                    x += 1;
+                }
+                if (i >= 1 && ((i & (1 << bit)) != 0)) {
+                    y += 1;
+                }
+            }
+            if (x > y) {
+                ans |= 1 << bit;
+            }
+        }
+        return ans;
+    }
+}
+```
+
+- 时间复杂度：O(nlog n)
+
+- 空间复杂度：O(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
