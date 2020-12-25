@@ -2478,7 +2478,7 @@ class Solution {
 
 - 空间复杂度 O(N) 
 
-方法二：
+方法二：迭代
 
 ```java
 class Solution {
@@ -2489,8 +2489,10 @@ class Solution {
         //找到要删除结点的上一个结点
         while (cur.next != null && cur.next.val != val)
             cur = cur.next;
-        if (cur.next != null)
-            cur.next = cur.next.next;
+        if (cur.next == null) {//没找到
+            return head;
+        }
+        cur.next = cur.next.next;
         return head;
     }
 }
@@ -2730,7 +2732,7 @@ class ListNode {
 - 时间复杂度 O(1) 
 - 空间复杂度 O(N) 
 
-### [029] 最小的k个数
+### [029※] 最小的k个数
 
 输入整数数组 arr ，找出其中最小的 k 个数。例如，输入4、5、1、6、2、7、3、8这8个数字，则最小的4个数字是1、2、3、4。
 
@@ -2782,20 +2784,25 @@ class Solution {
         if (k == 0) { // 排除 0 的情况
             return vec;
         }
+        // 默认是小根堆，实现大根堆需要重写一下比较器。
         PriorityQueue<Integer> queue = new PriorityQueue<Integer>(new Comparator<Integer>() {
             public int compare(Integer num1, Integer num2) {
                 return num2 - num1;
             }
         });
+        //若目前堆的大小小于K，将当前数字放入堆中
         for (int i = 0; i < k; ++i) {
             queue.offer(arr[i]);
         }
+        // 判断当前数字与大根堆堆顶元素的大小关系，如果当前数字比大根堆堆顶还大，这个数就直接跳过；
+        // 反之如果当前数字比大根堆堆顶小，先poll掉堆顶，再将该数字放入堆中。
         for (int i = k; i < arr.length; ++i) {
             if (queue.peek() > arr[i]) {
                 queue.poll();
                 queue.offer(arr[i]);
             }
         }
+        // 堆中存放的就是最小的k个数
         for (int i = 0; i < k; ++i) {
             vec[i] = queue.poll();
         }
@@ -2809,6 +2816,8 @@ class Solution {
 空间复杂度：O(k)，因为大根堆里最多 k 个数。
 
 方法三：快排思想
+
+快排的划分函数每次执行完后都能将数组分成两个部分，小于等于分界值 pivot 的元素的都会被放到数组的左边，大于的都会被放到数组的右边，然后返回分界值的下标。与快速排序不同的是，快速排序会根据分界值的下标递归处理划分的两侧，而这里我们只处理划分的一边。
 
 ```java
 class Solution {
@@ -2842,7 +2851,7 @@ class Solution {
         swap(nums, r, i);
         return partition(nums, l, r);
     }
-
+    
     public int partition(int[] nums, int l, int r) {
         int pivot = nums[r];
         int i = l - 1;
@@ -2868,7 +2877,7 @@ class Solution {
 
 - 空间复杂度：期望为 O(logn)。最坏情况下的空间复杂度为 O(n) 
 
-方法四：
+方法四：桶排序
 
 ```java
 class Solution {
