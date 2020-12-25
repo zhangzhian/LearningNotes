@@ -1934,9 +1934,13 @@ class Solution {
 
 ![image.png](https://pic.leetcode-cn.com/9dda886441be8d249abb76e35f53f29fd6e780718d4aca2ee3c78f947fb76e75-image.png)
 
-删除的位置 = (当前index + m) % 上一轮剩余数字的个数。
-
 **递归**
+
+![约瑟夫环公式.png](https://pic.leetcode-cn.com/28bbdf257dbd73f695581789fb04d9222c8912d4c03de5a3475a9d4204b01d43-%E7%BA%A6%E7%91%9F%E5%A4%AB%E7%8E%AF%E5%85%AC%E5%BC%8F.png)x
+
+`f(n, m) = (m % n + f(n-1, m)) % n = (m + f(n-1, m)) % n = (m + x) % n `
+
+我们递归计算 `f(n, m), f(n - 1, m), f(n - 2, m), ... `直到递归的终点 f(1, m)。当序列长度为 1 时，一定会留下唯一的那个元素，它的编号为 0。
 
 ```java
 class Solution {
@@ -1963,11 +1967,11 @@ class Solution {
 ```java
 class Solution {
     public int lastRemaining(int n, int m) {
-        int f = 0;
+        int x = 0;
         for (int i = 2;  i <= n; i++) {
-            f = (m + f) % i;
+            x = (m + x) % i;
         }
-        return f;
+        return x;
     }
 }
 ```
@@ -2224,17 +2228,35 @@ class Solution {
 
 ![Picture1.png](https://pic.leetcode-cn.com/8fec91e89a69d8695be2974de14b74905fcd60393921492bbe0338b0a628fd9a-Picture1.png)
 
-
+常规动态规划：
 
 ```java
 class Solution {
     public int maxSubArray(int[] nums) {
-        int pre = 0, maxAns = nums[0];
-        for (int x : nums) {
-            pre = Math.max(pre + x, x);
-            maxAns = Math.max(maxAns, pre);
+        int[] dp = new int[nums.length];
+        dp[0] = nums[0];
+        int maxSum = nums[0];
+        for (int i = 1; i < nums.length; i++) {
+            dp[i] = Math.max(dp[i-1] + nums[i],nums[i]);
+            maxSum = Math.max(maxSum, dp[i]);
         }
-        return maxAns;
+        return maxSum;
+    }
+}
+```
+
+空间复杂度优化写法：
+
+```java
+class Solution {
+    public int maxSubArray(int[] nums) {
+        int pre = nums[0];
+        int maxSum = nums[0];
+        for (int i = 1; i < nums.length; i++) {
+            pre= Math.max(pre + nums[i],nums[i]);
+            maxSum = Math.max(maxSum, pre);
+        }
+        return maxSum;
     }
 }
 ```
