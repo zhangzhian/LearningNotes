@@ -2099,15 +2099,129 @@ class Solution {
 
 - 空间复杂度：O(1)
 
+### [017] 二叉树的最近公共祖先
 
+给定一个二叉树, 找到该树中两个指定节点的最近公共祖先。
 
+百度百科中最近公共祖先的定义为：“对于有根树 T 的两个结点 p、q，最近公共祖先表示为一个结点 x，满足 x 是 p、q 的祖先且 x 的深度尽可能大（一个节点也可以是它自己的祖先）。”
 
+例如，给定如下二叉树:  root = [3,5,1,6,2,0,8,null,null,7,4]
 
+方法一：
 
+> 同 剑值offer 简单部分 [013] 二叉树的最近公共祖先
 
+```java
+class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+        if (root == null) return null;
+        if (root.val == p.val) return root;
+        if (root.val == q.val) return root;
+        TreeNode left = lowestCommonAncestor(root.left,p,q);
+        TreeNode right = lowestCommonAncestor(root.right,p,q);
+        if (left == null) return right;
+        if (right == null) return left;
+        return root;
+    }
+}
+```
 
+- 时间复杂度 O(N) ： 其中 N 为二叉树节点数；最差情况下，需要递归遍历树的所有节点。
 
+- 空间复杂度 O(N) ： 最差情况下，递归深度达到 N ，系统使用 O(N) 大小的额外空间。
 
+### [018] 每日温度
+
+请根据每日 气温 列表，重新生成一个列表。对应位置的输出为：要想观测到更高的气温，至少需要等待的天数。如果气温在这之后都不会升高，请在该位置用 0 来代替。
+
+例如，给定一个列表 `temperatures = [73, 74, 75, 71, 69, 72, 76, 73]`，你的输出应该是 `[1, 1, 4, 2, 1, 1, 0, 0]`。
+
+提示：气温 列表长度的范围是 `[1, 30000]`。每个气温的值的均为华氏度，都是在 `[30, 100]` 范围内的整数。
+
+方法一：暴力
+
+```java
+public class Solution {
+    public int[] dailyTemperatures(int[] T) {
+        int[] ret = new int[T.length];
+        for (int i = 0; i < T.length; i++) {
+            for (int j = i +1; j < T.length; j++) {
+                if (T[j] > T[i]) {
+                    ret[i] = j - i;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+}
+```
+
+- 时间复杂度 O(N^2)
+- 空间复杂度 O(1)
+
+方法二：暴力优化，减少遍历次数
+
+```java
+class Solution {
+    public int[] dailyTemperatures(int[] T) {
+        int[] result = new int[T.length];
+        //从右向左遍历
+        for (int i = T.length - 2; i >= 0; i--) {
+            // j+= result[j]是利用已经有的结果进行跳跃
+            for (int j = i + 1; j < T.length; j+= result[j]) {
+                if (T[j] > T[i]) {
+                    result[i] = j - i;
+                    break;
+                } else if (result[j] == 0) { //遇到0表示后面不会有更大的值，那当然当前值就应该也为0
+                    result[i] = 0;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+}
+```
+
+- 时间复杂度 O(N^2)
+- 空间复杂度 O(1)
+
+方法三：栈
+
+维护一个存储下标的单调栈，从栈底到栈顶的下标对应的温度列表中的温度依次递减。如果一个下标在单调栈里，则表示尚未找到下一次温度更高的下标。
+
+正向遍历温度列表。对于温度列表中的每个元素 T[i]：
+
+- 如果栈为空，则直接将 i 进栈，
+
+- 如果栈不为空，则比较栈顶元素 prevIndex 对应的温度 `T[prevIndex]` 和当前温度 `T[i]`，
+  - 如果 `T[i] > T[prevIndex]`，则将 prevIndex 移除，并将 prevIndex 对应的等待天数赋为 `i - prevIndex`，
+  - 重复上述操作直到栈为空或者栈顶元素对应的温度小于等于当前温度，然后将 i 进栈。
+
+![739.gif](https://pic.leetcode-cn.com/7a133e857271e638c04b3a27c1eabc29570e585cc44d7da60eb039459a7f89cd-739.gif)
+
+```java
+class Solution {
+    public int[] dailyTemperatures(int[] T) {
+        int length = T.length;
+        int[] ans = new int[length];
+        Deque<Integer> stack = new LinkedList<Integer>();
+        for (int i = 0; i < length; i++) {
+            int temperature = T[i];
+            while (!stack.isEmpty() && temperature > T[stack.peek()]) {
+                int prevIndex = stack.pop();
+                ans[prevIndex] = i - prevIndex;
+            }
+            stack.push(i);
+        }
+        return ans;
+    }
+}
+```
+
+- 时间复杂度 O(N)
+- 空间复杂度 O(N)
 
 
 
