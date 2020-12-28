@@ -3030,7 +3030,7 @@ class Solution {
 > 以下优化基于：查找完右边界 right = i 后，则 nums[j]指向最右边的 target （若存在）。
 
 - 查找完右边界后，可用 `nums[j] = j`判断数组中是否包含 target ，若不包含则直接提前返回 0 ，无需后续查找左边界。
-- 查找完右边界后，左边界 left 一定在闭区间` [0, j][0,j] `中，因此直接从此区间开始二分查找即可。
+- 查找完右边界后，左边界 left 一定在闭区间` [0, j] `中，因此直接从此区间开始二分查找即可。
 
 ```java
 class Solution {
@@ -3058,9 +3058,9 @@ class Solution {
 }
 ```
 
-- 时间复杂度：o(logN)
+- 时间复杂度：O(logN)
 
-- 空间复杂度：o(1))
+- 空间复杂度：O(1)
 
 方法二：二分法优化
 
@@ -3084,6 +3084,10 @@ class Solution {
     }
 }
 ```
+
+- 时间复杂度：O(logN)
+
+- 空间复杂度：O(1)
 
 ### [032] 旋转数组的最小数字
 
@@ -3280,6 +3284,8 @@ class Solution {
 
 **初始化：** 矩阵 左、右、上、下 四个边界 `l` , `r` , `t` , `b` ，用于打印的结果列表 `res` 。
 
+![img](https://pic.leetcode-cn.com/4990446a88f72b7f03e6696bc6c718577d3190cf7559deb7d60af2c5857b2712-Picture7.png)
+
 **循环打印：** “从左向右、从上向下、从右向左、从下向上” 四个方向循环，每个方向打印中做以下三件事
 
 1. 根据边界打印，即将元素按顺序添加至列表 `res` 尾部；
@@ -3291,9 +3297,11 @@ class Solution {
 ```java
 class Solution {
     public int[] spiralOrder(int[][] matrix) {
-        if(matrix.length == 0) return new int[0];
-        int l = 0, r = matrix[0].length - 1, t = 0, b = matrix.length - 1, x = 0;
-        int[] res = new int[(r + 1) * (b + 1)];
+		if(matrix.length == 0) return new int[0];
+		int l = 0, r = matrix[0].length - 1;//左、右
+        int t = 0, b = matrix.length - 1;//上、下
+        int x = 0;
+		int[] res = new int[(r + 1) * (b + 1)];
         while(true) {
             for(int i = l; i <= r; i++) res[x++] = matrix[t][i]; // left to right.
             if(++t > b) break;
@@ -3365,6 +3373,28 @@ class Solution {
 - 若已形成窗口（即 `i≥0` ）：将窗口最大值（即队首元素 `deque[0]` ）添加至列表 res 。
 
 **返回值：** 返回结果列表 res。
+
+```java
+class Solution {
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        if(nums.length == 0 || k == 0) return new int[0];
+        Deque<Integer> deque = new LinkedList<>();
+        int[] res = new int[nums.length - k + 1];
+        for(int j = 0, i = 1 - k; j < nums.length; i++, j++) {
+            if(i > 0 && deque.peekFirst() == nums[i - 1])
+                deque.removeFirst(); // 删除 deque 中对应的 nums[i-1]
+            while(!deque.isEmpty() && deque.peekLast() < nums[j])
+                deque.removeLast(); // 保持 deque 递减
+            deque.addLast(nums[j]);
+            if(i >= 0)
+                res[i] = deque.peekFirst();  // 记录窗口最大值
+        }
+        return res;
+    }
+}
+```
+
+将 “未形成窗口” 和 “形成窗口后” 两个阶段拆分到两个循环里实现。代码虽变长，但减少了冗余的判断操作。
 
 ```java
 class Solution {
