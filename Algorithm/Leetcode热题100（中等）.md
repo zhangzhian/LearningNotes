@@ -2404,6 +2404,160 @@ class Solution {
 }
 ```
 
-时间复杂度：O(n)，其中 n 是二叉搜索树的节点数。没有左子树的节点只被访问一次，有左子树的节点被访问两次。
+- 时间复杂度：O(n)，其中 n 是二叉搜索树的节点数。没有左子树的节点只被访问一次，有左子树的节点被访问两次。
 
-空间复杂度：O(1)。只操作已经存在的指针（树的空闲指针），因此只需要常数的额外空间。
+- 空间复杂度：O(1)。只操作已经存在的指针（树的空闲指针），因此只需要常数的额外空间。
+
+### [021] 回文子串
+
+给定一个字符串，你的任务是计算这个字符串中有多少个回文子串。
+
+具有不同开始位置或结束位置的子串，即使是由相同的字符组成，也会被视作不同的子串。
+
+示例 1：
+
+```java
+输入："abc"
+输出：3
+解释：三个回文子串: "a", "b", "c"
+```
+
+示例 2：
+
+```java
+输入："aaa"
+输出：6
+解释：6个回文子串: "a", "a", "a", "aa", "aa", "aaa"
+```
+
+
+提示：
+
+- 输入的字符串长度不会超过 1000 。
+
+方法一：动态规划法
+
+状态：`dp[i][j]` 表示字符串s在`[i,j]`区间的子串是否是一个回文串。
+状态转移方程：当 `s[i] == s[j] && (j - i < 2 || dp[i + 1][j - 1])` 时，`dp[i][j]=true`，否则为false
+
+- 当只有一个字符时，比如 a 自然是一个回文串。
+- 当有两个字符时，如果是相等的，比如 a，也是一个回文串。
+- 当有三个及以上字符时，比如 `ababa` 这个字符记作串 1，把两边的 a 去掉，也就是 `bab` 记作串 2，可以看出只要串2是一个回文串，那么左右各多了一个 a 的串 1 必定也是回文串。所以当 `s[i]==s[j]` 时，自然要看 `dp[i+1][j-1]` 是不是一个回文串。
+
+```java
+class Solution {
+    public int countSubstrings(String s) {
+       // 动态规划法
+        boolean[][] dp = new boolean[s.length()][s.length()];
+        int ans = 0;
+
+        for (int j = 0; j < s.length(); j++) {
+            for (int i = 0; i <= j; i++) {
+                if (s.charAt(i) == s.charAt(j) && (j - i < 2 || dp[i + 1][j - 1])) {
+                    dp[i][j] = true;
+                    ans++;
+                }
+            }
+        }
+        return ans;
+    }
+}
+```
+
+- 时间复杂度为 O(N^2)，
+
+- 空间复杂度为 O(N^2)。
+
+方法二：中心扩展法
+
+```java
+class Solution {
+   public int countSubstrings(String s) {
+        // 中心扩展法
+        int ans = 0;
+        // 2 * len - 1 个中心点
+        // 中心点不能只有单个字符构成，还要包括两个字符
+        // 3 个可以由 1 个扩展一次得到，4 个可以由两个扩展一次得到
+        for (int center = 0; center < 2 * s.length() - 1; center++) {
+            int left = center / 2;
+            int right = left + center % 2;
+
+            while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+                ans++;
+                left--;
+                right++;
+            }
+        }
+        return ans;
+    }
+}
+```
+
+- 时间复杂度是 O(N^2)
+
+- 空间复杂度是 O(1)
+
+### [022] 盛最多水的容器
+
+给你 n 个非负整数 a1，a2，...，an，每个数代表坐标中的一个点 (i, ai) 。在坐标内画 n 条垂直线，垂直线 i 的两个端点分别为 (i, ai) 和 (i, 0) 。找出其中的两条线，使得它们与 x 轴共同构成的容器可以容纳最多的水。
+
+说明：你不能倾斜容器。
+
+示例 1：
+
+![img](https://aliyun-lc-upload.oss-cn-hangzhou.aliyuncs.com/aliyun-lc-upload/uploads/2018/07/25/question_11.jpg)
+
+```
+输入：[1,8,6,2,5,4,8,3,7]
+输出：49 
+解释：图中垂直线代表输入数组 [1,8,6,2,5,4,8,3,7]。在此情况下，容器能够容纳水（表示为蓝色部分）的最大值为 49。
+```
+
+示例 2：
+
+```
+输入：height = [1,1]
+输出：1
+```
+
+示例 3：
+
+```
+输入：height = [4,3,2,1,4]
+输出：16
+```
+
+示例 4：
+
+```
+输入：height = [1,2,1]
+输出：2
+```
+
+
+提示：
+
+- n = height.length
+- 2 <= n <= 3 * 10^4
+- 0 <= height[i] <= 3 * 10^4
+
+方法一·： 双指针法
+
+算法流程：设置双指针`i,j` 分别位于容器壁两端，根据规则移动指针，并且更新面积最大值 `res`，直到 `i == j` 时返回 `res`。
+
+```java
+class Solution {
+    public int maxArea(int[] height) {
+        int i = 0, j = height.length - 1, res = 0;
+        while(i < j){
+            res = height[i] < height[j] ? 
+                Math.max(res, (j - i) * height[i++]): 
+                Math.max(res, (j - i) * height[j--]); 
+        }
+        return res;
+    }
+}
+```
+
+- 时间复杂度 O(N)，双指针遍历一次底边宽度 N 。
+- 空间复杂度 O(1)，指针使用常数额外空间。
