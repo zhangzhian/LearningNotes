@@ -2561,3 +2561,435 @@ class Solution {
 
 - 时间复杂度 O(N)，双指针遍历一次底边宽度 N 。
 - 空间复杂度 O(1)，指针使用常数额外空间。
+
+### [023] 数组中的第K个最大元素
+
+在未排序的数组中找到第 k 个最大的元素。请注意，你需要找的是数组排序后的第 k 个最大的元素，而不是第 k 个不同的元素。
+
+示例 1:
+
+```
+输入: [3,2,1,5,6,4] 和 k = 2
+输出: 5
+```
+
+示例 2:
+
+```
+输入: [3,2,3,1,2,4,5,5,6] 和 k = 4
+输出: 4
+```
+
+说明:
+
+你可以假设 k 总是有效的，且 1 ≤ k ≤ 数组的长度。
+
+方法一：暴力
+
+```java
+class Solution {
+    public int findKthLargest(int[] nums, int k) {
+        Arrays.sort(nums);
+        return nums[nums.length-k];
+    }
+}
+```
+
+- 时间复杂度：O(NlogN)，这里 N 是数组的长度，JDK 默认使用快速排序，因此时间复杂度为 O(NlogN)。
+- 空间复杂度：O(1)，这里是原地排序，没有借助额外的辅助空间。 
+
+方法二：堆排序
+
+小根堆
+
+```java
+public class Solution {
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        // 使用一个含有 len 个元素的最小堆，默认是最小堆，可以不写 lambda 表达式：(a, b) -> a - b
+        PriorityQueue<Integer> minHeap = new PriorityQueue<>(len, (a, b) -> a - b);
+        for (int i = 0; i < len; i++) {
+            minHeap.add(nums[i]);
+        }
+        for (int i = 0; i < len - k; i++) {
+            minHeap.poll();
+        }
+        return minHeap.peek();
+    }
+}
+```
+
+大根堆
+
+```java
+public class Solution {
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        // 使用一个含有 len 个元素的最大堆，lambda 表达式应写成：(a, b) -> b - a
+        PriorityQueue<Integer> minHeap = new PriorityQueue<>(len, (a, b) -> b - a);
+        for (int i = 0; i < len; i++) {
+            minHeap.add(nums[i]);
+        }
+        for (int i = 0; i < k -1 ; i++) {
+            minHeap.poll();
+        }
+        return minHeap.peek();
+    }
+}
+```
+
+只用 `k` 个容量的优先队列，而不用全部 `len` 个容量。
+
+```java
+public class Solution {
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        // 使用一个含有 k 个元素的最小堆
+        PriorityQueue<Integer> minHeap = new PriorityQueue<>(k, (a, b) -> a - b);
+        for (int i = 0; i < k; i++) {
+            minHeap.add(nums[i]);
+        }
+        for (int i = k; i < len; i++) {
+            // 看一眼，不拿出，因为有可能没有必要替换
+            Integer topEle = minHeap.peek();
+            // 只要当前遍历的元素比堆顶元素大，堆顶弹出，遍历的元素进去
+            if (nums[i] > topEle) {
+                minHeap.poll();
+                minHeap.add(nums[i]);
+            }
+        }
+        return minHeap.peek();
+    }
+}
+```
+
+用 `k + 1` 个容量的优先队列，使得上面的过程更“连贯”一些，到了 `k` 个以后的元素，就进来一个，出去一个，让优先队列自己去维护大小关系。
+
+```java
+public class Solution {
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        // 最小堆
+        PriorityQueue<Integer> priorityQueue = new PriorityQueue<>(k + 1, (a, b) -> (a - b));
+        for (int i = 0; i < k; i++) {
+            priorityQueue.add(nums[i]);
+        }
+        for (int i = k; i < len; i++) {
+            priorityQueue.add(nums[i]);
+            priorityQueue.poll();
+        }
+        return priorityQueue.peek();
+    }
+}
+```
+
+综合考虑以上两种情况，总之都是为了节约空间复杂度。即 `k` 较小的时候使用最小堆，`k` 较大的时候使用最大堆。
+
+```java
+public class Solution {
+
+    // 根据 k 的不同，选最大堆和最小堆，目的是让堆中的元素更小
+    // 思路 1：k 要是更靠近 0 的话，此时 k 是一个较小的数，用最大堆
+    // 例如在一个有 6 个元素的数组里找第 5 大的元素
+    // 思路 2：k 要是更靠近 len 的话，用最小堆
+
+    // 所以分界点就是 k = len - k
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        if (k <= len - k) {
+            // System.out.println("使用最小堆");
+            // 特例：k = 1，用容量为 k 的最小堆
+            // 使用一个含有 k 个元素的最小堆
+            PriorityQueue<Integer> minHeap = new PriorityQueue<>(k, (a, b) -> a - b);
+            for (int i = 0; i < k; i++) {
+                minHeap.add(nums[i]);
+            }
+            for (int i = k; i < len; i++) {
+                // 看一眼，不拿出，因为有可能没有必要替换
+                Integer topEle = minHeap.peek();
+                // 只要当前遍历的元素比堆顶元素大，堆顶弹出，遍历的元素进去
+                if (nums[i] > topEle) {
+                    minHeap.poll();
+                    minHeap.add(nums[i]);
+                }
+            }
+            return minHeap.peek();
+
+        } else {
+            // System.out.println("使用最大堆");
+            assert k > len - k;
+            // 特例：k = 100，用容量为 len - k + 1 的最大堆
+            int capacity = len - k + 1;
+            PriorityQueue<Integer> maxHeap = new PriorityQueue<>(capacity, (a, b) -> b - a);
+            for (int i = 0; i < capacity; i++) {
+                maxHeap.add(nums[i]);
+            }
+            for (int i = capacity; i < len; i++) {
+                // 看一眼，不拿出，因为有可能没有必要替换
+                Integer topEle = maxHeap.peek();
+                // 只要当前遍历的元素比堆顶元素大，堆顶弹出，遍历的元素进去
+                if (nums[i] < topEle) {
+                    maxHeap.poll();
+                    maxHeap.add(nums[i]);
+                }
+            }
+            return maxHeap.peek();
+        }
+    }
+}
+```
+
+- 时间复杂度 O(NlogK)
+
+- 空间复杂度 O(N)
+
+方法三：快排思想
+
+```java
+public class Solution {
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        int left = 0;
+        int right = len - 1;
+
+        // 转换一下，第 k 大元素的索引是 len - k
+        int target = len - k;
+
+        while (true) {
+            int index = partition(nums, left, right);
+            if (index == target) {
+                return nums[index];
+            } else if (index < target) {
+                left = index + 1;
+            } else {
+                right = index - 1;
+            }
+        }
+    }
+
+    /**
+     * 在数组 nums 的子区间 [left, right] 执行 partition 操作，返回 nums[left] 排序以后应该在的位置
+     * 在遍历过程中保持循环不变量的语义
+     * 1、[left + 1, j] < nums[left]
+     * 2、(j, i] >= nums[left]
+     */
+    public int partition(int[] nums, int left, int right) {
+        int pivot = nums[left];
+        int j = left;
+        for (int i = left + 1; i <= right; i++) {
+            if (nums[i] < pivot) {
+                // 小于 pivot 的元素都被交换到前面
+                j++;
+                swap(nums, j, i);
+            }
+        }
+        // 在之前遍历的过程中，满足 [left + 1, j] < pivot，并且 (j, i] >= pivot
+        swap(nums, j, left);
+        // 交换以后 [left, j - 1] < pivot, nums[j] = pivot, [j + 1, right] >= pivot
+        return j;
+    }
+
+    private void swap(int[] nums, int index1, int index2) {
+        int temp = nums[index1];
+        nums[index1] = nums[index2];
+        nums[index2] = temp;
+    }
+}
+```
+
+> **注意：本题必须随机初始化 `pivot` 元素，否则通过时间会很慢，因为测试用例中有极端测试用例。**
+
+为了应对极端测试用例，使得递归树加深，可以在循环一开始的时候，随机交换第 1 个元素与它后面的任意 1 个元素的位置；
+
+说明：最极端的是顺序数组与倒序数组，此时递归树画出来是链表，时间复杂度是 O(N^2)，根本达不到减治的效果。
+
+```java
+public class Solution {
+    private static Random random = new Random(System.currentTimeMillis());
+
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        int target = len - k;
+        int left = 0;
+        int right = len - 1;
+        while (true) {
+            int index = partition(nums, left, right);
+            if (index < target) {
+                left = index + 1;
+            } else if (index > target) {
+                right = index - 1;
+            } else {
+                return nums[index];
+            }
+        }
+    }
+
+    // 在区间 [left, right] 这个区间执行 partition 操作
+
+    private int partition(int[] nums, int left, int right) {
+        // 在区间随机选择一个元素作为标定点
+        if (right > left) {
+            int randomIndex = left + 1 + random.nextInt(right - left);
+            swap(nums, left, randomIndex);
+        }
+
+        int pivot = nums[left];
+        int j = left;
+        for (int i = left + 1; i <= right; i++) {
+            if (nums[i] < pivot) {
+                j++;
+                swap(nums, j, i);
+            }
+        }
+        swap(nums, left, j);
+        return j;
+    }
+
+    private void swap(int[] nums, int index1, int index2) {
+        int temp = nums[index1];
+        nums[index1] = nums[index2];
+        nums[index2] = temp;
+    }
+}
+```
+
+使用双指针，将与 `pivot` 相等的元素等概论地分到 `pivot` 最终排定位置的两边。
+
+使用双指针的办法找到切分元素的位置。
+
+```java
+public class Solution {
+    private static Random random = new Random(System.currentTimeMillis());
+    
+    public int findKthLargest(int[] nums, int k) {
+        int len = nums.length;
+        int left = 0;
+        int right = len - 1;
+
+        // 转换一下，第 k 大元素的索引是 len - k
+        int target = len - k;
+
+        while (true) {
+            int index = partition(nums, left, right);
+            if (index == target) {
+                return nums[index];
+            } else if (index < target) {
+                left = index + 1;
+            } else {
+                right = index - 1;
+            }
+        }
+    }
+
+    public int partition(int[] nums, int left, int right) {
+        // 在区间随机选择一个元素作为标定点
+        if (right > left) {
+            int randomIndex = left + 1 + random.nextInt(right - left);
+            swap(nums, left, randomIndex);
+        }
+
+        int pivot = nums[left];
+
+        // 将等于 pivot 的元素分散到两边
+        // [left, lt) <= pivot
+        // (rt, right] >= pivot
+
+        int lt = left + 1;
+        int rt = right;
+
+        while (true) {
+            while (lt <= rt && nums[lt] < pivot) {
+                lt++;
+            }
+            while (lt <= rt && nums[rt] > pivot) {
+                rt--;
+            }
+
+            if (lt > rt) {
+                break;
+            }
+            swap(nums, lt, rt);
+            lt++;
+            rt--;
+        }
+
+        swap(nums, left, rt);
+        return rt;
+    }
+
+    private void swap(int[] nums, int index1, int index2) {
+        int temp = nums[index1];
+        nums[index1] = nums[index2];
+        nums[index2] = temp;
+    }
+}
+```
+
+- 时间复杂度：O(N))，这里 N 是数组的长度
+- 空间复杂度：O(1)，原地排序，没有借助额外的辅助空间
+
+### [024] 二叉树的层序遍历
+
+给你一个二叉树，请你返回其按 层序遍历 得到的节点值。 （即逐层地，从左到右访问所有节点）。
+
+示例：
+
+二叉树：[3,9,20,null,null,15,7],
+
+    	3
+       / \
+      9  20
+        /  \
+       15   7
+
+返回其层序遍历结果：
+
+```
+[
+  [3],
+  [9,20],
+  [15,7]
+]
+```
+
+方法一：广度优先搜索
+
+```java
+class Solution {
+    public List<List<Integer>> levelOrder(TreeNode root) {
+        List<List<Integer>> ret = new ArrayList<List<Integer>>();
+        if (root == null) {
+            return ret;
+        }
+
+        Queue<TreeNode> queue = new LinkedList<TreeNode>();
+        queue.offer(root);
+        while (!queue.isEmpty()) {
+            List<Integer> level = new ArrayList<Integer>();
+            int currentLevelSize = queue.size();
+            for (int i = 1; i <= currentLevelSize; ++i) {
+                TreeNode node = queue.poll();
+                level.add(node.val);
+                if (node.left != null) {
+                    queue.offer(node.left);
+                }
+                if (node.right != null) {
+                    queue.offer(node.right);
+                }
+            }
+            ret.add(level);
+        }
+        
+        return ret;
+    }
+}
+```
+
+- 时间复杂度：每个点进队出队各一次，故渐进时间复杂度为 O(n) 
+- 空间复杂度：队列中元素的个数不超过 n*n* 个，故渐进空间复杂度为 O(n) 
