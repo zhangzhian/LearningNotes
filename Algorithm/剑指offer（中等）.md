@@ -582,22 +582,21 @@ class Solution {
  * }
  */
 class Solution {
-    int[] preorder;
     HashMap<Integer, Integer> dic = new HashMap<>();
+
     public TreeNode buildTree(int[] preorder, int[] inorder) {
-        this.preorder = preorder;
         for(int i = 0; i < inorder.length; i++)
             dic.put(inorder[i], i);
-        return recur(0,0,inorder.length-1);
+        return recur(preorder,0,0,inorder.length-1);
     }
 
-    public TreeNode recur(int root, int left, int right) {
+    public TreeNode recur(int[] preorder, int root, int left, int right) {
         if(left > right) return null;
         int head_val = preorder[root];
         int head_index = dic.get(head_val);
         TreeNode head = new TreeNode(head_val);
-        head.left = recur(root + 1, left, head_index - 1);
-        head.right = recur(root + head_index - left + 1,head_index + 1,right);
+        head.left = recur(preorder,root + 1, left, head_index - 1);
+        head.right = recur(preorder,root + head_index - left + 1,head_index + 1,right);
         return head;
     }
 }
@@ -607,6 +606,80 @@ class Solution {
 
 - 时间复杂度 O(N) ： 其中 N 为树的节点数量。初始化 HashMap 需遍历 inorder ，占用 O(N)。递归共建立 N 个节点，每层递归中的节点建立、搜索操作占用 O(1)，因此使用 O(N) 时间。
 - 空间复杂度 O(N) ： HashMap 使用 O(N) 额外空间。最差情况下，树退化为链表，递归深度达到 N ，占用 O(N) 额外空间；最好情况下，树为满二叉树，递归深度为logN ，占用 O(logN) 额外空间。
+
+方法二：
+
+解题思路确定根节点的值，把根节点做出来，然后递归构造左右子树即可
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6zvlia07hHvYB5JTKLTHCAmDW9I8dX8c8LmSo1ibejUHGibgH6zhMXBCmw/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于代码中的`rootVal`和`index`变量，就是下图这种情况：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6cuUtHIdXvXjbicaaZnpBWzEO1ZLfCGn9ntniaEicl5Et2wiarGaSq2GCZw/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于左右子树对应的`inorder`数组的起始索引和终止索引比较容易确定：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6BFJp9KicjbvfTdvhU3vaDFEqaUiaNF1q3HzkyFjnpypG8XrGzJXdpeLg/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+对于`preorder`数组，可以通过左子树的节点数推导出来，假设左子树的节点数为`leftSize = index - inStart;`，确定左右数组对应的起始索引和终止索引：
+
+![图片](https://mmbiz.qpic.cn/sz_mmbiz_jpg/gibkIz0MVqdF8ZItXTVByS26EcqBSS9W6Awr35eI0tibAJ2qW6pDUpgWTv5icgDhRhniaIJg3dpYib7Ph5kqDneL08A/640?wx_fmt=jpeg&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    //用map保持索引，避免每次查找
+    Map<Integer,Integer> map = new HashMap();
+    public TreeNode buildTree(int[] preorder, int[] inorder){
+        for (int i = 0; i < inorder.length; i++) {
+            map.put(inorder[i],i);
+        }
+        return build(preorder, 0, preorder.length - 1,
+                inorder, 0, inorder.length - 1);
+    }
+
+    TreeNode build(int[] preorder, int preStart, int preEnd,
+                   int[] inorder, int inStart, int inEnd) {
+
+        if (preStart > preEnd)  return null;
+        
+        // root 节点对应的值就是前序遍历数组的第一个元素
+        int rootVal = preorder[preStart];
+        // rootVal 在中序遍历数组中的索引
+        int index = map.get(rootVal);
+        //或使用如下代码不需要占用额外空间
+//        for (int i = inStart; i <= inEnd; i++) {
+//            if (inorder[i] == rootVal) {
+//                index = i;
+//                break;
+//            }
+//        }
+        int leftSize = index - inStart;
+
+        // 先构造出当前根节点
+        TreeNode root = new TreeNode(rootVal);
+        // 递归构造左右子树
+        root.left = build(preorder, preStart + 1, preStart + leftSize,
+                inorder, inStart, index - 1);
+
+        root.right = build(preorder, preStart + leftSize + 1, preEnd,
+                inorder, index + 1, inEnd);
+        return root;
+    }
+}
+```
+
+- 时间复杂度：O(n)，其中 n 是树中的节点个数。
+
+- 空间复杂度：O(n)，除去存储哈希映射 O(n) 空间之外，我们还需要使用 O(h)（其中 h 是树的高度）的空间存储栈。这里 h < n，所以（在最坏情况下）总空间复杂度为 O(n)。
 
 ### [006] 礼物的最大价值
 
