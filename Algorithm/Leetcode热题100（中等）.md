@@ -2993,3 +2993,275 @@ class Solution {
 
 - 时间复杂度：每个点进队出队各一次，故渐进时间复杂度为 O(n) 
 - 空间复杂度：队列中元素的个数不超过 n*n* 个，故渐进空间复杂度为 O(n) 
+
+### [025] 不同路径
+
+一个机器人位于一个 m x n 网格的左上角 （起始点在下图中标记为 “Start” ）。
+
+机器人每次只能向下或者向右移动一步。机器人试图达到网格的右下角（在下图中标记为 “Finish” ）。
+
+问总共有多少条不同的路径？
+
+ 
+
+示例 1：
+
+![img](https://assets.leetcode.com/uploads/2018/10/22/robot_maze.png)
+
+```
+输入：m = 3, n = 7
+输出：28
+```
+
+示例 2：
+
+```
+输入：m = 3, n = 2
+输出：3
+解释：
+从左上角开始，总共有 3 条路径可以到达右下角。
+
+1. 向右 -> 向右 -> 向下
+2. 向右 -> 向下 -> 向右
+3. 向下 -> 向右 -> 向右
+```
+
+示例 3：
+
+```
+输入：m = 7, n = 3
+输出：28
+```
+
+示例 4：
+
+```
+输入：m = 3, n = 3
+输出：6
+```
+
+
+提示：
+
+- 1 <= m, n <= 100
+- 题目数据保证答案小于等于 2 * 109
+
+方法一：动态规划
+
+我们用 f(i, j) 表示从左上角走到 (i, j) 的路径数量，其中 i 和 j 的范围分别是 [0, m) 和 [0, n)。
+
+每一步只能从向下或者向右移动一步，故
+$$
+f(i,j)=f(i−1,j)+f(i,j−1)
+$$
+需要注意的是，如果 i=0，那么 f(i-1,j) 并不是一个满足要求的状态，我们需要忽略这一项；
+
+同理，如果 j=0，那么 f(i,j-1) 并不是一个满足要求的状态，我们需要忽略这一项。
+
+初始条件为 f(0,0)=1，即从左上角走到左上角有一种方法。
+
+最终的答案即为 f(m-1,n-1)。
+
+```java
+class Solution {
+    public int uniquePaths(int m, int n) {
+        int[][] f = new int[m][n];
+        for (int i = 0; i < m; ++i) {
+            f[i][0] = 1;
+        }
+        for (int j = 0; j < n; ++j) {
+            f[0][j] = 1;
+        }
+        for (int i = 1; i < m; ++i) {
+            for (int j = 1; j < n; ++j) {
+                f[i][j] = f[i - 1][j] + f[i][j - 1];
+            }
+        }
+        return f[m - 1][n - 1];
+    }
+}
+```
+
+- 时间复杂度：O(mn)
+- 空间复杂度：O(mn)
+
+动态规划优化：当前坐标的值只和左边与上面的值有关，和其他的无关，这样二维数组造成大量的空间浪费，所以我们可以把它改为一维数组。
+
+```java
+public int uniquePaths(int m, int n) {
+    int[] dp = new int[m];
+    Arrays.fill(dp, 1);
+    for (int j = 1; j < n; j++)
+        for (int i = 1; i < m; i++)
+            dp[i] += dp[i - 1];
+    return dp[m - 1];
+}
+```
+
+- 时间复杂度：O(mn)
+- 空间复杂度：O(n)
+
+方法二：组合数学
+
+从左上角到右下角的过程中，我们需要移动 m+n-2 次，其中有 m-1 次向下移动，n-1 次向右移动。因此路径的总数，就等于从 m+n-2 次移动中选择 m-1 次向下移动的方案数，即组合数：
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20201231104107423.png#pic_center)
+
+因此我们直接计算出这个组合数即可。
+
+```java
+class Solution {
+    public int uniquePaths(int m, int n) {
+        long ans = 1;
+        for (int x = n, y = 1; y < m; ++x, ++y) {
+            ans = ans * x / y;
+        }
+        return (int) ans;
+    }
+}
+```
+
+- 时间复杂度：O(m)。由于我们交换行列的值并不会对答案产生影响，因此我们总可以通过交换 m 和 n 使得 m≤n，这样空间复杂度降低至 O(min(m,n))。
+
+- 空间复杂度：O(1)。
+
+### [026] 前 K 个高频元素
+
+给定一个非空的整数数组，返回其中出现频率前 k 高的元素。 
+
+示例 1:
+
+```
+输入: nums = [1,1,1,2,2,3], k = 2
+输出: [1,2]
+```
+
+示例 2:
+
+```
+输入: nums = [1], k = 1
+输出: [1]
+```
+
+
+提示：
+
+- 你可以假设给定的 k 总是合理的，且 1 ≤ k ≤ 数组中不相同的元素的个数。
+- 你的算法的时间复杂度必须优于 O(n log n) , n 是数组的大小。
+- 题目数据保证答案唯一，换句话说，数组中前 k 个高频元素的集合是唯一的。
+- 你可以按任意顺序返回答案。
+
+方法一：堆
+
+首先遍历整个数组，并使用哈希表记录每个数字出现的次数，并形成一个「出现次数数组」。找出原数组的前 k 个高频元素，就相当于找出「出现次数数组」的前 kk 大的值。
+
+最简单的做法是给「出现次数数组」排序。但由于可能有 O(N) 个不同的出现次数（其中 N 为原数组长度），故总的算法复杂度会达到 O(NlogN)，不满足题目的要求。
+
+在这里，我们可以利用堆的思想：建立一个小顶堆，然后遍历「出现次数数组」：
+
+- 如果堆的元素个数小于 k，就可以直接插入堆中。
+- 如果堆的元素个数等于 k，则检查堆顶与当前出现次数的大小。如果堆顶更大，说明至少有 k 个数字的出现
+- 次数比当前值大，故舍弃当前值；否则，就弹出堆顶，并将当前值插入堆中。
+- 遍历完成后，堆中的元素就代表了「出现次数数组」中前 k 大的值。
+
+```java
+class Solution {
+    public int[] topKFrequent(int[] nums, int k) {
+        Map<Integer,Integer> map = new HashMap<>();
+        for (int i = 0; i < nums.length; i++) {
+            map.put(nums[i], map.getOrDefault(nums[i],0) + 1);
+        }
+
+        // int[] 的第一个元素代表数组的值，第二个元素代表了该值出现的次数
+        PriorityQueue<int[]> queue = new PriorityQueue<int[]>((m, n) -> m[1] - n[1]);
+        for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+            int num = entry.getKey(), count = entry.getValue();
+            if (queue.size() == k) {
+                if (queue.peek()[1] < count) {
+                    queue.poll();
+                    queue.offer(new int[]{num, count});
+                }
+            } else {
+                queue.offer(new int[]{num, count});
+            }
+        }
+        int[] ret = new int[k];
+        for (int i = 0; i < k; ++i) {
+            ret[i] = queue.poll()[0];
+        }
+        return ret;
+    }
+}
+```
+
+- 时间复杂度：O(Nlogk)，其中 N 为数组的长度。我们首先遍历原数组，并使用哈希表记录出现次数，每个元素需要 O(1) 的时间，共需 O(N) 的时间。随后，我们遍历「出现次数数组」，由于堆的大小至多为 k，因此每次堆操作需要 O(logk) 的时间，共需 O(Nlogk) 的时间。二者之和为O(Nlogk)。
+- 空间复杂度：O(N)。哈希表的大小为 O(N)，而堆的大小为 O(k)，共计为 O(N)。
+
+方法二：基于快速排序
+
+我们可以使用基于快速排序的方法，求出「出现次数数组」的前 k 大的值。
+
+在对数组 `arr[l…r]` 做快速排序的过程中，我们首先将数组划分为两个部分 `arr[i…q−1]` 与 `arr[q+1…j]`，并使得 `arr[i…q−1]` 中的每一个值都不超过 `arr[q]`，且 `arr[q+1…j]` 中的每一个值都大于`arr[q]`。
+
+于是，我们根据 k 与左侧子数组 `arr[i…q−1]` 的长度（为 `q-i`）的大小关系：
+
+- 如果` k≤q−i`，则数组 `arr[l…r]` 前 k 大的值，就等于子数组 `arr[i…q−1]` 前 k 大的值。
+- 否则，数组`arr[l…r] `前 k 大的值，就等于左侧子数组全部元素，加上右侧子数组 `arr[q+1…j]` 中前 `k−(q−i)` 大的值。
+
+原版的快速排序算法的平均时间复杂度为 O(NlogN)。我们的算法中，每次只需在其中的一个分支递归即可，因此算法的平均时间复杂度降为 O(N)
+
+```java
+class Solution {
+    public int[] topKFrequent(int[] nums, int k) {
+        Map<Integer, Integer> occurrences = new HashMap<Integer, Integer>();
+        for (int num : nums) {
+            occurrences.put(num, occurrences.getOrDefault(num, 0) + 1);
+        }
+
+        List<int[]> values = new ArrayList<int[]>();
+        for (Map.Entry<Integer, Integer> entry : occurrences.entrySet()) {
+            int num = entry.getKey(), count = entry.getValue();
+            values.add(new int[]{num, count});
+        }
+        int[] ret = new int[k];
+        qsort(values, 0, values.size() - 1, ret, 0, k);
+        return ret;
+    }
+
+    public void qsort(List<int[]> values, int start, int end, int[] ret, int retIndex, int k) {
+        int picked = (int) (Math.random() * (end - start + 1)) + start;
+        Collections.swap(values, picked, start);
+        
+        int pivot = values.get(start)[1];
+        int index = start;
+        for (int i = start + 1; i <= end; i++) {
+            if (values.get(i)[1] >= pivot) {
+                Collections.swap(values, index + 1, i);
+                index++;
+            }
+        }
+        Collections.swap(values, start, index);
+
+        if (k <= index - start) {
+            qsort(values, start, index - 1, ret, retIndex, k);
+        } else {
+            for (int i = start; i <= index; i++) {
+                ret[retIndex++] = values.get(i)[0];
+            }
+            if (k > index - start + 1) {
+                qsort(values, index + 1, end, ret, retIndex, k - (index - start + 1));
+            }
+        }
+    }
+}
+```
+
+- 时间复杂度：O(N^2)，其中 N 为数组的长度。
+
+  设处理长度为 N 的数组的时间复杂度为 f(N)。由于处理的过程包括一次遍历和一次子分支的递归，最好情况下，有 f(N) = O(N) + f(N/2)，根据 主定理，能够得到 f(N) = O(N)。
+
+  最坏情况下，每次取的中枢数组的元素都位于数组的两端，时间复杂度退化为 O(N^2)。但由于我们在每次递归的开始会先随机选取中枢元素，故出现最坏情况的概率很低。
+
+  平均情况下，时间复杂度为 O(N)。
+
+- 空间复杂度：O(N)。哈希表的大小为 O(N)，用于排序的数组的大小也为 O(N)，快速排序的空间复杂度最好情况为 O(logN)，最坏情况为 O(N)。
