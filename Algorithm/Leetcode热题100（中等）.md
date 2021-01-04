@@ -3265,3 +3265,232 @@ class Solution {
   平均情况下，时间复杂度为 O(N)。
 
 - 空间复杂度：O(N)。哈希表的大小为 O(N)，用于排序的数组的大小也为 O(N)，快速排序的空间复杂度最好情况为 O(logN)，最坏情况为 O(N)。
+
+### [027] 打家劫舍 III
+
+在上次打劫完一条街道之后和一圈房屋后，小偷又发现了一个新的可行窃的地区。这个地区只有一个入口，我们称之为“根”。 除了“根”之外，每栋房子有且只有一个“父“房子与之相连。一番侦察之后，聪明的小偷意识到“这个地方的所有房屋的排列类似于一棵二叉树”。 如果两个直接相连的房子在同一天晚上被打劫，房屋将自动报警。
+
+计算在不触动警报的情况下，小偷一晚能够盗取的最高金额。
+
+示例 1:
+
+输入: [3,2,3,null,3,null,1]
+
+         3
+        / \
+       2   3
+        \   \ 
+         3   1
+输出: 7 
+解释: 小偷一晚能够盗取的最高金额 = 3 + 3 + 1 = 7.
+
+示例 2:
+
+输入: [3,4,5,1,3,null,1]
+
+         3
+        / \
+       4   5
+      / \   \ 
+     1   3   1
+输出: 9
+解释: 小偷一晚能够盗取的最高金额 = 4 + 5 = 9.
+
+方法一：暴力递归 - 最优子结构
+
+1. 首先要明确相邻的节点不能偷，也就是爷爷选择偷，儿子就不能偷了，但是孙子可以偷
+2. 二叉树只有左右两个孩子，一个爷爷最多 2 个儿子，4 个孙子
+
+根据以上条件，我们可以得出单个节点的钱该怎么算
+
+**4 个孙子偷的钱 + 爷爷的钱 VS 两个儿子偷的钱 哪个组合钱多，就当做当前节点能偷的最大钱数。** 这就是动态规划里面的最优子结构
+
+4 个孙子投的钱加上爷爷的钱如下:
+
+`int method1 = root.val + rob(root.left.left) + rob(root.left.right) + rob(root.right.left) + rob(root.right.right)`
+
+两个儿子偷的钱如下:
+
+`int method2 = rob(root.left) + rob(root.right);`
+
+挑选一个钱数多的方案则:
+
+`int result = Math.max(method1, method2);`
+
+```java
+class Solution {
+    public int rob(TreeNode root) {
+        if (root == null) return 0;
+        int money = root.val;
+        if (root.left != null) {
+            money += (rob(root.left.left) + rob(root.left.right));
+        }
+        if (root.right != null) {
+            money += (rob(root.right.left) + rob(root.right.right));
+        }
+        return Math.max(money, rob(root.left) + rob(root.right));
+    }
+}
+```
+
+方法二：记忆化 - 解决重复子问题
+
+动态规划的关键优化点：重复子问题
+
+由于二叉树不适合拿数组当缓存，我们这次使用哈希表来存储结果，TreeNode 当做 key，能偷的钱当做 value
+
+```java
+class Solution {
+    public int rob(TreeNode root) {
+        HashMap<TreeNode, Integer> memo = new HashMap<>();
+        return robInternal(root, memo);
+    }
+
+    public int robInternal(TreeNode root, HashMap<TreeNode, Integer> memo) {
+        if (root == null) return 0;
+        if (memo.containsKey(root)) return memo.get(root);
+        int money = root.val;
+
+        if (root.left != null) {
+            money += (robInternal(root.left.left, memo) + robInternal(root.left.right, memo));
+        }
+        if (root.right != null) {
+            money += (robInternal(root.right.left, memo) + robInternal(root.right.right, memo));
+        }
+        int result = Math.max(money, robInternal(root.left, memo) + robInternal(root.right, memo));
+        memo.put(root, result);
+        return result;
+    }
+}
+```
+
+时间复杂度：O(n)。
+空间复杂度：O(n)。
+
+方法三：
+
+计算爷爷节点能偷的钱还要同时去计算孙子节点投的钱，虽然有了记忆化，但是还是有性能损耗。
+
+我们换一种办法来定义此问题
+
+每个节点可选择偷或者不偷两种状态，根据题目意思，相连节点不能一起偷
+
+- 当前节点选择偷时，那么两个孩子节点就不能选择偷了
+- 当前节点选择不偷时，两个孩子节点只需要拿最多的钱出来就行(两个孩子节点偷不偷没关系)
+
+我们使用一个大小为 2 的数组来表示偷到的钱 `int[] res = new int[2]` 0 代表不偷，1 代表偷
+
+任何一个节点能偷到的最大钱的状态可以定义为
+
+- 当前节点选择不偷：当前节点能偷到的最大钱数 = 左孩子能偷到的钱 + 右孩子能偷到的钱
+- 当前节点选择偷：当前节点能偷到的最大钱数 = 左孩子选择自己不偷时能得到的钱 + 右孩子选择不偷时能得到的钱 + 当前节点的钱数
+
+表示为公式如下
+
+```java
+root[0] = Math.max(rob(root.left)[0], rob(root.left)[1]) + Math.max(rob(root.right)[0], rob(root.right)[1])
+root[1] = rob(root.left)[0] + rob(root.right)[0] + root.val;
+```
+
+```java
+class Solution {
+    public int rob(TreeNode root) {
+        int[] result = robInternal(root);
+        return Math.max(result[0], result[1]);
+    }
+
+    public int[] robInternal(TreeNode root) {
+        if (root == null) return new int[2];
+        int[] result = new int[2];
+
+        int[] left = robInternal(root.left);
+        int[] right = robInternal(root.right);
+
+        result[0] = Math.max(left[0], left[1]) + Math.max(right[0], right[1]);
+        result[1] = left[0] + right[0] + root.val;
+
+        return result;
+    }
+}
+```
+
+- 时间复杂度：O(n)。
+- 空间复杂度：O(n)。虽然优化过的版本省去了哈希映射的空间，但是栈空间的使用代价依旧是 O(n)，故空间复杂度不变。
+
+### [028] 完全平方数
+
+给定正整数 n，找到若干个完全平方数（比如 1, 4, 9, 16, ...）使得它们的和等于 n。你需要让组成和的完全平方数的个数最少。
+
+示例 1:
+
+```
+输入: n = 12
+输出: 3 
+解释: 12 = 4 + 4 + 4.
+```
+
+示例 2:
+
+```
+输入: n = 13
+输出: 2
+解释: 13 = 4 + 9.
+```
+
+方法一：动态规划
+
+dp[i]：表示完全平方数和为i的最小个数。
+
+首先初始化长度为 n+1 的数组 dp，每个位置都为 0。如果 n 为 0，则结果为 0。
+
+对数组进行遍历，下标为 i，每次都将当前数字先更新为最大的结果，即 `dp[i]=i`，比如 `i=4`，最坏结果为 `4=1+1+1+1` 即为 4 个数字。
+
+动态转移方程为：`dp[i] = min(dp[i], dp[i - j * j] + 1)`，i 表示当前数字，`j*j` 表示平方数
+
+意思就是：完全平方数和为i的 最小个数 等于 当前完全平方数和为i的 最大个数与 （完全平方数和为 `i - j * j`的 最小个数 + 完全平方数和为`j * j`的 最小个数）可以看到 `dp[j*j]` 是等于1的
+
+```java
+class Solution {
+    public int numSquares(int n) {
+        int[] dp = new int[n + 1]; // 默认初始化值都为0
+        for (int i = 1; i <= n; i++) {
+            dp[i] = i; // 最坏的情况就是每次i
+            for (int j = 1; i - j * j >= 0; j++) { 
+                dp[i] = Math.min(dp[i], dp[i - j * j] + 1); // 动态转移方程
+            }
+        }
+        return dp[n];
+    }
+}
+```
+
+- 时间复杂度：O(n∗sqrt(n))，sqrt 为平方根
+- 空间复杂度：O(n)
+
+方法二：回溯法
+
+去考虑所有的分解方案，把过程中的解利用 `HashMap` 全部保存起来，找出最小的解
+
+```java
+public int numSquares(int n) {
+    return numSquaresHelper(n, new HashMap<Integer, Integer>());
+}
+
+private int numSquaresHelper(int n, HashMap<Integer, Integer> map) {
+    if (map.containsKey(n)) {
+        return map.get(n);
+    }
+    if (n == 0) {
+        return 0;
+    }
+    int count = Integer.MAX_VALUE;
+    for (int i = 1; i * i <= n; i++) {
+        count = Math.min(count, numSquaresHelper(n - i * i, map) + 1);
+    }
+    map.put(n, count);
+    return count;
+}
+```
+
+- 时间复杂度：O(n∗sqrt(n))，sqrt 为平方根
+- 空间复杂度：O(n)
