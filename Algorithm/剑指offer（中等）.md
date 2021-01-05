@@ -965,6 +965,7 @@ class Solution {
     Node head, pre;
     public Node treeToDoublyList(Node root) {
         if(root==null) return null;
+        //可以把right理解为后继，left理解为前驱
         dfs(root);
         //进行头节点和尾节点的相互指向，顺序可以颠倒
         pre.right = head;
@@ -1029,6 +1030,10 @@ $$
 dp[i]=max(dp[i−1],prices[i]−min(prices[0:i]))
 $$
 
+优化后的状态转移方程：
+$$
+profit=max(profit,prices[i]−min(cost,prices[i])
+$$
 **初始状态**： dp[0] = 0 ，即首日利润为 0 ；
 
 **返回值**： dp[n - 1] ，其中 n 为 dp 列表长度。
@@ -1436,19 +1441,21 @@ class Solution {
 ```java
 class Solution {
     LinkedList<List<Integer>> res = new LinkedList<>();
-    LinkedList<Integer> path = new LinkedList<>(); 
+    LinkedList<Integer> path = new LinkedList<>();
     public List<List<Integer>> pathSum(TreeNode root, int sum) {
-        recur(root, sum);
+        dfs(root, sum);
         return res;
     }
-    void recur(TreeNode root, int tar) {
-        if(root == null) return;
+
+    public void dfs(TreeNode root, int tar) {
+        if (root == null) return;
         path.add(root.val);
         tar -= root.val;
-        if(tar == 0 && root.left == null && root.right == null)
+        if (tar == 0 && root.left == null && root.right == null)
             res.add(new LinkedList(path));
-        recur(root.left, tar);
-        recur(root.right, tar);
+        dfs(root.left, tar);
+        dfs(root.right, tar);
+        //向上回溯前，需要将当前节点从路径 path 中删除
         path.removeLast();
     }
 }
