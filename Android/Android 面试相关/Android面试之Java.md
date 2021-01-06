@@ -3,7 +3,7 @@
 | 时间       | 版本  | 说明           |
 | ---------- | ----- | -------------- |
 | 2020.10.15 | 0.0.1 | 初创，结构输入 |
-|            |       |                |
+| 2021.01.06 | 0.0.2 | 完成一个初版   |
 
 ## 基础
 
@@ -17,7 +17,7 @@ Integer对象值的范围为 `[-128 - 127]` 时，不会创建新的引用，指
 
 #### 2. 下面的代码，再次使用对象 student 是否需要判空？
 
-> **Java 中方法参数的使用情况总结：**
+> Java 中方法参数的使用情况总结：
 >
 > - 一个方法不能修改一个基本数据类型的参数（即数值型或布尔型）；
 > - 一个方法可以改变一个对象参数的状态；
@@ -60,11 +60,9 @@ byte 1 char 2 short 2 int 4 float 4 double 8 long 8 boolean 1（boolean 类型�
 
 #### 1. 下面的代码， str 值最终为多少？换成 Integer 值又为多少，是否会被改变？
 
-> - **考点**：Java 值传递 (第 2 题相同)。编写代码测试，在 changeValue() 方法中修改入参，并**不会改变**之前的值；
-> - **原理** ：[Java 程序设计语言总是采用按值调用](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2FSnailclimb%2FJavaGuide%2Fblob%2Fmaster%2Fdocs%2Fessential-content-for-interview%2FPreparingForInterview%2F%E5%BA%94%E5%B1%8A%E7%94%9F%E9%9D%A2%E8%AF%95%E6%9C%80%E7%88%B1%E9%97%AE%E7%9A%84%E5%87%A0%E9%81%93Java%E5%9F%BA%E7%A1%80%E9%97%AE%E9%A2%98.md%23%E4%B8%80-%E4%B8%BA%E4%BB%80%E4%B9%88-java-%E4%B8%AD%E5%8F%AA%E6%9C%89%E5%80%BC%E4%BC%A0%E9%80%92)，方法得到的是所有参数值的一个拷贝，即方法**不能修改**传递给它的任何参数变量的内容。基本类型参数传递的是参数副本，对象类型参数传递的是**对象地址的副本；**
+> - **考点**：Java 值传递 (第一节第 2 题相同)。编写代码测试，在 changeValue() 方法中修改入参，并**不会改变**之前的值；
+> - **原理** ：Java 程序设计语言总是采用按值调用，方法得到的是所有参数值的一个拷贝，即方法**不能修改**传递给它的任何参数变量的内容。基本类型参数传递的是参数副本，对象类型参数传递的是**对象地址的副本；**
 > - **题解**：在 changeValue() 中，对于对象类型参数，直接修改的是**对象地址副本**的值，所以之前变量的地址并未被修改！若修改的是对象实例里面的某个值，之前变量则会被修改
-
-
 
 ```rust
 public void test() {
@@ -84,7 +82,7 @@ public changeValue(String str) {
 - `StringBuilder`：可变对象，非多线程安全。
 - `StringBuffer`：可变对象，多线程安全。
 
-大部分情况下，效率是：`StringBuilder`>`StmiandringBuffer`>`String`。
+大部分情况下，效率是：`StringBuilder`>`StringBuffer`>`String`。
 
 #### 3. Java中中文字符和英文字符的大小分别多少？在网络上传输大小又分别是多少？
 
@@ -115,7 +113,7 @@ Java采用unicode编码，2个字节来表示一个字符，这点与C语言中�
 2）平时使用双引号方式赋值的时候其实是返回的字符串引用,并不是改变了这个字符串对象
 
 #### 6. 浅谈一下String, StringBuffer，StringBuilder的区别？String的两种创建方式，在JVM的存储方式相同吗？
-String是不可变类，每当我们对String进行操作的时候，总是会创建新的字符串。操作String很耗资源,所以Java提供了两个工具类来操作String - StringBuffer和StringBuilder。
+String是不可变类，每当我们对String进行操作的时候，总是会创建新的字符串。操作String很耗资源,所以Java提供了两个工具类来操作String：StringBuffer和StringBuilder。
 
 StringBuffer和StringBuilder是可变类，StringBuffer是线程安全的，StringBuilder则不是线程安全的。所以在多线程对同一个字符串操作的时候，我们应该选择用StringBuffer。由于不需要处理多线程的情况，StringBuilder的效率比StringBuffer高。
 
@@ -181,7 +179,7 @@ Java中多态的实现方式：接口实现，继承父类进行方法重写，�
 
 方法重载（overload）实现的是编译时的多态性（也称为前绑定），而方法重写 （override）实现的是运行时的多态性（也称为后绑定）。
 
-运行时的多态是面向对象最精髓的东西，要实现多态需要做两件事：1. 方法重写（子类继承父类并重写父类中已有的或抽象的方法）；2. 对象造型（用父类型引用引用子类型对象，这样同样的引用调用同样的方法就会根据子类对象的不同而表现出不同的行为）。
+运行时的多态是面向对象最精髓的东西，要实现多态需要做两件事：方法重写（子类继承父类并重写父类中已有的或抽象的方法）；对象造型（用父类型引用引用子类型对象，这样同样的引用调用同样的方法就会根据子类对象的不同而表现出不同的行为）。
 
 
 
@@ -189,15 +187,26 @@ Java中多态的实现方式：接口实现，继承父类进行方法重写，�
 
 #### 1. 编译期注解处理的是字节码还是java文件
 
+java文件。原理就是读入Java源代码，解析注解，然后生成新的Java代码。新生成的Java代码最后被编译成Java字节码。
 
+#### 2. 说说你对注解的了解，是怎么解析的
 
-#### 2. @JavaScriptInterface为什么不通过多个方法来实现？
+详见《Java基础总结》第四章
 
+注解(Annotation)在JDK1.5之后增加的一个新特性。注解作为程序的元数据嵌入到程序。注解可以被解析工具或编译工具解析。
 
+Annotation能被用来为程序元素（类、方法、成员变量等）设置元素据。Annotaion不影响程序代码的执行，无论增加、删除Annotation，代码都始终如一地执行。如果希望让程序中的Annotation起一定的作用，只有通过解析工具或编译工具对Annotation中的信息进行解析和处理。
 
-#### 3. 说说你对注解的了解，是怎么解析的
+通过反射技术来解析自定义注解。关于反射类位于包java.lang.reflect，其中有一个接口AnnotatedElement，该接口主要有如下几个实现类：Class，Constructor，Field，Method，Package。除此之外，该接口定义了注释相关的几个核心方法，如下：
 
+| 返回值       | 方法                                                         | 解释                                                     |
+| ------------ | ------------------------------------------------------------ | -------------------------------------------------------- |
+| T            | getAnnotation(Class annotationClass)                         | 当存在该元素的指定类型注解，则返回响应注释，否则返回null |
+| Annotation[] | getAnnotation()                                              | 返回此元素上存在的所有注释                               |
+| Annotation[] | getDeclaredAnnotation()                                      | 返回直接存在于此元素上存在的所有注释                     |
+| boolean      | isAnnotationPresent(Class<? extends Annotation> annotationClass) | 当存在该元素的指定类型注解，则返回true，否则返回false    |
 
+因此，当获取了某个类的Class对象，然后获取其Field,Method等对象，通过上述4个方法提取其中的注解，然后获得注解的详细信息。
 
 ### 五、序列化
 
@@ -207,11 +216,13 @@ Java中多态的实现方式：接口实现，继承父类进行方法重写，�
 
 #### 1. Java 集合，介绍下ArrayList 和 HashMap 的使用场景，底层实现原理
 
-ArrayList：
+《Java基础》第一章7节和9节
 
-HashMap：
+ArrayList：以数组实现。节约空间，但数组有容量限制。超出限制时会**增加50%容量**，用System.arraycopy()复制到新的数组，因此最好能给出数组大小的预估值。**默认第一次插入元素时创建大小为10的数组**。按数组下标访问元素—get(i)/set(i,e) 的性能很高，这是数组的基本优势。直接在数组末尾加入元素—add(e)的性能也高，但如果按下标插入、删除元素—add(i,e), remove(i), remove(e)，则要用System.arraycopy()来移动部分受影响的元素，性能就变差了，这是基本劣势。
 
+HashMap：基于Map接口实现、允许null键/值、非同步、不保证有序(比如插入的顺序)、也不保证序不随时间变化。当bucket中的entries的数目大于`capacity*load factor`时就需要调整bucket的大小为当前的2倍。
 
+通过hash的方法，通过put和get存储和获取对象。存储对象时，我们将K/V传给put方法时，它调用hashCode计算hash从而得到bucket位置，进一步存储，HashMap会根据当前bucket的占用情况自动调整容量(超过`Load Facotr`则resize为原来的2倍)。获取对象时，我们将K传给get，它调用hashCode计算hash从而得到bucket位置，并进一步调用equals()方法确定键值对。如果发生碰撞的时候，Hashmap通过链表将产生碰撞冲突的元素组织起来，在Java 8中，如果一个bucket中碰撞冲突的元素超过某个限制(默认是8)，则使用红黑树来替换链表，从而提高速度。
 
 #### 2. ArrayList 与 LinkedList 的区别
 
@@ -219,7 +230,7 @@ ArrayList 和 Vector 使用了数组的实现，可以认为 ArrayList 或者 Ve
 
 LinkedList 使用了循环双向链表数据结构。与基于数组的 ArrayList 相比，这是两种截然不同的实现技术，这也决定了它们将适用于完全不同的工作场景。
 
-LinkedList 链表由一系列表项连接而成。一个表项总是包含 3 个部分：元素内容，前驱表和后驱表。。在 JDK 的实现中，无论 LikedList 是否 为空，链表内部都有一个 header 表项，它既表示链表的开始，也表示链表的结尾。表项 header 的后驱表项便是链表中第一个元素，表项 header 的前驱表项便是链表中最后一个元素。
+LinkedList 链表由一系列表项连接而成。一个表项总是包含 3 个部分：元素内容，前驱表和后驱表。在 JDK 的实现中，无论 LikedList 是否 为空，链表内部都有一个 header 表项，它既表示链表的开始，也表示链表的结尾。表项 header 的后驱表项便是链表中第一个元素，表项 header 的前驱表项便是链表中最后一个元素。
 
 #### 3. HashMap的特点是什么？HashMap的原理？
 
@@ -238,7 +249,7 @@ HashMap的特点：
 4. 没有就新增节点，默认使用链表，相连节点数超过8的时候，在jdk 1.8中会变成红黑树。
 5. 如果Hashmap中的数组使用情况超过一定比例，就会扩容，默认扩容两倍。
 
-当然这是存入的过程，其他过程可以自行查阅。这里需要注意的是：
+当然这是存入的过程。这里需要注意的是：
 
 - `key`的hash值计算过程是高16位不变，低16位和高16位取异或，让更多位参与进来，可以有效的减少碰撞的发生。
 - 初始数组容量为16，默认不超过的比例为0.75。
@@ -290,9 +301,17 @@ ArrayList 和 LinkedList 在性能上各有优缺点，都有各自所适用的�
 
 #### 3. 泛型是怎么解析的
 
+Java泛型的处理几乎都在编译器中进行，编译器生成的字节码是不包涵泛型信息的，泛型类型信息将在编译处理是被擦除，这个过程即类型擦除。
+
+通常情况下，Java是通过以下方式处理泛型：Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。
+
+> Code sharing：对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。
+
 #### 4. 泛型有什么优点？
 
-#### 
+- 类型安全，避免类型的强转。
+
+- 提高了代码的可读性，不必要等到运行的时候才去强制转换。
 
 
 
@@ -321,23 +340,128 @@ ArrayList 和 LinkedList 在性能上各有优缺点，都有各自所适用的�
 
 #### 2. 反射是什么，在哪里用到，怎么利用反射创建一个对象
 
+Java反射机制是在运行状态中，对于任意一个类，都能够知道这个类中的所有属性和方法；对于任意一个对象，都能够调用它的任意一个方法和属性；这种动态获取的信息以及动态调用对象的方法的功能称为java语言的反射机制。
+
 Java中的反射首先是能够获取到 Java 中要反射类的字节码 ， 获取字节码有三种方法:
 
-- Class.forName(className) 
-- 类名.class
-- this.getClass()。
+- `Class.forName(className)` 
+- `类名.class`
+- `this.getClass()`
 
 然后将字节码中的方法，变量，构造函数等映射成相应的 Method、Filed、Constructor 等类，这些类提供了丰富的方法可以被我们所使用。
 
 #### 3. 代理模式与装饰模式的区别，手写一个静态代理，一个动态代理
 
+对装饰器模式来说，装饰者（decorator）和被装饰者（decoratee）都实现同一个接口。
 
+对代理模式来说，代理类（proxy class）和真实处理的类（real class）都实现同一个接口。
+
+他们之间的边界确实比较模糊，两者都是对类的方法进行扩展，具体区别如下：
+
+- 装饰器模式强调的是增强自身，在被装饰之后你能够在被增强的类上使用增强后的功能。增强后你还是你，只不过能力更强了而已；代理模式强调要让别人帮你去做一些本身与你业务没有太多关系的职责（记录日志、设置缓存）。代理模式是为了实现对象的控制，因为被代理的对象往往难以直接获得或者是其内部不想暴露出来。
+
+- 装饰模式是以对客户端透明的方式扩展对象的功能，是继承方案的一个替代方案；代理模式则是给一个对象提供一个代理对象，并由代理对象来控制对原有对象的引用；
+
+- 装饰模式是为装饰的对象增强功能；而代理模式对代理的对象施加控制，但不对对象本身的功能进行增强；
+
+静态代理:
+
+```java
+public class ProxyDemo {
+    public static void main(String args[]){
+        RealSubject subject = new RealSubject();
+        Proxy p = new Proxy(subject);
+        p.request();
+    }
+}
+
+interface Subject{
+    void request();
+}
+
+class RealSubject implements Subject{
+    public void request(){
+        System.out.println("request");
+    }
+}
+
+class Proxy implements Subject{
+    private Subject subject;
+    public Proxy(Subject subject){
+        this.subject = subject;
+    }
+    public void request(){
+        System.out.println("PreProcess");
+        subject.request();
+        System.out.println("PostProcess");
+    }
+}
+```
+
+动态代理:
+
+```java
+public class DynamicProxyDemo {
+    public static void main(String[] args) {
+        //1.创建目标对象
+        RealSubject realSubject = new RealSubject();    
+        //2.创建调用处理器对象
+        ProxyHandler handler = new ProxyHandler(realSubject);    
+       //3.动态生成代理对象
+        Subject proxySubject = (Subject)Proxy.newProxyInstance(RealSubject.class.getClassLoader(),
+                                                        RealSubject.class.getInterfaces(), handler);   
+        //4.通过代理对象调用方法   
+        proxySubject.request();    
+    }
+}
+
+/**
+ * 主题接口
+ */
+interface Subject{
+    void request();
+}
+
+/**
+ * 目标对象类
+ */
+class RealSubject implements Subject{
+    public void request(){
+        System.out.println("====RealSubject Request====");
+    }
+}
+/**
+ * 代理类的调用处理器
+ */
+class ProxyHandler implements InvocationHandler{
+    private Subject subject;
+    public ProxyHandler(Subject subject){
+        this.subject = subject;
+    }
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args)
+            throws Throwable {
+        //定义预处理的工作，当然你也可以根据 method 的不同进行不同的预处理工作
+        System.out.println("====before====");
+       //调用RealSubject中的方法
+        Object result = method.invoke(subject, args);
+        System.out.println("====after====");
+        return result;
+    }
+}
+```
 
 #### 4. 动态代理有什么作用
 
+- 不需要为`RealSubject`写一个形式完全一样的代理类。
+
+- 使用一些动态代理的方法可以在运行时制定代理类的逻辑，从而提升系统的灵活性。
+
 #### 5. 反射可以反射final修饰的字段吗？
 
+- 当final修饰的成员变量在定义的时候就初始化了值，那么java反射机制就已经不能动态修改它的值了。
 
+- 当final修饰的成员变量在定义的时候并没有初始化值的话，那么就还能通过java反射机制来动态修改它的值。
 
 ### 九、IO
 
@@ -345,7 +469,7 @@ Java中的反射首先是能够获取到 Java 中要反射类的字节码 ， �
 
 字节流和字符流。
 
-字节流继承于 InputStream 和 OutputStream，字符流继承于 InputStreamReader 和 OutputStreamWriter。
+字节流继承于 InputStream 和 OutputStream，字符流继承于 Reader 和 Writer。
 
 #### 2. 字节流如何转为字符流?
 
@@ -373,11 +497,13 @@ objectInputStream.close();
 
 #### 4. 字节流和字符流的区别
 
-要把一片二进制数据数据逐一输出到某个设备中，或者从某个设备中逐一读取一片二进制数据，不管输入输出设备是什么，我们要用统一的方式来完成这些操作，用一种抽象的方式进行描述，这个抽象描述方式起名为 IO 流，对应的抽象类为 OutputStream 和 InputStream，不同的实现类就代表不同的输入和输出设备，它们都是针对字节进行操作的。 
+字节流和字符流的区别：
 
-在应用中，经常要完全是字符的一段文本输出去或读进来，用字节流可以吗？计算机中的一切最终都是二进制的字节形式存在。对于“中国”这些字符，首先要得到其对应的字节，然后将字节写入到输出流。读取时，首先读到的是字节，可是我们要把它显示为字符，我们需要将字节转换成字符。由于这样的需求很广泛，提供了字符流的包装类。 
+- 读写单位不同：字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。
 
-底层设备永远只接受字节数据，有时候要写字符串到底层设备，需要将字符串转成字节再进行写入。字符流是字节流的包装，字符流则是直接接受字符串，它内部将串转成字节，再写入底层设备，这为我们向 IO 设别写入或读取字符串提供了一点点方便。字符向字节转换时，要注意编码的问题，因为字符串转成字节数组， 其实是转成该字符的某种编码的字节形式，读取也是反之的道理。
+- 处理对象不同：字节流能处理所有类型的数据（如图片、avi等），而字符流只能处理字符类型的数据。
+
+只要是处理纯文本数据，就优先考虑使用字符流。 除此之外都使用字节流。
 
 
 
@@ -424,7 +550,7 @@ public class 对象 implements Cloneable{
 
 - 当前方法不知道如何处理，则在定义该方法是声明抛出该异常。 
 
-运行时异常只有当代码在运行时才发行的异常，编译时不需要 try catch。Runtime 如除数是 0 和数组下标越 界等，其产生频繁，处理麻烦，若显示申明或者捕获将会对程序的可读性和运行效率影响很大。所以由系统自动 检测并将它们交给缺省的异常处理程序。当然如果你有处理要求也可以显示捕获它们。
+运行时异常只有当代码在运行时才发行的异常，编译时不需要 try catch。Runtime 如除数是 0 和数组下标越界等，其产生频繁，处理麻烦，若显示申明或者捕获将会对程序的可读性和运行效率影响很大。所以由系统自动 检测并将它们交给缺省的异常处理程序。当然如果你有处理要求也可以显示捕获它们。
 
 #### 2. 调用下面的方法，得到的返回值是什么?
 
@@ -471,38 +597,159 @@ Exception 类又分为运行时异常（Runtime Exception）和编译时异常(C
 
 ### 十二、其他
 
+#### 1. 静态方法，静态对象能不能继承?
 
+静态属性和静态方法是可以被继承的，但是不能被子类重写。
 
-#### 1. 静态方法，静态对象为什么不能继承
+如果父类中定义的静态方法在子类中被重新定义，那么在父类中定义的静态方法将被隐藏。可以使用语法：父类名.静态方法调用隐藏的静态方法。 
 
+如果父类中含有一个静态方法，且在子类中也含有一个返回类型、方法名、参数列表均与之相同的静态方法，那么该子类实际上只是将父类中的该同名方法进行了隐藏，而非重写。换句话说，父类和子类中含有的其实是两个没有关系的方法，它们的行为也并不具有多态性 
 
+因此，通过一个指向子类对象的父类引用变量来调用父子同名的静态方法时，只会调用父类的静态方法。
 
-#### 2. 有用过什么加密算法？AES,RAS什么原理？
+#### 2. 如何封装一个字符串转数字的工具类？
 
+```java
+/**
+ * 数字转换算法工具
+ */
+public class DecimalUtil {
+    private static Pattern pattern = Pattern.compile("^[-\\+]?[.\\d]*$");
+ 
+    /**
+     * 四舍五入算法 取整
+     */
+    public static String roundHalfUp(String str) {
+        if (TextUtils.isEmpty(str)) {
+            return "0";
+        }
+        if (!isNum(str)) {
+            return "0";
+        }
+        BigDecimal decimal = new BigDecimal(str);
+        double num = decimal.setScale(0, BigDecimal.ROUND_HALF_UP).doubleValue();
+        DecimalFormat format = new DecimalFormat("##0");
+        return format.format(num);
+    }
+ 
+    /**
+     * 四舍五入算法 scale 精度,保留几位小数 0, 1 ,2 , 3.....
+     */
+    public static double roundHalfUp(String str, int scale) {
+        if (TextUtils.isEmpty(str)) {
+            return 0;
+        }
+        if (!isNum(str)) {
+            return 0;
+        }
+        BigDecimal decimal = new BigDecimal(str);
+        return decimal.setScale(scale, BigDecimal.ROUND_UP).doubleValue();
+    }
+ 
+    /**
+     * 字符串转换成整形
+     */
+    public static int string2Int(String str) {
+        if (TextUtils.isEmpty(str)) {
+            return 0;
+        }
+        if (!isNum(str)) {
+            return 0;
+        }
+        return Integer.parseInt(str);
+    }
+ 
+    /**
+     * 字符串转换成float
+     */
+    public static float string2Float(String str) {
+        if (TextUtils.isEmpty(str)) {
+            return 0;
+        }
+        if (!isNum(str)) {
+            return 0;
+        }
+        return Float.parseFloat(str);
+    }
+ 
+    /**
+     * 判断字符串是否可以转成数字
+     */
+    public static boolean isNum(String str) {
+        if (null == str || "".equals(str)) {
+            return false;
+        }
+ 
+        return pattern.matcher(str).matches();
+    }
+}
+```
 
+####  4. Java 中的引用类型分类和区别，虚引用的使用场景？
 
-#### 3. 共享内存用过吗？
+强引用：当内存不足，JVM开始垃圾回收，对于强引用的对象，就算是出现了OOM也不会对该对象进行回收。
 
+软引用：是一种相对强引用弱化了一些的引用，需要用`java.lang.ref.SoftReference`类来实现，对于只有软引用的对象来说，当系统内存充足时它不会被回收，当系统内存不足时它会被回收。
 
+弱引用：需要用`java.lang.ref.WeakReference`类来实现，它比软引用的生存期更短，对于只有弱引用的对象来说，只要垃圾回收机制一运行，不管JVM的内存空间是否足够，都会回收该对象占用的内存。
 
-#### 4. 如何封装一个字符串转数字的工具类
+虚引用：需要`java.lang.ref.PhantomReference`类来实现。顾名思义，就是形同虚设，与其他几种引用都不同，虚引用并不会决定对象的生命周期。如果一个对象仅持有虚引用，那么它就和没有任何引用一样，在任何时候都可能被垃圾回收器回收，它不能单独使用也不能通过它访问对象，虚引用必须和引用队列 ReferenceQueue 联合使用。
 
-####  5. Java 中的引用类型分类和区别，虚引用的使用场景？
+虚引用的主要作用是跟踪对象被垃圾回收的状态。仅仅是提供了一种确保对象被finalize以后，做某些事情的机制。
 
-#### 6. Base64算法是什么，是加密算法吗？
+#### 5. Base64算法是什么，是加密算法吗？
 
 - `Base64`是一种将二进制数据转换成64种字符组成的字符串的编码算法，主要用于非文本数据的传输，比如图片。可以将图片这种二进制数据转换成具体的字符串，进行保存和传输。
 - 严格来说，不算。虽然它确实把一段二进制数据转换成另外一段数据，但是他的加密和解密是公开的，也就无秘密可言了。所以我更倾向于认为它是一种编码，每个人都可以用base64对二进制数据进行编码和解码。
 - `面试加分项`：为了减少混淆，方便复制，减少数据长度，就衍生出一种base58编码。去掉了base64中一些容易混淆的数字和字母（数字0，字母O，字母I，数字1，符号+，符号/）
    大名鼎鼎的比特币就是用的改进后的base58编码，即`Base58Check`编码方式，有了校验机制，加入了hash值。
 
-#### 7. Base64底层
+#### 6. Base64底层
 
+Base64的原理比较简单，每当我们使用Base64时都会先定义一个类似这样的数组：
 
+```
+['A', 'B', 'C', ... 'a', 'b', 'c', ... '0', '1', ... '+', '/']
+```
 
-#### 8. Linux进程和Java进程有何区别
+上面就是Base64的索引表，字符选用了"A-Z、a-z、0-9、+、/" 64个可打印字符，这是标准的Base64协议规定。在日常使用中我们还会看到“=”或“==”号出现在Base64的编码结果中，“=”在此是作为填充字符出现。
 
+- 第一步，将待转换的字符串每三个字节分为一组，每个字节占8bit，那么共有24个二进制位。
+- 第二步，将上面的24个二进制位每6个一组，共分为4组。
+- 第三步，在每组前面添加两个0，每组由6个变为8个二进制位，总共32个二进制位，即四个字节。
+- 第四步，根据Base64编码对照表（见下图）获得对应的值。
 
+```
+0　A　　17　R　　　34　i　　　51　z
+1　B　　18　S　　　35　j　　　52　0
+2　C　　19　T　　　36　k　　　53　1
+3　D　　20　U　　　37　l　　　54　2
+4　E　　21　V　　　38　m　　　55　3
+5　F　　22　W　　　39　n　　　56　4
+6　G　　23　X　　　40　o　　　57　5
+7　H　　24　Y　　　41　p　　　58　6
+8　I　　25　Z　　　42　q　　　59　7
+9　J　　26　a　　　43　r　　　60　8
+10　K　　27　b　　　44　s　　　61　9
+11　L　　28　c　　　45　t　　　62　+
+12　M　　29　d　　　46　u　　　63　/
+13　N　　30　e　　　47　v
+14　O　　31　f　　　48　w　　　
+15　P　　32　g　　　49　x
+16　Q　　33　h　　　50　y
+```
+
+从上面的步骤我们发现：
+
+- Base64字符表中的字符原本用6个bit就可以表示，现在前面添加2个0，变为8个bit，会造成一定的浪费。因此，Base64编码之后的文本，要比原文大约三分之一。
+- 为什么使用3个字节一组呢？因为6和8的最小公倍数为24，三个字节正好24个二进制位，每6个bit位一组，恰好能够分为4组。
+
+如果字节数不足三个:
+
+- 两个字节：两个字节共16个二进制位，依旧按照规则进行分组。此时总共16个二进制位，每6个一组，则第三组缺少2位，用0补齐，得到三个Base64编码，第四组完全没有数据则用“=”补上。因此，上图中“BC”转换之后为“QKM=”；
+- 一个字节：一个字节共8个二进制位，依旧按照规则进行分组。此时共8个二进制位，每6个一组，则第二组缺少4位，用0补齐，得到两个Base64编码，而后面两组没有对应数据，都用“=”补上。因此，上图中“A”转换之后为“QQ==”；
+
+Base64就是用6位（2的6次幂就是64）表示字符，因此成为Base64。同理，Base32就是用5位，Base16就是用4位。
 
 ## 并发
 ### 一、线程
@@ -533,15 +780,401 @@ Exception 类又分为运行时异常（Runtime Exception）和编译时异常(C
 
 #### 4. 线程间同步的方法
 
+synchronized关键字
 
+ReentrantLock锁
+
+Volatile关键字
+
+CAS原子操作
 
 #### 5. 如何让两个线程循环交替打印
 
+synchronized锁+AtomicInteger
 
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class StrangePrinter {
+
+    private int max;
+    private AtomicInteger status = new AtomicInteger(1); // AtomicInteger保证可见性，也可以用volatile
+
+    public StrangePrinter(int max) {
+        this.max = max;
+    }
+
+    public static void main(String[] args) {
+        StrangePrinter strangePrinter = new StrangePrinter(100);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        executorService.submit(strangePrinter.new MyPrinter("Print1", 0));
+        executorService.submit(strangePrinter.new MyPrinter("Print2", 1));
+        executorService.shutdown();
+    }
+
+    class MyPrinter implements Runnable {
+        private String name;
+        private int type; // 打印的类型，0：代表打印奇数，1：代表打印偶数
+
+        public MyPrinter(String name, int type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        @Override
+        public void run() {
+            if (type == 1) {
+                while (status.get() <= max) {
+                    synchronized (StrangePrinter.class) { // 加锁，保证下面的操作是一个原子操作
+                        // 打印偶数
+                        if (status.get() <= max && status.get() % 2 == 0) { // 打印偶数
+                            System.out.println(name + " - " + status.getAndIncrement());
+                        }
+                    }
+                }
+            } else {
+                while (status.get() <= max) {
+                    synchronized (StrangePrinter.class) { // 加锁
+                        // 打印奇数
+                        if (status.get() <= max && status.get() % 2 != 0) { // 打印奇数
+                            System.out.println(name + " - " + status.getAndIncrement());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+这里需要注意两点：
+
+1. 用AtomicInteger保证多线程数据可见性。
+2. 不要觉得synchronized加锁是多余的，如果没有加锁，线程1和线程2就可能出现不是交替打印的情况。如果没有加锁，设想线程1打印完了一个奇数后，线程2去打印下一个偶数，当执行完`status.getAndIncrement()`后，此时status又是奇数了，当此时cpu将线程2挂起，调度线程1，就会出现线程2还没来得及打印偶数，线程1就已经打印了下一个奇数的情况。就不符合题目要求了。因此这里加锁是必须的，保证代码块中的是一个原子操作。
+
+使用Object的wait和notify实现
+
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class StrangePrinter2 {
+
+    Object odd = new Object(); // 奇数条件锁
+    Object even = new Object(); // 偶数条件锁
+    private int max;
+    private AtomicInteger status = new AtomicInteger(1); // AtomicInteger保证可见性，也可以用volatile
+
+    public StrangePrinter2(int max) {
+        this.max = max;
+    }
+
+    public static void main(String[] args) {
+        StrangePrinter2 strangePrinter = new StrangePrinter2(100);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        executorService.submit(strangePrinter.new MyPrinter("偶数Printer", 0));
+        executorService.submit(strangePrinter.new MyPrinter("奇数Printer", 1));
+        executorService.shutdown();
+    }
+
+    class MyPrinter implements Runnable {
+        private String name;
+        private int type; // 打印的类型，0：代表打印奇数，1：代表打印偶数
+
+        public MyPrinter(String name, int type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        @Override
+        public void run() {
+            if (type == 1) {
+                while (status.get() <= max) { // 打印奇数
+                    if (status.get() % 2 == 0) { // 如果当前为偶数，则等待
+                        synchronized (odd) {
+                            try {
+                                odd.wait();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } else {
+                        System.out.println(name + " - " + status.getAndIncrement()); // 打印奇数
+                        synchronized (even) { // 通知偶数打印线程
+                            even.notify();
+                        }
+                    }
+                }
+            } else {
+                while (status.get() <= max) { // 打印偶数
+                    if (status.get() % 2 != 0) { // 如果当前为奇数，则等待
+                        synchronized (even) {
+                            try {
+                                even.wait();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } else {
+                        System.out.println(name + " - " + status.getAndIncrement()); // 打印偶数
+                        synchronized (odd) { // 通知奇数打印线程
+                            odd.notify();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+使用ReentrantLock+Condition实现
+
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class StrangePrinter3 {
+
+    private int max;
+    private AtomicInteger status = new AtomicInteger(1); // AtomicInteger保证可见性，也可以用volatile
+    private ReentrantLock lock = new ReentrantLock();
+    private Condition odd = lock.newCondition();
+    private Condition even = lock.newCondition();
+
+    public StrangePrinter3(int max) {
+        this.max = max;
+    }
+
+    public static void main(String[] args) {
+        StrangePrinter3 strangePrinter = new StrangePrinter3(100);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        executorService.submit(strangePrinter.new MyPrinter("偶数Printer", 0));
+        executorService.submit(strangePrinter.new MyPrinter("奇数Printer", 1));
+        executorService.shutdown();
+    }
+
+    class MyPrinter implements Runnable {
+        private String name;
+        private int type; // 打印的类型，0：代表打印奇数，1：代表打印偶数
+
+        public MyPrinter(String name, int type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        @Override
+        public void run() {
+            if (type == 1) {
+                while (status.get() <= max) { // 打印奇数
+                    lock.lock();
+                    try {
+                        if (status.get() % 2 == 0) {
+                            odd.await();
+                        }
+                        if (status.get() <= max) {
+                            System.out.println(name + " - " + status.getAndIncrement()); // 打印奇数
+                        }
+                        even.signal();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        lock.unlock();
+                    }
+                }
+            } else {
+                while (status.get() <= max) { // 打印偶数
+                    lock.lock();
+                    try {
+                        if (status.get() % 2 != 0) {
+                            even.await();
+                        }
+                        if (status.get() <= max) {
+                            System.out.println(name + " - " + status.getAndIncrement()); // 打印偶数
+                        }
+                        odd.signal();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } finally {
+                        lock.unlock();
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+这里的实现思路其实和使用Object的wait和notify机制差不多。
+
+通过flag标识实现
+
+```java
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class StrangePrinter4 {
+
+    private int max;
+    private AtomicInteger status = new AtomicInteger(1); // AtomicInteger保证可见性，也可以用volatile
+    private boolean oddFlag = true;
+
+    public StrangePrinter4(int max) {
+        this.max = max;
+    }
+
+    public static void main(String[] args) {
+        StrangePrinter4 strangePrinter = new StrangePrinter4(100);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        executorService.submit(strangePrinter.new MyPrinter("偶数Printer", 0));
+        executorService.submit(strangePrinter.new MyPrinter("奇数Printer", 1));
+        executorService.shutdown();
+    }
+
+    class MyPrinter implements Runnable {
+        private String name;
+        private int type; // 打印的类型，0：代表打印奇数，1：代表打印偶数
+
+        public MyPrinter(String name, int type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        @Override
+        public void run() {
+            if (type == 1) {
+                while (status.get() <= max) { // 打印奇数
+                    if (oddFlag) {
+                        System.out.println(name + " - " + status.getAndIncrement()); // 打印奇数
+                        oddFlag = !oddFlag;
+                    }
+                }
+            } else {
+                while (status.get() <= max) { // 打印偶数
+                    if (!oddFlag) {
+                        System.out.println(name + " - " + status.getAndIncrement()); // 打印奇数
+                        oddFlag = !oddFlag;
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+这是最简单最高效的实现方式，因为不需要加锁。比前面两种实现方式都要好一些。
 
 #### 6. 怎么中止一个线程，Thread.Interupt一定有效吗？
 
+停止一个线程可以用Thread.stop()方法，但最好不要用它。虽然它确实可以停止一个正在运行的线程，但是这个方法是不安全的，而且是已被废弃的方法。
+
+在Java中有以下3种方法可以终止正在运行的线程：
+
+1. 使用退出标志，使线程正常退出，也就是当run方法完成后线程终止。
+2. 使用stop方法强行终止，但是不推荐这个方法，因为stop和suspend及resume一样都是过期作废的方法。
+3. 使用interrupt方法中断线程。
+
+调用Thread.Interupt方法不一定能中断线程，需要与线程中检测interrupt状态的方法配合使用。
+
+无阻塞的情况下要保证interrupt状态仅在while判断时重置，不能受其他部分影响。
+
+```java
+	while(!Thread.interrupted()) {	// interrupt状态，要保证循环中不会重置这个值
+		// do sth...
+	}
+```
+
+有阻塞的情况下要保证interrupt状态不被吞，可以在catch块中再次调用interrupt()方法设置interrupt状态。
+
+```java
+	while(!Thread.interrupted()) {	// interrupt状态，要保证循环中不会重置这个值
+		// do sth...
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			// do sth...
+			// 在这里调了一次interrupt()，此时线程未处于阻塞状态，会设置interrupt状态
+			Thread.currentThread().interrupt();
+		}
+	}
+```
+
 #### 7. 实现一个线程同步的计数器
+
+synchronized
+
+```java
+public class Test {
+	//公共变量
+	int count=0;
+	public static void main(String[] args){
+		//new一个实现Runnable的类
+		Test test=new Test();
+		//创建1个任务
+		MyRunnable myRunnable=test.new MyRunnable();
+		//创建5个线程
+		for(int i=0;i<4;i++){
+			new Thread(myRunnable).start();
+		}
+	}
+	//创建一个实现Runnable的类
+	class MyRunnable implements Runnable{
+		public void run() {
+			while(true){
+				//锁住的是同一对象
+				synchronized(this){
+					if(count>=1000){
+						break;
+					}
+					System.out.println(Thread.currentThread().getName()+":count:"+(++count));
+					//测试时，线程更容易切换
+					Thread.yield();
+				}
+			}
+		}
+		
+	}
+ 
+}
+```
+
+AtomicInteger
+
+```java
+    static AtomicInteger count=new AtomicInteger(0);
+    //公共变量
+    //int count=0;
+    public static void main(String[] args){
+        //new一个实现Runnable的类
+        Solution015 test=new Solution015();
+        //创建1个任务
+        MyRunnable myRunnable=test.new MyRunnable();
+        //创建5个线程
+        for(int i=0;i<4;i++){
+            new Thread(myRunnable).start();
+        }
+    }
+    //创建一个实现Runnable的类
+    class MyRunnable implements Runnable{
+        public void run() {
+            while(true){
+                if(count.get()>=1000){
+                    break;
+                }
+                System.out.println(Thread.currentThread().getName()+":count:"+count.getAndIncrement());
+                //测试时，线程更容易切换
+                Thread.yield();
+            }
+        }
+    }
+```
 
 #### 8. 为什么多线程同时访问（读写）同个变量，会有并发问题？
 - Java 内存模型规定了所有的变量都存储在主内存中，每条线程有自己的工作内存。
@@ -570,7 +1203,6 @@ Exception 类又分为运行时异常（Runtime Exception）和编译时异常(C
                     singleton = new Singleton();
                 }
             }
-
         }
         return singleton;
     }
@@ -706,7 +1338,13 @@ public ThreadPoolExecutor(int corePoolSize,
 
 #### 4. 为什么有newSingleThread?
 
+单线程线程池中只有一个工作线程，可以保证添加的任务都以指定顺序执行（先进先出、后进先出、优先级）。
 
+主要有两个优点：
+
+- 可以通过共享的线程池很方便地提交任务进行异步执行，而不用自己管理线程的生命周期；
+
+- 可以使用任务队列并指定任务的执行顺序，很容易做到任务管理的功能。
 
 ### 三、锁
 
@@ -720,9 +1358,9 @@ public ThreadPoolExecutor(int corePoolSize,
 
 - 循环的请求与等待
 
-#### 2. synchronized关键字的使用？synchronized的参数放入对象和Class有什么区别？
+#### 2. synchronized关键字的使用？
 
-synchronized 修饰 static 方法、普通方法、类、方法块区别？
+synchronized的参数放入对象和Class有什么区别？synchronized 修饰 static 方法、普通方法、类、方法块区别？
 
 `synchronized`关键字的用法：
 
@@ -767,20 +1405,46 @@ synchronized 修饰 static 方法、普通方法、类、方法块区别？
 
 `CAS`全称Compare And Set，核心的三个元素是：内存位置、预期原值和新值，执行CAS的时候，会将内存位置的值与预期原值进行比较，如果一致，就将原值更新为新值，否则就不更新。 底层原理：是借助CPU底层指令`cmpxchg`实现原子操作。
 
-#### 7. 平常有用到什么锁，synchronized底层原理是什么
+#### 7. synchronized是公平锁还是非公平锁,ReteranLock是公平锁吗？
 
-#### 8. synchronized是公平锁还是非公平锁,ReteranLock是公平锁吗？是怎么实现的
+synchronized是非公平锁；ReteranLock是非公平锁还是公平锁和设置有关。
 
-#### 9. JMM可见性，原子性，有序性，synchronized可以保证什么？
+#### 8.可见性，原子性，有序性，synchronized可以保证什么？
 
-#### 10. 构造一个出现死锁的情况
+可见性，原子性，有序性都可以保证。
 
-#### 11. synchronized 的 4 种状态
+#### 9. 构造一个出现死锁的情况
+
+```java
+//可能发生静态锁顺序死锁的代码
+class StaticLockOrderDeadLock {
+    private final Object lockA = new Object();
+    private final Object lockB = new Object();
+
+    public void a() {
+        synchronized (lockA) {
+            synchronized (lockB) {
+                System.out.println("function a");
+            }
+        }
+    }
+
+    public void b() {
+        synchronized (lockB) {
+            synchronized (lockA) {
+                System.out.println("function b");
+            }
+        }
+    }
+}
+```
+
+#### 10. synchronized 的 4 种状态
 
 > - [不可不说的Java“锁”事](https://links.jianshu.com/go?to=https%3A%2F%2Ftech.meituan.com%2F2018%2F11%2F15%2Fjava-lock.html)
 > - 访问 synchronized 修饰static方法、synchronized(this|object) 是否会冲突受干扰
 
-#### 12. 访问 synchronized 修饰 static 方法、synchronized (类.class) 是否会冲突受干扰
+#### 11. 访问 synchronized 修饰 static 方法、synchronized (类.class) 是否会冲突受干扰
 
 > [synchronized 详解](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F594a24defe88c2006aa01f1c%23heading-5)
 
@@ -788,13 +1452,11 @@ synchronized 修饰 static 方法、普通方法、类、方法块区别？
 
 **Synchronized修饰静态方法**，实际上是对该类对象加锁，俗称“类锁”。也就是锁住的是这个类，即xx.class。如果一个对象在两个线程中分别调用一个静态同步方法和一个非静态同步方法，由于静态方法会收到类锁限制，但是非静态方法会收到对象限制，所以两个方法并不是同一个对象锁，因此不会排斥。
 
-
-
-#### 13. 同一个类中的 2 个方法都加了同步锁，多个线程能同时访问同一个类中的这两个方 法吗？
+#### 12. 同一个类中的 2 个方法都加了同步锁，多个线程能同时访问同一个类中的这两个方法吗？
 
 这个问题需要考虑到 Lock 与 synchronized 两种实现锁的不同情形：
 
-#### 14. 什么情况下导致线程死锁，遇到线程死锁该怎么解决？
+#### 13. 什么情况下导致线程死锁，遇到线程死锁该怎么解决？
 
 死锁是指多个线程因竞争资源而造成的一种僵局（互相等待），若无外力作用，这些进程都将无法向前推进。
 
@@ -816,15 +1478,7 @@ synchronized 修饰 static 方法、普通方法、类、方法块区别？
 
 
 
-### 五、ReentranLock
-
-#### 1.synchronized跟ReentranLock有什么区别？
-
-#### 2.synchronized与ReentranLock发生异常的场景？
-
-
-
-### 六、线程间通信
+### 四、线程间通信
 
 #### 1. notify和notifyAll方法的区别？
 
@@ -857,7 +1511,7 @@ Java内存模型具有一些先天的有序性，它通常叫做happens-before�
 
 前四条规则比较重要。
 
-### 七、Volatile 
+### 五、Volatile 
 
 #### 1. volatile 的作用和原理
 
@@ -922,11 +1576,7 @@ public class Singleton {
 - 当一个域的值依赖于它之前的值时，`volatile`就无法工作了，如n=n+1,n++等，也就是不保证原子性。
 - 使用`volatile`而不是`synchronized`的唯一安全的情况是：类中只有一个可变的域。
 
-
-
-
-
-### 八、阻塞队列
+### 六、阻塞队列
 
 #### 1. 通常的阻塞队列有哪几种，特点是什么？
 
@@ -943,7 +1593,7 @@ JDK 1.8之前采用的是分段锁，核心类是一个`Segment`，`Segment`继�
 
 JDK 1.8采用了`CAS + synchronized`，插入键值对的时候如果当前桶中没有Node节点，使用CAS方式进行更新，如果有Node节点，则使用synchronized的方式进行更新。
 
-### 九、协程，纤程(Java Kotlin)
+### 七、协程，纤程(Java Kotlin)
 
 #### 1.说说你对协程的理解
 
@@ -1070,21 +1720,15 @@ job1.cancel()
 
 Jetpack 中定义的协程作用域`（viewModelScope 和 lifecycleScope）`可以帮助你自动取消任务，下次再详细说明，其他情况就需要自行进行绑定和取消了。
 
-#### 5. 你了解协程吗？协程有什么作用？可以完全取代rxjava吗？
-
-#### 6. 讲一个协程的scope与context，协程的+号代表什么
 
 
-
-### 十、其他
+### 八、其他
 
 #### 1. 源码中有哪里用到了AtomicInt
 
 #### 2. AQS了解吗？
 
 #### 3. 管道了解吗？
-
-
 
 
 
@@ -1171,8 +1815,6 @@ heap：一般是在堆的头部用一个字节存放堆的大小。堆中的具�
 
 栈实际上就是满足先进后出的性质的数学或数据结构。 虽然堆栈，堆栈的说法是连起来叫，但是他们还是有很大区别的，连着叫只是由于历史的原因。
 
-
-
 ### 二、类加载器
 
 #### 1. 类加载的过程？
@@ -1238,23 +1880,31 @@ heap：一般是在堆的头部用一个字节存放堆的大小。堆中的具�
 
 #### 3. 属性先加载还是方法先加载
 
-
+1. 类加载过程（静态属性、静态方法声明--静态属性赋值、静态代码块）注意先父类后子类
+2. 实例化过程（普通属性、普通方法声明--普通属性赋值、构造代码块--构造方法中的代码）也是先父类后子类
+3. 如果类的加载过程中调用了实例化过程（如new了本类对象），则回暂停类加载过程先执行实例化过程，执行完再回到类加载过程。
 
 #### 4. PathClassLoader与DexClassLoader有什么区别
 
+[谈谈 Android 中的 PathClassLoader 和 DexClassLoader](https://juejin.cn/post/6844903929562529800)
 
+PathClassLoader 和 DexClassLoader **都能加载外部的 dex／apk**，只不过区别是 DexClassLoader 可以**指定 optimizedDirectory**，也就是 dex2oat 的产物 .odex 存放的位置，而 PathClassLoader 只能使用系统默认位置。但是这个 optimizedDirectory 在 Android 8.0 以后也被舍弃了，只能使用系统默认的位置了。
 
 #### 5. class文件的组成？常量池里面有什么内容？
 
-
+[Java .class文件结构与常量池](https://zhuanlan.zhihu.com/p/117621212)
 
 #### 6. 自动装箱发生在什么时候？编译期还是运行期
 
+编译时自动完成替换的，装箱阶段自动替换为了 valueOf 方法，拆箱阶段自动替换为了 xxxValue 方法。对于 Integer 类型的 valueOf 方法参数如果是 -128~127 之间的值会直接返回内部缓存池中已经存在对象的引用，参数是其他范围值则返回新建对象；而 Double 类型与 Integer 类型类似，一样会调用 Double 的 valueOf 方法，但是 Double 的区别在于不管传入的参数值是多少都会 new 一个对象来表达该数值（因为在指定范围内浮点型数据个数是不确定的，整型等个数是确定的，所以可以 Cache）。
 
+注意：Integer、Short、Byte、Character、Long 的 valueOf 方法实现类似，而 Double 和 Float 比较特殊，每次返回新包装对象，对于两边都是包装类型的比较 = = 比较的是引用，equals 比较的是值，对于两边有一边是表达式（包含算数运算）则 = = 比较的是数值（自动触发拆箱过程），对于包装类型 equals 方法不会进行类型转换。
 
 #### 7.java和字节码有什么区别？
 
+.java源程序是指未编译的按照一定的程序设计语言规范书写的文本文件
 
+字节码文件就是以.CLASS文件结尾的文件，是通过JAVAC命令编译过生成的。因为JAVA不是编译型语言，所以它zhuan需要去解释字节码shu文件才能够运行。
 
 #### 8. Java 虚拟机类加载器分类，类加载器的代理机制有什么好处？
 
@@ -1304,8 +1954,6 @@ Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类
 
 3）加入类中存在初始化语句（如 static 变量和 static 块），那就依次执行这些初始化语句。
 
-
-
 ### 三、垃圾回收
 
 #### 1. 如何判断对象可回收？
@@ -1324,7 +1972,7 @@ Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类
 [Java 垃圾收集的原理：](https://links.jianshu.com/go?to=https%3A%2F%2Fapp.yinxiang.com%2FHome.action%23n%3D6add1e9f-f832-438c-ae3d-6f0f1fca8108%26s%3Ds38%26b%3Ded4692de-7e6e-4e29-ae3a-d4d01138be52%26ses%3D4%26sh%3D1%26sds%3D5%26)
 
 - 自动垃圾收集的前提是清楚哪些内存可以被释放，主要有两个方面，最主要部分就是**对象实例**，存储在堆上的；另一个是**方法区中的元数据**等信息，例如类型不再使用，卸载该 Java 类比较合理；
-- **对象实例收集**主要是两种基本算法，[引用计数](https://links.jianshu.com/go?to=https%3A%2F%2Fzh.wikipedia.org%2Fwiki%2F%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0)和可达性分析，**Java 选择的可达性分析**。**JVM 会把虚拟机栈和本地方法栈中**正在引用的对象**、**静态属性引用的对象**和**常量**，作为 GC Roots。
+- **对象实例收集**主要是两种基本算法，[引用计数](https://links.jianshu.com/go?to=https%3A%2F%2Fzh.wikipedia.org%2Fwiki%2F%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0)和可达性分析，Java 选择的可达性分析。JVM 会把虚拟机栈和本地方法栈中正在引用的对象、静态属性引用的对象和常量，作为 GC Roots。
 
 #### 2. GC的常用算法？
 
@@ -1345,10 +1993,7 @@ Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类
 - `弱引用`：被若引用关联的对象只能存活到下一次GC之前。
 - `虚引用`：为对象设置虚引用的目的仅仅是为了GC之前收到一个系统通知。
 
+#### 5. 圾回收的GCRoot是什么？
 
+JVM 会把虚拟机栈和本地方法栈中正在引用的对象、静态属性引用的对象和常量，作为 GC Roots。
 
-#### 5. 垃圾回收机制与jvm结构
-
-#### 6. 圾回收的GCRoot是什么？
-
-#### 
