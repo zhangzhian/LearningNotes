@@ -10,7 +10,7 @@
 
 #### (1) Binder的介绍？与其他IPC方式的优缺点？
 
-Binder是Android中特有的IPC方式，引用《Android开发艺术探索》中的话(略有改动)：
+Binder是Android中特有的IPC方式
 
 > 从IPC角度来说，Binder是Android中的一种跨进程通信方式；Binder可以理解为虚拟的物理设备，它的设备驱动是/dev/binder；从`Android Framework`来讲，Binder是`Service Manager`连接各种`Manager`和对应的`ManagerService`的桥梁。从面向对象和CS模型来讲，`Client`通过Binder和远程的`Server`进行通讯。
 
@@ -19,7 +19,7 @@ Binder是Android中特有的IPC方式，引用《Android开发艺术探索》中
 与其他IPC比较：
 
 - 效率高：除了内存共享外，其他IPC都需要进行两次数据拷贝，而因为Binder使用内存映射的关系，仅需要一次数据拷贝。
-- 安全性好：接收方可以从数据包中获取发送发的进程Id和用户Id，方便验证发送方的身份，其他IPC想要实验只能够主动存入，但是这有可能在发送的过程中被修改。
+- 安全性好：接收方可以从数据包中获取发送发的进程Id和用户Id，方便验证发送方的身份，其他IPC方式想要验证只能够主动存入，但是这有可能在发送的过程中被修改。
 
 #### (2) Binder的通信过程？Binder的原理？
 
@@ -52,6 +52,12 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 #### (4) binder进程间通信可以调用原进程方法吗？
 
 
+
+#### (5) 介绍下 Binder 机制，与内存共享机制有什么区别？
+
+- [为什么Android要采用Binder作为IPC机制？ - Gityuan的回答](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.zhihu.com%2Fquestion%2F39440766%2Fanswer%2F89210950)
+- [Android匿名共享内存（Ashmem）原理](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F59e818bb6fb9a044fd10de38%23heading-1)
+- [图文详解 Android Binder跨进程通信的原理](https://www.jianshu.com/p/4ee3fd07da14)
 
 ### 2. 进程
 
@@ -149,6 +155,33 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 > [《Android Apk安装过程分析》](https://www.jianshu.com/p/953475cea991)
 
+#### (2) APK 的打包过程是什么？
+
+aapt 工具打包资源文件，生成 R.java 文件
+
+aidl 工具处理 AIDL 文件，生成对应的 .java 文件
+
+javac 工具编译 Java 文件，生成对应的 .class 文件
+
+把 .class 文件转化成 Davik VM 支持的 .dex 文件
+
+apkbuilder 工具打包生成未签名的 .apk 文件
+
+jarsigner 对未签名 .apk 文件进行签名
+
+zipalign 工具对签名后的 .apk 文件进行对齐处理
+
+#### (3) APK 为什么要签名？是否了解过具体的签名机制？
+
+Android 为了确认 apk 开发者身份和防止内容的篡改，设计了一套 apk 签名的方案保证 apk 的安全性，即在打包时由开发者进行 apk 的签名，在安装 apk 时Android 系统会有相应的开发者身份和内容正确性的验证，只有验证通过才可以安装 apk，签名过程和验证的设计就是基于非对称加密的思想。
+ Android 在 7.0 以前使用的一套签名方案：在 apk 根目录下的 META-INF/ 文件夹下生成签名文件，然后在安装时在系统的 PackageManagerService 里进行签名文件的验证。
+ 从 7.0 开始，Android 提供了新的 V2 签名方案：利用 apk(zip) 压缩文件的格式，在几个原始内容区之外增加了一块用于存放签名信息的数据区，然后同样在安装时在系统的 PackageManagerService 里进行 V2 版本的签名验证，V2 方案会更安全、使校验更快安装更快。
+ 当然 V2 签名方案会向后兼容，如果没有使用 V2 签名就会默认走 V1 签名方案的验证过程。
+
+#### (4) 为什么要分 dex ？SDK 21 不分 dex，直接全部加载会不会有什么问题？
+
+
+
 ### 6. Context
 
 #### (1) 关于Context的理解？
@@ -184,6 +217,42 @@ Context的数量等于Activity的个数 + Service的个数 +1，这个1为Applic
 
 
 ## 二、Android权限处理
+
+#### 1. 解释一下 Android 程序运行时权限与文件系统权限的区别？
+
+apk 程序是运行在虚拟机上的,对应的是 Android 独特的权限机制，只有体现到文件系统上时才使用 linux 的权限设置。
+
+linux 文件系统上的权限如下表示 `-rwxr-x--x system system 4156 2010-04-30 16:13 test.apk`
+
+Android 的权限规则 
+
+a. Android 中的 apk 必须签名 
+
+b. 基于 UserID 的进程级别的安全机制 
+
+c .默认 apk 生成的数据对外是不可见的
+
+d. AndroidManifest.xml 中的显式权限声明
+
+从 Android6.0 之后，Android 升级了权限机制，提出了动态权限的概念。
+
+#### 2. Android6.0 的权限机制?
+
+1) 新权限思想 Android 的权限系统一直是首要的安全概念，因为这些权限只在安装的时候被询问一次。一旦安装了，app 可以 在用户毫不知晓的情况下访问权限内的所有东西，而且一般用户安装的时候很少会去仔细看权限列表，更不会去深入 了解这些权限可能带来的相关危害。 但是在 Android 6.0 版本之后，系统不会在软件安装的时候就赋予该 app 所有其申请的权限，对于一些危险级别的权限，app 需要在运行时一个一个询问用户授予权限。
+
+2) 对旧版本 App 的兼容 
+
+只有那些 targetSdkVersion 设置为 23 及以上的应用才会出现异常，在使用危险权限的时候系统必须要获得用户的同意才能使用，要不然应用就会崩溃， 出现类似下面的错误。 `java.lang.SecurityException: Permission Denial... `所以 targetSdkVersion 如果没有设置为 23 版本或者以上，系统还是会使用旧规则：在安装的时候赋予该 app 所 申请的所有权限。所以 app 当然可以和以前一样正常使用了，但是还有一点需要注意的是 6.0 的系统里面，用户可以手动将该 app 的权限关闭，在 App info 里面 Permissions 下边，可以关闭某个权限。如果以前的老应用申请的权限 被用户手动关闭了，不会抛出异常，不会崩溃，只不过调用那些被用户禁止权限的 api 接口返回值都为 null 或者 0， 所以我们只需要做一下判空操作就可以了，这是需要注意的。
+
+3) 普通权限和危险权限列表
+
+只有那些危险级别的权限才需要。如果有需要申请危险级别中的一个权限，就需要进行特殊操作。还有一个比较 人 性 的 地 方 就 是 如 果 同 一 组 的 任 何 一 个 权 限 被 授 权 了 ， 其 他 权 限 也 自 动 被 授 权 。 例 如 ， 一 旦 `WRITE_EXTERNAL_STORAGE` 被授权了，app 也有 `READ_EXTERNAL_STORAGE` 权限了。
+
+4) 支持6.0新版本权限机制 在 Android M 的 api 中，可以通过 checkSelfPermission 检测软件是否有某一项权限，以及使用 requestPermissions 去请求一组权限。
+
+向用户发起请求之后，请求完成，会有相对应的回调方法，通知软件用户是否授予了权限。 通过在 Activity 或者 Fragment 中重写 onRequestPermissionsResult 方法。
+
+
 
 ## 三、多线程断点续传
 #### (1) 多线程断点续传？
@@ -514,6 +583,19 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (1) Glide和其他图片加载框架的比较？
 
+**Glide：**
+
+- 多种图片格式的缓存，适用于更多的内容表现形式（如Gif、WebP、缩略图、Video）
+- 生命周期集成（根据Activity或者Fragment的生命周期管理图片加载请求）
+- 高效处理Bitmap（bitmap的复用和主动回收，减少系统回收压力）
+- 高效的缓存策略，灵活（Picasso只会缓存原始尺寸的图片，Glide缓存的是多种规格），加载速度快且内存开销小（默认Bitmap格式的不同，使得内存开销是Picasso的一半）
+
+**Fresco：**
+
+- 最大的优势在于5.0以下(最低2.3)的bitmap加载。在5.0以下系统，Fresco将图片放到一个特别的内存区域(Ashmem区)
+- 大大减少OOM（在更底层的Native层对OOM进行处理，图片将不再占用App的内存）
+- 适用于需要高性能加载大量图片的场景
+
 #### (2) 如何设计一个图片加载框架？
 
 #### (3) Glide缓存实现机制？
@@ -527,7 +609,13 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 [《Glide最全解析》](https://blog.csdn.net/sinyu890807/category_9268670.html)
 [《面试官：简历上最好不要写Glide，不是问源码那么简单》](https://juejin.im/post/6844903986412126216)
 
-### 5. Android Jepack(非必需)
+### 5. LeakCanary
+
+#### (1) LeakCanary 的收集内存泄露是在 Activity 的什么时机，大致原理
+
+
+
+### 6. Android Jepack(非必需)
 我主要阅读了Android Jetpack中以下库的源码：
 
 - `Lifecycle`：观察者模式，组件生命周期中发送事件。
@@ -753,7 +841,7 @@ public class MainActivity extends AppCompatActivity {
 - Service 执行完后忘记 `stopSelf()`
 - EventBus 等观察者模式的框架忘记手动解除注册
 
-#### 该怎么发现和解决内存泄漏？
+#### 2. 该怎么发现和解决内存泄漏？
 
 1、使用工具，比如`Memory Profiler`，可以查看app的内存实时情况，捕获堆转储，就生成了一个内存快照，`hprof`文件。通过查看文件，可以看到哪些类发生了内存泄漏。
 
@@ -768,7 +856,7 @@ public class MainActivity extends AppCompatActivity {
 - 分析
    最后通过haha库来分析`hprof`文件，从而找出类之前的引用关系。
 
-#### 2. 内存泄漏有什么方式检测？用过哪些工具，其中的原理是什么？
+#### 3. 内存泄漏有什么方式检测？用过哪些工具，其中的原理是什么？
 
 [Java内存问题 及 LeakCanary 原理分析](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F5ab8d3d46fb9a028ca52f813)：
 
@@ -780,7 +868,7 @@ LeakCanary会单独开一进程，用来执行分析任务，和监听任务分�
 
 LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还得用MAT原始方法
 
-
+#### 
 
 ### 4. 响应速度优化
 
@@ -948,6 +1036,17 @@ Android为每个进程分配内存时，采用弹性的分配方式，即刚开�
 - 减少主线程阻塞时间。
 - 提高 Adapter 和 AdapterView 的效率。
 - 优化布局文件。
+
+#### 6. 有没有做过UI方面的优化，做过哪些?
+
+[Android性能优化（二）之布局优化面面观](https://www.jianshu.com/p/4f44a178c547)
+
+- 调试GPU过度绘制，将Overdraw降低到合理范围内；
+- 减少嵌套层次及控件个数，保持view的树形结构尽量扁平（使用Hierarchy Viewer可以方便的查看），同时移除所有不需要渲染的view；
+- 使用GPU配置渲染工具，定位出问题发生在具体哪个步骤，使用TraceView精准定位代码；
+- 使用标签，merge减少嵌套层次、viewStub延迟初始化、include布局重用 (与merge配合使用)
+
+
 
 ## 六、插件化
 #### 1. 为什么需要插件化？插件化的主要优点和缺点是什么？
@@ -1468,6 +1567,100 @@ System.exit(0)
 - DNS和链接慢，想办法复用客户端使用的`域名和链接`。
 - 脚本执行慢，可以把`框架代码拆分`出来，在请求页面之前就执行好。
 
+#### 13. WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
+
+[最全面总结 Android WebView与 JS 的交互方式](https://www.jianshu.com/p/345f4d8a5cfa)
+
+（1）android 中利用 webview 调用网页上的 js 代码。 首先将 webview 控件的支持 js 的属性设置为 true，，然后通过 loadUrl 就可以 直接进行调用，如下所示：
+
+```java
+ mWebView.getSettings().setJavaScriptEnabled(true);
+ mWebView.loadUrl("javascript:test()"); 
+```
+
+（2）网页上调用 android 中 java 代码的方法 在网页中调用 java 代码，需要在 webview 控件中添加 javascriptInterface。如 下所示： 
+
+```java
+mWebView.addJavascriptInterface(new Object() {
+    public void clickOnAndroid() {
+        mHandler.post(new Runnable() {
+            public void run() {
+                Toast.makeText(Test.this, “测试调用 java”，
+                Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+}, "demo");
+```
+
+在网页中，只需要像调用 js 方法一样，进行调用就可以
+
+```xml
+<div id='b'>
+<aonclick="window.demo.clickOnAndroid()">b.c</a>
+</div>
+```
+
+（3）Java 代码调用 js 并传参
+
+首先需要带参数的 js 函数，如 function test(str)，然后只需在调用 js 时传入参 数即可，如下所示： `mWebView.loadUrl("javascript:test('aa')");`
+
+（4）Js 中调用 java 函数并传参 首先一样需要带参数的函数形式，但需注意此处的参数需要 final 类型，即得到 以后不可修改，如果需要修改其中的值，可以先设置中间变量，然后进行修改。 如下所示：
+
+```java
+mWebView.addJavascriptInterface(new Object() {
+    public void clickOnAndroid(final int i) {
+        mHandler.post(new Runnable() {
+        public void run() {
+			int j = i;
+            j++;
+            Toast.makeText(Test.this, "测试调用 java" + String.valueOf(j), Toast.LENGTH_LONG).show();
+		}
+     });
+    }
+}, "demo");
+
+```
+
+然后在 html 页面中，利用如下代码
+```xml
+<div id='b'>
+<aonclick="window.demo.clickOnAndroid(2)">b.c</a>
+</div>
+```
+
+#### 14. 如何清除 webview 的缓存
+webview 的缓存包括网页数据缓存（存储打开过的页面及资源）、H5 缓存（即 AppCache），webview 会将我们浏览过的网页 url 已经网页文件(css、图片、js 等)保存到数据库表中，如下；
+
+```
+/data/data/package_name/database/webview.db
+/data/data/package_name/database/webviewCache.db
+```
+
+所以，我们只需要根据数据库里的信息进行缓存的处理即可。
+
+#### 15. webview 播放视频，5.0 以上没有全屏播放按钮
+
+实现全屏的时候把 webview 里的视频放到一个 View 里面，然后把 webview隐藏掉；即可实现全屏播放。
+
+#### 16. Webview 中 是 如 何 控 制 显 示 加 载 完 成 的 进 度 条 的
+
+在 WebView 的 setWebChromClient() 中 ， 重 写 WebChromClient 的 openDialog()和 closeDialog()方法；实现监听进度条的显示与关闭。
+
+#### 17. @JavaScriptInterface为什么不通过多个方法来实现？
+
+4.4以前谷歌的webview存在安全漏洞，网站可以通过js注入就可以随便拿到客户端的重要信息，甚至轻而易举的调用本地代码进行流氓行为，谷歌后来发现有此漏洞后，增加了防御措施，js调用本地代码，开发者必须在代码申明JavascriptInterface。
+
+```java
+@SuppressWarnings("javadoc")
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD})
+public @interface JavascriptInterface {
+}
+```
+
+
+
 
 
 ## 十一、架构
@@ -1540,6 +1733,8 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 1. Android 虚拟机区别，编译区别，dex区别
 
+
+
 ## 十三、其他
 
 #### 1. token放在本地如何保存？如何加密比较好？
@@ -1556,30 +1751,11 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 4. 你们项目的稳定性如何？有做过什么稳定性优化的工作？
 
+
+
 #### 5. 推送sdk底层实现
 
-#### 6. LeakCanary 的收集内存泄露是在 Activity 的什么时机，大致原理
 
-
-
-#### ClassLoader 的双亲委派机制
-
-[深入探讨 Java 类加载器](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fcn%2Fjava%2Fj-lo-classloader%2F) 
-
-#### 什么情况会导致内存泄漏，如何修复？
-
-#### 有没有做过UI方面的优化，做过哪些?
-
-[Android性能优化（二）之布局优化面面观](https://www.jianshu.com/p/4f44a178c547)
-
-- 调试GPU过度绘制，将Overdraw降低到合理范围内；
-- 减少嵌套层次及控件个数，保持view的树形结构尽量扁平（使用Hierarchy Viewer可以方便的查看），同时移除所有不需要渲染的view；
-- 使用GPU配置渲染工具，定位出问题发生在具体哪个步骤，使用TraceView精准定位代码；
-- 使用标签，merge减少嵌套层次、viewStub延迟初始化、include布局重用 (与merge配合使用)
-
-#### WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
-
-[最全面总结 Android WebView与 JS 的交互方式](https://www.jianshu.com/p/345f4d8a5cfa)
 
 #### 你们公司 Picasso 有使用过没，介绍下
 
@@ -1587,36 +1763,4 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### Picasso 单引擎，在多 Bundle 的情况下怎么保证数据隔离的？
 
-
-
-#### 介绍下 Binder 机制，与内存共享机制有什么区别？
-
-- [为什么Android要采用Binder作为IPC机制？ - Gityuan的回答](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.zhihu.com%2Fquestion%2F39440766%2Fanswer%2F89210950)
-- [Android匿名共享内存（Ashmem）原理](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F59e818bb6fb9a044fd10de38%23heading-1)
-- [图文详解 Android Binder跨进程通信的原理](https://www.jianshu.com/p/4ee3fd07da14)
-
-#### APK 的打包过程是什么？
-
-aapt 工具打包资源文件，生成 R.java 文件
-
-aidl 工具处理 AIDL 文件，生成对应的 .java 文件
-
-javac 工具编译 Java 文件，生成对应的 .class 文件
-
-把 .class 文件转化成 Davik VM 支持的 .dex 文件
-
-apkbuilder 工具打包生成未签名的 .apk 文件
-
-jarsigner 对未签名 .apk 文件进行签名
-
-zipalign 工具对签名后的 .apk 文件进行对齐处理
-
-#### APK 为什么要签名？是否了解过具体的签名机制？
-
-Android 为了确认 apk 开发者身份和防止内容的篡改，设计了一套 apk 签名的方案保证 apk 的安全性，即在打包时由开发者进行 apk 的签名，在安装 apk 时Android 系统会有相应的开发者身份和内容正确性的验证，只有验证通过才可以安装 apk，签名过程和验证的设计就是基于非对称加密的思想。
- Android 在 7.0 以前使用的一套签名方案：在 apk 根目录下的 META-INF/ 文件夹下生成签名文件，然后在安装时在系统的 PackageManagerService 里进行签名文件的验证。
- 从 7.0 开始，Android 提供了新的 V2 签名方案：利用 apk(zip) 压缩文件的格式，在几个原始内容区之外增加了一块用于存放签名信息的数据区，然后同样在安装时在系统的 PackageManagerService 里进行 V2 版本的签名验证，V2 方案会更安全、使校验更快安装更快。
- 当然 V2 签名方案会向后兼容，如果没有使用 V2 签名就会默认走 V1 签名方案的验证过程。
-
-#### 为什么要分 dex ？SDK 21 不分 dex，直接全部加载会不会有什么问题？
 
