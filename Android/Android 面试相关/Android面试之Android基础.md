@@ -1,3 +1,5 @@
+
+
 # Android基础
 
 | 时间       | 版本  | 说明           |
@@ -31,14 +33,14 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 如果自己没有配置android:ConfigChanges，在切换屏幕时候会重新调用各个生命周期，切横屏时会执行一次onCreate，切竖屏时在2.3前会执行两次onCreate，在2.3版本及以后都执行一次。
 
-如果设置 android:configChanges="orientation|keyboardHidden|screenSize">，此时Activity的生命周期不会重走一遍，Activity不会重建，只会回调onConfigurationChanged方法。
+如果设置` <android:configChanges="orientation|keyboardHidden|screenSize">`，此时Activity的生命周期不会重走一遍，Activity不会重建，只会回调onConfigurationChanged方法。
 
 #### 2. Activity的四大启动模式，以及应用场景？
 
 `Activity`的四大启动模式：
 
 - `standard`：标准模式，每次都会在活动栈中生成一个新的`Activity`实例。通常我们使用的活动都是标准模式。
-- `singleTop`：栈顶复用，如果`Activity`实例已经存在栈顶，那么就不会在活动栈中创建新的实例，并回调onNewIntent方法。比较常见的场景就是给通知跳转的`Activity`设置，因为你肯定不想前台`Activity`已经是该`Activity`的情况下，点击通知，又给你再创建一个同样的`Activity`。
+- `singleTop`：栈顶复用，如果`Activity`实例已经存在栈顶，那么就不会在活动栈中创建新的实例，并回调`onNewIntent`方法。比较常见的场景就是给通知跳转的`Activity`设置，因为你肯定不想前台`Activity`已经是该`Activity`的情况下，点击通知，又给你再创建一个同样的`Activity`。
 - `singleTask`：栈内复用，如果`Activity`实例在当前栈中已经存在，就会将当前`Activity`实例上面的其他`Activity`实例都移除栈，并回调onNewIntent方法。常见于跳转到主界面。
 - `singleInstance`：单实例模式，创建一个新的任务栈，这个活动实例独自处在这个活动栈中，同样被重复调用的时候会调用并回调onNewIntent方法。
 
@@ -116,14 +118,14 @@ requestWindowFeature(Window.FEATURE_NO_TITLE);
 
 1)A→B→C→B,B启动模式为`singleTask`
 
-- 启动A的过程，生命周期调用是 (A)onCreate→(A)onStart→(A)onResume
-- 再启动B的过程，生命周期调用是 (A)onPause→(B)onCreate→(B)onStart→(B)onResume→(A)onStop
-- B→C的过程同上，(B)onPause→(C)onCreate→(C)onStart→(C)onResume→(B)onStop
-- C→B的过程，由于B启动模式为singleTask，所以B会调用onNewIntent，并且将B之上的实例移除，也就是C会被移出栈。所以生命周期调用是 (C)onPause→(B)onNewIntent→(B)onRestart→(B)onStart→(B)onResume→(C)onStop→(C)onDestory
+- 启动A的过程，生命周期调用是`(A)onCreate→(A)onStart→(A)onResume`
+- 再启动B的过程，生命周期调用是 `(A)onPause→(B)onCreate→(B)onStart→(B)onResume→(A)onStop`
+- B→C的过程同上，`(B)onPause→(C)onCreate→(C)onStart→(C)onResume→(B)onStop`
+- C→B的过程，由于B启动模式为singleTask，所以B会调用onNewIntent，并且将B之上的实例移除，也就是C会被移出栈。所以生命周期调用是 `(C)onPause→(B)onNewIntent→(B)onRestart→(B)onStart→(B)onResume→(C)onStop→(C)onDestory`
 
 2)A→B→C→B,B启动模式为`singleInstance`
 
-- 如果B为singleInstance，那么C→B的过程，C就不会被移除，因为B和C不在一个任务栈里面。所以生命周期调用是 (C)onPause→(B)onNewIntent→(B)onRestart→(B)onStart→(B)onResume→(C)onStop
+- 如果B为singleInstance，那么C→B的过程，C就不会被移除，因为B和C不在一个任务栈里面。所以生命周期调用是 `(C)onPause→(B)onNewIntent→(B)onRestart→(B)onStart→(B)onResume→(C)onStop`
 
 3)A→B→C,B启动模式为`singleInstance`,点击两次返回键
 
@@ -144,8 +146,6 @@ requestWindowFeature(Window.FEATURE_NO_TITLE);
 当应用遇到意外情况（如：内存不足、用户直接按Home键）由系统销毁一个Activity时，onSaveInstanceState() 会被调用。但是当用户主动去销毁一个Activity时，例如在应用中按返回键，onSaveInstanceState()就不会被调用。因为在这种情况下，用户的行为决定了不需要保存Activity的状态。通常onSaveInstanceState()只适合用于保存一些临时性的状态，而onPause()适合用于数据的持久化保存。
 
 在activity被杀掉之前调用保存每个实例的状态，以保证该状态可以在onCreate(Bundle)或者onRestoreInstanceState(Bundle) 中恢复。这个方法在一个activity被杀死前调用，当该activity在将来某个时刻回来时可以恢复其先前状态。
-
-[深入理解](https://www.jianshu.com/p/89e0a7533dbe)
 
 #### 11.android中进程的优先级？
 
@@ -169,6 +169,24 @@ requestWindowFeature(Window.FEATURE_NO_TITLE);
 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; 
 mContext.startActivity(intent);
 ```
+
+#### 13. 子线程是否可以 context.startActivity() ？例如ApplicationContext, 会不会有什么问题？
+
+是可以的。
+
+创建对话框时不可以用Application的context，只能用Activity的context。
+
+#### 14. 怎样在两个 Activity 之间传递一张图片?
+
+把 Bitmap 放到 Intent 里会导致巨大的内存损耗，所以在传递图片时应该是传递 URI 地址，新界面根据 URI 生成新图片。同时还可以到图片缓存里使用 URI 查找已有图片，节约内存。
+
+#### 15. 如何退出 Activity？如何安全退出已调用多个 Activity 的 Application？
+
+- 通常情况用户退出一个 Activity 只需按返回键，写代码直接调用 finish()方法就行。
+- 记录打开的 Activity： 每打开一个 Activity，就记录下来。在需要退出时，关闭每一个 Activity 即可。
+- 发送特定广播： 在需要结束应用时，发送一个特定的广播，每个 Activity 收到广播后，关闭即可。
+- 递归退出 在打开新的 Activity 时使用 startActivityForResult，然后自己加标志，在 onActivityResult 中处理，递归关闭。
+- 其实 也可以通过 intent 的 flag 来实现 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)激活一个新的 activity。 此时如果该任务栈中已经有该 Activity，那么系统会把这个 Activity 上面的所有 Activity 干掉。其实相当于给 Activity 配置的启动模式为 SingleTop。
 
 
 
@@ -258,6 +276,81 @@ C. 依靠第三方
 
 根据终端不同，在小米手机（包括 MIUI）接入小米推送、华为手机接入华为推送；其他手机可以考虑接入腾讯信鸽或极光推送与小米推送做 A/B Test。
 
+#### 6. 什么是 IntentService？有何优点？
+
+IntentService 是 Service 的子类。本质是采用Handler & HandlerThread。
+
+**IntentService与Service的区别**
+
+- 从属性 & 作用上来说
+  Service：依赖于应用程序的主线程（不是独立的进程 or 线程）
+
+  > 不建议在Service中编写耗时的逻辑和操作，否则会引起ANR；
+
+  IntentService：创建一个工作线程来处理多线程任务 　　
+
+- Service需要主动调用stopSelft()来结束服务，而IntentService不需要（在所有intent被处理完后，系统会自动关闭服务）
+
+**IntentService与其他线程的区别**
+
+- IntentService内部采用了HandlerThread实现，作用类似于后台线程；
+
+- 与后台线程相比，IntentService是一种后台服务，优势是：优先级高（不容易被系统杀死），从而保证任务的执行。
+
+  > 对于后台线程，若进程中没有活动的四大组件，则该线程的优先级非常低，容易被系统杀死，无法保证任务的执行
+
+#### 7. Service 的 onStartCommand 方法有几种返回值？各代表什么意思？
+
+有四种返回值，不同值代表的意思如下： 
+
+- START_STICKY：如果 service 进程被 kill 掉，保留 service 的状态为开始状态，但不保留递送的 intent 对象。随 后 系 统 会 尝 试 重 新 创 建 service ， 由 于 服 务 状 态 为 开 始 状 态 ， 所 以 创 建 服 务 后 一 定 会 调 用 onStartCommand(Intent,int,int)方法。如果在此期间没有任何启动命令被传递到 service，那么参数 Intent 将为 null。 
+
+- START_NOT_STICKY：“非粘性的”。使用这个返回值时，如果在执行完 onStartCommand 后，服务被异常 kill 掉，系统不会自动重启该服务。 
+
+- START_REDELIVER_INTENT：重传 Intent。使用这个返回值时，如果在执行完 onStartCommand 后，服务被异 kill 掉，系统会自动重启该服务，并将 Intent 的值传入。 
+
+- START_STICKY_COMPATIBILITY：START_STICKY 的兼容版本，但不保证服务被 kill 后一定能重启。
+
+#### 8. Service 的 onRebind（Intent）方法在什么情况下会执行？
+
+如果在 onUnbind（）方法返回 true 的情况下会执行，否则不执行。
+
+#### 9. Activity 调用 Service 中的方法都有哪些方式？
+
+Activity 调用 Service 中的方法主要是通过绑定服务的模式实现的，绑定服务又分为三种方式。如下所示：
+
+1) Extending the Binder class 
+
+通过 Binder 接口的形式实现，当 Activity 绑定 Service 成功的时候 Activity 会在 ServiceConnection 的类 的 onServiceConnected（）回调方法中获取到 Service 的 onBind（）方法 return 过来的 Binder 的子类。 
+
+2) Using a Messenger 
+
+这是官方给出的另外一种沟通方式。
+
+3) Using AIDL 
+
+aidl 比较适合当客户端和服务端不在同一个应用下的场景。
+
+#### 10. Service 如何给 Activity 发送 Message？
+
+Messenger
+
+#### 11. 子线程不能代替 service 吗？
+
+a) 不能替代 
+
+b) 服务作为四大组件之一，是运行在主线程的，可以直接显示吐司，修改 View 等。如果要运行耗时操作，服务需要自己开启子线程。 
+
+c) 只作为后台来理解的话，相比于线程，服务具备完善的生命周期，更方便随时释放资源。 
+
+d) 服务自己就有上下文(Context)对象，可以确定上下文是正常可用的。线程需要从外部获取上下文对象，在运 行时无法保证该对象没有被系统销毁。
+
+
+
+
+
+
+
 ## 三、BroadcaseReceiver
 
 #### 1. 程序A能否接收到程序B的广播？
@@ -288,15 +381,67 @@ Intent在传递数据时是有大小限制的，大约限制在1MB之内，你�
 
 优点： 无需担忧广播接收器是否被关闭，只要设备是开启状态，广播接收器就是打开着的。
 
+#### 4. BroadCastReceiver 的生命周期 ?
+
+a. 广播接收者的生命周期非常短暂的，在接收到广播的时候创建，onReceive()方法结束之后销毁； 
+
+b. 广播接收者中不要做一些耗时的工作，否则会弹出 Application No Response 错误对话框； 
+
+c. 最好也不要在广播接收者中创建子线程做耗时的工作，因为广播接收者被销毁后进程就成为了空进程，很容易被系统杀掉； 
+
+d. 耗时的较长的工作最好放在服务中完成；
+
+#### 5. 如何让自己的广播只让指定的 app 接收
+
+自己的应用（假设名称为应用 A）在发送广播的时候给自己发送的广播添加自定义权限
+
+其他应用（假设名称诶应用 B）如果想接收该广播，那么就必须知道应用 A 广播使用的权限。然后在应用的清单文件中配置。
+
+#### 6. 什么是最终广播接收者？ 
+
+最终广播是我们自己应用发送有序广播时通过 `ContextWrapper.sendOrderedBroadcast()`方法指定的当前应用 下的广播，该广播可能会被执行两次，第一次是作为普通广播按照优先级接收广播，第二次是作为 final receiver 必须 接收一次。
+
+#### 7. 广播的优先级对无序广播生效吗？ 
+
+生效的。广播的优先级推荐的范围是：[-1000,+1000]，但是如果设置的优先级值超过这个范围也是可以的。
+
+#### 8. 动态注册的广播优先级谁高？ 
+
+谁先注册谁优先级高。
+
+#### 9. 如何判断当前接收到的是有序还是无序广播？
+
+在 BroadcastReceiver 类中 onReceive（）方法中，可以调用 `boolean b = isOrderedBroadcast();`该方法是 BroadcastReceiver 类中提供的方法，用于告诉我们当前的接收到的广播是否为有序广播。
+
+#### 10. Android 引入广播机制的用意
+
+a.从 MVC 的角度考虑(应用程序内)，android 的四大组件本质上就是为了实现移动或者说嵌入式设备上的 MVC 架构，它们之间有时候是一种相互依存的关系，有时候又是一种补充关系，引入广播机制可以方便几大组件的信息和数据交互。 
+
+b.程序间互通消息(例如在自己的应用程序内监听系统来电)
+
+c.效率上(参考 UDP 的广播协议在局域网的方便性) 
+
+d.设计模式上(反转控制的一种应用，类似监听者模式)
+
+#### 11. 网络状态改变是无序广播还是有序广播，安装了，没启动过，会接受这个广播么？
+
+无序广播。不会。
+
+android 在 3.0 之后，对广播增加了一个标记：Intent.FLAG_EXCLUDE_STOPPED_PACKAGES， 这个是为了加强了对“停止”状态 APP 的管理（比如 app 安装后未启动或者被用户强制停止）。广播加上这个 Flag 之后，处于“停止”状态的 APP 是无法收到广播的，系统发出的广播基本都有这个 Flag。因此该类广播我们在使用的时候主要是采用动态注册的方式。
+
+
+
+
+
 ## 四、ContentProvider
 
-#### 1. ContentProvider使用方法。
+#### 1. ContentProvider使用方法?如何实现数据共享的？
 
 进行跨进程通信，实现进程间的数据交互和共享。通过Context 中 getContentResolver() 获得实例，通过 Uri匹配进行数据的增删改查。ContentProvider使用表的形式来组织数据，无论数据的来源是什么，ConentProvider 都会认为是一种表，然后把数据组织成表格。
 
-#### 2. ContentProvider的权限管理(读写分离，权限控制-精确到表级，URL控制)。
+#### 2. ContentProvider的权限管理(读写分离，权限控制-精确到表级，URL控制)?
 
-　对于ContentProvider暴露出来的数据，应该是存储在自己应用内存中的数据，对于一些存储在外部存储器上的数据，并不能限制访问权限，使用ContentProvider就没有意义了。对于ContentProvider而言，有很多权限控制，可以在AndroidManifest.xml文件中对<provider>节点的属性进行配置，一般使用如下一些属性设置：
+对于ContentProvider暴露出来的数据，应该是存储在自己应用内存中的数据，对于一些存储在外部存储器上的数据，并不能限制访问权限，使用ContentProvider就没有意义了。对于ContentProvider而言，有很多权限控制，可以在AndroidManifest.xml文件中对<provider>节点的属性进行配置，一般使用如下一些属性设置：
 
 - android:grantUriPermssions:临时许可标志。
 - android:permission:Provider读写权限。
@@ -313,6 +458,18 @@ ContentProvider：管理数据，提供数据的增删改查操作，数据源�
 ContentResolver：ContentResolver可以为不同URI操作不同的ContentProvider中的数据，外部进程可以通过ContentResolver与ContentProvider进行交互。
 
 ContentObserver：观察ContentProvider中的数据变化，并将变化通知给外界。
+
+#### 4. 为什么要用 ContentProvider？它和 sql 的实现上有什么差别？ 
+
+ContentProvider 屏蔽了数据存储的细节,内部实现对用户完全透明,用户只需要关心操作数据的 uri 就可以了， ContentProvider 可以实现不同 app 之间共享。 
+
+Sql 也有增删改查的方法，但是 sql 只能查询本应用下的数据库。而 ContentProvider 还可以去增删改查本地文件.xml 文件的读取等。
+
+
+
+
+
+
 
 ## 五、Fragment
 
@@ -391,6 +548,71 @@ Fragment状态保存入口:
 
 - FragmentManager的moveToState()方法中, 当状态回退到ACTIVITY_CREATED, 会调用saveFragmentViewState()方法, 保存View的状态.
 
+#### 5. Fragment 的 replace 和 add 方法的区别?
+
+Fragment 的容器一个 FrameLayout，add 的时候是把所有的 Fragment 一层一层的叠加到了 FrameLayout 上 了，而 replace 的话首先将该容器中的其他 Fragment 去除掉然后将当前 Fragment 添加到容器中。
+
+一个 Fragment 容器中只能添加一个 Fragment 种类，如果多次添加则会报异常，导致程序终止，而 replace 则 无所谓，随便切换。
+
+因为通过 add 的方法添加的 Fragment，每个 Fragment 只能添加一次，因此如果要想达到切换效果需要通过 Fragment 的的 hide 和 show 方法结合者使用。将要显示的 show 出来，将其他 hide 起来。这个过程 Fragment 的 生命周期没有变化。
+
+通 过 replace 切 换 Fragment ， 每 次 都 会 执 行 上 一 个 Fragment 的 onDestroyView ， 新 Fragment 的 onCreateView、onStart、onResume 方法。
+
+#### 6. Fragment 如何实现类似 Activity 栈的压栈和出栈效果的？
+
+Fragment 的事物管理器内部维持了一个双向链表结构，该结构可以记录我们每次 add 的 Fragment 和 replace Fragment，然后当我们点击 back 按钮的时候会自动帮我们实现退栈操作。
+
+```java
+Add this transaction to the back stack. This means that the transaction will be remembered after it is committed, and will reverse its operation when later popped off the stack. Parameters:
+name An optional name for this back stack state, or null. transaction.addToBackStack("name");
+//实现源码 在 BackStackRecord 中
+public FragmentTransaction addToBackStack(String name) {
+    if (!mAllowAddToBackStack) {
+    	throw new IllegalStateException( "This FragmentTransaction is not allowed to be added to the back stack.");
+    }
+    mAddToBackStack = true;
+    mName = name;
+    return this;
+}
+//上面的源码仅仅做了一个标记
+```
+
+除此之外因为我们要使用 FragmentManger 用的是 FragmentActivity，因 此 FragmentActivity 的 onBackPress 方法必定重新覆写了。打开看一下，发现确实如此。
+
+```java
+/**
+* Take care of popping the fragment back stack or finishing the activity
+* as appropriate.
+*/
+public void onBackPressed() {
+    if (!mFragments.popBackStackImmediate()) {
+    	finish();
+    }
+}
+//mFragments 的原型是 FragmentManagerImpl，看看这个方法都干嘛了
+```
+
+```java
+@Override
+	public boolean popBackStackImmediate() {
+        checkStateLoss();
+        executePendingTransactions();
+        return popBackStackState(mActivity.mHandler, null, -1, 0);
+    }
+    //看看 popBackStackState 方法都干了啥，其实通过名称也能大概了解 只给几个片段，代码太多了
+    while (index >= 0) {
+    //从后退栈中取出当前记录对象
+    BackStackRecord bss = mBackStack.get(index);
+    if (name != null && name.equals(bss.getName())) {
+    	break;
+    }
+    if (id >= 0 && id == bss.mIndex) {
+    	break;
+    }
+    index--;
+}
+```
+
 
 
 ## 六、屏幕适配
@@ -419,9 +641,11 @@ px = dp * density
 
 ## 八、Android消息机制
 
+见《Android基础》中Android消息机制章节
+
 #### 1. Android消息机制介绍？
 
-Android消息机制中的四大概念：
+Android消息机制中的五大概念：
 
 - `ThreadLocal`：当前线程存储的数据仅能从当前线程取出。
 - `MessageQueue`：具有时间优先级的消息队列（单链表）。
@@ -505,7 +729,7 @@ Looper.myQueue().addIdleHandler(new IdleHandler() {
     public Handler(Looper looper, Callback callback, boolean async) {}
 ```
 
-当调用handler.sendMessage(msg)发送消息，最终会走到：
+当调用`handler.sendMessage(msg)`发送消息，最终会走到：
 
 ```java
 private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
@@ -1025,8 +1249,7 @@ public void consumeEvent(MotionEvent event) {
 
 #### 5.onCreate,onResume,onStart里面，什么地方可以获得宽高
 
-如果在onCreate、onStart、onResume中直接调用View的getWidth/getHeight方法，是无法得到View宽高的正确信息，因为view的measure过程与Activity的生命周期是不同步的，所以无法保证在这些生命周期里view
-的measure已经完成。所以很有可能获取的宽高为0。
+如果在onCreate、onStart、onResume中直接调用View的getWidth/getHeight方法，是无法得到View宽高的正确信息，因为view的measure过程与Activity的生命周期是不同步的，所以无法保证在这些生命周期里view的measure已经完成。所以很有可能获取的宽高为0。
 
 所以主要有以下三个方法来获取view的宽高：
 
@@ -1181,19 +1404,14 @@ private int getParents(ViewParents view){
 - 帧动画：
   - 通过 AnimationDrawable 实现，容易 OOM
 - 属性动画：
-  - 可作用于任何对象，可用 xml 定义，Android 3 引入，建议代码实现比较灵活
+  - 可作用于任何对象，可用 xml 定义，Android 3.0 引入，建议代码实现比较灵活
   - 包括 ObjectAnimator、ValuetAnimator、AnimatorSet
   - 时间插值器：根据时间流逝的百分比计算当前属性改变的百分比，系统预置匀速、加速、减速等插值器
   - 类型估值器：根据当前属性改变的百分比计算改变后的属性值，系统预置整型、浮点、色值等类型估值器
   - 使用注意事项：避免使用帧动画，容易OOM；界面销毁时停止动画，避免内存泄漏；开启硬件加速，提高动画流畅性
   - 硬件加速原理：将 cpu 一部分工作分担给 gpu ，使用 gpu 完成绘制工作；从工作分摊和绘制机制两个方面优化了绘制速度
 
-
-- tween 补间动画。通过指定View的初末状态和变化方式，对View的内容完成一系列的图形变换来实现动画效果。 Alpha, Scale ,Translate, Rotate。
-- frame 帧动画。AnimationDrawable控制animation-list.xml布局
-- PropertyAnimation 属性动画3.0引入，属性动画核心思想是对值的变化。
-
-Property Animation 动画有两个步聚：
+属性动画有两个步聚：
 
 1.计算属性值
 
@@ -1299,7 +1517,7 @@ AsyncTask对应的线程池ThreadPoolExecutor都是进程范围内共享的，�
 
 **关于默认线程池：**
 
-AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为CPU * 2 + 1，工作队列长度为128的线程池，线程等待队列的最大等待数为28，但是可以自定义线程池。线程池是由AsyncTask来处理的，线程池允许tasks并行运行，需要注意的是并发情况下数据的一致性问题，新数据可能会被老数据覆盖掉。所以希望tasks能够串行运行的话，使用SERIAL_EXECUTOR。
+AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为CPU * 2 + 1，工作队列长度为128的线程池，线程等待队列的最大等待数为128，但是可以自定义线程池。线程池是由AsyncTask来处理的，线程池允许tasks并行运行，需要注意的是并发情况下数据的一致性问题，新数据可能会被老数据覆盖掉。所以希望tasks能够串行运行的话，使用SERIAL_EXECUTOR。
 
 **AsyncTask在不同的SDK版本中的区别：**
 
@@ -1342,7 +1560,7 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 
 #### 1. 下载一张很大的图，如何保证不 oom？
 
-
+在加载图片时候先检查一下图片的大小：用 BitmapFactory.Options 参数，参数中的 inJustDecodeBounds 属性设置为 true 就可以让解析图片方法禁止为 bitmap 分配内存，返回值也不再是一个 Bitmap 对象，而是 null。虽然 Bitmap是 null 了，但是 BitmapFactory.Options 的 outWidth、outHeight 和 outMimeType 属性都会被赋值。从而可以得到图片的宽、高、大小。得到图片的大小后，我们就可以决定是否把整张图片加载到内存中还是加载一个压缩版的图片到内存中，从而就可以解决 OOM 异常。
 
 #### 2. Bitmap的内存计算方式？
 
@@ -1391,7 +1609,17 @@ Bitmap的高效加载在Glide中也用到了，思路：
 3. 对需要的长和宽和Bitmap的长和宽进行对比，从而获得压缩比例，放入`BitmapFactory.Options`中的`inSampleSize`属性。
 4. 设置`BitmapFactory.Options`中的`inJustDecodeBounds`为false，将图片加载进内存，进而设置到控件中。
 
-## 十四、RecyclerView
+#### 4. 谈谈你对 Bitmap 的理解 , 什么时候应该手动调用 bitmap.recycle()？
+
+Bitmap 是 android 中经常使用的一个类，它代表了一个图片资源。Bitmap消耗内存很严重，如果不注意优化代码，经常会出现 OOM 问题，优化方式通常有这么几种： 1. 使用缓存； 2. 压缩图片； 3. 及时回收；
+至于什么时候需要手动调用 recycle，这就看具体场景了，原则是当我们不再使用 Bitmap 时，需要回收之。另外，我们需要注意，2.3 之前 Bitmap 对象与像素数据是分开存放的，Bitmap 对象存在 java Heap 中而像素数据存放在 Native Memory 中，这时很有必要调用 recycle 回收内存。但是 2.3 之后，Bitmap 对
+象和像素数据都是存在 Heap 中，GC 可以回收其内存。
+
+
+
+
+
+## 十四、ListView/RecyclerView
 
 #### 1. RecyclerView是怎么处理内部ViewClick冲突的
 
@@ -1485,6 +1713,106 @@ new LinearLayoutManager(this) {
 - 减少对象的创建，比如设置监听事件，可以全局创建一个，所有view公用一个listener，并且放到`CreateView`里面去创建监听，因为CreateView调用要少于bindview。这样就减少了对象创建所造成的消耗
 - 用`notifyDataSetChange`时，适配器不知道整个数据集中的那些内容以及存在，再重新匹配`ViewHolder`时会花生闪烁。设置adapter.setHasStableIds(true)，并重写`getItemId()`来给每个Item一个唯一的ID，也就是唯一标识，就使itemview的焦点固定，解决了闪烁问题。
 
+#### 9. ListView 如何提高其效率？ 
+
+① 复用 ConvertView
+
+② 自定义静态类 ViewHolder 
+
+③ 使用分页加载
+
+④ 使用 WeakRefrence 引用 ImageView 对象
+
+#### 10. ViewHolder 为什么要声明为静态类？ 
+
+非静态内部类拥有外部类对象的强引用，因此为了避免对外部类（外部类很可能是 Activity）对象的引用，那么最 好将内部类声明为 static 的。
+
+#### 11. ListView 使用了哪些设计模式？ 
+
+1、适配器 2、观察者 3、享元设计模式
+
+#### 12. 当 ListView 数据集改变后，如何更新 ListView？ 
+
+使用该 ListView 的 adapter 的 notifyDataSetChanged()方法。该方法会使 ListView 重新绘制。
+
+#### 13. ListView 如何实现分页加载
+
+① 设置 ListView 的滚动监听器：`setOnScrollListener(new OnScrollListener{….})`
+在监听器中有两个方法： 滚动状态发生变化的方法(`onScrollStateChanged`)和 listView 被滚动时调用的方法
+(`onScroll`)
+
+② 在滚动状态发生改变的方法中，有三种状态：
+手指按下移动的状态： SCROLL_STATE_TOUCH_SCROLL: // 触摸滑动
+惯性滚动（滑翔（flging）状态）： SCROLL_STATE_FLING: // 滑翔
+静止状态： SCROLL_STATE_IDLE: // 静止
+
+对不同的状态进行处理：
+
+分批加载数据，只关心静止状态：关心最后一个可见的条目，如果最后一个可见条目就是数据适配器（集合）里的最后一个，此时可加载更多的数据。在每次加载的时候，计算出滚动的数量，当滚动的数量大于等于总数量的时候，可以提示用户无更多数据了。
+
+#### 14. ListView 可以显示多种类型的条目吗？ 
+
+可以的，ListView 显示的每个条目都是通过 baseAdapter 的 getView(int position, View convertView, ViewGroup parent)来展示的，理论上我们完全可以让每个条目都是不同类型的 view，除此之外 adapter 还提供了 getViewTypeCount（）和 getItemViewType(int position)两个方法。在 getView 方法中我们可以根据不同的 viewtype 加载不同的布局文件。 
+
+#### 15. ListView 如何定位到指定位置?
+
+可以通过 ListView 提供的 `listview.setSelection(pos);`方法。
+
+#### 16. ListView 中图片错位的问题是如何产生的?
+
+图片错位问题的本质源于我们的 listview 使用了缓存 convertView，假设一种场景，一个 listview 一屏显示九个 item，那么在拉出第十个 item 的时候，事实上该 item 是重复使用了第一个 item，也就是说在第一个 item 从网络中 下载图片并最终要显示的时候，其实该 item 已经不在当前显示区域内了，此时显示的后果将可能在第十个 item 上输 出图像，这就导致了图片错位的问题。所以解决之道在于可见则显示，不可见则不显示。
+
+#### 17. 如何在 ScrollView 中如何嵌入 ListView
+
+在 ScrollView 添加一个 ListView 会导致 listview 控件显示不全，通常只会显示一条，这是因为两个控件的滚动事件冲突导致。所以需要通过 listview 中的 item 数量去计算 listview 的显示高度，从而使其完整展示，如下提供一个方法供参考。
+
+```java
+lv = (ListView) findViewById(R.id.lv);
+adapter = new MyAdapter();
+lv.setAdapter(adapter);
+setListViewHeightBasedOnChildren(lv);
+----------------------------------------------------
+public void setListViewHeightBasedOnChildren(ListView listView) {
+    ListAdapter listAdapter = listView.getAdapter();
+    if (listAdapter == null) {
+    	return;
+    }
+    int totalHeight = 0;
+    for (int i = 0; i < listAdapter.getCount(); i++) {
+        View listItem = listAdapter.getView(i, null, listView);
+        listItem.measure(0, 0);
+        totalHeight += listItem.getMeasuredHeight();
+    }
+    ViewGroup.LayoutParams params = listView.getLayoutParams();
+    params.height = totalHeight + (listView.getDividerHeight() * (listAdapter.getCount() - 1));
+    params.height += 5;// if without this statement,the listview will be a
+    // little short
+    listView.setLayoutParams(params);
+}
+```
+
+> 注意:如果直接将 ListView 放到 ScrollView 中,那么上面的代码依然是没有效果的.必须将 ListVIew 放到
+> LinearLayout 等其他容器中才行。
+
+现阶段最好的处理的方式是： 自定义 ListView，重载 onMeasure()方法，设置全部显示
+
+```java
+public class ScrollViewWithListView extends ListView {
+    public ScrollViewWithListView(android.content.Context context, android.util.AttributeSet attrs) {
+        super(context, attrs);
+    }
+    /**
+    * Integer.MAX_VALUE >> 2,如果不设置，系统默认设置是显示两条
+    */
+    public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int expandSpec = MeasureSpec.makeMeasureSpec(Integer.MAX_VALUE >> 2, MeasureSpec.AT_MOST);
+        super.onMeasure(widthMeasureSpec, expandSpec);
+    }
+}
+```
+
+
+
 
 
 ## 十五、ViewPager
@@ -1498,6 +1826,8 @@ new LinearLayoutManager(this) {
 #### 4. 说说事件分发机制，怎么写一个不能滑动的ViewPager
 
 #### 5. ViewPager使用细节，如何设置成每次只初始化当前的Fragment，其他的不初始化（提示：Fragment懒加载）？
+
+Viewpager 默认加载 3 个。1 个 Activity 里面可能会以 Viewpager（或其他容器）与多个 Fragment 来组合使用， 而如果每个 fragment 都需要去加载数据，或从本地加载，或从网络加载，那么在这个 Activity 刚创建的时候就变成 需要初始化大量资源。所以我们要进行懒加载。
 
 自定义一个 LazyLoadFragment 基类，利用 setUserVisibleHint 和 生命周期方法，通过对 Fragment 状态判断，进行数据加载，并将数据加载的接口提供开放出去，供子类使用。然后在子类 Fragment 中实现 requestData 方法即可。这里添加了一个 isDataLoaded 变量，目的是避免重复加载数据。考虑到有时候需要刷新数据的问题，便提供了一个用于强制刷新的参数判断。
 
@@ -1536,25 +1866,10 @@ public abstract class LazyLoadFragment extends BaseFragment {
 ```
 
 
-#### 
 
-## 十四、其他
+## 十六、SharedPreferences
 
-#### 1. 子线程是否可以 context.startActivity() ？例如ApplicationContext, 会不会有什么问题？
-
-是可以的。
-
-创建对话框时不可以用Application的context，只能用Activity的context。
-
-#### 2. ConstraintLayout实现三等分,ConstraintLayout动画
-
-
-
-#### 3. CoordinatorLayout自定义behavior,可以拦截什么？
-
-
-
-#### 4. SharedPreferences是如何保证线程安全的，其内部的实现用到了哪些锁
+#### 1. SharedPreferences是如何保证线程安全的，其内部的实现用到了哪些锁
 
 SharedPreferences的本质是用键值对的方式保存数据到xml文件，然后对文件进行读写操作。
 
@@ -1590,7 +1905,7 @@ synchronized (mWritingToDiskLock) {
 }
 ```
 
-#### 5. SharedParence可以跨进程通信吗？如何改造成可以跨进程通信的commit和apply的区别？
+#### 2. SharedParence可以跨进程通信吗？如何改造成可以跨进程通信？
 
 1） SharedPreferences是进程不安全的，因为没有使用跨进程的锁。既然是进程不安全，那么久有可能在多进程操作的时候发生数据异常。
 
@@ -1599,7 +1914,7 @@ synchronized (mWritingToDiskLock) {
 - 使用跨进程组件，也就是ContentProvider，这也是官方推荐的做法。通过ContentProvider对多进程进行了处理，使得不同进程都是通过ContentProvider访问SharedPreferences。
 - 加文件锁，由于SharedPreferences的本质是读写文件，所以我们对文件加锁，就能保证进程安全了。
 
-#### 6. SharedPreferences 操作有文件备份吗？是怎么完成备份的？
+#### 3. SharedPreferences 操作有文件备份吗？是怎么完成备份的？
 
 - SharedPreferences 的写入操作，首先是将源文件备份：
 
@@ -1612,7 +1927,72 @@ synchronized (mWritingToDiskLock) {
 - 再写入所有数据，只有写入成功，并且通过 sync 完成落盘后，才会将 Backup（.bak） 文件删除。
 - 如果写入过程中进程被杀，或者关机等非正常情况发生。进程再次启动后如果发现该 SharedPreferences 存在 Backup 文件，就将 Backup 文件重名为源文件，原本未完成写入的文件就直接丢弃，这样就能保证之前数据的正确。
 
+#### 4.mSharedPreference原理？读取xml是在哪个线程?
 
+#### 5. SharedPrefrences的apply和commit有什么区别？
+
+1. apply没有返回值而commit返回boolean表明修改是否提交成功。
+2. apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
+3. apply方法不会提示任何失败的提示。 
+   由于在一个进程中，sharedPreference是单实例，一般不会出现并发冲突，如果对提交的结果不关心的话，建议使用apply，当然需要确保提交成功且有后续操作的话，还是需要用commit的。
+
+#### 6. sp 频繁操作有什么后果？sp 能存多少数据？
+
+Sp 的底层是由 xml 来实现的，操作 sp 的过程就是 xml 的序列化和解析的过程。Xml 是存储在磁盘上的，因此考 虑到需要 I/O 速度问题，sp 不适宜频繁操作。同时序列化 xml 是就是将内存中的数据写到 xml 文件中，由于 dvm 的内存是很有限的，因此单个 sp 文件不建议太大，具体多大是没有一个具体的要求的，数据大小肯定不能超过DVM 堆内存。其实 sp 设置的目的就是为了保存用户的偏好和配置信息的，因此不要保存太多的数据。
+
+## 十七、其他控件
+
+#### 1. 请问 Gridview 能添加头布局吗？
+
+GridView 本身没有添加头布局的方法 api 可以使用 ScrollView 与 GridView 结合，让 GridView 充满 ScrollView，不 让 GridView 滑动而只让 ScrollView 滑动；具体做法是重载 GridView 的 onMeasure()方法。示例如下：
+
+```java
+@Override
+public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+	int expandSpec = MeasureSpec.makeMeasureSpec(Integer.MAX_VALUE >> 2, MeasureSpec.AT_MOST);
+	super.onMeasure(widthMeasureSpec, expandSpec);
+}
+```
+
+
+
+
+
+
+
+## 十八、其他
+
+#### 1. 描述一下 Android 的系统架构
+
+![img](https://pic1.zhimg.com/80/v2-24518bd357cd59ec75b5cf96db1457d8_720w.jpg)
+
+#### 2. ConstraintLayout实现三等分,ConstraintLayout动画
+
+
+
+#### 3. CoordinatorLayout自定义behavior,可以拦截什么？
+
+
+
+#### 4. DVM 和 JVM 的区别？
+
+a) dvm 执行的是.dex 文件，而 jvm 执行的是.class。Android 工程编译后的所有.class 字节码会被 dex 工具抽 取到一个.dex 文件中。 
+
+b) dvm 是基于寄存器的虚拟机 而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
+
+c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的.class 文件整合到.dex 文件中。减少 了 I/O 操作，提高了类的查找速度。
+
+#### 5. 谈一谈 Android 的安全机制 
+
+- Android 是基于 Linux 内核的，因此 Linux 对文件权限的控制同样适用于 Android 在 Android 中每个应用都有自己的/data/data/包名 文件夹，该文件夹只能该应用访问，而其他应用则无权访问。
+
+- Android 的权限机制保护了用户的合法权益 如果我们的代码想拨打电话、发送短信、访问通信录、定位、访问 sdcard 等所有可能侵犯用于权益的行为都 是必须要在 AndroidManifest.xml 中进行声明的，这样就给了用户一个知情权。 
+
+- Android 的代码混淆保护了开发者的劳动成果
+
+#### 6. Android 的四大组件都需要在清单文件中注册吗？
+
+Activity 、 Service 、 ContentProvider 如 果 要 使 用 则 必 须 在 AndroidManifest.xml 中 进 行 注 册 ， 而 BroadcastReceiver 则有两种注册方式，静态注册和动态注册。其中静态注册就是指在 AndroidManifest.xml 中进行
 
 #### 7. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
 
@@ -1638,7 +2018,9 @@ Fiddler
 
 
 
-#### 13. SharedPreference原理？读取xml是在哪个线程?
+#### 13. 如何判断是否有 SD 卡？ 通过如下方法： 
+
+`Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)` 如果返回 true 就是有 sdcard，如果返回 false 则没有。
 
 #### 14. Bunder传递对象为什么需要序列化？Serialzable和Parcelable的区别？
 
@@ -1905,13 +2287,114 @@ ddms 原意是：davik debug monitor service。简单的说 ddms 是一个程序
 
 Traceview 是 Android 平台特有的数据采集和分析工具，它主要用于分析 Android 中应用程序的 hotspot（瓶颈）。Traceview 本身只是一个数据分析工具，而数据的采集则需要使用 Android SDK 中的 Debug 类或者利用DDMS 工具。二者的用法如下：开发者在一些关键代码段开始前调用 Android SDK 中 Debug 类的 startMethodTracing 函数，并在关键代码段结束前调用 stopMethodTracing 函数。这两个函数运行过程中将采集运行时间内该应用所有线程（注意，只能是 Java线程） 的函数执行情况， 并将采集数据保存到/mnt/sdcard/下的一个文件中。 开发者然后需要利用 SDK 中的 Traceview工具来分析这些数据。
 
-#### 33. SharedPrefrences的apply和commit有什么区别？
+#### 33. AndroidManifest.xml 中的 targerSDK 设置有什么作用？
 
-这两个方法的区别在于：
+用于指定 Android 应用中所需要使用的 SDK 的版本，比如我们的应用必须运行于 Android 4.1 以上版本的系统 SDK 之上，那么就需要指定应用支持最小的 SDK 版本数为 16；当然，每个 SDK 版本都会有指定的整数值与之对应，比如我们最常用的 Android 2.3 的版本数是 11。当然，除了可以指定最低版本之外，标签还可以指定最高版本和目标版本，语法范例如下。
 
-1. apply没有返回值而commit返回boolean表明修改是否提交成功。
+```
+ < android:targetSdkVersion="integer" 
+android:maxSdkVersion="integer" />
+```
 
-2. apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
+#### 34. 简单描述下 Android 数字签名
 
-3. apply方法不会提示任何失败的提示。 
-   由于在一个进程中，sharedPreference是单实例，一般不会出现并发冲突，如果对提交的结果不关心的话，建议使用apply，当然需要确保提交成功且有后续操作的话，还是需要用commit的。
+在 Android 系统中，所有安装到系统的应用程序都必有一个数字证书，此数字证书用于标识应用程序的作者和在 应用程序之间建立信任关系。 
+
+Android 系统要求每一个安装进系统的应用程序都是经过数字证书签名的，数字证书的私钥则保存在程序开发者 的手中。Android 将数字证书用来标识应用程序的作者和在应用程序之间建立信任关系，不是用来决定最终用户可以 安装哪些应用程序。 
+
+这个数字证书并不需要权威的数字证书签名机构认证(CA)，它只是用来让应用程序包自我认证的。 
+
+同一个开发者的多个程序尽可能使用同一个数字证书，这可以带来以下好处。 
+
+(1)有利于程序升级，当新版程序和旧版程序的数字证书相同时，Android 系统才会认为这两个程序是同一个程序 的不同版本。如果新版程序和旧版程序的数字证书不相同，则 Android 系统认为他们是不同的程序，并产生冲突，会 要求新程序更改包名。 
+
+(2)有利于程序的模块化设计和开发。Android 系统允许拥有同一个数字签名的程序运行在一个进程中，Android 程序会将他们视为同一个程序。所以开发者可以将自己的程序分模块开发，而用户只需要在需要的时候下载适当的模 块。 
+
+在签名时，需要考虑数字证书的有效期：
+
+(1)数字证书的有效期要包含程序的预计生命周期，一旦数字证书失效，持有改数字证书的程序将不能正常升级。
+
+(2)如果多个程序使用同一个数字证书，则该数字证书的有效期要包含所有程序的预计生命周期。 
+
+(3)Android Market 强制要求所有应用程序数字证书的有效期要持续到 2033 年 10 月 22 日以后。 
+
+Android 数字证书包含以下几个要点： 
+
+(1)所有的应用程序都必须有数字证书，Android 系统不会安装一个没有数字证书的应用程序 
+
+(2)Android 程序包使用的数字证书可以是自签名的，不需要一个权威的数字证书机构签名认证 
+
+(3)如果要正式发布一个 Android ，必须使用一个合适的私钥生成的数字证书来给程序签名，而不能使用 adt 插
+
+件或者 ant 工具生成的调试证书来发布。 
+
+(4)数字证书都是有有效期的，Android 只是在应用程序安装的时候才会检查证书的有效期。如果程序已经安装 在系统中，即使证书过期也不会影响程序的正常功能。
+
+#### 35. SurfaceView的理解？
+
+它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
+
+SurfaceView 中采用了双缓冲机制，保证了 UI 界面的流畅性，同时 SurfaceView不在主线程中绘制，而是另开辟一个线程去绘制，所以它不妨碍 UI 线程；
+
+SurfaceView 继承于 View，他和 View 主要有以下三点区别：
+
+- View 底层没有双缓冲机制，SurfaceView 有；
+- view 主要适用于主动更新，而 SurfaceView 适用与被动的更新，如频繁的刷新
+- view 会在主线程中去更新 UI，而 SurfaceView 则在子线程中刷新；
+
+SurfaceView 的内容不在应用窗口上，所以不能使用变换（平移、缩放、旋转等）。也难以放在 ListView 或者 ScrollView 中，不能使用 UI 控件的一些特性比如View.setAlpha()
+
+View：显示视图，内置画布，提供图形绘制函数、触屏事件、按键事件函数等；必须在 UI 主线程内更新画面，速度较慢。
+
+SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏的开发；是 view的子类，类似使用双缓机制，在新的线程中更新画面所以刷新界面速度比 view快，Camera 预览界面使用 SurfaceView。
+
+GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用于 3D 游戏开发的视图；是 SurfaceView 的子类，openGL 专用。 
+
+#### 36. 如何实现进程保活？
+
+- Service 设置成 START_STICKY kill 后会被重启(等待 5 秒左右)，重传 Intent， 保持与重启前一样
+- 通过 startForeground 将进程设置为前台进程， 做前台服务，优先级和前台应用一个级别，除非在系统内存非常缺，否则此进程不会被 kill
+- 双进程 Service： 让 2 个进程互相保护对方，其中一个 Service 被清理后，另 外没被清理的进程可以立即重启进程
+- 用 C 编写守护进程(即子进程) : Android 系统中当前进程(Process)fork 出来的 子进程，被系统认为是两个不同的进程。当父进程被杀死的时候，子进程仍然可以存活，并不受影响(Android5.0 以上的版本不可行）联系厂商，加入白名单
+- 在应用退到后台后，另起一个只有 1 像素的页面停留在桌面上， 让自己保持前台状态，保护自己不被后台清理工具杀死
+- 联系厂商，加入白名单
+
+#### 37. 说下冷启动与热启动是什么，区别，如何优化，使用场景等。
+
+app 冷启动： 当应用启动时，后台没有该应用的进程，这时系统会重新创建一 个新的进程分配给该应用， 这个启动方式就叫做冷启动（后台不存在该应用进程）。冷启动因为系统会重新创建一个新的进程分配给它，所以会先创建和初始 化 Application 类，再创建和初始化 MainActivity 类（包括一系列的测量、布局、 绘制），最后显示在界面上。 
+
+app 热启动： 当应用已经被打开， 但是被按下返回键、Home 键等按键时回到 桌面或者是其他程序的时候，再重新打开该 app 时， 这个方式叫做热启动（后台已经存在该应用进程）。热启动因为会从已有的进程中来启动，所以热启动就 不会走 Application 这步了，而是直接走 MainActivity（包括一系列的测量、布局、 绘制），所以热启动的过程只需要创建和初始化一个 MainActivity 就行了，而不 必创建和初始化 Application
+
+冷启动的流程：
+
+当点击 app 的启动图标时，安卓系统会从 Zygote 进程中 fork 创建出一个新的进程分配给该应用，之后会依次创建和初始化 Application 类、创建 MainActivity 类、加载主题样式 Theme 中的 windowBackground 等属性设置给 MainActivity 以及配置 Activity 层级上的一些属性、再 inflate 布局、当 onCreate/onStart/onResume 方法都走完了后最后才进行 contentView 的 measure/layout/draw 显示在界面上
+
+冷启动的生命周期简要流程： 
+
+Application 构造方法 –> attachBaseContext()–>onCreate –>Activity 构造方法 –> onCreate() –> 配置主体中的背景等操作 –>onStart() –> onResume() –> 测量、布 局、绘制显示
+
+冷启动的优化主要是视觉上的优化，解决白屏问题，提高用户体验，所以通过上面冷启动的过程。能做的优化如下：
+
+- 减少 onCreate()方法的工作量
+- 不要让 Application 参与业务的操作
+- 不要在 Application 进行耗时操作
+- 不要以静态变量的方式在 Application 保存数据
+- 减少布局的复杂度和层级
+- 减少主线程耗时
+
+#### 38. 为什么冷启动会有白屏黑屏问题？
+
+原因在于加载主题样式 Theme 中的 windowBackground 等属性设置给 MainActivity 发生在 inflate 布局当 onCreate/onStart/onResume 方法之前，而 windowBackground 背景被设置成了白色或者黑色，所以我们进入 app 的第一个 界面的时候会造成先白屏或黑屏一下再进入界面。
+
+解决思路如下
+
+- 给他设置 windowBackground 背景跟启动页的背景相同，如果你的启动页是张图片那么可以直接给 windowBackground 这个属性设置该图片那么就不会有一闪的效果了
+
+- 设置背景是透明的，给人一种延迟启动的感觉。将背景颜色设置为透明色，这样当用户点击桌面 APP 图片的时候，并不会"立即"进入 APP，而且在桌面上停留一会，其实这时候 APP 已经是启动的了，只是我们心 机的把 Theme 里的 windowBackground 的颜色设置成透明的，强行把锅甩给了手机应用厂商
+- 将 Application 中的不必要的初始化动作实现懒加载，比如，在SpashActivity 显示后再发送消息到 Application，去初始化，这样可以将初始化的动作放在后边，缩短应用启动到用户看到界面的时间
+
+#### 39. 怎样防范 APP 被反编译 
+
+（1）加壳保护：就是在程序的外面再包裹上另外一段代码，保护里面的代 码不被非法修改或反编译，在程序运行的时候优先取得程序的控制权做一些 我们自己想做的工作。 
+
+（2）dex 文件格式 ：apk 生成后所有的 java 生成的 class 文件都被 dx 命令整合成了一个 classes.dex 文件，当 apk 运行时 dalvik 虚拟机加载 classes.dex 文件并且用 dexopt 命令进行进一步的优化成 odex 文件。在这 个过程中修改 dalvik 指令来达到我们的目的。
