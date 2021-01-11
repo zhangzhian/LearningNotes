@@ -1454,7 +1454,25 @@ private int getParents(ViewParents view){
 }
 ```
 
+#### 11. Activity内LinearLayout红色wrap_content,包含View绿色wrap_content,求界面颜色
 
+```xml
+<LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@color/red"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <View
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@color/green"
+    />
+</LinearLayout>
+```
+
+答案是绿色
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-e3f20c6662effb7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 
 
@@ -1771,7 +1789,7 @@ Bitmap 是 android 中经常使用的一个类，它代表了一个图片资源�
 
 
 
-#### 2. 讲一下RecyclerView的缓存机制,滑动10个，再滑回去，会有几个执行onBindView
+#### 2. 讲一下RecyclerView的缓存机制，滑动10个，再滑回去，会有几个执行onBindView
 
 
 
@@ -1832,7 +1850,7 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 - `bindViewHolder`方法是在UI线程进行的，此方法不能耗时操作，不然将会影响滑动流畅性。比如进行日期的格式化。
 - 对于新增或删除的时候，可以使用`diffutil`进行局部刷新，少用全局刷新
 - 对于`itemVIew`进行布局优化，比如少嵌套等。
-- 25.1.0 (>=21)及以上使用`Prefetch` 功能，也就是预取功能，嵌套时且使用的是LinearLayoutManager，子RecyclerView可通过setInitialPrefatchItemCount设置预取个数
+- 25.1.0 (>=21)及以上使用`Prefetch` 功能，也就是预取功能，嵌套时且使用的是LinearLayoutManager，子RecyclerView可通过`setInitialPrefatchItemCount`设置预取个数
 - 加大`RecyclerView缓存`，比如cacheview大小默认为2，可以设置大点，用空间来换取时间，提高流畅度
 - 如果高度固定，可以设置`setHasFixedSize(true)`来避免requestLayout浪费资源，否则每次更新数据都会重新测量高度。
 
@@ -1879,7 +1897,7 @@ new LinearLayoutManager(this) {
 
 #### 12. 当 ListView 数据集改变后，如何更新 ListView？ 
 
-使用该 ListView 的 adapter 的 notifyDataSetChanged()方法。该方法会使 ListView 重新绘制。
+使用该 ListView 的 adapter 的 `notifyDataSetChanged()`方法。该方法会使 ListView 重新绘制。
 
 #### 13. ListView 如何实现分页加载
 
@@ -1888,9 +1906,10 @@ new LinearLayoutManager(this) {
 (`onScroll`)
 
 ② 在滚动状态发生改变的方法中，有三种状态：
-手指按下移动的状态： SCROLL_STATE_TOUCH_SCROLL: // 触摸滑动
-惯性滚动（滑翔（flging）状态）： SCROLL_STATE_FLING: // 滑翔
-静止状态： SCROLL_STATE_IDLE: // 静止
+
+- 手指按下移动的状态： SCROLL_STATE_TOUCH_SCROLL: // 触摸滑动
+- 惯性滚动（滑翔（flging）状态）： SCROLL_STATE_FLING: // 滑翔
+- 静止状态： SCROLL_STATE_IDLE: // 静止
 
 对不同的状态进行处理：
 
@@ -2073,11 +2092,27 @@ synchronized (mWritingToDiskLock) {
 - 再写入所有数据，只有写入成功，并且通过 sync 完成落盘后，才会将 Backup（.bak） 文件删除。
 - 如果写入过程中进程被杀，或者关机等非正常情况发生。进程再次启动后如果发现该 SharedPreferences 存在 Backup 文件，就将 Backup 文件重名为源文件，原本未完成写入的文件就直接丢弃，这样就能保证之前数据的正确。
 
-#### 4.mSharedPreference原理？读取xml是在哪个线程?
+#### 4.SharedPreference原理？读取xml是在哪个线程?
+
+（1）getSharedPreferences()在创建一个SharedPreferences，会先判断是否有对应的xml文件（SharedPreferences存储数据的保存格式），如果存在则会有一个预加载操作，这个操作将把xml文件的内容通过I/O操作和xmlUtil解析后保存在一个map对象中。如果不存在则会创建一个对应的xml。
+
+（2）而在对数据进行读取时，是从内存中该map对象中进行读取；
+
+（3）在使用SharedPreferences保存数据时，主要分为以下两步：把数据先写入内存，写到map集合中、将数据写到硬盘文件保持一致性；由此可以得出，数据在保存的时候，是以key-value的格式保存在xml文件中。
+
+（4）写完数据后，要对写入的数据进行提交保存，主要有以下两种方式：
+
+​		a. commit()：线程安全，性能慢，一般在当前线程完成文件操作，会有返回值；
+
+​		b. apply()：线程不安全，性能高，异步处理I/O操作，一般在singleThreadExecutor中执行，没有返回值
+
+第一次读的时候，主线程会挂起wait，等到**整个文件load完**毕，才被唤醒。
+
+**整个文件load的实现**：开个线程，从磁盘中解析xml到内存，如果文件比较大那么这个会耗时，那么主线程就会等待比较久。
 
 #### 5. SharedPrefrences的apply和commit有什么区别？
 
-1. apply没有返回值而commit返回boolean表明修改是否提交成功。
+1. apply没有返回值而commit返回boolean，表明修改是否提交成功。
 2. apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
 3. apply方法不会提示任何失败的提示。 
    由于在一个进程中，sharedPreference是单实例，一般不会出现并发冲突，如果对提交的结果不关心的话，建议使用apply，当然需要确保提交成功且有后续操作的话，还是需要用commit的。
@@ -2100,9 +2135,19 @@ public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 }
 ```
 
+#### 2. ConstraintLayout实现三等分,ConstraintLayout动画
 
 
 
+#### 3. CoordinatorLayout自定义behavior,可以拦截什么？
+
+
+
+#### 7. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
+
+
+
+#### 
 
 
 
@@ -2112,63 +2157,51 @@ public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
 ![img](https://pic1.zhimg.com/80/v2-24518bd357cd59ec75b5cf96db1457d8_720w.jpg)
 
-#### 2. ConstraintLayout实现三等分,ConstraintLayout动画
-
-
-
-#### 3. CoordinatorLayout自定义behavior,可以拦截什么？
-
-
-
-#### 4. DVM 和 JVM 的区别？
-
-a) dvm 执行的是.dex 文件，而 jvm 执行的是.class。Android 工程编译后的所有.class 字节码会被 dex 工具抽 取到一个.dex 文件中。 
-
-b) dvm 是基于寄存器的虚拟机 而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
-
-c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的.class 文件整合到.dex 文件中。减少 了 I/O 操作，提高了类的查找速度。
-
-#### 5. 谈一谈 Android 的安全机制 
+#### 2. 谈一谈 Android 的安全机制 
 
 - Android 是基于 Linux 内核的，因此 Linux 对文件权限的控制同样适用于 Android 在 Android 中每个应用都有自己的/data/data/包名 文件夹，该文件夹只能该应用访问，而其他应用则无权访问。
 
-- Android 的权限机制保护了用户的合法权益 如果我们的代码想拨打电话、发送短信、访问通信录、定位、访问 sdcard 等所有可能侵犯用于权益的行为都 是必须要在 AndroidManifest.xml 中进行声明的，这样就给了用户一个知情权。 
+- Android 的权限机制保护了用户的合法权益 如果我们的代码想拨打电话、发送短信、访问通信录、定位、访问 sdcard 等所有可能侵犯用于权益的行为都是必须要在 AndroidManifest.xml 中进行声明的，这样就给了用户一个知情权。 
 
 - Android 的代码混淆保护了开发者的劳动成果
 
-#### 6. Android 的四大组件都需要在清单文件中注册吗？
+#### 3. Android 的四大组件都需要在清单文件中注册吗？
 
 Activity 、 Service 、 ContentProvider 如 果 要 使 用 则 必 须 在 AndroidManifest.xml 中 进 行 注 册 ， 而 BroadcastReceiver 则有两种注册方式，静态注册和动态注册。其中静态注册就是指在 AndroidManifest.xml 中进行
 
-#### 7. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
+#### 4. 平常抓包用什么工具？
 
+Fiddler，Wireshark
 
+#### 5. 实现一个下载功能的接口
 
-#### 8. 平常抓包用什么工具？
+```java
 
-Fiddler
+```
 
-#### 9.实现一个下载功能的接口
+#### 6. onAttachToWindow什么时候调用？
 
+View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, int visibility)`里被无条件调用的；
 
+而View的`dispatchAttachedToWindow()`有两个被调用途径:
 
-#### 10. attachToWindow什么时候调用？
+1. ViewRootImpl 第一次 `performTraversal()`时会将整个view tree里所有有view的 `dispatchAttachedToWindow()` DFS 调用一遍.
 
+2. ViewGroup的 `addViewInner(View child, int index, LayoutParams params, boolean preventRequestLayout):`
 
+#### 7. Bundle是什么数据结构?利用什么传递数据
 
-#### 11. Activity内LinearLayout红色wrap_content,包含View绿色wrap_content,求界面颜色
+Bundle主要用于传递数据；它保存的数据，内部其实就是维护了一个Map<String,Object>。
 
+我们经常使用Bundle在Activity之间传递数据，传递的数据可以是boolean、byte、int、long、float、double、string等基本类型或它们对应的数组，也可以是对象或对象数组。当Bundle传递的是对象或对象数组时，必须实现Serializable 或Parcelable接口。下面分别介绍Activity之间如何传递基本类型、传递对象。
 
+#### 8. 如何判断是否有 SD 卡？ 
 
-#### 12. Bundle是什么数据结构?利用什么传递数据
-
-
-
-#### 13. 如何判断是否有 SD 卡？ 通过如下方法： 
+通过如下方法： 
 
 `Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)` 如果返回 true 就是有 sdcard，如果返回 false 则没有。
 
-#### 14. Bunder传递对象为什么需要序列化？Serialzable和Parcelable的区别？
+#### 9. Bunder传递对象为什么需要序列化？Serialzable和Parcelable的区别？
 
 因为bundle传递数据时只支持基本数据类型，所以在传递对象时需要序列化转换成可存储或可传输的本质状态（字节流）。序列化后的对象可以在网络、IPC（比如启动另一个进程的Activity、Service和Reciver）之间进行传输，也可以存储到本地。
 
@@ -2180,15 +2213,102 @@ Parcelable（android专用）：
 
 除了Serializable之外，使用Parcelable也可以实现相同的效果，不过不同于将对象进行序列化，Parcelable方式的实现原理是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的数据类型，这也就实现传递对象的功能了。
 
-区别总结如下图所示：
+区别总结如下所示：
 
-![image](https://user-gold-cdn.xitu.io/2019/3/8/1695c349f019c41f?imageslim)
+平台区别：
 
-#### 14. 怎么优化xml inflate的时间，涉及IO与反射。了解compose吗？
+Serializable是属于 Java 自带的，表示一个对象可以转换成可存储或者可传输的状态，序列化后的对象可以在网络上进行传输，也可以存储到本地。
+
+Parcelable 是属于 Android 专用。不过不同于Serializable，Parcelable实现的原理是将一个完整的对象进行分解。而分解后的每一部分都是Intent所支持的数据类型。
+
+编写上的区别：
+
+Serializable代码量少，写起来方便
+
+Parcelable代码多一些，略复杂
+
+选择的原则：
+
+如果是仅仅在内存中使用，比如activity、service之间进行对象的传递，强烈推荐使用Parcelable，因为Parcelable比Serializable性能高很多。因为Serializable在序列化的时候会产生大量的临时变量， 从而引起频繁的GC。
+
+如果是持久化操作，推荐Serializable，虽然Serializable效率比较低，但是还是要选择它，因为在外界有变化的情况下，Parcelable不能很好的保存数据的持续性。
+
+本质的区别：
+
+Serializable的本质是使用了反射，序列化的过程比较慢，这种机制在序列化的时候会创建很多临时的对象，比引起频繁的GC
+
+Parcelable方式的本质是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的类型，这样就实现了传递对象的功能了。
+
+#### 10. 怎么优化xml inflate的时间，涉及IO与反射？
+
+- 减少布局的嵌套层级
+
+- 异步加载
+
+  AsyncLayoutInflater，为`ViewGroup`动态添加子`View`时，我们往往使用一个layout的XML来inflate一个view，然后将其add到父容器。
+  inflate包含对XML文件的读取和解析(IO操作)，并通过反射创建`View`树。当XML文件过大或页面层级过深，布局的加载就会较为耗时。
+  由于这一步并非UI操作，可以转移到非主线程执行，为此，官方在扩展包提供了`AsyncLayoutInflater`。
+
+  ```java
+  AsyncLayoutInflater asyncLayoutInflater = new AsyncLayoutInflater(this);
+  AsyncLayoutInflater.OnInflateFinishedListener onInflateFinishedListener = new AsyncLayoutInflater.OnInflateFinishedListener() {
+      @Override
+      public void onInflateFinished(@NonNull View view, int resid, @Nullable ViewGroup parent) {
+          if (parent != null) {
+              parent.addView(view);
+          }
+      }
+  };
+  
+  for (int i = 0; i < 10; i++) {
+      asyncLayoutInflater.inflate(R.layout.view_jank, container, onInflateFinishedListener);
+  }
+  ```
+
+  使用`AsyncLayoutInflater`异步inflate后，主线程就不再有inflate的耗时了。
+
+  适用场景：动态加载layout较复杂的view
+
+- 懒加载ViewStub
+
+  ```xml
+  <ViewStub
+      android:id="@+id/stub"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout="@layout/real_view" />
+  ```
+
+  ```java
+  ViewStub stub = findViewById(R.id.stub);
+  if (stub != null) {
+      stub.inflate(); // inflate一次以后，view树中就不再包含这个ViewStub了
+  }
+  ```
+
+  适用场景：只在部分情况下才显示的View
+
+  例如：网络请求失败的提示；列表为空的提示；新内容、新功能的引导，因为引导基本上只显示一次
+
+- 延迟加载IdleHandler
+
+  ```java
+  Looper.myQueue().addIdleHandler(new MessageQueue.IdleHandler() {
+      @Override
+      public boolean queueIdle() {
+          // 当该Looper线程没有message要处理时才执行
+          return false;
+      }
+  });
+  ```
+
+  在主线程注册回调，当主线程"空闲"时才执行回调中的逻辑。
+
+  适用场景：非必需的页面元素的加载和渲染，比如未读信息的红点、新手引导等。
 
 
 
-#### 15. Android各版本新特性
+#### 11. Android各版本新特性
 
 Android5.0新特性
 
@@ -2242,13 +2362,13 @@ Android9.0（P）新特性
 - 安全增强
 - 等等优化很多
 
-Android10.0（Q）目前曝光的新特性
+Android10.0（Q）新特性
 
 - **夜间模式**：包括手机上的所有应用都可以为其设置暗黑模式。
 - **桌面模式**：提供类似于PC的体验，但是远远不能代替PC。
 - **屏幕录制**：通过长按“电源”菜单中的"屏幕快照"来开启。
 
-#### 16. android中有哪几种解析xml的类,官方推荐哪种？以及它们的原理和区别？
+#### 12. android中有哪几种解析xml的类,官方推荐哪种？以及它们的原理和区别？
 
 **DOM解析**
 
@@ -2272,39 +2392,37 @@ Android10.0（Q）目前曝光的新特性
 
 **SAX解析**
 
-优点:SAX 对内存的要求比较低,因为它让开发人员自己来决定所要处理的标签.特别是当开发人员只需要处理文档中包含的部分数据时,SAX 这种扩展能力得到了更好的体现.
+优点：SAX 对内存的要求比较低,因为它让开发人员自己来决定所要处理的标签.特别是当开发人员只需要处理文档中包含的部分数据时,SAX 这种扩展能力得到了更好的体现。
 
-缺点:用SAX方式进行XML解析时,需要顺序执行,所以很难访问同一文档中的不同数据.此外,在基于该方式的解析编码程序也相对复杂.
+缺点：用SAX方式进行XML解析时,需要顺序执行,所以很难访问同一文档中的不同数据.此外,在基于该方式的解析编码程序也相对复杂。
 
-使用场景:对于含有数据量十分巨大,而又不用对文档的所有数据行遍历或者分析的时候,使用该方法十分有效.该方法不将整个文档读入内存,而只需读取到程序所需的文档标记处即可.
+工作原理：对文档进行顺序扫描，当扫描到文档(document)开始与结束、元素(element)开始与结束、文档 (document)结束等地方时通知事件处理函数，由事件处理函数做相应动作，然后继续同样的扫描，直至文档结束。
 
-**Xmlpull解析**
+使用场景：对于含有数据量十分巨大,而又不用对文档的所有数据行遍历或者分析的时候,使用该方法十分有效.该方法不将整个文档读入内存,而只需读取到程序所需的文档标记处即可。
 
-android SDK提供了xmlpullapi,xmlpull和sax类似,是基于流（stream）操作文件,后者根据节点事件回调开发者编写的处理程序.因为是基于流的处理,因此xmlpull和sax都比较节约内存资源,不会像dom那样要把所有节点以对象树的形式展现在内存中.xmpull比sax更简明,而且不需要扫描完整个流.
+**Pull解析**
 
-#### 17. Jar和Aar的区别
+PULL解析器的运行方式和SAX类似，都是基于事件的模式。不同的是，在PULL解析过程中返回的是数字，且我们需要自己获取产生的事件然后做相应的操作，而不像SAX那样由处理器触发一种事件的方法，执行我们的代码。
 
-Jar包里面只有代码，aar里面不光有代码还包括资源文件，比如 drawable 文件，xml资源文件。对于一些不常变动的 Android Library，我们可以直接引用 aar，加快编译速度。
+解析过程：XML pull提供了开始元素和结束元素。当某个元素开始时，我们可以调用parser．nextText从XML文档中提取所有字符数据。当解释到一个文档结束时，自动生成EndDocument事件。
 
-#### 18. Android为每个应用程序分配的内存大小是多少
+优点：PULL解析器小巧轻便，解析速度快，简单易用，非常适合在Android移动设备中使用，Android系统内部在解析各种XML时也是用PULL解析器，**Android官方推荐开发者们使用Pull解析技术**。Pull解析技术是第三方开发的开源技术，它同样可以应用于Java开发。
 
-android程序内存一般限制在16M，也有的是24M。近几年手机发展较快，一般都会分配两百兆左右，和具体机型有关。
-
-#### 19. Jar和Aar的区别
+#### 13. Jar和Aar的区别?
 
 Jar包里面只有代码，aar里面不光有代码还包括资源文件，比如 drawable 文件，xml资源文件。对于一些不常变动的 Android Library，我们可以直接引用 aar，加快编译速度。
 
-#### 20. Android为每个应用程序分配的内存大小是多少
+#### 14. Android为每个应用程序分配的内存大小是多少?
 
 android程序内存一般限制在16M，也有的是24M。近几年手机发展较快，一般都会分配两百兆左右，和具体机型有关。
 
-#### 21. Merge、ViewStub 的作用。
+#### 15. Merge、ViewStub 的作用?
 
 Merge: 减少视图层级，可以删除多余的层级。和Include标签配套使用
 
 ViewStub: 按需加载，减少内存使用量、加快渲染速度、不支持 merge 标签。
 
-#### 22. Asset目录与res目录的区别？
+#### 16. Asset目录与res目录的区别？
 
 assets：不会在 R 文件中生成相应标记，存放到这里的资源在打包时会打包到程序安装包中。（通过 AssetManager 类访问这些文件）
 
@@ -2314,7 +2432,7 @@ res/anim：存放动画资源。
 
 res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（会映射到 R 文件中）。
 
-#### 23. 通过google提供的Gson解析json时，定义JavaBean的规则是什么？
+#### 17. 通过google提供的Gson解析json时，定义JavaBean的规则是什么？
 
 1) 实现序列化 Serializable
 
@@ -2324,7 +2442,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 4) 属性名必须与json串中属性名保持一致 （因为Gson解析json串底层用到了Java的反射原理）
 
-#### 24. json解析方式的两种区别？
+#### 18. json解析方式的两种区别？
 
 1) SDK提供JSONArray，JSONObject
 
@@ -2336,7 +2454,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 3) 阿里的fastjson
 
-#### 25. 数据库升级增加表和删除表都不涉及数据迁移，但是修改表涉及到对原有数据进行迁移。升级的方法如下所示：
+#### 19. 数据库升级增加表和删除表都不涉及数据迁移，但是修改表涉及到对原有数据进行迁移。升级的方法如下所示：
 
 - 将现有表命名为临时表。
 - 创建新表。
@@ -2348,7 +2466,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 - 逐级升级，确定相邻版本与现在版本的差别，V1升级到V2,V2升级到V3，依次类推。
 - 跨级升级，确定每个版本与现在数据库的差别，为每个case编写专门升级大代码。
 
-#### 26. 编译期注解跟运行时注解
+#### 20. 编译期注解跟运行时注解
 
 运行期注解(RunTime)利用反射去获取信息还是比较损耗性能的，对应@Retention（RetentionPolicy.RUNTIME）。
 
@@ -2356,11 +2474,11 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 其中apt+javaPoet目前也是应用比较广泛，在一些大的开源库，如EventBus3.0+,页面路由 ARout、Dagger、Retrofit等均有使用的身影，注解不仅仅是通过反射一种方式来使用，也可以使用APT在编译期处理
 
-#### 27. 强引用置为null，会不会被回收？
+#### 21. 强引用置为null，会不会被回收？
 
 不会立即释放对象占用的内存。 如果对象的引用被置为null，只是断开了当前线程栈帧中对该对象的引用关系，而 垃圾收集器是运行在后台的线程，只有当用户线程运行到安全点(safe point)或者安全区域才会扫描对象引用关系，扫描到对象没有被引用则会标记对象，这时候仍然不会立即释放该对象内存，因为有些对象是可恢复的（在 finalize方法中恢复引用 ）。只有确定了对象无法恢复引用的时候才会清除对象内存。
 
-#### 28. 是否了解硬件加速？
+#### 22. 是否了解硬件加速？
 
 硬件加速就是运用GPU优秀的运算能力来加快渲染的速度，而通常的基于软件的绘制渲染模式是完全利用CPU来完成渲染。
 
@@ -2373,7 +2491,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 4. 硬件加速的优势还有display list的设计，使用这个我们不需要每次重绘都执行大量的代码，基于软件的绘制模式会重绘脏区域内的所有控件，而display只会更新列表，然后绘制列表内的控件。
 5. CPU更擅长复杂逻辑控制，而GPU得益于大量ALU和并行结构设计，更擅长数学运算。
 
-#### 29. 对于应用更新这块是如何做的？(灰度，强制更新，分区域更新)
+#### 23. 对于应用更新这块是如何做的？(灰度，强制更新，增量更新)
 
 1、通过接口获取线上版本号，versionCode
 2、比较线上的versionCode 和本地的versionCode，弹出更新窗口
@@ -2381,32 +2499,31 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 4、安装APK
 
 灰度：
+
 (1) 找单一渠道投放特别版本。
+
 (2) 做升级平台的改造，允许针对部分用户推送升级通知甚至版本强制升级。
+
 (3) 开放单独的下载入口。
+
 (4) 是两个版本的代码都打到app包里，然后在app端植入测试框架，用来控制显示哪个版本。测试框架负责与服务器端api通信，由服务器端控制app上A/B版本的分布，可以实现指定的一组用户看到A版本，其它用户看到B版本。服务端会有相应的报表来显示A/B版本的数量和效果对比。最后可以由服务端的后台来控制，全部用户在线切换到A或者B版本~
 
 无论哪种方法都需要做好版本管理工作，分配特别的版本号以示区别。
+
 当然，既然是做灰度，数据监控（常规数据、新特性数据、主要业务数据）还是要做到位，该打的数据桩要打。
 还有，灰度版最好有收回的能力，一般就是强制升级下一个正式版。
 
-强制更新:一般的处理就是进入应用就弹窗通知用户有版本更新，弹窗可以没有取消按钮并不能取消。这样用户就只能选择更新或者关闭应用了，当然也可以添加取消按钮，但是如果用户选择取消则直接退出应用。
+强制更新：一般的处理就是进入应用就弹窗通知用户有版本更新，弹窗可以没有取消按钮并不能取消。这样用户就只能选择更新或者关闭应用了，当然也可以添加取消按钮，但是如果用户选择取消则直接退出应用。
 
 增量更新：bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个不同版本的二进制文件，生成补丁文件.patch文件。通过bspatch使旧的apk文件与不定文件合成新的apk。 注意通过apk文件的md5值进行区分版本。
 
-#### 30. 请解释安卓为啥要加签名机制。
+#### 24. 请解释安卓为啥要加签名机制。
 
-1、开发者的身份认证
+1. 开发者的身份认证，由于开发商可能通过使用相同的 Package Name 来混淆替换已经安装的程序，以此保证签名不同的包不被替换。
+2. 保证信息传输的完整性，签名对于包中的每个文件进行处理，以此确保包中内容不被替换。
+3. 防止交易中的抵赖发生， Market 对软件的要求。
 
-由于开发商可能通过使用相同的 Package Name 来混淆替换已经安装的程序，以此保证签名不同的包不被替换。
-
-2、保证信息传输的完整性
-
-签名对于包中的每个文件进行处理，以此确保包中内容不被替换。
-
-3、防止交易中的抵赖发生， Market 对软件的要求。
-
-#### 31. 如何通过Gradle配置多渠道包？
+#### 25. 如何通过Gradle配置多渠道包？
 
 用于生成不同渠道的包
 
@@ -2427,13 +2544,13 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 因此，可以结合buildType和productFlavor生成不同的Build Variants，即类型与渠道不同的组合。
 
-#### 32. ddms 和 traceView 的区别？
+#### 26. DDMS 和 TraceView 的区别？
 
-ddms 原意是：davik debug monitor service。简单的说 ddms 是一个程序执行查看器，在里面可以看见线程和堆栈等信息，traceView 是程序性能分析器。traceview 是 ddms 中的一部分内容。
+DDMS 原意是：davik debug monitor service。简单的说 ddms 是一个程序执行查看器，在里面可以看见线程和堆栈等信息，traceView 是程序性能分析器。traceview 是 ddms 中的一部分内容。
 
 Traceview 是 Android 平台特有的数据采集和分析工具，它主要用于分析 Android 中应用程序的 hotspot（瓶颈）。Traceview 本身只是一个数据分析工具，而数据的采集则需要使用 Android SDK 中的 Debug 类或者利用DDMS 工具。二者的用法如下：开发者在一些关键代码段开始前调用 Android SDK 中 Debug 类的 startMethodTracing 函数，并在关键代码段结束前调用 stopMethodTracing 函数。这两个函数运行过程中将采集运行时间内该应用所有线程（注意，只能是 Java线程） 的函数执行情况， 并将采集数据保存到/mnt/sdcard/下的一个文件中。 开发者然后需要利用 SDK 中的 Traceview工具来分析这些数据。
 
-#### 33. AndroidManifest.xml 中的 targerSDK 设置有什么作用？
+#### 27. AndroidManifest.xml 中的 targerSDK 设置有什么作用？
 
 用于指定 Android 应用中所需要使用的 SDK 的版本，比如我们的应用必须运行于 Android 4.1 以上版本的系统 SDK 之上，那么就需要指定应用支持最小的 SDK 版本数为 16；当然，每个 SDK 版本都会有指定的整数值与之对应，比如我们最常用的 Android 2.3 的版本数是 11。当然，除了可以指定最低版本之外，标签还可以指定最高版本和目标版本，语法范例如下。
 
@@ -2442,7 +2559,7 @@ Traceview 是 Android 平台特有的数据采集和分析工具，它主要用�
 android:maxSdkVersion="integer" />
 ```
 
-#### 34. 简单描述下 Android 数字签名
+#### 28. 简单描述下 Android 数字签名
 
 在 Android 系统中，所有安装到系统的应用程序都必有一个数字证书，此数字证书用于标识应用程序的作者和在 应用程序之间建立信任关系。 
 
@@ -2476,7 +2593,7 @@ Android 数字证书包含以下几个要点：
 
 (4)数字证书都是有有效期的，Android 只是在应用程序安装的时候才会检查证书的有效期。如果程序已经安装 在系统中，即使证书过期也不会影响程序的正常功能。
 
-#### 35. SurfaceView的理解？
+#### 29. SurfaceView的理解？
 
 它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
 
@@ -2496,7 +2613,7 @@ SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏�
 
 GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用于 3D 游戏开发的视图；是 SurfaceView 的子类，openGL 专用。 
 
-#### 36. 如何实现进程保活？
+#### 30. 如何实现进程保活？
 
 - Service 设置成 START_STICKY kill 后会被重启(等待 5 秒左右)，重传 Intent， 保持与重启前一样
 - 通过 startForeground 将进程设置为前台进程， 做前台服务，优先级和前台应用一个级别，除非在系统内存非常缺，否则此进程不会被 kill
@@ -2505,7 +2622,7 @@ GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用
 - 在应用退到后台后，另起一个只有 1 像素的页面停留在桌面上， 让自己保持前台状态，保护自己不被后台清理工具杀死
 - 联系厂商，加入白名单
 
-#### 37. 说下冷启动与热启动是什么，区别，如何优化，使用场景等。
+#### 31. 说下冷启动与热启动是什么，区别，如何优化，使用场景等。
 
 app 冷启动： 当应用启动时，后台没有该应用的进程，这时系统会重新创建一 个新的进程分配给该应用， 这个启动方式就叫做冷启动（后台不存在该应用进程）。冷启动因为系统会重新创建一个新的进程分配给它，所以会先创建和初始 化 Application 类，再创建和初始化 MainActivity 类（包括一系列的测量、布局、 绘制），最后显示在界面上。 
 
@@ -2528,7 +2645,7 @@ Application 构造方法 –> attachBaseContext()–>onCreate –>Activity 构�
 - 减少布局的复杂度和层级
 - 减少主线程耗时
 
-#### 38. 为什么冷启动会有白屏黑屏问题？
+#### 32. 为什么冷启动会有白屏黑屏问题？
 
 原因在于加载主题样式 Theme 中的 windowBackground 等属性设置给 MainActivity 发生在 inflate 布局当 onCreate/onStart/onResume 方法之前，而 windowBackground 背景被设置成了白色或者黑色，所以我们进入 app 的第一个 界面的时候会造成先白屏或黑屏一下再进入界面。
 
@@ -2539,7 +2656,7 @@ Application 构造方法 –> attachBaseContext()–>onCreate –>Activity 构�
 - 设置背景是透明的，给人一种延迟启动的感觉。将背景颜色设置为透明色，这样当用户点击桌面 APP 图片的时候，并不会"立即"进入 APP，而且在桌面上停留一会，其实这时候 APP 已经是启动的了，只是我们心 机的把 Theme 里的 windowBackground 的颜色设置成透明的，强行把锅甩给了手机应用厂商
 - 将 Application 中的不必要的初始化动作实现懒加载，比如，在SpashActivity 显示后再发送消息到 Application，去初始化，这样可以将初始化的动作放在后边，缩短应用启动到用户看到界面的时间
 
-#### 39. 怎样防范 APP 被反编译 
+#### 33. 怎样防范 APP 被反编译 
 
 （1）加壳保护：就是在程序的外面再包裹上另外一段代码，保护里面的代 码不被非法修改或反编译，在程序运行的时候优先取得程序的控制权做一些 我们自己想做的工作。 
 
