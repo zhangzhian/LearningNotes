@@ -2,10 +2,10 @@
 
 # Android基础
 
-| 时间       | 版本  | 说明           |
-| ---------- | ----- | -------------- |
-| 2020.10.15 | 0.0.1 | 初创，结构输入 |
-|            |       |                |
+| 时间       | 版本  | 说明             |
+| ---------- | ----- | ---------------- |
+| 2020.10.15 | 0.0.1 | 初创，结构输入   |
+| 2021.01.12 | 0.0.2 | 初版，大部分完成 |
 
 ## 一、Activity
 
@@ -1978,17 +1978,110 @@ public class ScrollViewWithListView extends ListView {
 
 
 
-
-
 ## 十五、ViewPager
 
 #### 1. ViewPager2原理
 
+ViewPager2继承ViewGroup，内部核心是RecycleView加LinearLayoutManager，其实就是对RecycleView封装了一层。
+
 #### 2. ViewPager中嵌套ViewPager怎么处理滑动冲突
 
-#### 3. viewpager切换掉帧有什么处理经验？
+```java
+public class ChildViewPager extends ViewPager {
+    public ChildViewPager(@NonNull Context context) {
+    	super(context);
+    }
 
-#### 4. 说说事件分发机制，怎么写一个不能滑动的ViewPager
+    public ChildViewPager(@NonNull Context context, @Nullable AttributeSet attrs) {
+    	super(context, attrs);
+    }
+
+	private float x1;
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        switch (ev.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                //告知父控件 把事件下发给子控件处理
+                getParent().requestDisallowInterceptTouchEvent(true);
+                x1 = ev.getX();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                //拿到当前显示页下标
+                int curPosition = getCurrentItem();
+                //手指移动时的X坐标
+                float x2 = ev.getX();
+                if (curPosition == 0) {
+                    if (Math.abs(x2 - x1) > 50) {
+                    	//当当前页面在下标为0的时候或为最后一页时，由父亲拦截触摸事件
+                    	getParent().requestDisallowInterceptTouchEvent(false);
+                    } else {
+                    	getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                } else {
+                	//其他情况，由孩子拦截触摸事件
+                	getParent().requestDisallowInterceptTouchEvent(true);
+                }
+            break;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+}
+```
+
+
+
+#### 3. Viewpager切换掉帧有什么处理经验？
+
+应用UI卡顿常见原因主要在以下几个方面：
+
+1. 人为在UI线程中做轻微耗时操作，导致UI线程卡顿；
+2. 布局Layout过于复杂，无法在16ms内完成渲染；
+3. 同一时间动画执行的次数过多，导致CPU或GPU负载过重；
+4. View过度绘制，导致某些像素在同一帧时间内被绘制多次，从而使CPU或GPU负载过重；
+5. View频繁的触发measure、layout，导致measure、layout累计耗时过多及整个View频繁的重新渲染；
+6. 内存频繁触发GC过多（同一帧中频繁创建内存），导致暂时阻塞渲染操作；
+7. 冗余资源及逻辑等导致加载和执行缓慢；
+
+首先发现问题，通过GPU柱状图判断卡顿程度。然后通过TraceView定位卡顿的方法，打log方式找到更具体的耗时细节，然后逐个优化。
+
+#### 4. 怎么写一个不能滑动的ViewPager?
+
+```java
+public class CustomViewPager extends ViewPager {
+
+    private boolean isCanScroll = true;
+
+    public CustomViewPager(Context context) {
+        super(context);
+    }
+
+    public CustomViewPager(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    /**
+     * 设置其是否能滑动换页
+     * @param isCanScroll false 不能换页， true 可以滑动换页
+     */
+    public void setScanScroll(boolean isCanScroll) {
+        this.isCanScroll = isCanScroll;
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        return isCanScroll && super.onInterceptTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        return isCanScroll && super.onTouchEvent(ev);
+
+    }
+}
+```
+
+
 
 #### 5. ViewPager使用细节，如何设置成每次只初始化当前的Fragment，其他的不初始化（提示：Fragment懒加载）？
 
@@ -2143,11 +2236,9 @@ public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
 
 
-#### 7. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
+#### 4. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
 
 
-
-#### 
 
 
 
