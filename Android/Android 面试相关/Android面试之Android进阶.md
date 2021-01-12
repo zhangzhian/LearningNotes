@@ -20,44 +20,142 @@ Binder是Android中特有的IPC方式
 
 - 效率高：除了内存共享外，其他IPC都需要进行两次数据拷贝，而因为Binder使用内存映射的关系，仅需要一次数据拷贝。
 - 安全性好：接收方可以从数据包中获取发送发的进程Id和用户Id，方便验证发送方的身份，其他IPC方式想要验证只能够主动存入，但是这有可能在发送的过程中被修改。
+- 稳定性：基于C/S架构，职责明确、架构清晰，稳定性较好
 
 #### (2) Binder的通信过程？Binder的原理？
 
-图片：
+Android 系统就可以通过动态添加一个内核模块运行在内核空间，用户进程之间通过这个内核模块作为桥梁来实现通信。
 
-![Binder通信过程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a654b4bff7?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+> 在 Android 系统中，这个运行在内核空间，负责各个用户进程通过 Binder 实现通信的内核模块就叫 **Binder 驱动**（Binder Dirver）。
 
-其实这个过程也可以从AIDL生成的代码中看出。
+在 Android 系统中用户进程之间是如何通过这Binder 驱动来实现通信的呢？**内存映射**。
 
-原理：
+Binder IPC 机制中涉及到的内存映射通过 mmap() 来实现，mmap() 是操作系统中一种内存映射的方法。内存映射简单的讲就是将用户空间的一块内存区域映射到内核空间。映射关系建立后，用户对这块内存区域的修改可以直接反应到内核空间；反之内核空间对这段区域的修改也能直接反应到用户空间。
 
-![Binder结构](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a683f50b4e?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+内存映射能减少数据拷贝次数，实现用户空间和内核空间的高效互动。两个空间各自的修改能直接反映在映射的内存区域，从而被对方空间及时感知。也正因为如此，内存映射能够提供对进程间通信的支持。
 
-Binder的结构： `Client`：服务的请求方。 `Server`：服务的提供方。 `Service Manager`：为`Server`提供`Binder`的注册服务，为`Client`提供`Binder`的查询服务，`Server`、`Client`和`Service Manage`r的通讯都是通过Binder。 `Binder驱动`：负责Binder通信机制的建立，提供一系列底层支持。
+Binder IPC 正是基于内存映射（mmap）来实现的，但是 mmap() 通常是用在有物理介质的文件系统上的。而 Binder 并不存在物理介质，因此 Binder 驱动使用 mmap() 并不是为了在物理介质和用户空间之间建立映射，而是用来在内核空间创建数据接收的缓存空间。
 
-从上图中，Binder通信的过程是这样的：
+一次完整的 Binder IPC 通信过程通常是这样：
+
+![img](https://pic4.zhimg.com/80/v2-cbd7d2befbed12d4c8896f236df96dbf_720w.jpg)
+
+1. 首先 Binder 驱动在内核空间创建一个数据接收缓存区；
+2. 接着在内核空间开辟一块内核缓存区，建立**内核缓存区**和**内核中数据接收缓存区**之间的映射关系，以及**内核中数据接收缓存区**和**接收进程用户空间地址**的映射关系；
+3. 发送方进程通过系统调用 copy_from_user() 将数据 copy 到内核中的**内核缓存区**，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
+
+Binder通信的实质是利用**内存映射**，将用户进程的内存地址和内核的内存地址映射为同一块物理地址，也就是说他们使用的同一块物理空间，每次创建Binder的时候大概分配128的空间。数据进行传输的时候，从这个内存空间分配一点，用完了再释放即可。
+
+介绍完 Binder IPC 的底层通信原理，接下来我们看看实现层面是如何设计的。
+
+Binder通信的四个角色：
+
+- `Client`：服务的请求方
+
+- `Server`：服务的提供方
+
+- `Service Manager`：为`Server`提供`Binder`的注册服务，为`Client`提供`Binder`的查询服务，`Server`、`Client`和`Service Manage`r的通讯都是通过Binder
+
+- `Binder驱动`：负责Binder通信机制的建立，提供一系列底层支持。
+
+> Client、Server、ServiceManager、Binder 驱动这几个组件在通信过程中扮演的角色就如同互联网中服务器（Server）、客户端（Client）、DNS域名服务器（ServiceManager）以及路由器（Binder 驱动）之前的关系。
+
+![img](https://pic3.zhimg.com/80/v2-729b3444cd784d882215a24067893d0e_720w.jpg)
+
+Binder通信的过程是这样的：
 
 1. Server在Service Manager中注册：Server进程在创建的时候，也会创建对应的Binder实体，如果要提供服务给Client，就必须为Binder实体注册一个名字。
 2. Client通过Service Manager获取服务：Client知道服务中Binder实体的名字后，通过名字从Service Manager获取Binder实体的引用。
 3. Client使用服务与Server进行通信：Client通过调用Binder实体与Server进行通信。
 
-更详细一点？
+![img](https://pic4.zhimg.com/80/v2-67854cdf14d07a6a4acf9d675354e1ff_720w.jpg)
 
-Binder通信的实质是利用内存映射，将用户进程的内存地址和内核的内存地址映射为同一块物理地址，也就是说他们使用的同一块物理空间，每次创建Binder的时候大概分配128的空间。数据进行传输的时候，从这个内存空间分配一点，用完了再释放即可。
+Binder 通信中的代理模式：前面我们介绍过跨进程通信的过程都有 Binder 驱动的参与，因此在数据流经 Binder 驱动的时候驱动会对数据做一层转换。当 A 进程想要获取 B 进程中的 object 时，驱动并不会真的把 object 返回给 A，而是返回了一个跟 object 看起来一模一样的代理对象 objectProxy，这个 objectProxy 具有和 object 一摸一样的方法，但是这些方法并没有 B 进程中 object 对象那些方法的能力，这些方法只需要把请求参数交给驱动即可。对于 A 进程来说和直接调用 object 中的方法是一样的。
 
-#### (3) binder怎么验证pid?binder驱动了解吗？
+当 Binder 驱动接收到 A 进程的消息后，发现这是个 objectProxy 就去查询自己维护的表单，一查发现这是 B 进程 object 的代理对象。于是就会去通知 B 进程调用 object 的方法，并要求 B 进程把返回结果发给自己。当驱动拿到 B 进程的返回结果后就会转发给 A 进程，一次通信就完成了。
 
-
-
-#### (4) binder进程间通信可以调用原进程方法吗？
+![img](https://pic2.zhimg.com/80/v2-13361906ecda16e36a3b9cbe3d38cbc1_720w.jpg)
 
 
 
-#### (5) 介绍下 Binder 机制，与内存共享机制有什么区别？
+#### (3) Binder 怎么验证Pid? binder驱动了解吗？
 
-- [为什么Android要采用Binder作为IPC机制？ - Gityuan的回答](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.zhihu.com%2Fquestion%2F39440766%2Fanswer%2F89210950)
-- [Android匿名共享内存（Ashmem）原理](https://links.jianshu.com/go?to=https%3A%2F%2Fjuejin.im%2Fpost%2F59e818bb6fb9a044fd10de38%23heading-1)
-- [图文详解 Android Binder跨进程通信的原理](https://www.jianshu.com/p/4ee3fd07da14)
+```java
+//作用是清空远程调用端的uid和pid，用当前本地进程的uid和pid替代；
+public static final native long clearCallingIdentity();
+//作用是恢复远程调用端的uid和pid信息，正好是`clearCallingIdentity`的反过程;
+public static final native void restoreCallingIdentity(long token);
+```
+
+这两个方法涉及的uid和pid，每个线程都有自己独一无二的`IPCThreadState`对象，记录当前线程的pid和uid，可通过方法`Binder.getCallingPid()`和`Binder.getCallingUid()`获取相应的pid和uid。
+
+`clearCallingIdentity()`, `restoreCallingIdentity()`这两个方法使用过程都是成对使用的，这两个方法配合使用，用于权限控制检测功能。
+
+这两个方法是native方法，通过Binder的JNI调用，在`android_util_Binder.cpp`文件中定义了native方法所对应的jni方法。
+
+```cpp
+static jlong android_os_Binder_clearCallingIdentity(JNIEnv* env, jobject clazz)
+{
+    //调用IPCThreadState类的方法执行
+    return IPCThreadState::self()->clearCallingIdentity();
+}
+
+int64_t IPCThreadState::clearCallingIdentity()
+{
+    int64_t token = ((int64_t)mCallingUid<<32) | mCallingPid;
+    clearCaller();
+    return token;
+}
+
+void IPCThreadState::clearCaller()
+{
+    mCallingPid = getpid(); //当前进程pid赋值给mCallingPid
+    mCallingUid = getuid(); //当前进程uid赋值给mCallingUid
+}
+```
+
+- mCallingUid(记为UID)，保存Binder IPC通信的调用方进程的Uid；
+- mCallingPid(记为PID)，保存Binder IPC通信的调用方进程的Pid；
+
+UID和PID是IPCThreadState的成员变量， 都是32位的int型数据，通过移位操作，将UID和PID的信息保存到`token`，其中高32位保存UID，低32位保存PID。然后调用clearCaller()方法将当前本地进程pid和uid分别赋值给PID和UID，最后返回`token`。
+
+```cpp
+static void android_os_Binder_restoreCallingIdentity(JNIEnv* env, jobject clazz, jlong token)
+{
+    //token记录着uid信息，将其右移32位得到的是uid
+    int uid = (int)(token>>32);
+    if (uid > 0 && uid < 999) {
+        //目前Android中不存在小于999的uid，当uid<999则抛出异常。
+        char buf[128];
+        jniThrowException(env, "java/lang/IllegalStateException", buf);
+        return;
+    }
+    //调用IPCThreadState类的方法执行
+    IPCThreadState::self()->restoreCallingIdentity(token);
+}
+
+void IPCThreadState::restoreCallingIdentity(int64_t token)
+{
+    mCallingUid = (int)(token>>32);
+    mCallingPid = (int)token;
+}
+```
+
+从`token`中解析出PID和UID，并赋值给相应的变量。该方法正好是`clearCallingIdentity`的反过程。
+
+
+
+线程A通过Binder远程调用线程B：则线程B的IPCThreadState中的`mCallingUid`和`mCallingPid`保存的就是线程A的UID和PID。这时在线程B中调用`Binder.getCallingPid()`和`Binder.getCallingUid()`方法便可获取线程A的UID和PID，然后利用UID和PID进行权限比对，判断线程A是否有权限调用线程B的某个方法。
+
+线程B通过Binder调用当前线程的某个组件：此时线程B是线程B某个组件的调用端，则`mCallingUid`和`mCallingPid`应该保存当前线程B的PID和UID，故需要调用`clearCallingIdentity()`方法完成这个功能。当线程B调用完某个组件，由于线程B仍然处于线程A的被调用端，因此`mCallingUid`和`mCallingPid`需要恢复成线程A的UID和PID，这是调用`restoreCallingIdentity()`即可完成。
+
+![binder_clearCallingIdentity](http://gityuan.com/images/binder/binder_clearCallingIdentity.jpg)
+
+一句话：图中过程2（调用组件2开始之前）执行`clearCallingIdentity()`，过程3（调用组件2结束之后）执行`restoreCallingIdentity()`。
+
+#### (4) Binder 进程间通信可以调用原进程方法吗？
+
+可以的。调用原进程方法不走跨进程通信，直接调用。
 
 ### 2. 进程
 
@@ -75,19 +173,13 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 ![Zygote工作流程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a68eb05620?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-#### (3) 点击桌面图标的启动过程？涉及的进程和组件
-
-> [默认Home应用程序（Launcher）的启动过程源码分析](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.kancloud.cn%2Falex_wsc%2Fandroids%2F477726)
-
 
 
 ### 3. 四大组件启动相关
 
 #### (1) Activity的启动过程？
 
-![Activity启动流程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a68cd14124?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
-
-> [《3分钟看懂Activity启动流程》](https://www.jianshu.com/p/9ecea420eb52)
+见下面APP启动过程。
 
 #### (2) App的启动过程？
 
@@ -106,34 +198,117 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 
 ![App启动流程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a6bd3067d1?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-
-
 具体过程：
 
-1. 用户点击App图标，`Lanuacher`进程通过`Binder`联系到`System Server`进程发起`startActivity`。
-2. `System Server`通过`Socket`联系到`Zygote`，`fork`出一个新的App进程。
-3. 创建出一个新的App进程以后，`Zygote`启动App进程的`ActivityThread#main()`方法。
-4. 在`ActivtiyThread`中，调用`AMS`进行`ApplicationThread`的绑定。
-5. `AMS`发送创建`Application`的消息给`ApplicationThread`，进而转交给`ActivityThread`中的`H`，它是一个`Handler`，接着进行`Application`的创建工作。
-6. `AMS`以同样的方式创建`Activity`，接着就是大家熟悉的创建`Activity`的工作了。
+① 点击桌面App图标，Launcher进程采用Binder IPC向system_server进程发起startActivity请求；
 
-#### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？从事件传递，网络请求,AMS交互角度分析
+② system_server进程接收到请求后，向zygote进程发送创建进程的请求；
+
+③ Zygote进程fork出新的子进程，即App进程；
+
+④ App进程，通过Binder IPC向sytem_server进程发起attachApplication请求；
+
+⑤ system_server进程在收到请求后，进行一系列准备工作后，再通过binder IPC向App进程发送scheduleLaunchActivity请求；
+
+⑥ App进程的binder线程（ApplicationThread）在收到请求后，通过handler向主线程发送LAUNCH_ACTIVITY消息；
+
+⑦ 主线程在收到Message后，通过反射机制创建目标Activity，并回调Activity.onCreate()等方法。
+
+⑧ 到此，App便正式启动，开始进入Activity生命周期，执行完onCreate/onStart/onResume方法，UI渲染结束后便可以看到App的主界面。
+
+**启动流程分析**：
+
+**1.创建进程**
+
+①先从Launcher的startActivity()方法，通过Binder通信，调用`ActivityManagerService#startActivity()`方法。
+
+②一系列折腾，最后调用`startProcessLocked()`方法来创建新的进程。
+
+③该方法会通过socket通道传递参数给Zygote进程。Zygote fork()自身。调用`ZygoteInit.main()`方法来实例化ActivityThread对象并最终返回新进程的pid。
+
+④调用ActivityThread.main()方法，ActivityThread随后依次调用Looper.prepareLoop()和Looper.loop()来开启消息循环。
+
+**方法调用流程图如下:**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-25c23ee6ccb48048.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**更直白的流程解释：**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-ed91fd7c240e6bd3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+①App发起进程：当从桌面启动应用，则发起进程便是Launcher所在进程；当从某App内启动远程进程 ，则发送进程便是该App所在进程。发起进程先通过binder发送消息给system_server进程；
+
+②system_server进程：调用`Process.start()`方法，通过socket向zygote进程发送创建新进程的请求；
+
+③zygote进程：在执行`ZygoteInit.main()`后便进入`runSelectLoop()`循环体内，当有客户端连接时便会执行`ZygoteConnection.runOnce()`方法，再经过层层调用后fork出新的应用进程；
+
+④新进程：执行`handleChildProc()`方法，最后调用`ActivityThread.main()`方法。
+
+**2.绑定Application**
+
+上面创建进程后，执行`ActivityThread#main()`方法，随后调用`ActivityThread#attach()`方法。
+
+将进程和指定的Application绑定起来。这个是通过ActivityThread对象中调用`bindApplication()`方法完成的。该方法发送一个`BIND_APPLICATION`的消息到消息队列中, 最终通过`handleBindApplication()`方法处理该消息. 然后调用`makeApplication()`方法来加载App的classes到内存中。
+
+**方法调用流程图如下：**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-0eb6b9d2b091de3b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**更直白的流程解释：**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-d8def9358f4646e1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**3.显示Activity界面**
+
+经过前两个步骤之后, 系统已经拥有了该application的进程。 后面的调用顺序就是普通的从一个已经存在的进程中启动一个新进程的activity了。
+
+实际调用方法是`realStartActivity()`, 它会调用application线程对象中的`scheduleLaunchActivity()`发送一个`LAUNCH_ACTIVITY`消息到消息队列中, 通过 `handleLaunchActivity()`来处理该消息。在 `handleLaunchActivity()`通过`performLaunchActiivty()`方法回调Activity的onCreate()方法和onStart()方法，然后通过`handleResumeActivity()`方法，回调`Activity的onResume()`方法，最终显示Activity界面。
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-5222775558226c7d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+**更直白的流程解释：**
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-5f711b4bca6bf21b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？从事件传递，网络请求, AMS交互角度分析
 
 
 
-#### (4) AMS交互调用生命周期是顺序的吗？
+#### (4) AMS交互调用生命周期是顺序调用的吗？
 
-
+不是。通过给H发Message。
 
 #### (5) 说说App的启动过程,在ActivityThread的main方法里面做了什么事，什么时候启动第一个Activity？
 
+```java
+public static void main(String[] args){
+    ...
+    Looper.prepareMainLooper(); 
+    //初始化Looper
+    ...
+    ActivityThread thread = new ActivityThread();
+    //实例化一个ActivityThread
+    thread.attach(false);
+    //这个方法最后就是为了发送出创建Application的消息
+    ... 
+    Looper.loop();
+    //主线程进入无限循环状态，等待接收消息
+}
+```
+
+`thread.attach(false)`，App进程，通过Binder IPC向sytem_server进程发起attachApplication请求；
+
+system_server进程在收到请求后，进行一系列准备工作后，再通过binder IPC向App进程发送scheduleLaunchActivity请求；
+
+App进程的binder线程（ApplicationThread）在收到请求后，通过handler向主线程发送LAUNCH_ACTIVITY消息；
+
+主线程在收到Message后，通过反射机制创建目标Activity，并回调Activity.onCreate()等方法。
+
+到此，第一个Activity启动。
+
 #### (6) Launcher启动图标，有几个进程？
 
-
-
-#### (7) 启动优化做过什么工作？如果首页就要用到的初始化？
-
-
+4个。Launcher，system_server，Zygote，APP。
 
 ### 4. Window
 
@@ -146,6 +321,30 @@ Binder通信的实质是利用内存映射，将用户进程的内存地址和�
 > [《总结UI原理和高级的UI优化方式》](https://juejin.im/post/6844903974294781965)
 
 每个 Activity 包含了一个 Window对象，这个对象是由 PhoneWindow做的实现。而 PhoneWindow 将 DecorView作为了一个应用窗口的根 View，这个 DecorView 又把屏幕划分为了两个区域：一个是 TitleView，一个是ContentView，而我们平时在 Xml 文件中写的布局正好是展示在 ContentView 中的。
+
+**Activity**
+
+Activity并不负责视图控制，它只是控制生命周期和处理事件。真正控制视图的是Window。一个Activity包含了一个Window，Window才是真正代表一个窗口。**Activity就像一个控制器，统筹视图的添加与显示，以及通过其他回调方法，来与Window、以及View进行交互。**
+
+**Window**
+
+Window是视图的承载器，内部持有一个 DecorView，而这个DecorView才是 view 的根布局。Window是一个抽象类，实际在Activity中持有的是其子类PhoneWindow。PhoneWindow中有个内部类DecorView，通过创建DecorView来加载Activity中设置的布局`R.layout.activity_main`。Window 通过WindowManager将DecorView加载其中，并将DecorView交给ViewRoot，进行视图绘制以及其他交互。
+
+**DecorView**
+
+DecorView是FrameLayout的子类，它可以被认为是Android视图树的根节点视图。DecorView作为顶级View，一般情况下它内部包含一个竖直方向的LinearLayout，**在这个LinearLayout里面有上下三个部分，上面是个ViewStub，延迟加载的视图（应该是设置ActionBar，根据Theme设置），中间的是标题栏(根据Theme设置，有的布局没有)，下面的是内容栏。** 
+
+**ViewRoot**
+
+ViewRoot可能比较陌生，但是其作用非常重大。所有View的绘制以及事件分发等交互都是通过它来执行或传递的。
+
+ViewRoot对应**ViewRootImpl类，它是连接WindowManagerService和DecorView的纽带**，View的三大流程（测量（measure），布局（layout），绘制（draw））均通过ViewRoot来完成。
+
+ViewRoot并不属于View树的一份子。从源码实现上来看，它既非View的子类，也非View的父类，但是，它实现了ViewParent接口，这让它可以作为View的**名义上的父视图**。RootView继承了Handler类，可以接收事件并分发，Android的所有触屏事件、按键事件、界面刷新等事件都是通过ViewRoot进行分发的。
+
+下面结构图可以清晰的揭示四者之间的关系：
+
+![img](http://upload-images.jianshu.io/upload_images/3985563-e773ab2cb83ad214.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 ### 5. PMS
 
@@ -180,7 +379,43 @@ Android 为了确认 apk 开发者身份和防止内容的篡改，设计了一�
 
 #### (4) 为什么要分 dex ？SDK 21 不分 dex，直接全部加载会不会有什么问题？
 
+为了避开单个dex方法数65536的限制。
 
+当应用及其引用的库包含的方法数超过 65536 时，会遇到一个构建错误，指明应用已达到 Android 构建架构规定的引用限制：
+
+```
+trouble writing output:
+Too many field references: 131000; max is 65536.
+You may try using --multi-dex option.
+```
+
+较低版本的构建系统会报告一个不同的错误，但指示的是同一问题：
+
+```
+Conversion to Dalvik format failed:
+Unable to execute dex: method ID not in [0, 0xffff]: 65536
+```
+
+这两种错误情况会显示一个共同的数字：65536。此数字是单个 Dalvik Executable (DEX) 字节码文件内的代码可调用的引用总数。
+
+Android 5.0 之前版本的 MultiDex 支持：向模块级 `build.gradle` 文件中添加 MultiDex 库：
+
+```
+dependencies {
+    def multidex_version = "2.0.1"
+    implementation "androidx.multidex:multidex:$multidex_version"
+}
+```
+
+如果您使用的不是 AndroidX，请改为添加以下已弃用的支持库依赖项：
+
+```groovy
+dependencies {
+  implementation 'com.android.support:multidex:1.0.3'
+}
+```
+
+Android 5.0（API 级别 21）及更高版本使用名为 ART 的运行时，它本身支持从 APK 文件加载多个 DEX 文件。ART 在应用安装时执行预编译，这会扫描查找 `classesN.dex` 文件，并将它们编译成单个 `.oat` 文件，以供 Android 设备执行。因此，如果 `minSdkVersion` 为 21 或更高版本，系统会默认启用 MultiDex，并且您不需要 MultiDex 库。
 
 ### 6. Context
 
@@ -196,7 +431,11 @@ Context的数量等于Activity的个数 + Service的个数 +1，这个1为Applic
 
 #### (3) Context 的使用上如何避免内存泄漏？
 
-#### (4) 如何跨进程拿 Context？如 Activity 还没启动的时候如何拿 Context？
+- 不要让生命周期长于Activity的对象持有到Activity的引用
+- 尽量使用Application的Context而不是Activity的Context
+- 尽量不要在Activity中使用非静态内部类，因为非静态内部类会隐式持有外部类实例的引用。如果使用静态内部类，将外部实例引用作为弱引用持有。
+
+#### (4) 如何跨进程拿 Context？Activity 还没启动的时候如何拿 Context？
 
 **getApplication 与 getApplicationContext 区别**：getApplication() 用用来获取 Application实例的，但这个方法只有在 Activity 和 Service 中才能调用。如果在一些其它的场景，比如BroadcastReceiver 中也想获得 Application 的实例，这时需要借助 getApplicationContext() 方法。也就是说，getApplicationContext() 方法的作用域会更广一些，任何一个 Context 的实例，只要调用 getApplicationContext() 方法都可以拿到我们的Application对象；
 
@@ -212,9 +451,18 @@ Context的数量等于Activity的个数 + Service的个数 +1，这个1为Applic
 
 ### 7. AIDL
 
-#### (1) AIDL in out oneWay代表什么意思？
+#### (1) AIDL in out oneway代表什么意思？
 
+in、out、inout表示跨进程通信中数据的流向（基本数据类型默认是in，非基本数据类型可以使用其它数据流向out、inout）。
 
+- in参数使得实参顺利传到服务方，但服务方对实参的任何改变，不会反应回调用方。
+- out参数使得实参不会真正传到服务方，只是传一个实参的初始值过去（这里实参只是作为返回值来使用的，这样除了return那里的返回值，还可以返回另外的东西），但服务方对实参的任何改变，在调用结束后会反应回调用方。
+- inout参数则是上面二者的结合，实参会顺利传到服务方，且服务方对实参的任何改变，在调用结束后会反应回调用方。
+- 其实inout，都是相对于服务方。in参数使得实参传到了服务方，所以是in进入了服务方；out参数使得实参在调用结束后从服务方传回给调用方，所以是out从服务方出来。
+
+oneway可以用来修饰在interface之前，这样会造成interface内所有的方法都隐式地带上oneway；oneway也可以修饰在interface里的各个方法之前。
+
+被oneway修饰了的方法不可以有返回值，也不可以有带out或inout的参数。
 
 ## 二、Android权限处理
 
@@ -224,7 +472,7 @@ apk 程序是运行在虚拟机上的,对应的是 Android 独特的权限机制
 
 linux 文件系统上的权限如下表示 `-rwxr-x--x system system 4156 2010-04-30 16:13 test.apk`
 
-Android 的权限规则 
+Android 的权限规则:
 
 a. Android 中的 apk 必须签名 
 
@@ -266,22 +514,16 @@ d. AndroidManifest.xml 中的显式权限声明
 
 1. 通过`HttpUrlConnection`获取文件长度。
 2. 自己分配好线程进行制定区间的文件数据的下载。
-3. 获取到数据流以后，使用`RandomAccessFile`进行指定位置的读写。。
+3. 获取到数据流以后，使用`RandomAccessFile`进行指定位置的读写。
 
 ## 四、第三方库
 ### 1. RxJava
 
-RxJava难在各种操作符，我们了解一下大致的设计思想即可。
-
-建议寻找一些RxJava的文章。
-
 #### (1) RXJava怎么切换线程
 
+
+
 #### (2) Rxjava自定义操作符
-
-#### (3) 广播与RxBus的区别，全局广播与局部广播区别
-
-
 
 
 
@@ -289,9 +531,13 @@ RxJava难在各种操作符，我们了解一下大致的设计思想即可。
 
 #### (1) OkHttp责任链模式
 
+可以说是okhttp的精髓所在了，主要体现就是拦截器的使用，具体代码可以看下面的拦截器介绍。
+
 #### (2) interceptors和networkInterceptors的区别？
 
-建议看一遍源码，过程并不复杂。
+`addInterceptor(Interceptor)`，这是由开发者设置的，会按照开发者的要求，在所有的拦截器处理之前进行最早的拦截处理，比如一些公共参数，Header都可以在这里添加。
+
+`networkInterceptors`，这里也是开发者自己设置的，所以本质上和第一个拦截器差不多，但是由于位置不同，所以用处也不同。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。
 
 #### (3) OkHttp怎么实现连接池?里面怎么处理SSL？
 
@@ -439,6 +685,8 @@ long cleanup(long now) {
 
 #### (4) 如果让你来实现一个网络框架，你会考虑什么
 
+
+
 #### (5) OKHttp有哪些拦截器，分别起什么作用？
 
 `OKHTTP`的拦截器是把所有的拦截器放到一个list里，然后每次依次执行拦截器，并且在每个拦截器分成三部分：
@@ -561,8 +809,6 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 调用 response.toString() 连接会断开，后面的取值会出问题
 
-
-
 ### 3. Retrofit
 
 #### (1) 设计模式和封层解耦的理念
@@ -574,6 +820,8 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 
 #### (3) 编译时注解与运行时注解，为什么retrofit要使用运行时注解？什么时候用运行时注解？
+
+
 
 #### (4) retrofit怎么做post请求
 
@@ -878,7 +1126,9 @@ LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还
 
 ### 5. 启动优化
 
-#### 1. 具体有哪些启动优化方法？
+#### 1. 具体有哪些启动优化方法？如果首页就要用到的初始化？
+
+
 
 - 障眼法之闪屏页
 
@@ -1729,9 +1979,17 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 11. 如何在网络框架里直接避免内存泄漏，不需要在presenter中释放订阅
 
+
+
 ## 十二、 Android 虚拟机 
 
-#### 1. Android 虚拟机区别，编译区别，dex区别
+#### 1. DVM 和 JVM 的区别？
+
+a) dvm 执行的是.dex 文件，而 jvm 执行的是.class。Android 工程编译后的所有.class 字节码会被 dex 工具抽 取到一个.dex 文件中。 
+
+b) dvm 是基于寄存器的虚拟机 而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
+
+c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的.class 文件整合到.dex 文件中。减少 了 I/O 操作，提高了类的查找速度。
 
 
 
@@ -1756,11 +2014,5 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 #### 5. 推送sdk底层实现
 
 
-
-#### 你们公司 Picasso 有使用过没，介绍下
-
-
-
-#### Picasso 单引擎，在多 Bundle 的情况下怎么保证数据隔离的？
 
 
