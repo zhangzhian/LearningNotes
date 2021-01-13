@@ -685,7 +685,7 @@ long cleanup(long now) {
 
 #### (4) 如果让你来实现一个网络框架，你会考虑什么
 
-
+- 
 
 #### (5) OKHttp有哪些拦截器，分别起什么作用？
 
@@ -719,19 +719,21 @@ long cleanup(long now) {
 
 根据源码可知，一共七个拦截器：
 
-- `addInterceptor(Interceptor)`，这是由开发者设置的，会按照开发者的要求，在所有的拦截器处理之前进行最早的拦截处理，比如一些公共参数，Header都可以在这里添加。
-- `RetryAndFollowUpInterceptor`，这里会对连接做一些初始化工作，以及请求失败的充实工作，重定向的后续请求工作。跟他的名字一样，就是做重试工作还有一些连接跟踪工作。
-- `BridgeInterceptor`，这里会为用户构建一个能够进行网络访问的请求，同时后续工作将网络请求回来的响应Response转化为用户可用的Response，比如添加文件类型，content-length计算添加，gzip解包。
-- `CacheInterceptor`，这里主要是处理cache相关处理，会根据OkHttpClient对象的配置以及缓存策略对请求值进行缓存，而且如果本地有了可⽤的Cache，就可以在没有网络交互的情况下就返回缓存结果。
-- `ConnectInterceptor`，这里主要就是负责建立连接了，会建立TCP连接或者TLS连接，以及负责编码解码的HttpCodec
-- `networkInterceptors`，这里也是开发者自己设置的，所以本质上和第一个拦截器差不多，但是由于位置不同，所以用处也不同。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。
-- `CallServerInterceptor`，这里就是进行网络数据的请求和响应了，也就是实际的网络I/O操作，通过socket读写数据。
+| 拦截器                      | 作用                                                         |
+| --------------------------- | ------------------------------------------------------------ |
+| 应用拦截器                  | 处理原始请求和最终的响应：可以添加自定义header、通用参数、参数加密、网关接入等等。 |
+| RetryAndFollowUpInterceptor | 处理错误重试和重定向                                         |
+| BridgeInterceptor           | 应用层和网络层的桥接拦截器，主要工作是为请求添加cookie、添加固定的header，比如Host、Content-Length、Content-Type、User-Agent等等，然后保存响应结果的cookie，如果响应使用gzip压缩过，则还需要进行解压。这里会为用户构建一个能够进行网络访问的请求，同时后续工作将网络请求回来的响应Response转化为用户可用的Response。 |
+| CacheInterceptor            | 缓存拦截器，获取缓存、更新缓存。如果命中缓存则不会发起网络请求。 |
+| ConnectInterceptor          | 连接拦截器，内部会维护一个连接池，负责连接复用、创建连接（三次握手等等）、释放连接以及创建连接上的socket流。 |
+| 网络拦截器                  | 用户自定义拦截器，通常用于监控网络层的数据传输。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。 |
+| CallServerInterceptor       | 请求拦截器，在前置准备工作完成后，真正发起网络请求，进行IO读写。 |
 
 #### (6) OkHttp里面用到了什么设计模式
 
 - 责任链模式
 
-这个不要太明显，可以说是okhttp的精髓所在了，主要体现就是拦截器的使用，具体代码可以看看上述的拦截器介绍。
+这个可以说是okhttp的精髓所在了，主要体现就是拦截器的使用，具体代码可以看看上述的拦截器介绍。
 
 - 建造者模式
 
@@ -755,9 +757,7 @@ public class Request {
 - 工厂模式
 
 工厂模式和建造者模式类似，区别就在于工厂模式侧重点在于对象的生成过程，而建造者模式主要是侧重对象的各个参数配置。
- 例子有CacheInterceptor拦截器中又个CacheStrategy对象：
-
-
+例子有CacheInterceptor拦截器中又个CacheStrategy对象：
 
 ```java
     CacheStrategy strategy = new CacheStrategy.Factory(now, chain.request(), cacheCandidate).get();
@@ -813,9 +813,9 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (1) 设计模式和封层解耦的理念
 
-#### (2) 动态代理
 
-建议看一遍源码，过程并不复杂。
+
+#### (2) 动态代理
 
 
 
@@ -846,28 +846,145 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (2) 如何设计一个图片加载框架？
 
+- 异步加载：线程池。由于网络会阻塞，所以读内存和硬盘可以放在一个线程池，网络需要另外一个线程池，网络也可以采用Okhttp内置的线程池。
+
+- 切换线程：Handler。无论是RxJava、EventBus，还是Glide，只要是想从子线程切换到Android主线程，都离不开Handler。
+
+- 缓存：LruCache、DiskLruCache
+
+  内存缓存：LruCache(最新数据始终在LinkedHashMap最后一个)
+
+  LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。
+
+  当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队尾。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队首元素，即近期最少访问的元素。
+
+  磁盘缓存 DiskLruCache(DiskLruCache会自动生成journal文件，这个文件是日志文件，主要记录的是缓存的操作)
+  DiskLruCache和LruCache内部都是使用了LinkedHashMap去实现缓存算法的，只不过前者针对的是将缓存存在本地，而后者是直接将缓存存在内存。
+
+- 防止OOM：软引用、LruCache、图片压缩、Bitmap像素存储位置
+
+  软引用：LruCache里存的是软引用对象，那么当内存不足的时候，Bitmap会被回收，也就是说通过SoftReference修饰的Bitmap就不会导致OOM。
+
+  当然，Bitmap被回收的时候，LruCache剩余的大小应该重新计算，可以写个方法，当Bitmap取出来是空的时候，LruCache清理一下，重新计算剩余内存；
+
+  还有另一个问题，就是内存不足时软引用中的Bitmap被回收的时候，这个LruCache就形同虚设，相当于内存缓存失效了，必然出现效率问题。
+
+  onLowMemory：当内存不足的时候，Activity、Fragment会调用onLowMemory方法，可以在这个方法里去清除缓存，Glide使用的就是这一种方式来防止OOM。
+
+  Bitmap 像素存储位置考虑：Android 3.0到8.0 之间Bitmap像素数据存在Java堆，而8.0之后像素数据存到native堆中
+
+- 内存泄露：注意ImageView的正确引用，生命周期管理
+
+  通过给Activity添加自定义Fragment方式，监听生命周期，在Activity/fragment 销毁的时候，取消图片加载任务
+
+- 列表滑动加载的问题：加载错乱、队满任务过多问题
+
 #### (3) Glide缓存实现机制？
+
+内存缓存、硬盘缓存。
+
+内存缓存一般都是用`LruCache`：Glide 默认内存缓存用的也是LruCache，只不过并没有用Android SDK中的LruCache，不过内部同样是基于LinkHashMap，所以原理是一样的。
+
+磁盘缓存 DiskLruCache：DiskLruCache 跟 LruCache 实现思路是差不多的，一样是设置一个总大小，每次往硬盘写文件，总大小超过阈值，就会将旧的文件删除。DiskLruCache 同样是利用LinkHashMap的特点，只不过数组里面存的 Entry 有点变化，Editor 用于操作文件。
 
 #### (4) Glide如何处理生命周期？
 
-#### (5) 有用过Glide的什么深入的API，自定义model是在Glide的什么阶段
+- 创建一个无UI的Fragment，具体来说就是SupportRequestManagerFragment/RequestManagerFragment,并绑定到当前Activity，这样Fragment就可以感知Activity的生命周期；
+- 在创建Fragment时，初始化Lifecycle，LifecycleListener，并且在生命周期的onStart(),onStop(),onDestory()中调用相关方法;
+- 在创建RequestManger的时候传入Lifecycle对象，并且LifecycleListener实现了LifecycleListener接口；
+- 这样当生命周期变化的时候，就能通过接口回调去通知RequestManager处理请求.
+
+#### (5) 有用过Glide的什么深入的API，自定义model是在Glide的什么阶段？
 
 
-
-[《Glide最全解析》](https://blog.csdn.net/sinyu890807/category_9268670.html)
-[《面试官：简历上最好不要写Glide，不是问源码那么简单》](https://juejin.im/post/6844903986412126216)
 
 ### 5. LeakCanary
 
 #### (1) LeakCanary 的收集内存泄露是在 Activity 的什么时机，大致原理
 
+结起来主要分三个部分：检测泄露；分析泄露；通知泄露。
+
+分析泄露用到了HAHA这个工具，通知泄露，利用安卓自身消息机制，Service, Notification, Activity这些。
+
+分析内存泄露检测这块是LeakCanary原理的核心。
+
+LeakCanary检测内存泄露分两个部分：
+
+1. 监听Activity生命周期，在Activity销毁的时候通知LeakCanary。
+
+```java
+public class LearnLeakCanaryApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        ActivityRefWatcher.install(this, new RefWatcher());
+    }
+}
+```
+
+注册主要做两件事，一是Application绑定Activity生命周期,Activity销毁的时候都能监听到。二是new了个RefWatcher对象，RefWatcher就做了一件事，检测泄露，如果泄露就捕捉给HAHA处理。这样看，这一句代码就完成了两件重要的工作。
+
+ActivityRefWatcher注册时最后的调用watchActivities，在这个函数里完成Application和生命周期的监听注册。
+
+```java
+public static void install(Application application, RefWatcher refWatcher) {
+        new ActivityRefWatcher(application, refWatcher).watchActivities();
+}
+```
+
+```java
+public void watchActivities() {
+        // Make sure you don't get installed twice.
+        stopWatchingActivities();
+        application.registerActivityLifecycleCallbacks(lifecycleCallbacks);
+}
+```
+
+lifecycleCallbacks就是生命周期回调，Activity销毁时，会被Application监听，然后走onActivityDestroyed回调。在onActivityDestroyed里，把自己交给RefWatcher，让RefWatcher去检测自己是否真的被回收。
+
+```java
+private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
+            new Application.ActivityLifecycleCallbacks() {
+                @Override public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
+                }
+
+                @Override public void onActivityStarted(Activity activity) {
+                }
+
+                @Override public void onActivityResumed(Activity activity) {
+                }
+
+                @Override public void onActivityPaused(Activity activity) {
+                }
+
+                @Override public void onActivityStopped(Activity activity) {
+                }
+
+                @Override public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
+                }
+
+                @Override public void onActivityDestroyed(Activity activity) {
+                    Log.d(TAG, activity.getLocalClassName() + " onActivityDestroyed");
+                    ActivityRefWatcher.this.onActivityDestroyed(activity);
+                }
+            };
+```
+
+2.内存泄露检测
+
+内存泄露判断主要是用到了WeakReference和ReferenceQueue，他们俩的关系很简单，弱引用对象回收了，弱引用对象就会在ReferenceQueue里，如果ReferenceQueue里没有，就说明可能泄露。
+
+可能泄露是因为GC不一定及时，所以LeakCanary会再调一次GC，然后再检测ReferenceQueue是否存在回收的对象。如果这次还没有就是泄露了，后面的逻辑就是给HAHA分析，Notification通知。
+
 
 
 ### 6. Android Jepack(非必需)
+
 我主要阅读了Android Jetpack中以下库的源码：
 
 - `Lifecycle`：观察者模式，组件生命周期中发送事件。
-- `DataBinding`：核心就是利用LiveData或者Observablexxx实现的观察者模式，对16进制的状态位更新，之后根据这个状态位去更新对应的内容。
+- `DataBinding`：核心就是利用LiveData或者Observablexxx实现的观察者模-式，对16进制的状态位更新，之后根据这个状态位去更新对应的内容。
 - `LiveData`：观察者模式，事件的生产消费模型。
 - `ViewModel`：借用Activty异常销毁时存储隐藏Fragment的机制存储ViewModel，保证数据的生命周期尽可能的延长。
 - `Paging`：设计思想。
@@ -933,17 +1050,17 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 ```java
 static List<Object> mList = new ArrayList<>();
    for (int i = 0; i < 100; i++) {
-       Object obj = new Object();
+      Object obj = new Object();
       mList.add(obj);
-       obj = null;
-    }
+      obj = null;
+}
 ```
 
 解决办法就是把集合也释放掉。
 
 ```java
-  mList.clear();
-  mList = null;
+mList.clear();
+mList = null;
 ```
 
 2）单例/静态变量造成的内存泄漏
@@ -1116,7 +1233,7 @@ LeakCanary会单独开一进程，用来执行分析任务，和监听任务分�
 
 LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还得用MAT原始方法
 
-#### 
+
 
 ### 4. 响应速度优化
 
@@ -1127,8 +1244,6 @@ LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还
 ### 5. 启动优化
 
 #### 1. 具体有哪些启动优化方法？如果首页就要用到的初始化？
-
-
 
 - 障眼法之闪屏页
 
@@ -1185,8 +1300,6 @@ webview第一次启动会非常耗时，具体优化方法可以看 webview章�
 
 也就是通过在方法的入口和出口加入统计代码，从而统计方法耗时
 
-
-
 ```java
 class Trace{
     public static void i(String tag){
@@ -1219,6 +1332,9 @@ void test(){
 
 
 ### 7. 线程优化
+
+
+
 ### 8. RecycleView优化
 
 
