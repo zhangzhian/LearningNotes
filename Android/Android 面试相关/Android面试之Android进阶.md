@@ -157,6 +157,70 @@ void IPCThreadState::restoreCallingIdentity(int64_t token)
 
 可以的。调用原进程方法不走跨进程通信，直接调用。
 
+#### (5) 为什么选择Binder？
+
+为什么选用Binder，在讨论这个问题之前，我们知道Android也是基于Linux内核，Linux现有的进程间通信手段有以下几种：
+
+- 管道：在创建时分配一个page大小的内存，缓存区大小比较有限；
+
+- 消息队列：信息复制两次，额外的CPU消耗；不合适频繁或信息量大的通信；
+
+- 共享内存：无须复制，共享缓冲区直接附加到进程虚拟地址空间，速度快；但进程间的同步问题操作系统无法实现，必须各进程利用同步工具解决；
+
+- 套接字：作为更通用的接口，传输效率低，主要用于不同机器或跨网络的通信；
+
+- 信号量：常作为一种锁机制，防止某进程正在访问共享资源时，其他进程也访问该资源。因此，主要作为进程间以及同一进程内不同线程之间的同步手段。 不适用于信息交换，更适用于进程中断控制，比如非法内存访问，杀死某个进程等；
+
+既然有现有的IPC方式，为什么重新设计一套Binder机制呢。主要是出于以下三个方面的考量：
+
+效率：传输效率主要影响因素是内存拷贝的次数，拷贝次数越少，传输速率越高。从Android进程架构角度分析：对于消息队列、Socket和管道来说，数据先从发送方的缓存区拷贝到内核开辟的缓存区中，再从内核缓存区拷贝到接收方的缓存区，一共两次拷贝，如图：
+
+![img](https://api2.mubu.com/v3/document_image/42784aab-0633-44d0-9b28-432f46d582b5-2297223.jpg)
+
+而对于Binder来说，数据从发送方的缓存区拷贝到内核的缓存区，而接收方的缓存区与内核的缓存区是映射到同一块物理地址的，节省了一次数据拷贝的过程，如图：
+
+![img](https://api2.mubu.com/v3/document_image/1cd8d44f-1c0f-413f-8373-facffdb21798-2297223.jpg)
+
+共享内存不需要拷贝，Binder的性能仅次于共享内存。
+
+稳定性：上面说到共享内存的性能优于Binder，那为什么不采用共享内存呢，因为共享内存需要处理并发同步问题，容易出现死锁和资源竞争，稳定性较差。Socket虽然是基于C/S架构的，但是它主要是用于网络间的通信且传输效率较低。Binder基于C/S架构 ，Server端与Client端相对独立，稳定性较好。
+
+安全性：传统Linux IPC的接收方无法获得对方进程可靠的UID/PID，从而无法鉴别对方身份；而Binder机制为每个进程分配了UID/PID，且在Binder通信时会根据UID/PID进行有效性检测。
+
+#### (6) Binder机制的作用和原理？
+
+Linux系统将一个进程分为用户空间和内核空间。对于进程之间来说，用户空间的数据不可共享，内核空间的数据可以共享，为了保证安全性和独立性，一个进程不能直接操作或者访问另一个进程，即Android的进程是相互独立、隔离的，这就需要跨进程之间的数据通信方式。普通的跨进程通信方式一般需要2次内存拷贝，如下图所示：
+
+![img](https://api2.mubu.com/v3/document_image/9629827e-9eea-44a7-8e8b-c99b6fff5898-2297223.jpg)
+
+一次完整的 Binder IPC 通信过程通常是这样：
+
+- 首先 Binder 驱动在内核空间创建一个数据接收缓存区。
+
+- 接着在内核空间开辟一块内核缓存区，建立内核缓存区和内核中数据接收缓存区之间的映射关系，以及内核中数据接收缓存区和接收进程用户空间地址的映射关系。
+
+- 发送方进程通过系统调用 copyfromuser() 将数据 copy 到内核中的内核缓存区，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
+
+![img](https://api2.mubu.com/v3/document_image/dc38f08c-463e-43ae-b7bc-f2518e98f8f8-2297223.jpg)
+
+#### (7) Binder框架中ServiceManager的作用？
+
+Binder框架 是基于 C/S 架构的。由一系列的组件组成，包括 Client、Server、ServiceManager、Binder驱动，其中 Client、Server、Service Manager 运行在用户空间，Binder 驱动运行在内核空间。如下图所示：
+
+![img](https://api2.mubu.com/v3/document_image/d7473277-1e81-4f01-951e-22f468889f02-2297223.jpg)
+
+Server&Client：服务器&客户端。在Binder驱动和Service Manager提供的基础设施上，进行Client-Server之间的通信。
+
+ServiceManager（如同DNS域名服务器）服务的管理者，将Binder名字转换为Client中对该Binder的引用，使得Client可以通过Binder名字获得Server端中Binder实体的引用。
+
+Binder驱动（如同路由器）：负责进程之间binder通信的建立，计数管理以及数据的传递交互等底层支持。
+
+最后，结合总结图来综合理解一下：
+
+![img](https://api2.mubu.com/v3/document_image/7e61e800-dcad-4f98-aa5b-035064b23847-2297223.jpg)
+
+
+
 ### 2. 进程
 
 #### (1) Android有哪些序列化方式？
@@ -172,6 +236,36 @@ void IPCThreadState::restoreCallingIdentity(int64_t token)
 #### (2) Zygote孕育进程过程？
 
 ![Zygote工作流程](https://user-gold-cdn.xitu.io/2020/4/24/171ab7a68eb05620?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+#### (3) Android中进程和线程的关系？区别？
+
+- 线程是CPU调度的最小单元，同时线程是一种有限的系统资源；而进程一般指一个执行单元，在PC和移动设备上指一个程序或者一个应用。
+
+- 一般来说，一个App程序至少有一个进程，一个进程至少有一个线程，通俗来讲就是，在App这个工厂里面有一个进程，线程就是里面的生产线，但主线程（即主生产线）只有一条，而子线程（即副生产线）可以有多个。
+
+- 进程有自己独立的地址空间，而进程中的线程共享此地址空间，都可以并发执行。
+
+#### (4) 如何开启多进程？应用是否可以开启N个进程？
+
+在AndroidManifest中给四大组件指定属性android:process开启多进程模式，在内存允许的条件下可以开启N个进程。
+
+#### (5) 为何需要IPC？多进程通信可能会出现的问题？
+
+- 所有运行在不同进程的四大组件（Activity、Service、Receiver、ContentProvider）共享数据都会失败，这是由于Android为每个应用分配了独立的虚拟机，不同的虚拟机在内存分配上有不同的地址空间，这会导致在不同的虚拟机中访问同一个类的对象会产生多份副本。比如常用例子（通过开启多进程获取更大内存空间、两个或者多个应用之间共享数据、微信全家桶）。
+
+- 一般来说，使用多进程通信会造成如下几方面的问题:
+
+  - 静态成员和单例模式完全失效：独立的虚拟机造成。
+
+  - 线程同步机制完全失效：独立的虚拟机造成。
+
+  - SharedPreferences的可靠性下降：这是因为Sp不支持两个进程并发进行读写，有一定几率导致数据丢失。
+
+  - Application会多次创建：Android系统在创建新的进程时会分配独立的虚拟机，所以这个过程其实就是启动一个应用的过程，自然也会创建新的Application。
+
+#### (6) Android中IPC方式、各种方式优缺点？
+
+![img](https://api2.mubu.com/v3/document_image/40d5e692-a83d-41cc-9283-c3f2481ca830-2297223.jpg)
 
 
 
@@ -464,6 +558,32 @@ oneway可以用来修饰在interface之前，这样会造成interface内所有�
 
 被oneway修饰了的方法不可以有返回值，也不可以有带out或inout的参数。
 
+#### (2) 讲讲AIDL？如何优化多模块都使用AIDL的情况？
+
+AIDL(Android Interface Definition Language，Android接口定义语言)：如果在一个进程中要调用另一个进程中对象的方法，可使用AIDL生成可序列化的参数，AIDL会生成一个服务端对象的代理类，通过它客户端可以实现间接调用服务端对象的方法。
+
+AIDL的本质是系统提供了一套可快速实现Binder的工具。关键类和方法：
+
+- AIDL接口：继承IInterface。
+
+- Stub类：Binder的实现类，服务端通过这个类来提供服务。
+
+- Proxy类：服务端的本地代理，客户端通过这个类调用服务端的方法。
+
+- asInterface()：客户端调用，将服务端返回的Binder对象，转换成客户端所需要的AIDL接口类型的对象。如果客户端和服务端位于同一进程，则直接返回Stub对象本身，否则返回系统封装后的Stub.proxy对象。
+
+- asBinder()：根据当前调用情况返回代理Proxy的Binder对象。
+
+- onTransact()：运行在服务端的Binder线程池中，当客户端发起跨进程请求时，远程请求会通过系统底层封装后交由此方法来处理。
+
+- transact()：运行在客户端，当客户端发起远程请求的同时将当前线程挂起。之后调用服务端的onTransact()直到远程请求返回，当前线程才继续执行。
+
+当有多个业务模块都需要AIDL来进行IPC，此时需要为每个模块创建特定的aidl文件，那么相应的Service就会很多。必然会出现系统资源耗费严重、应用过度重量级的问题。解决办法是建立Binder连接池，即将每个业务模块的Binder请求统一转发到一个远程Service中去执行，从而避免重复创建Service。
+
+工作原理：每个业务模块创建自己的AIDL接口并实现此接口，然后向服务端提供自己的唯一标识和其对应的Binder对象。服务端只需要一个Service并提供一个queryBinder接口，它会根据业务模块的特征来返回相应的Binder对象，不同的业务模块拿到所需的Binder对象后就可以进行远程方法的调用了。
+
+
+
 ## 二、Android权限处理
 
 #### 1. 解释一下 Android 程序运行时权限与文件系统权限的区别？
@@ -526,6 +646,16 @@ d. AndroidManifest.xml 中的显式权限声明
 #### (2) Rxjava自定义操作符
 
 
+
+#### (3) RxJava 变换操作符 map flatMap concatMap buffer？
+
+map：【数据类型转换】将被观察者发送的事件转换为另一种类型的事件。
+
+flatMap：【化解循环嵌套和接口嵌套】将被观察者发送的事件序列进行拆分 & 转换 后合并成一个新的事件序列，最后再进行发送。
+
+concatMap：【有序】与 flatMap 的 区别在于，拆分 & 重新合并生成的事件序列 的顺序与被观察者旧序列生产的顺序一致。
+
+buffer：定期从被观察者发送的事件中获取一定数量的事件并放到缓存区中，然后把这些数据集合打包发射。
 
 ### 2. OkHttp
 
@@ -1767,35 +1897,31 @@ dependencies {
 
 ## 十、WebView
 
-#### 1. h5与native通信你做过什么工作？
+#### 1. webView加载本地图片，如何从安全方面考虑
 
 
 
-#### 2. webView加载本地图片，如何从安全方面考虑
+#### 2. 有没有做过什么WebView秒开的一些优化
 
 
 
-#### 3. h5与native交互，webView.loadUrl与webView.evaluateUrl区别
+#### 3. native如何对h5进行鉴权，让某些页面可以调，某些页面不能调
 
 
 
-#### 4. 有没有做过什么WebView秒开的一些优化
+#### 4. jsBridge实现方式
 
 
 
-#### 5. native如何对h5进行鉴权，让某些页面可以调，某些页面不能调
+#### 5. 项目中对WebView的功能进行了怎样的增强
+
+#### 
+
+#### 6. 为什么不利用同步方法来做jsBridge交互？同步可以做异步，异步不能做同步
 
 
 
-#### 6. jsBridge实现方式
-
-#### 7. 项目中对WebView的功能进行了怎样的增强
-
-#### 8. 项目中的Webview与native通信
-
-#### 9. 为什么不利用同步方法来做jsBridge交互？同步可以做异步，异步不能做同步
-
-#### 10. webView与js通信
+#### 7. webView与js通信
 
 1） Android调用JS代码
 
@@ -1877,7 +2003,7 @@ mWebView.setWebViewClient(new WebViewClient() {
     );
 ```
 
-#### 11. 如何避免WebView内存泄露
+#### 8. 如何避免WebView内存泄露
 
 WebView的内存泄露主要是因为在页面销毁后，WebView的资源无法马上释放所导致的。
 
@@ -1917,7 +2043,7 @@ mWebView=null；
 System.exit(0)   
 ```
 
-#### 12. webView还有哪些可以优化的地方
+#### 9. webView还有哪些可以优化的地
 
 - 提前初始化或者使用`全局WebView`。首次初始化WebView会比第二次初始化慢很多。初始化后，即使WebView已释放，但一些多WebView共用的全局服务/资源对想仍未释放，而第二次初始化不需要生成，因此初始化变快。
 - DNS采用和客户端API相同的域名，`DNS解析`也是耗时比较多的部分，所以用客户端API相同的域名因为其DNS会被缓存，所以打开webView的时候就不会再耗时在DNS上了
@@ -1933,7 +2059,7 @@ System.exit(0)
 - DNS和链接慢，想办法复用客户端使用的`域名和链接`。
 - 脚本执行慢，可以把`框架代码拆分`出来，在请求页面之前就执行好。
 
-#### 13. WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
+#### 10. WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
 
 [最全面总结 Android WebView与 JS 的交互方式](https://www.jianshu.com/p/345f4d8a5cfa)
 
@@ -1995,7 +2121,7 @@ mWebView.addJavascriptInterface(new Object() {
 </div>
 ```
 
-#### 14. 如何清除 webview 的缓存
+#### 11. 如何清除 webview 的缓存
 webview 的缓存包括网页数据缓存（存储打开过的页面及资源）、H5 缓存（即 AppCache），webview 会将我们浏览过的网页 url 已经网页文件(css、图片、js 等)保存到数据库表中，如下；
 
 ```
@@ -2005,15 +2131,15 @@ webview 的缓存包括网页数据缓存（存储打开过的页面及资源）
 
 所以，我们只需要根据数据库里的信息进行缓存的处理即可。
 
-#### 15. webview 播放视频，5.0 以上没有全屏播放按钮
+#### 12. webview 播放视频，5.0 以上没有全屏播放按钮
 
 实现全屏的时候把 webview 里的视频放到一个 View 里面，然后把 webview隐藏掉；即可实现全屏播放。
 
-#### 16. Webview 中 是 如 何 控 制 显 示 加 载 完 成 的 进 度 条 的
+#### 13. Webview 中是如何控制显示加载完成的进度条的
 
-在 WebView 的 setWebChromClient() 中 ， 重 写 WebChromClient 的 openDialog()和 closeDialog()方法；实现监听进度条的显示与关闭。
+在 WebView 的 setWebChromClient() 中 ， 重写 WebChromClient 的 openDialog()和 closeDialog()方法；实现监听进度条的显示与关闭。
 
-#### 17. @JavaScriptInterface为什么不通过多个方法来实现？
+#### 14. @JavaScriptInterface为什么不通过多个方法来实现？
 
 4.4以前谷歌的webview存在安全漏洞，网站可以通过js注入就可以随便拿到客户端的重要信息，甚至轻而易举的调用本地代码进行流氓行为，谷歌后来发现有此漏洞后，增加了防御措施，js调用本地代码，开发者必须在代码申明JavascriptInterface。
 
@@ -2087,11 +2213,19 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 6. 项目搭建过程中有什么经验,有用到什么gradle脚本，分包有做什么操作
 
+
+
 #### 7. mainfest中配置LargeHeap，真的能分配到大内存吗？ 
+
+
 
 #### 8. 如果叫你实现，你会怎样实现一个多主题的效果
 
+
+
 #### 10. mvp与mvvm的区别，mvvm怎么更新UI
+
+
 
 #### 11. 如何在网络框架里直接避免内存泄漏，不需要在presenter中释放订阅
 
@@ -2128,6 +2262,53 @@ c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，
 
 
 #### 5. 推送sdk底层实现
+
+
+
+#### 6. 内存抖动（代码注意事项）
+
+定义：内存抖动是由于短时间内有大量对象进出新生区导致的，它伴随着频繁的GC，gc会大量占用ui线程和cpu资源，会导致app整体卡顿。
+
+避免发生内存抖动的几点建议：
+
+- 尽量避免在循环体内创建对象，应该把对象创建移到循环体外 
+- 注意自定义View的onDraw()方法会被频繁调用，所以在这里面不应该频繁的创建对象
+- 当需要大量使用Bitmap的时候，试着把它们缓存在数组或容器中实现复用
+- 对于能够复用的对象，同理可以使用对象池将它们缓存起来
+
+#### 7. 如何绕过9.0限制？
+
+- 如何限制？
+
+  1、阻止java反射和JNI。
+
+  2、当获取方法或Field时进行检测。
+
+  3、怎么检测？
+
+  - 区分出是系统调用还是开发者调用：
+    - 根据堆栈，回溯Class，查看ClassLoader是否是BootStrapClassLoader。
+
+  - 区分后，再区分是否是hidden api：
+    - Method，Field都有access_flag，有一些备用字段，hidden信息存储其中。
+
+- 如何绕过？
+
+  1、不用反射：
+
+  - 利用一个fakelib，例如写一个android.app.ActivityThread#currentActivityThread空实现，直接调用；
+
+  2、伪装系统调用：
+
+  - jni修改一个class的classloder为BootStrapClassLoader，麻烦。
+
+  - 利用系统方法去反射：
+    - 利用原反射，即：getDeclaredMethod这个方法是系统的方法，通过getDeclaredmethod反射去执行hidden api。
+
+  3、修改Method，Field中存储hidden信息的字段：
+
+  - 利用jni去修改。
+
 
 
 
