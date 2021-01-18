@@ -1547,7 +1547,7 @@ public static void main(String[] args) throws InterruptedException {
 
 
 
-## 六、volatile关键字
+## 六、Volatile关键字
 
 ### 1. Java内存模型
 

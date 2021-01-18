@@ -9,17 +9,11 @@
 
 
 
-
-
 #### 2. kotlin lazy使用,lazy viewmodel
 
 
 
-
-
 #### 3. kotlin与Java互相调用有什么问题？
-
-
 
 
 

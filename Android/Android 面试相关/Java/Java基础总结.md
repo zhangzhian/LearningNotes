@@ -1858,7 +1858,7 @@ JDK除了在java.lang提供了上述内建注解外，还在java.lang.annotation
 
 例如：
 
-```
+```java
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value={CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, PARAMETER, TYPE})
@@ -1869,7 +1869,7 @@ public @interface Deprecated {
 定义`@Deprecated`时使用了`@Documented`，则任何元素使用@Deprecated修饰时，在生成API文档时，将会包含`@Deprecated`的说明
 以下是String的一个过时的构造方法：
 
-```
+```java
 @Deprecated
 public String(byte[] ascii,int hibyte,int offset, int count)
 ```
@@ -1949,7 +1949,7 @@ public class AnnotationDemo {
 ```java
 public class AnnotationParser {
     public static void main(String[] args) throws SecurityException, ClassNotFoundException {
-        String clazz = "com.lvr.annotation.AnnotationDemo";
+        String clazz = "com.zza.annotation.AnnotationDemo";
         Method[]  demoMethod = AnnotationParser.class
                 .getClassLoader().loadClass(clazz).getMethods();
 

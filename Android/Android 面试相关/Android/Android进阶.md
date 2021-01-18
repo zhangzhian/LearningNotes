@@ -32,7 +32,7 @@ public void setRequestProperty(String field, String newValue)
 conn.setRequestProperty("Range", "bytes=" + 500 + "-" + 1000);
 ```
 
-以上只是续传的一部分需求，当我们获取到下载数据时，还需要将数据写入文件，而普通发File对象并不提供从指定位置写入数据的功能，这个时候，就需要使用到RandomAccessFile来实现从指定位置给文件写入数据的功能。
+以上只是续传的一部分需求，当我们获取到下载数据时，还需要将数据写入文件，而普通发File对象并不提供从指定位置写入数据的功能，这个时候，就需要使用到**RandomAccessFile**来实现从指定位置给文件写入数据的功能。
 
 ```java
 public void seek(long offset)
@@ -509,8 +509,6 @@ public class DownloadListener implements IDownloadListener {
 **最终效果**
 
 ![](http://upload-images.jianshu.io/upload_images/1824042-1fc216854a28525f?imageMogr2/auto-orient/strip)
-
-[Demo点我](https://github.com/AriaLyy/DownloadUtil)
 
 ## 二、Android全局异常处理
 
