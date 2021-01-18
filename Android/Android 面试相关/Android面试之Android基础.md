@@ -112,7 +112,9 @@ requestWindowFeature(Window.FEATURE_NO_TITLE);
 - 应用进程不会被杀掉；Activity 栈由 A -> B -> C 变成 A -> B；
 - C页面会正常走完生命周期onStop & onDestory
 
-#### 8. Activity依次A→B→C→B，其中B启动模式为singleTask，AC都为standard，生命周期分别怎么调用？如果B启动模式为singleInstance又会怎么调用？B启动模式为singleInstance不变，A→B→C的时候点击两次返回，生命周期如何调用。
+#### 8. Activity跳转声明周期？
+
+Activity依次A→B→C→B，其中B启动模式为singleTask，AC都为standard，生命周期分别怎么调用？如果B启动模式为singleInstance又会怎么调用？B启动模式为singleInstance不变，A→B→C的时候点击两次返回，生命周期如何调用?
 
 **旧的Activity先onPause，新的再启动。**
 
@@ -189,6 +191,23 @@ mContext.startActivity(intent);
 - 发送特定广播： 在需要结束应用时，发送一个特定的广播，每个 Activity 收到广播后，关闭即可。
 - 递归退出 在打开新的 Activity 时使用 startActivityForResult，然后自己加标志，在 onActivityResult 中处理，递归关闭。
 - 其实 也可以通过 intent 的 flag 来实现 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)激活一个新的 activity。 此时如果该任务栈中已经有该 Activity，那么系统会把这个 Activity 上面的所有 Activity 干掉。其实相当于给 Activity 配置的启动模式为 SingleTop。
+
+#### 16. 隐式启动Activity，如何判断是否有Activity匹配
+
+- 采用PackageManage的resolveActivity方法或者Intent的resolveActivity，匹配不到就会返回null
+- 采用PackageManage的queryIntentActivities方法，返回匹配的Activity信息
+
+#### 17. Android怎么加速启动Activity？
+
+- onCreate() 中不执行耗时操作
+
+把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+
+- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 减少主线程阻塞时间。
+- 提高 Adapter 和 AdapterView 的效率。
+- 优化布局文件。
+
 
 
 
@@ -639,6 +658,8 @@ LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺�
 
 #### 1. Android消息机制介绍？
 
+![image](https://user-gold-cdn.xitu.io/2020/3/1/17095e29e507a873?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
 Android消息机制中的五大概念：
 
 - `ThreadLocal`：当前线程存储的数据仅能从当前线程取出。
@@ -655,6 +676,10 @@ Android消息机制中的五大概念：
 4. `Looper`轮询消息队列：`Looper`是一个死循环，一直观察有没有新的消息到来，之后从`Message`取出绑定的`Handler`，最后调用`Handler`中的处理逻辑，这一切都发生在`Looper`循环的线程，这也是`Handler`能够在指定线程处理任务的原因。
 
 消息机制的运行流程：在子线程执行完耗时操作，当Handler发送消息时，将会调用`MessageQueue.enqueueMessage`，向消息队列中添加消息。当通过`Looper.loop`开启循环后，会不断地从线程池中读取消息，即调用`MessageQueue.next`，然后调用目标Handler（即发送该消息的Handler）的`dispatchMessage`方法传递消息，然后返回到Handler所在线程，目标Handler收到消息，调用`handleMessage`方法，接收消息，处理消息。
+
+![image](https://user-gold-cdn.xitu.io/2020/3/1/17095e041314ecf9?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+注：虚线表示关联关系，实线表示调用关系。
 
 #### 2. Looper在主线程中死循环为什么没有导致界面的卡死？
 
@@ -755,6 +780,8 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
         return sendMessageDelayed(getPostMessage(r), delayMillis);
     }
 ```
+
+handler.postDelay并不是先等待一定的时间再放入到MessageQueue中，而是直接进入MessageQueue，以MessageQueue的时间顺序排列和唤醒的方式结合实现的。
 
 如下
 
@@ -1474,6 +1501,10 @@ private int getParents(ViewParents view){
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-e3f20c6662effb7b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
+#### 12. 自定义view效率高于xml定义吗？说明理由。
+
+自定义view效率高于xml定义：少了解析xml；自定义View 减少了ViewGroup与View之间的测量,包括父量子,子量自身,子在父中位置摆放,当子view变化时,父的某些属性都会跟着变化。
+
 
 
 ## 十一、Drawbale和动画
@@ -1545,10 +1576,6 @@ private int getParents(ViewParents view){
 xml 文件实现的补间动画，复用率极高。在 Activity切换，窗口弹出时等情景中有着很好的效果。
 
 使用帧动画时需要注意，不要使用过多特别大的图，容导致内存不足。
-
-**为什么属性动画移动后仍可点击？**
-
-播放补间动画的时候，我们所看到的变化，都只是临时的。而属性动画呢，它所改变的东西，却会更新到这个View所对应的矩阵中，所以当ViewGroup分派事件的时候，会正确的将当前触摸坐标，转换成矩阵变化后的坐标，这就是为什么播放补间动画不会改变触摸区域的原因了。
 
 #### 2.Bitmap、Drawable与View有什么区别,Drawable有哪些子类
 
@@ -1622,7 +1649,7 @@ ColorDrawable：一个专门用指定颜色来填充画布的Drawable
 
 补间动画只产生了一个动画效果，其真实的坐标并没有发生改变，是效果一直在发生变化，没有频繁反射调用方法的耗费性能操作。
 
-#### 6. 动画里面用到了什么设计模式
+#### 6. 动画里面用到了什么设计模式?
 
 策略模式：有一系列的算法，将每个算法封装起来（每个算法可以封装到不同的类中），各个算法之间可以替换，策略模式让算法独立于使用它的客户而独立变化。
 
@@ -1655,8 +1682,6 @@ public class RoundRectImageView extends ImageView {
 }
 ```
 
-
-
 #### 9. Canvas.save()跟Canvas.restore()的调用时机
 
 save：用来保存Canvas的状态。save之后，可以调用Canvas的平移、放缩、旋转、错切、裁剪等操作。
@@ -1665,7 +1690,9 @@ restore：用来恢复Canvas之前保存的状态。防止save后对Canvas执行
 
 save和restore要配对使用（restore可以比save少，但不能多），如果restore调用次数比save多，会引发Error。save和restore操作执行的时机不同，就能造成绘制的图形不同。
 
+#### 10. 为什么属性动画移动后仍可点击？
 
+播放补间动画的时候，我们所看到的变化，都只是临时的。而属性动画呢，它所改变的东西，却会更新到这个View所对应的矩阵中，所以当ViewGroup分派事件的时候，会正确的将当前触摸坐标，转换成矩阵变化后的坐标。
 
 ## 十二、AsyncTask
 
@@ -2238,6 +2265,37 @@ public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
 #### 4. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
 
+#### 5. SurfaceView的理解？
+
+它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
+
+SurfaceView 中采用了双缓冲机制，保证了 UI 界面的流畅性，同时 SurfaceView不在主线程中绘制，而是另开辟一个线程去绘制，所以它不妨碍 UI 线程；
+
+SurfaceView 继承于 View，他和 View 主要有以下三点区别：
+
+- View 底层没有双缓冲机制，SurfaceView 有；
+- view 主要适用于主动更新，而 SurfaceView 适用与被动的更新，如频繁的刷新
+- view 会在主线程中去更新 UI，而 SurfaceView 则在子线程中刷新；
+
+SurfaceView 的内容不在应用窗口上，所以不能使用变换（平移、缩放、旋转等）。也难以放在 ListView 或者 ScrollView 中，不能使用 UI 控件的一些特性比如View.setAlpha()
+
+View：显示视图，内置画布，提供图形绘制函数、触屏事件、按键事件函数等；必须在 UI 主线程内更新画面，速度较慢。
+
+SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏的开发；是 view的子类，类似使用双缓机制，在新的线程中更新画面所以刷新界面速度比 view快，Camera 预览界面使用 SurfaceView。
+
+GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用于 3D 游戏开发的视图；是 SurfaceView 的子类，openGL 专用。 
+
+#### 6. LinearLayout、FrameLayout、RelativeLayout性能对比，为什么？
+
+RelativeLayout会让子View调用2次onMeasure，LinearLayout 在有weight时，也会调用子 View 2次onMeasure
+
+RelativeLayout的子View如果高度和RelativeLayout不同，则会引发效率问题，当子View很复杂时，这个问题会更加严重。如果可以，尽量使用padding代替margin。
+
+在不影响层级深度的情况下,使用LinearLayout和FrameLayout而不是RelativeLayout。
+
+#### 7. 为什么Google给开发者默认新建了个RelativeLayout，而自己却在DecorView中用了个LinearLayout？
+
+因为DecorView的层级深度是已知而且固定的，上面一个标题栏，下面一个内容栏。采用RelativeLayout并不会降低层级深度，所以此时在根节点上用LinearLayout是效率最高的。而之所以给开发者默认新建了个RelativeLayout是希望开发者能采用尽量少的View层级来表达布局以实现性能最优，因为复杂的View嵌套对性能的影响会更大一些。
 
 
 
@@ -2459,7 +2517,7 @@ Android10.0（Q）新特性
 - **桌面模式**：提供类似于PC的体验，但是远远不能代替PC。
 - **屏幕录制**：通过长按“电源”菜单中的"屏幕快照"来开启。
 
-#### 12. android中有哪几种解析xml的类,官方推荐哪种？以及它们的原理和区别？
+#### 12. android中有哪几种解析xml的类，官方推荐哪种？以及它们的原理和区别？
 
 **DOM解析**
 
@@ -2684,25 +2742,11 @@ Android 数字证书包含以下几个要点：
 
 (4)数字证书都是有有效期的，Android 只是在应用程序安装的时候才会检查证书的有效期。如果程序已经安装 在系统中，即使证书过期也不会影响程序的正常功能。
 
-#### 29. SurfaceView的理解？
+#### 29. 如何导入外部数据库?
 
-它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
+把原数据库包括在项目源码的 res/raw。
 
-SurfaceView 中采用了双缓冲机制，保证了 UI 界面的流畅性，同时 SurfaceView不在主线程中绘制，而是另开辟一个线程去绘制，所以它不妨碍 UI 线程；
-
-SurfaceView 继承于 View，他和 View 主要有以下三点区别：
-
-- View 底层没有双缓冲机制，SurfaceView 有；
-- view 主要适用于主动更新，而 SurfaceView 适用与被动的更新，如频繁的刷新
-- view 会在主线程中去更新 UI，而 SurfaceView 则在子线程中刷新；
-
-SurfaceView 的内容不在应用窗口上，所以不能使用变换（平移、缩放、旋转等）。也难以放在 ListView 或者 ScrollView 中，不能使用 UI 控件的一些特性比如View.setAlpha()
-
-View：显示视图，内置画布，提供图形绘制函数、触屏事件、按键事件函数等；必须在 UI 主线程内更新画面，速度较慢。
-
-SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏的开发；是 view的子类，类似使用双缓机制，在新的线程中更新画面所以刷新界面速度比 view快，Camera 预览界面使用 SurfaceView。
-
-GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用于 3D 游戏开发的视图；是 SurfaceView 的子类，openGL 专用。 
+android系统下数据库应该存放在 /data/data/com.（package name）/ 目录下，所以我们需要做的是把已有的数据库传入那个目录下。操作方法是用FileInputStream读取原数据库，再用FileOutputStream把读取到的东西写入到那个目录。
 
 #### 30. 如何实现进程保活？
 
@@ -2752,3 +2796,46 @@ Application 构造方法 –> attachBaseContext()–>onCreate –>Activity 构�
 （1）加壳保护：就是在程序的外面再包裹上另外一段代码，保护里面的代 码不被非法修改或反编译，在程序运行的时候优先取得程序的控制权做一些 我们自己想做的工作。 
 
 （2）dex 文件格式 ：apk 生成后所有的 java 生成的 class 文件都被 dx 命令整合成了一个 classes.dex 文件，当 apk 运行时 dalvik 虚拟机加载 classes.dex 文件并且用 dexopt 命令进行进一步的优化成 odex 文件。在这 个过程中修改 dalvik 指令来达到我们的目的。
+
+#### 34. 什么是ANR 如何避免它？
+
+答：在Android上，如果你的应用程序有一段时间响应不够灵敏，系统会向用户显示一个对话框，这个对话框称作应 用程序无响应（ANR：Application NotResponding）对话框。 用户可以选择让程序继续运行，但是，他们在使用你的 应用程序时，并不希望每次都要处理这个对话框。因此 ，在程序里对响应性能的设计很重要这样，这样系统就不会显 示ANR给用户。
+
+不同的组件发生ANR的时间不一样，Activity是5秒，BroadCastReceiver是10秒，Service是20秒（均为前台）。
+
+如果开发机器上出现问题，我们可以通过查看/data/anr/traces.txt即可，最新的ANR信息在最开始部分。
+
+- 主线程被IO操作（从4.0之后网络IO不允许在主线程中）阻塞。
+- 主线程中存在耗时的计算
+- 主线程中错误的操作，比如Thread.wait或者Thread.sleep等 Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框
+- 应用在5秒内未响应用户的输入事件（如按键或者触摸）
+- BroadcastReceiver未在10秒内完成相关的处理
+- Service在特定的时间内无法处理完成 20秒
+
+修正：
+
+1、使用AsyncTask处理耗时IO操作。
+
+2、使用Thread或者HandlerThread时，调用Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。
+
+3、使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
+
+4、Activity的onCreate和onResume回调中尽量避免耗时的代码。 BroadcastReceiver中onReceive代码也要尽量减少耗时，建议使用IntentService处理。
+
+解决方案：
+
+将所有耗时操作，比如访问网络，Socket通信，查询大 量SQL 语句，复杂逻辑计算等都放在子线程中去，然 后通过handler.sendMessage、runonUIThread、AsyncTask、RxJava等方式更新UI。无论如何都要确保用户界面的流畅 度。如果耗时操作需要让用户等待，那么可以在界面上显示度条。
+
+[深入回答](http://mp.weixin.qq.com/s?__biz=MzIwMTAzMTMxMg==&mid=2649493643&idx=1&sn=34b51d1f61bd2ecaa8fd0a2d39c4d1d1&chksm=8eec9b74b99b126246acc4547597dfe55c836b8f689b2d1a65bdf1ee2054ced2fc070bfa2678&mpshare=1&scene=24&srcid=0116vzNfMMv2dLizhAT8mEYq#rd)
+
+#### 35. Oom 是否可以try catch ？
+
+只有在一种情况下，这样做是可行的：
+
+在try语句中声明了很大的对象，导致OOM，并且可以确认OOM是由try语句中的对象声明导致的，那么在catch语句中，可以释放掉这些对象，解决OOM的问题，继续执行剩余语句。
+
+但是这通常不是合适的做法。
+
+Java中管理内存除了显式地catch OOM之外还有更多有效的方法：比如SoftReference, WeakReference, 硬盘缓存等。 在JVM用光内存之前，会多次触发GC，这些GC会降低程序运行的效率。 如果OOM的原因不是try语句中的对象（比如内存泄漏），那么在catch语句中会继续抛出OOM。
+
+
