@@ -3727,3 +3727,427 @@ class Solution {
 
 - 时间复杂度：O(n)，其中 n 是数组 nums 的长度。
 - 空间复杂度：O(1)。
+
+### [031] 除法求值※
+
+给你一个变量对数组 `equations` 和一个实数值数组 `values` 作为已知条件，其中 `equations[i] = [Ai, Bi]` 和 `values[i]`共同表示等式 `Ai / Bi = values[i]` 。每个 `Ai `或 `Bi` 是一个表示单个变量的字符串。
+
+另有一些以数组 `queries` 表示的问题，其中 `queries[j] = [Cj, Dj]`表示第 `j` 个问题，请你根据已知条件找出 `Cj / Dj = ? `的结果作为答案。
+
+返回 所有问题的答案 。如果存在某个无法确定的答案，则用 `-1.0` 替代这个答案。如果问题中出现了给定的已知条件中没有出现的字符串，也需要用 `-1.0` 替代这个答案。
+
+注意：输入总是有效的。你可以假设除法运算中不会出现除数为 0 的情况，且不存在任何矛盾的结果。
+
+ 示例 1：
+
+```
+输入：equations = [["a","b"],["b","c"]], values = [2.0,3.0], queries = [["a","c"],["b","a"],["a","e"],["a","a"],["x","x"]]
+输出：[6.00000,0.50000,-1.00000,1.00000,-1.00000]
+解释：
+条件：a / b = 2.0, b / c = 3.0
+问题：a / c = ?, b / a = ?, a / e = ?, a / a = ?, x / x = ?
+结果：[6.0, 0.5, -1.0, 1.0, -1.0 ]
+```
+
+示例 2：
+
+```
+输入：equations = [["a","b"],["b","c"],["bc","cd"]], values = [1.5,2.5,5.0], queries = [["a","c"],["c","b"],["bc","cd"],["cd","bc"]]
+输出：[3.75000,0.40000,5.00000,0.20000]
+```
+
+示例 3：
+
+```
+输入：equations = [["a","b"]], values = [0.5], queries = [["a","b"],["b","a"],["a","c"],["x","y"]]
+输出：[0.50000,2.00000,-1.00000,-1.00000]
+```
+
+
+提示：
+
+- 1 <= equations.length <= 20
+- equations[i].length == 2
+- 1 <= Ai.length, Bi.length <= 5
+- values.length == equations.length
+- 0.0 < values[i] <= 20.0
+- 1 <= queries.length <= 20
+- queries[i].length == 2
+- 1 <= Cj.length, Dj.length <= 5
+- Ai, Bi, Cj, Dj 由小写英文字母与数字组成
+
+方法一：并查集
+
+[题解](https://leetcode-cn.com/problems/evaluate-division/solution/399-chu-fa-qiu-zhi-nan-du-zhong-deng-286-w45d/)
+
+```java
+class Solution {
+    public double[] calcEquation(List<List<String>> equations, double[] values, List<List<String>> queries) {
+     int equationsSize = equations.size();
+
+        UnionFind unionFind = new UnionFind(2 * equationsSize);
+        // 第 1 步：预处理，将变量的值与 id 进行映射，使得并查集的底层使用数组实现，方便编码
+        Map<String, Integer> hashMap = new HashMap<>(2 * equationsSize);
+        int id = 0;
+        for (int i = 0; i < equationsSize; i++) {
+            List<String> equation = equations.get(i);
+            String var1 = equation.get(0);
+            String var2 = equation.get(1);
+
+            if (!hashMap.containsKey(var1)) {
+                hashMap.put(var1, id);
+                id++;
+            }
+            if (!hashMap.containsKey(var2)) {
+                hashMap.put(var2, id);
+                id++;
+            }
+            unionFind.union(hashMap.get(var1), hashMap.get(var2), values[i]);
+        }
+
+        // 第 2 步：做查询
+        int queriesSize = queries.size();
+        double[] res = new double[queriesSize];
+        for (int i = 0; i < queriesSize; i++) {
+            String var1 = queries.get(i).get(0);
+            String var2 = queries.get(i).get(1);
+
+            Integer id1 = hashMap.get(var1);
+            Integer id2 = hashMap.get(var2);
+
+            if (id1 == null || id2 == null) {
+                res[i] = -1.0d;
+            } else {
+                res[i] = unionFind.isConnected(id1, id2);
+            }
+        }
+        return res;
+    }
+
+    private class UnionFind {
+        private int[] parent;
+
+        /**
+         * 指向的父结点的权值
+         */
+        private double[] weight;
+
+        public UnionFind(int n) {
+            this.parent = new int[n];
+            this.weight = new double[n];
+            for (int i = 0; i < n; i++) {
+                parent[i] = i;
+                weight[i] = 1.0d;
+            }
+        }
+
+        public void union(int x, int y, double value) {
+            int rootX = find(x);
+            int rootY = find(y);
+            if (rootX == rootY) {
+                return;
+            }
+
+            parent[rootX] = rootY;
+            // 关系式的推导请见「参考代码」下方的示意图
+            weight[rootX] = weight[y] * value / weight[x];
+        }
+
+        /**
+         * 路径压缩
+         *
+         * @param x
+         * @return 根结点的 id
+         */
+        public int find(int x) {
+            if (x != parent[x]) {
+                int origin = parent[x];
+                parent[x] = find(parent[x]);
+                weight[x] *= weight[origin];
+            }
+            return parent[x];
+        }
+
+        public double isConnected(int x, int y) {
+            int rootX = find(x);
+            int rootY = find(y);
+            if (rootX == rootY) {
+                return weight[x] / weight[y];
+            } else {
+                return -1.0d;
+            }
+        }
+    }
+}
+```
+
+### [032] 路径总和 III
+
+给定一个二叉树，它的每个结点都存放着一个整数值。
+
+找出路径和等于给定数值的路径总数。
+
+路径不需要从根节点开始，也不需要在叶子节点结束，但是路径方向必须是向下的（只能从父节点到子节点）。
+
+二叉树不超过1000个节点，且节点数值范围是 [-1000000,1000000] 的整数。
+
+示例：
+
+    root = [10,5,-3,3,2,null,11,3,-2,null,1], sum = 8      
+          10
+         /  \
+        5   -3
+       / \    \
+      3   2   11
+     / \   \
+    3  -2   1
+    
+    返回 3。和等于 8 的路径有:
+    
+    1.  5 -> 3
+    2.  5 -> 2 -> 1
+    3.  -3 -> 11
+方法一：前缀和，递归，回溯
+
+前缀和：到达当前元素的路径上，之前所有元素的和。
+
+如果两个数的**前缀总和**是相同的，那么这些**节点之间的元素总和为零**。进一步扩展相同的想法，如果前缀总和`currSum`，在节点A和节点B处相差`target`，则位于节点A和节点B之间的元素之和是`target`。
+
+因为本题中的路径是一棵树，从根往任一节点的路径上(不走回头路)，**有且仅有一条路径**，**不存在环**。(如果存在环，前缀和就不能用了，需要改造算法)
+
+抵达当前节点(即B节点)后，将前缀和累加，然后查找在前缀和上，有没有**前缀和`currSum-target`的节点**(即A节点)，存在即表示从A到B有一条路径之和满足条件的情况。结果加上满足前缀和`currSum-target`的节点的数量。然后递归进入左右子树。
+
+左右子树遍历完成之后，回到当前层，需要把当前节点添加的前缀和去除。避免回溯之后影响上一层。
+
+核心代码：
+
+```java
+// 当前路径上的和
+currSum += node.val;
+// currSum-target相当于找路径的起点，起点的sum+target=currSum，当前点到起点的距离就是target
+res += prefixSumCount.getOrDefault(currSum - target, 0);
+// 更新路径上当前节点前缀和的个数
+prefixSumCount.put(currSum, prefixSumCount.getOrDefault(currSum, 0) + 1);
+```
+
+完整代码：
+
+```java
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int pathSum(TreeNode root, int sum) {
+        // key是前缀和, value是大小为key的前缀和出现的次数
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        // 前缀和为0的一条路径
+        prefixSumCount.put(0, 1);
+        // 前缀和的递归回溯思路
+        return recursionPathSum(root, prefixSumCount, sum, 0);
+    }
+
+    /**
+     * 前缀和的递归回溯思路
+     * 从当前节点反推到根节点(反推比较好理解，正向其实也只有一条)，有且仅有一条路径，因为这是一棵树
+     * 如果此前有和为currSum-target,而当前的和又为currSum,两者的差就肯定为target了
+     * 所以前缀和对于当前路径来说是唯一的，当前记录的前缀和，在回溯结束，回到本层时去除，保证其不影响其他分支的结果
+     * @param node 树节点
+     * @param prefixSumCount 前缀和Map
+     * @param target 目标值
+     * @param currSum 当前路径和
+     * @return 满足题意的解
+     */
+    private int recursionPathSum(TreeNode node, Map<Integer, Integer> prefixSumCount, int target, int currSum) {
+        // 1.递归终止条件
+        if (node == null) {
+            return 0;
+        }
+        // 2.本层要做的事情
+        int res = 0;
+        // 当前路径上的和
+        currSum += node.val;
+
+        //---核心代码
+        // 看看root到当前节点这条路上是否存在节点前缀和加target为currSum的路径
+        // 当前节点->root节点反推，有且仅有一条路径，如果此前有和为currSum-target,而当前的和又为currSum,两者的差就肯定为target了
+        // currSum-target相当于找路径的起点，起点的sum+target=currSum，当前点到起点的距离就是target
+        res += prefixSumCount.getOrDefault(currSum - target, 0);
+        // 更新路径上当前节点前缀和的个数
+        prefixSumCount.put(currSum, prefixSumCount.getOrDefault(currSum, 0) + 1);
+        //---核心代码
+
+        // 3.进入下一层
+        res += recursionPathSum(node.left, prefixSumCount, target, currSum);
+        res += recursionPathSum(node.right, prefixSumCount, target, currSum);
+
+        // 4.回到本层，恢复状态，去除当前节点的前缀和数量
+        prefixSumCount.put(currSum, prefixSumCount.get(currSum) - 1);
+        return res;
+    }
+}
+```
+
+时间复杂度：O(N)，每个节点只遍历一次
+
+空间复杂度：O(N)，开辟了一个hashMap
+
+方法二：暴力
+
+需要去求三部分即可：
+
+- 以当前节点作为头结点的路径数量
+- 当前节点的左子树中满足条件的路径数量
+- 当前节点的右子树中满足条件的路径数量
+
+将这三部分之和作为最后结果即可。
+
+最后的问题是：如何去求以当前节点作为头结点的路径的数量？这里依旧是按照树的遍历方式模板，每到一个节点让`sum-root.val`，并判断sum是否为0，如果为零的话，则找到满足条件的一条路径。
+
+```java
+class Solution {
+    public int pathSum(TreeNode root, int sum) {
+        if(root == null){
+            return 0;
+        }
+        int result = countPath(root,sum);
+        int a = pathSum(root.left,sum);
+        int b = pathSum(root.right,sum);
+        return result+a+b;
+
+    }
+    public int countPath(TreeNode root,int sum){
+        if(root == null){
+            return 0;
+        }
+        sum = sum - root.val;
+        int result = sum == 0 ? 1:0;
+        return result + countPath(root.left,sum) + countPath(root.right,sum);
+    }
+}
+```
+
+时间复杂度：O(N^2)，每个节点只遍历一次
+
+空间复杂度：O(H)，H为树的高度；
+
+### [033] 电话号码的字母组合
+
+给定一个仅包含数字 2-9 的字符串，返回所有它能表示的字母组合。
+
+给出数字到字母的映射如下（与电话按键相同）。注意 1 不对应任何字母。
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/original_images/17_telephone_keypad.png)
+
+示例:
+
+```
+输入："23"
+输出：["ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"].
+```
+
+说明:
+
+- 尽管上面的答案是按字典序排列的，但是你可以任意选择答案输出的顺序。
+
+方法一·：回溯解法
+
+
+
+```java
+class Solution {
+   //一个映射表，第二个位置是"abc“,第三个位置是"def"。。。
+    //这里也可以用map，用数组可以更节省点内存
+    String[] letter_map = {" ","*","abc","def","ghi","jkl","mno","pqrs","tuv","wxyz"};
+    public List<String> letterCombinations(String digits) {
+        //注意边界条件
+        if(digits==null || digits.length()==0) {
+            return new ArrayList<>();
+        }
+        iterStr(digits, new StringBuilder(), 0);
+        return res;
+    }
+    //最终输出结果的list
+    List<String> res = new ArrayList<>();
+
+    //递归函数
+    private void iterStr(String str, StringBuilder letter, int index) {
+        //递归的终止条件
+        //用index记录每次遍历到字符串的位置
+        if(index == str.length()) {
+            res.add(letter.toString());
+            return;
+        }
+        //获取index位置的字符，假设输入的字符是"234"
+        //第一次递归时index为0所以c=2，第二次index为1所以c=3，第三次c=4
+        //subString每次都会生成新的字符串，而index则是取当前的一个字符，所以效率更高一点
+        char c = str.charAt(index);
+        //map_string的下表是从0开始一直到9， c-'0'就可以取到相对的数组下标位置
+        //比如c=2时候，2-'0'，获取下标为2,letter_map[2]就是"abc"
+        int pos = c - '0';
+        String map_string = letter_map[pos];
+        //遍历字符串，比如第一次得到的是2，页就是遍历"abc"
+        for(int i=0;i<map_string.length();i++) {
+            //调用下一层递归
+            letter.append(map_string.charAt(i));
+            iterStr(str, letter, index+1);
+            //回溯
+            letter.deleteCharAt(letter.length()-1);
+        }
+    }
+}
+```
+
+时间复杂度：O(3^n)这个级别
+
+空间复杂度：O(n)
+
+方法二：利用队列求解
+
+我们可以利用队列的先进先出特点，再配合循环完成题目要求。
+
+动态演示如下：
+
+![队列-动态图.gif](https://pic.leetcode-cn.com/6953e7a27bff1242c37f88c9b66b524975655605d053a9f6ac6a74376582b4c5-%E9%98%9F%E5%88%97-%E5%8A%A8%E6%80%81%E5%9B%BE.gif)
+
+```java
+class Solution {
+	public List<String> letterCombinations(String digits) {
+		if(digits==null || digits.length()==0) {
+			return new ArrayList<String>();
+		}
+		//一个映射表，第二个位置是"abc“,第三个位置是"def"。。。
+		//这里也可以用map，用数组可以更节省点内存
+		String[] letter_map = {
+			" ","*","abc","def","ghi","jkl","mno","pqrs","tuv","wxyz"
+		};
+		List<String> res = new ArrayList<>();
+		//先往队列中加入一个空字符
+		res.add("");
+		for(int i=0;i<digits.length();i++) {
+			//由当前遍历到的字符，取字典表中查找对应的字符串
+			String letters = letter_map[digits.charAt(i)-'0'];
+			int size = res.size();
+			//计算出队列长度后，将队列中的每个元素挨个拿出来
+			for(int j=0;j<size;j++) {
+				//每次都从队列中拿出第一个元素
+				String tmp = res.remove(0);
+				//然后跟"def"这样的字符串拼接，并再次放到队列中
+				for(int k=0;k<letters.length();k++) {
+					res.add(tmp+letters.charAt(k));
+				}
+			}
+		}
+		return res;
+	}
+}
+```
+
+时间复杂度：O(3^M×4^N)。M 是对应三个字母的数字个数，N 是对应四个字母的数字个数。
+空间复杂度：O(3^M×4^N)。一共要生成 3^M×4^N个结果。
+
