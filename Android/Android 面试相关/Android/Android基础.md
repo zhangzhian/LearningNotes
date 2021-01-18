@@ -110,7 +110,7 @@ Android提供了四种Activity启动方式：
 
 Activity的管理是采用任务栈的形式，任务栈采用“后进先出”的栈结构。
 
-**(1)标准模式（standard）**
+**(1) 标准模式（standard）**
 
 每启动一次Activity，就会创建一个新的Activity实例并置于栈顶。谁启动了这个Activity，那么这个Activity就运行在启动它的那个Activity所在的栈中。
 
@@ -122,7 +122,7 @@ Activity的管理是采用任务栈的形式，任务栈采用“后进先出”
 
 **应用场景：** 绝大多数Activity。如果以这种方式启动的Activity被跨进程调用，在5.0之前新启动的Activity实例会放入发送Intent的Task的栈的顶部，尽管它们属于不同的程序，这似乎有点费解看起来也不是那么合理，所以在5.0之后，上述情景会创建一个新的Task，新启动的Activity就会放入刚创建的Task中，这样就合理的多了。
 
-**(2)栈顶复用模式（singleTop）**
+**(2) 栈顶复用模式（singleTop）**
 
 如果需要新建的Activity位于任务栈栈顶，那么此Activity的实例就不会重建，而是重用栈顶的实例。并回调如下方法：
 
@@ -140,7 +140,7 @@ Activity的管理是采用任务栈的形式，任务栈采用“后进先出”
 
 **应用场景：** 在通知栏点击收到的通知，然后需要启动一个Activity，这个Activity就可以用singleTop，否则每次点击都会新建一个Activity。当然实际的开发过程中：某个场景下连续快速点击，启动了两个Activity。如果这个时候待启动的Activity使用 singleTop模式也是可以避免这个Bug的。同standard模式，如果是外部程序启动singleTop的Activity，在Android 5.0之前新创建的Activity会位于调用者的Task中，5.0及以后会放入新的Task中。
 
-**(3)栈内复用模式（singleTask）**
+**(3) 栈内复用模式（singleTask）**
 
 该模式一个栈内只有一个该Activity实例。该模式，可以通过在AndroidManifest文件的Activity中指定该Activity需要加载到那个栈中，即singleTask的Activity可以指定想要加载的目标栈。singleTask和taskAffinity配合使用，指定开启的Activity加入到哪个栈中。
 
@@ -168,7 +168,7 @@ Activity的管理是采用任务栈的形式，任务栈采用“后进先出”
 
 **应用场景：** 大多数App的主页。对于大部分应用，当我们在主界面点击回退按钮的时候都是退出应用，那么当我们第一次进入主界面之后，主界面位于栈底，以后不管我们打开了多少个Activity，只要我们再次回到主界面，都应该使用将主界面Activity上所有的Activity移除的方式来让主界面Activity处于栈顶，而不是往栈顶新加一个主界面Activity的实例，通过这种方式能够保证退出应用时所有的Activity都能报销毁。在跨应用Intent传递时，如果系统中不存在singleTask Activity的实例，那么将创建一个新的Task，然后创建SingleTask Activity的实例，将其放入新的Task中。
 
-**(4)单例模式（singleInstance）**
+**(4) 单例模式（singleInstance）**
 
 作为栈内复用模式（singleTask）的加强版,打开该Activity时，直接创建一个新的任务栈，并创建该Activity实例放入新栈中。一旦该模式的Activity实例已经存在于某个栈中，任何应用再激活该Activity时都会重用该栈中的实例。
 
@@ -367,6 +367,7 @@ android:process="remote"
 可交互的后台服务实现步骤是和不可交互的后台服务实现步骤是一样的，区别在于启动的方式和获得Service的代理对象。
 
 **创建服务类**  
+
 和普通Service不同在于这里返回一个代理对象，返回给前台进行获取，即前台可以获取该代理对象执行后台服务的方法
 
 ```java
@@ -585,7 +586,7 @@ mBuilder.setContentIntent(pendingIntent);
 
 - 原理描述：
 
-  1. 广播接收者 通过 `Binder`机制在 `AMS` 注册
+  1. 广播接收者 通过 `Binder` 机制在 `AMS` 注册
 
   2. 广播发送者 通过 `Binder` 机制向 `AMS` 发送广播
 
@@ -1604,7 +1605,7 @@ public class MainActivity extends AppCompatActivity {
 
 ## ![](http://upload-images.jianshu.io/upload_images/944365-16b20971852ee5c6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-### 优点
+### 5. 优点
 
 - 安全：`ContentProvider`为应用间的数据交互提供了一个安全的环境：允许把自己的应用数据根据需求开放给 其他应用 进行 **增、删、改、查**，而不用担心因为直接开放数据库权限而带来的安全问题
 
@@ -2038,9 +2039,11 @@ public class FragmentThree extends Fragment implements OnClickListener {
 
 Fragment依附于Activity存在，因此与Activity之间的通信可以归纳为以下几点：
 
-- [ ] 如果你Activity中包含自己管理的Fragment的引用，可以通过引用直接访问所有的Fragment的public方法
-- [ ] 如果Activity中未保存任何Fragment的引用，那么没关系，每个Fragment都有一个唯一的TAG或者ID,可以通过getFragmentManager.findFragmentByTag()或者findFragmentById()获得任何Fragment实例，然后进行操作
-- [ ] Fragment中可以通过getActivity()得到当前绑定的Activity的实例，然后进行操作。
+- 如果你Activity中包含自己管理的Fragment的引用，可以通过引用直接访问所有的Fragment的public方法 
+
+- 如果Activity中未保存任何Fragment的引用，那么没关系，每个Fragment都有一个唯一的TAG或者ID,可以通过getFragmentManager.findFragmentByTag()或者findFragmentById()获得任何Fragment实例，然后进行操作 
+
+- Fragment中可以通过getActivity()得到当前绑定的Activity的实例，然后进行操作。 
 
 ### 5. Fragment与Activity通信的优化
 
@@ -2333,6 +2336,7 @@ public class Activity extends android.app.Activity {
 ![](http://upload-images.jianshu.io/upload_images/3985563-6c25004471646c1f.png?imageMogr2/auto-orient/strip|imageView2/2/w/1240)
 
 从中我们可以看出：  
+
 Looper有一个MessageQueue消息队列；  
 MessageQueue有一组待处理的Message；  
 Message中记录发送和处理消息的Handler；  
@@ -5034,7 +5038,7 @@ public void onDestroy() {
     1. 通过HandlerThread单独开启一个名为 IntentService 的线程
     2. 创建一个名叫ServiceHandler的内部Handler
     3. 把内部Handler与HandlerThread所对应的子线程进行绑定
-    4. 通过onStartCommand()传递给服务intent，**依次**插入到工作队列中，并逐个发送给onHandleIntent()
+    4. 通过onStartCommand()传递给服务intent，依次插入到工作队列中，并逐个发送给onHandleIntent()
     5. 通过onHandleIntent()来依次处理所有Intent请求对象所对应的任务
 
 因此我们通过复写方法onHandleIntent()，再在里面根据Intent的不同进行不同的线程操作就可以了
@@ -5309,7 +5313,7 @@ void recordAccess(HashMap<K,V> m) {
 }
 ```
 
-**由此可见LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。**
+**由此可见LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在集合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。**
 
 ## 十二、Window、Activity、DecorView以及ViewRoot之间的关系
 
