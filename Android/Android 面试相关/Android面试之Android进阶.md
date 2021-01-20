@@ -30,11 +30,11 @@ Android 系统就可以通过动态添加一个内核模块运行在内核空间
 
 在 Android 系统中用户进程之间是如何通过这Binder 驱动来实现通信的呢？**内存映射**。
 
-Binder IPC 机制中涉及到的内存映射通过 mmap() 来实现，mmap() 是操作系统中一种内存映射的方法。内存映射简单的讲就是将用户空间的一块内存区域映射到内核空间。映射关系建立后，用户对这块内存区域的修改可以直接反应到内核空间；反之内核空间对这段区域的修改也能直接反应到用户空间。
+Binder IPC 机制中涉及到的内存映射通过 `mmap()` 来实现，`mmap()` 是操作系统中一种内存映射的方法。内存映射简单的讲就是将用户空间的一块内存区域映射到内核空间。映射关系建立后，用户对这块内存区域的修改可以直接反应到内核空间；反之内核空间对这段区域的修改也能直接反应到用户空间。
 
 内存映射能减少数据拷贝次数，实现用户空间和内核空间的高效互动。两个空间各自的修改能直接反映在映射的内存区域，从而被对方空间及时感知。也正因为如此，内存映射能够提供对进程间通信的支持。
 
-Binder IPC 正是基于内存映射（mmap）来实现的，但是 mmap() 通常是用在有物理介质的文件系统上的。而 Binder 并不存在物理介质，因此 Binder 驱动使用 mmap() 并不是为了在物理介质和用户空间之间建立映射，而是用来在内核空间创建数据接收的缓存空间。
+Binder IPC 正是基于内存映射来实现的，但是 `mmap()` 通常是用在有物理介质的文件系统上的。而 Binder 并不存在物理介质，因此 Binder 驱动使用 `mmap()` 并不是为了在物理介质和用户空间之间建立映射，而是用来在内核空间创建数据接收的缓存空间。
 
 一次完整的 Binder IPC 通信过程通常是这样：
 
@@ -54,7 +54,7 @@ Binder通信的四个角色：
 
 - `Server`：服务的提供方
 
-- `Service Manager`：为`Server`提供`Binder`的注册服务，为`Client`提供`Binder`的查询服务，`Server`、`Client`和`Service Manage`r的通讯都是通过Binder
+- `Service Manager`：为`Server`提供`Binder`的注册服务，为`Client`提供`Binder`的查询服务，`Server`、`Client`和`Service Manager`的通讯都是通过`Binder`。
 
 - `Binder驱动`：负责Binder通信机制的建立，提供一系列底层支持。
 
@@ -143,8 +143,6 @@ void IPCThreadState::restoreCallingIdentity(int64_t token)
 
 从`token`中解析出PID和UID，并赋值给相应的变量。该方法正好是`clearCallingIdentity`的反过程。
 
-
-
 线程A通过Binder远程调用线程B：则线程B的IPCThreadState中的`mCallingUid`和`mCallingPid`保存的就是线程A的UID和PID。这时在线程B中调用`Binder.getCallingPid()`和`Binder.getCallingUid()`方法便可获取线程A的UID和PID，然后利用UID和PID进行权限比对，判断线程A是否有权限调用线程B的某个方法。
 
 线程B通过Binder调用当前线程的某个组件：此时线程B是线程B某个组件的调用端，则`mCallingUid`和`mCallingPid`应该保存当前线程B的PID和UID，故需要调用`clearCallingIdentity()`方法完成这个功能。当线程B调用完某个组件，由于线程B仍然处于线程A的被调用端，因此`mCallingUid`和`mCallingPid`需要恢复成线程A的UID和PID，这是调用`restoreCallingIdentity()`即可完成。
@@ -199,7 +197,7 @@ Linux系统将一个进程分为用户空间和内核空间。对于进程之间
 
 - 接着在内核空间开辟一块内核缓存区，建立内核缓存区和内核中数据接收缓存区之间的映射关系，以及内核中数据接收缓存区和接收进程用户空间地址的映射关系。
 
-- 发送方进程通过系统调用 copyfromuser() 将数据 copy 到内核中的内核缓存区，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
+- 发送方进程通过系统调用 `copy_from_user()` 将数据 copy 到内核中的内核缓存区，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
 
 ![img](https://api2.mubu.com/v3/document_image/dc38f08c-463e-43ae-b7bc-f2518e98f8f8-2297223.jpg)
 
@@ -314,11 +312,11 @@ Binder驱动（如同路由器）：负责进程之间binder通信的建立，�
 
 **1.创建进程**
 
-①先从Launcher的startActivity()方法，通过Binder通信，调用`ActivityManagerService#startActivity()`方法。
+①先从Launcher的`startActivity()`方法，通过Binder通信，调用`ActivityManagerService#startActivity()`方法。
 
 ②一系列折腾，最后调用`startProcessLocked()`方法来创建新的进程。
 
-③该方法会通过socket通道传递参数给Zygote进程。Zygote fork()自身。调用`ZygoteInit.main()`方法来实例化ActivityThread对象并最终返回新进程的pid。
+③该方法会通过socket通道传递参数给Zygote进程。Zygote `fork()`自身。调用`ZygoteInit.main()`方法来实例化ActivityThread对象并最终返回新进程的pid。
 
 ④调用ActivityThread.main()方法，ActivityThread随后依次调用Looper.prepareLoop()和Looper.loop()来开启消息循环。
 
@@ -400,7 +398,7 @@ App进程的binder线程（ApplicationThread）在收到请求后，通过handle
 
 到此，第一个Activity启动。
 
-#### (6) Launcher启动图标，有几个进程？
+#### (6) Launcher启动图标APP，涉及到有几个进程？
 
 4个。Launcher，system_server，Zygote，APP。
 
@@ -467,9 +465,12 @@ zipalign 工具对签名后的 .apk 文件进行对齐处理
 #### (3) APK 为什么要签名？是否了解过具体的签名机制？
 
 Android 为了确认 apk 开发者身份和防止内容的篡改，设计了一套 apk 签名的方案保证 apk 的安全性，即在打包时由开发者进行 apk 的签名，在安装 apk 时Android 系统会有相应的开发者身份和内容正确性的验证，只有验证通过才可以安装 apk，签名过程和验证的设计就是基于非对称加密的思想。
- Android 在 7.0 以前使用的一套签名方案：在 apk 根目录下的 META-INF/ 文件夹下生成签名文件，然后在安装时在系统的 PackageManagerService 里进行签名文件的验证。
- 从 7.0 开始，Android 提供了新的 V2 签名方案：利用 apk(zip) 压缩文件的格式，在几个原始内容区之外增加了一块用于存放签名信息的数据区，然后同样在安装时在系统的 PackageManagerService 里进行 V2 版本的签名验证，V2 方案会更安全、使校验更快安装更快。
- 当然 V2 签名方案会向后兼容，如果没有使用 V2 签名就会默认走 V1 签名方案的验证过程。
+
+Android 在 7.0 以前使用的一套签名方案：在 apk 根目录下的 META-INF/ 文件夹下生成签名文件，然后在安装时在系统的 PackageManagerService 里进行签名文件的验证。
+
+从 7.0 开始，Android 提供了新的 V2 签名方案：利用 apk(zip) 压缩文件的格式，在几个原始内容区之外增加了一块用于存放签名信息的数据区，然后同样在安装时在系统的 PackageManagerService 里进行 V2 版本的签名验证，V2 方案会更安全、使校验更快安装更快。
+
+当然 V2 签名方案会向后兼容，如果没有使用 V2 签名就会默认走 V1 签名方案的验证过程。
 
 #### (4) 为什么要分 dex ？SDK 21 不分 dex，直接全部加载会不会有什么问题？
 
@@ -673,7 +674,7 @@ buffer：定期从被观察者发送的事件中获取一定数量的事件并�
 
 - 为什么需要连接池？
 
-频繁的进行建立`Sokcet`连接和断开`Socket`是非常消耗网络资源和浪费时间的，所以HTTP中的`keepalive`连接对于降低延迟和提升速度有非常重要的作用。`keepalive机制`是什么呢？也就是可以在一次TCP连接中可以持续发送多份数据而不会断开连接。所以连接的多次使用，也就是复用就变得格外重要了，而复用连接就需要对连接进行管理，于是就有了连接池的概念。
+频繁的进行建立`Sokcet`连接和断开`Socket`是非常消耗网络资源和浪费时间的，所以HTTP中的`keepalive`连接对于降低延迟和提升速度有非常重要的作用。`keepalive`机制是什么呢？也就是可以在一次TCP连接中可以持续发送多份数据而不会断开连接。所以连接的多次使用，也就是复用就变得格外重要了，而复用连接就需要对连接进行管理，于是就有了连接池的概念。
 
 OkHttp中使用`ConectionPool`实现连接池，默认支持5个并发`KeepAlive`，默认链路生命为5分钟。
 
@@ -692,7 +693,7 @@ RealConnection get(Address address, StreamAllocation streamAllocation, Route rou
       }
     }
     return null;
-  }
+}
 ```
 
 也就是遍历了双端队列，如果连接有效，就会调用acquire方法计数并返回这个连接。
@@ -792,7 +793,7 @@ long cleanup(long now) {
   }
 ```
 
-也就是当如果空闲连接`maxIdleConnections`超过5个或者keepalive时间大于5分钟，则将该连接清理掉。
+也就是当如果空闲连接`maxIdleConnections`超过5个或者`keepalive`时间大于5分钟，则将该连接清理掉。
 
 4）**这里有个问题，怎样属于空闲连接？**
 
@@ -867,8 +868,7 @@ long cleanup(long now) {
 
 - 建造者模式
 
-在Okhttp中，建造者模式也是用的挺多的，主要用处是将对象的创建与表示相分离，用Builder组装各项配置。
- 比如Request：
+在Okhttp中，建造者模式也是用的挺多的，主要用处是将对象的创建与表示相分离，用Builder组装各项配置。比如Request：
 
 ```java
 public class Request {
@@ -887,6 +887,7 @@ public class Request {
 - 工厂模式
 
 工厂模式和建造者模式类似，区别就在于工厂模式侧重点在于对象的生成过程，而建造者模式主要是侧重对象的各个参数配置。
+
 例子有CacheInterceptor拦截器中又个CacheStrategy对象：
 
 ```java
@@ -937,7 +938,7 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (7) okhttp 在 response 返回后，调用了 response.toString()，后面再使用 response 会用什么问题？
 
-调用 response.toString() 连接会断开，后面的取值会出问题
+调用 response.toString() 连接会断开，后面的取值会出问题。
 
 ### 3. Retrofit
 
@@ -1036,11 +1037,11 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 分析泄露用到了HAHA这个工具，通知泄露，利用安卓自身消息机制，Service, Notification, Activity这些。
 
-分析内存泄露检测这块是LeakCanary原理的核心。
+检测内存泄露检测这块是LeakCanary原理的核心。
 
 LeakCanary检测内存泄露分两个部分：
 
-1. 监听Activity生命周期，在Activity销毁的时候通知LeakCanary。
+1.监听Activity生命周期，在Activity销毁的时候通知LeakCanary。
 
 ```java
 public class LearnLeakCanaryApplication extends Application {
@@ -1163,7 +1164,9 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
 > [Android 内存泄露与分析工具](https://www.jianshu.com/p/97fb764f2669)
 
 内存泄漏（Memory Leak）是指程序中己动态分配的堆内存由于某种原因程序未释放或无法释放，造成系统内存的浪费，导致程序运行速度减慢甚至系统崩溃等严重后果。
+
 简单点说，手机给我们的应用提供了一定大小的堆内存，在不断创建对象的过程中，也在不断的GC(java的垃圾回收机制)，所以内存正常情况下会保持一个平稳的值。
+
 但是出现内存泄漏就会导致某个实例，比如Activity的实例，应用被某个地方引用到了，不能正常释放，从而导致内存占用越来越大，这就是内存泄漏。
 
 主要有`四类情况`：
@@ -1347,7 +1350,7 @@ public class MainActivity extends AppCompatActivity {
 - 监听
    首先通过`ActivityLifecycleCallbacks`和`FragmentLifeCycleCallbacks`监听Activity和Fragment的生命周期。
 - 判断
-   然后在销毁的生命周期中判断对象是否被回收。弱引用在定义的时候可以指定引用对象和一个 `ReferenceQueue`，通过该弱引用是否被加入ReferenceQueue就可以判断该对象是否被回收。
+   然后在销毁的生命周期中判断对象是否被回收。弱引用在定义的时候可以指定引用对象和一个 `ReferenceQueue`，通过该弱引用是否被加入`ReferenceQueue`就可以判断该对象是否被回收。
 - 分析
    最后通过haha库来分析`hprof`文件，从而找出类之前的引用关系。
 
@@ -1414,7 +1417,7 @@ webview第一次启动会非常耗时，具体优化方法可以看 webview章�
 
 由于65536方法限制，所以一般class文件要生成多个dex文件，Android5.0以下，ClassLoader加载类的时候只会从class.dex（主dex）里加载，所以要执行MultiDex.install(context)方法才能正常读取dex类。
 
-而这个install方法就是耗时大户，会解压apk，遍历dex文件，压缩dex、将dex文件通过反射转换成DexFile对象、反射替换数组。
+而这个install方法就是耗时大a户，会解压apk，遍历dex文件，压缩dex、将dex文件通过反射转换成DexFile对象、反射替换数组。
 
 这里需要的方案就是今日头条方案：
 
@@ -2255,17 +2258,13 @@ c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，
 
 #### 3. 阿里编程规范不建议使用线程池，为什么？
 
+线程池不允许使用Executors去创建，而是通过ThreadPoolExecutor的方式，这样的处理方式让写的同学更加明确线程池的运行规则，规避资源耗尽的风险。
 
-
-#### 4. 你们项目的稳定性如何？有做过什么稳定性优化的工作？
-
-
-
-#### 5. 推送sdk底层实现
+#### 4. 推送sdk底层实现
 
 
 
-#### 6. 内存抖动（代码注意事项）
+#### 5. 内存抖动（代码注意事项）
 
 定义：内存抖动是由于短时间内有大量对象进出新生区导致的，它伴随着频繁的GC，gc会大量占用ui线程和cpu资源，会导致app整体卡顿。
 
@@ -2276,7 +2275,7 @@ c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，
 - 当需要大量使用Bitmap的时候，试着把它们缓存在数组或容器中实现复用
 - 对于能够复用的对象，同理可以使用对象池将它们缓存起来
 
-#### 7. 如何绕过9.0限制？
+#### 6. 如何绕过9.0限制？
 
 - 如何限制？
 
