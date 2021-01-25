@@ -1,4 +1,4 @@
-# Glide: 源码详解 | 通过源码深入理解Glide
+# Android开发者营地|Glide: 源码详解 
 
 > 本文聚焦于Glide的源码，基于Glide4.11.0
 
@@ -36,7 +36,7 @@ dependencies {
 Glide.with(fragment).load(url).into(imageView);
 ```
 
-进阶一点的用法，参数设置
+稍微进阶一点的用法，参数设置
 
 ```java
 RequestOptions options = new RequestOptions()
@@ -67,9 +67,21 @@ Glide.with(this).load(url).apply(options).into(imageView);
 
 关于Glide的详细使用请查看这个官方 [中文文档](https://muyangmin.github.io/glide-docs-cn/)，这里就不赘述了。
 
+### 4. 源码详解综述
+
+本文着重分析Glide的源码：
+
+第二章分析Glide的核心流程：包括`with()`、`load()`和`into()`
+
+第三章分析Glide的缓存机制
+
+
+
 ## 二、核心流程
 
-Glide 默认是配置了内存与磁盘缓存的，所以这里我们先禁用内存和磁盘缓存，来分析核心流程。代码如下：
+Glide 默认是配置了内存与磁盘缓存的，所以这里我们先假设禁用内存和磁盘缓存，来分析核心流程。缓存相关的放到后面分析。
+
+代码表示如下：
 
 ```java
 Glide.with(this)
@@ -79,22 +91,45 @@ Glide.with(this)
         .into(imageView);
 ```
 
-缓存机制下一节分析。
-
 ### 1. with()
 
-with()有6个重载方法，如下
+with()有6个重载方法，均返回RequestManager，如下
 
 ```java
-Glide#with(Context context)
-Glide#with(Activity activity)
-Glide#with(FragmentActivity activity)
-Glide#with(Fragment fragment)
-Glide#with(android.app.Fragment fragment)
-Glide#with(View view)
+  @NonNull
+  public static RequestManager with(@NonNull Context context) {
+    return getRetriever(context).get(context);
+  }
+
+  @NonNull
+  public static RequestManager with(@NonNull Activity activity) {
+    return getRetriever(activity).get(activity);
+  }
+
+  @NonNull
+  public static RequestManager with(@NonNull FragmentActivity activity) {
+    return getRetriever(activity).get(activity);
+  }
+
+  @NonNull
+  public static RequestManager with(@NonNull Fragment fragment) {
+    return getRetriever(fragment.getContext()).get(fragment);
+  }
+
+  @SuppressWarnings("deprecation")
+  @Deprecated
+  @NonNull
+  public static RequestManager with(@NonNull android.app.Fragment fragment) {
+    return getRetriever(fragment.getActivity()).get(fragment);
+  }
+
+  @NonNull
+  public static RequestManager with(@NonNull View view) {
+    return getRetriever(view.getContext()).get(view);
+  }
 ```
 
-这些重载方法可以分成两种情况，即 Application（Context）类型与非 Application（Activity、Fragment、View#getContext() 或 Fragment）类型，这些参数的作用是确定图片加载的生命周期。
+这些重载方法可以分成两种情况，即 Application（Context）类型与非 Application，具体有Activity、Fragment、View 或 Fragment类型，这些参数的作用是和图片加载的生命周期相关的。
 
 最终都会调用 `getRetriever().get()`方法，我们分为两部分看。
 
@@ -105,14 +140,21 @@ getRetriever() 定义如下：
 ```java
   @NonNull
   private static RequestManagerRetriever getRetriever(@Nullable Context context) {
-    ...
+    Preconditions.checkNotNull(context, "...");
     return Glide.get(context).getRequestManagerRetriever();
   }
 ```
 
-继续看下 Glide#get(context)：
+做一个非NULL的判断，然后调用`Glide.get(context).getRequestManagerRetriever()`返回一个`RequestManagerRetriever`。这里我们同样分为2部分来看。
+
+##### 1.1.1 Glide#get(context)
+
+先看下 `Glide#get(context)`：
 
 ```java
+  @GuardedBy("Glide.class")
+  private static volatile Glide glide;
+
   public static Glide get(@NonNull Context context) {
     //使用了双重校验锁的单例模式来获取 Glide 的实例
     if (glide == null) {
@@ -126,12 +168,13 @@ getRetriever() 定义如下：
         }
       }
     }
-
     return glide;
   }
 ```
 
-这里使用了DCL单例模式来获取 Glide 的实例，先看getAnnotationGeneratedGlideModules方法。
+这里使用了标准的DCL单例模式来获取 Glide 的实例。
+
+先看`getAnnotationGeneratedGlideModules`方法。
 
 ```java
   private static GeneratedAppGlideModule getAnnotationGeneratedGlideModules(Context context) {
@@ -158,11 +201,13 @@ getRetriever() 定义如下：
   }
 ```
 
-该方法用来实例化我们用 @GlideModule 注解标识的自定义模块，自定义模块的用法请参考官方 [中文文档](https://muyangmin.github.io/glide-docs-cn/)。
+该方法用来实例化我们用 `@GlideModule` 注解标识的自定义模块，自定义模块的用法请参考官方 [中文文档](https://muyangmin.github.io/glide-docs-cn/)。
 
-我们在来看checkAndInitializeGlide方法，从名称上看是用来检查和初始化的，如下：
+我们在来看`checkAndInitializeGlide`方法，从名称上看是用来检查和初始化的，如下：
 
 ```java
+  private static volatile boolean isInitializing;
+
   @GuardedBy("Glide.class")
   private static void checkAndInitializeGlide(
       @NonNull Context context, @Nullable GeneratedAppGlideModule generatedAppGlideModule) {
@@ -179,12 +224,15 @@ getRetriever() 定义如下：
   }
 ```
 
-关注initializeGlide方法，如下：
+这里使用了一个volatile类型的`isInitializing`变量，来防止重复初始化。
+
+接下来`initializeGlide`方法，从名字上可以看出是进行初始化的方法，如下：
 
 ```java
   @GuardedBy("Glide.class")
   private static void initializeGlide(
       @NonNull Context context, @Nullable GeneratedAppGlideModule generatedAppGlideModule) {
+    //注意new了一个GlideBuilder对象传进去。
     initializeGlide(context, new GlideBuilder(), generatedAppGlideModule);
   }
 
@@ -245,11 +293,11 @@ getRetriever() 定义如下：
 
 ```
 
-initializeGlide方法调用了重载方法，主要是完成自定义模块的相关功能和真正进行初始化。
+`initializeGlide`方法调用了重载方法，增加了一个`GlideBuilder`对象，使用到了建造者模式，主要是完成自定义模块的相关功能和真正进行初始化。在最后通过`Glide.glide = glide;`将创建好的 Glide 赋值给 Glide 的静态全家变量。
 
-我们需要重点关注的是` Glide glide = builder.build(applicationContext);`
+我们需要重点关注的是` Glide glide = builder.build(applicationContext);`这里是真正的初始化。
 
-实现在GlideBuilder#build如下：
+实现在`GlideBuilder#build`如下：
 
 ```java
  @NonNull
@@ -346,7 +394,9 @@ initializeGlide方法调用了重载方法，主要是完成自定义模块的�
   }
 ```
 
-build() 方法主要是创建一些线程池、Bitmap 池、缓存策略、Engine 等，然后利用这些来创建具体的 Glide。继续看下 Glide 的构造函数：
+build() 方法主要是创建一些线程池、Bitmap 池、缓存策略、Engine 等，然后利用这些来创建具体的 Glide。
+
+继续看下 Glide 的构造函数：
 
 ```java
   Glide(
@@ -401,7 +451,153 @@ build() 方法主要是创建一些线程池、Bitmap 池、缓存策略、Engin
   }
 ```
 
-至此，Glide 真正创建成功。接下来回到`getRetriever().get()`方法的get方法
+我们看一下 GlideContext 的构造方法
+
+```java
+  private final GlideContext glideContext;
+  public GlideContext(
+      @NonNull Context context,
+      @NonNull ArrayPool arrayPool,
+      @NonNull Registry registry,
+      @NonNull ImageViewTargetFactory imageViewTargetFactory,
+      @NonNull RequestOptionsFactory defaultRequestOptionsFactory,
+      @NonNull Map<Class<?>, TransitionOptions<?, ?>> defaultTransitionOptions,
+      @NonNull List<RequestListener<Object>> defaultRequestListeners,
+      @NonNull Engine engine,
+      @NonNull GlideExperiments experiments,
+      int logLevel) {
+    super(context.getApplicationContext());
+    this.arrayPool = arrayPool;
+    this.registry = registry;
+    this.imageViewTargetFactory = imageViewTargetFactory;
+    this.defaultRequestOptionsFactory = defaultRequestOptionsFactory;
+    this.defaultRequestListeners = defaultRequestListeners;
+    this.defaultTransitionOptions = defaultTransitionOptions;
+    this.engine = engine;
+    this.experiments = experiments;
+    this.logLevel = logLevel;
+  }
+```
+
+存储了一些上下文数据的索引。
+
+至此，Glide 真正创建成功。
+
+##### 1.1.2 Glide#getRequestManagerRetriever()
+
+接下来我们看一下`getRequestManagerRetriever()`方法
+
+```java
+  private final RequestManagerRetriever requestManagerRetriever;
+
+  public RequestManagerRetriever getRequestManagerRetriever() {
+    return requestManagerRetriever;
+  }
+```
+
+返回一个`RequestManagerRetriever`对象。从名字上理解为请求管理者检索器，我们往回翻一下，看一下其相关实现。
+
+```java
+  Glide(
+      @NonNull Context context,
+      @NonNull Engine engine,
+      @NonNull MemoryCache memoryCache,
+      @NonNull BitmapPool bitmapPool,
+      @NonNull ArrayPool arrayPool,
+      @NonNull RequestManagerRetriever requestManagerRetriever,
+      @NonNull ConnectivityMonitorFactory connectivityMonitorFactory,
+      int logLevel,
+      @NonNull RequestOptionsFactory defaultRequestOptionsFactory,
+      @NonNull Map<Class<?>, TransitionOptions<?, ?>> defaultTransitionOptions,
+      @NonNull List<RequestListener<Object>> defaultRequestListeners,
+      GlideExperiments experiments) {
+      ...
+	  this.requestManagerRetriever = requestManagerRetriever;
+      ...
+  }         
+```
+
+在Glide的初始化中，可以看到是通过初始化赋值的。初始化又是通过build函数构建的，回到build函数。
+
+```java
+  @NonNull
+  Glide build(@NonNull Context context) {
+  
+      ...
+
+    // 创建请求管理类，这里的 requestManagerFactory 就是前面 GlideBuilder#setRequestManagerFactory() 设置进来的
+    // 也就是 @GlideModule 注解中获取的
+    GlideExperiments experiments = glideExperimentsBuilder.build();
+    RequestManagerRetriever requestManagerRetriever =
+        new RequestManagerRetriever(requestManagerFactory, experiments);
+
+    // 创建 Glide
+    return new Glide(
+        context,
+        engine,
+        memoryCache,
+        bitmapPool,
+        arrayPool,
+        requestManagerRetriever,
+        connectivityMonitorFactory,
+        logLevel,
+        defaultRequestOptionsFactory,
+        defaultTransitionOptions,
+        defaultRequestListeners,
+        experiments);
+  }
+```
+
+这里我们可以看到 new 了一个 RequestManagerRetriever 对象。
+
+这里的 requestManagerFactory 是前面 `GlideBuilder#setRequestManagerFactory()` 设置进来的
+
+```java
+RequestManagerRetriever requestManagerRetriever = 
+new RequestManagerRetriever(requestManagerFactory, experiments);
+```
+
+看一下其构造方法。
+
+```java
+  private final RequestManagerFactory factory;
+  
+  public RequestManagerRetriever(
+      @Nullable RequestManagerFactory factory, GlideExperiments experiments) {
+    this.factory = factory != null ? factory : DEFAULT_FACTORY;
+    handler = new Handler(Looper.getMainLooper(), this /* Callback */);
+
+    frameWaiter = buildFrameWaiter(experiments);
+  }
+
+  public interface RequestManagerFactory {
+    @NonNull
+    RequestManager build(
+        @NonNull Glide glide,
+        @NonNull Lifecycle lifecycle,
+        @NonNull RequestManagerTreeNode requestManagerTreeNode,
+        @NonNull Context context);
+  }
+
+  private static final RequestManagerFactory DEFAULT_FACTORY =
+      new RequestManagerFactory() {
+        @NonNull
+        @Override
+        public RequestManager build(
+            @NonNull Glide glide,
+            @NonNull Lifecycle lifecycle,
+            @NonNull RequestManagerTreeNode requestManagerTreeNode,
+            @NonNull Context context) {
+          return new RequestManager(glide, lifecycle, requestManagerTreeNode, context);
+        }
+      };
+```
+
+初始化方法中保存了 RequestManagerFactory 的索引，如果没有的话使用默认的工厂`DEFAULT_FACTORY`。RequestManagerFactory 是一个接口，只有一个方法`build`，返回一个 RequestManager 对象。可以看到工厂主要使用了生成 RequestManager 对象的。
+
+初始化方法中还获取并保存了主线程的Handler的索引。
+
+接下来回到`getRetriever().get()`方法的`get()`方法。
 
 #### 1.2 RequestManagerRetriever#get()
 
@@ -416,7 +612,7 @@ RequestManagerRetriever#get(android.app.Fragment fragment)
 RequestManagerRetriever#get(View view)
 ```
 
-同样可以分成两种情况，即 Application 与非 Application 类型。
+分成两种情况，即 Application 与非 Application 类型。
 
 先看下 Application 类型的情况：
 
@@ -443,6 +639,8 @@ RequestManagerRetriever#get(View view)
 ```
 
 如果当前线程是在主线程，并且 context 不属于 Application 类型，那么会走对应重载方法。属于 Application 类型，就会调用 getApplicationManager(context) 方法。
+
+##### 1.2.1 ApplicationContext
 
 实现如下：
 
@@ -472,7 +670,25 @@ RequestManagerRetriever#get(View view)
   }
 ```
 
-使用DCL单例模式来获取 RequestManager，里面重新用 Application 类型的 Context 来获取 Glide 的实例。这里没有专门做生命周期的处理， 因为 Application 对象的生命周期即为应用程序的生命周期，所以在这里图片请求的生命周期是和应用程序同步的。
+使用DCL单例模式来获取 RequestManager，里面重新用 Application 类型的 Context 来获取 Glide 的实例。
+
+```java
+class ApplicationLifecycle implements Lifecycle {
+  @Override
+  public void addListener(@NonNull LifecycleListener listener) {
+    listener.onStart();
+  }
+
+  @Override
+  public void removeListener(@NonNull LifecycleListener listener) {
+    // Do nothing.
+  }
+}
+```
+
+ApplicationLifecycle 为空实现，这里没有专门做生命周期的处理， 因为 Application 对象的生命周期即为应用程序的生命周期，所以在这里图片请求的生命周期是和应用程序同步的。
+
+##### 1.2.2 非ApplicationContext
 
 接下来看非 Application 类型的情况，以FragmentActivity 为例：
 
@@ -492,7 +708,7 @@ RequestManagerRetriever#get(View view)
   }
 ```
 
-如果是Activity，调用 supportFragmentGet() 方法来获取 RequestManager。
+如果是Activity，调用 `supportFragmentGet()` 方法来获取 RequestManager。
 
 ```java
   private RequestManager supportFragmentGet(
@@ -525,9 +741,13 @@ RequestManagerRetriever#get(View view)
   }
 ```
 
-首先获取了一个隐藏的 Fragment。之后的 current.getGlideLifecycle() 就是实例化的 ActivityFragmentLifecycle，这样 RequestManager 就与 ActivityFragmentLifecycle 进行了关联。
+首先获取了一个隐藏的 Fragment。
+
+之后的 `current.getGlideLifecycle()` 就是实例化的 ActivityFragmentLifecycle，这样 RequestManager 就与 ActivityFragmentLifecycle 进行了关联。
 
 最后将 RequestManager 设置到 SupportRequestManagerFragment 中。
+
+我们详细看一下`getSupportRequestManagerFragment(fm, parentHint)`相关的代码。
 
 ```java
   //RequestManagerRetriever#getSupportRequestManagerFragment()
@@ -557,6 +777,12 @@ RequestManagerRetriever#get(View view)
     // 主要用来监听 Activity 与 Fragment 的生命周期。
     // ActivityFragmentLifecycle 与 SupportRequestManagerFragment 的生命周期关联起来了
     this(new ActivityFragmentLifecycle());
+  }
+
+  @VisibleForTesting
+  @SuppressLint("ValidFragment")
+  public SupportRequestManagerFragment(@NonNull ActivityFragmentLifecycle lifecycle) {
+    this.lifecycle = lifecycle;
   }
 
 //ActivityFragmentLifecycle
@@ -622,21 +848,21 @@ with() 方法主要功能如下：
 
 ### 2. load()
 
-load() 的重载方法有 9 个：
+load() 的重载方法有 9 个，均返回`RequestBuilder<Drawable>`：
 
 ```java
-RequestManager#load(Bitmap bitmap);
-RequestManager#load(Drawable drawable);
-RequestManager#load(String string);
-RequestManager#load(Uri uri);
-RequestManager#load(File file);
-RequestManager#load(Integer resourceId);
-RequestManager#load(URL url);
-RequestManager#load(byte[] model);
-RequestManager#load(Object model);
+RequestBuilder<Drawable>#load(Bitmap bitmap);
+RequestBuilder<Drawable>#load(Drawable drawable);
+RequestBuilder<Drawable>#load(String string);
+RequestBuilder<Drawable>#load(Uri uri);
+RequestBuilder<Drawable>#load(File file);
+RequestBuilder<Drawable>#load(Integer resourceId);
+RequestBuilder<Drawable>#load(URL url);
+RequestBuilder<Drawable>#load(byte[] model);
+RequestBuilder<Drawable>#load(Object model);
 ```
 
-这些重载方法最终都会调用 asDrawable().load()。这里只拿参数为图片链接字符串的来分析。
+这些重载方法最终都会调用 `asDrawable().load()`。这里只拿参数为图片链接字符串的来分析。
 
 ```java
   public RequestBuilder<Drawable> load(@Nullable String string) {
@@ -661,7 +887,7 @@ RequestManager#load(Object model);
 
 ```
 
-asDrawable方法最终创建了 RequestBuilder 的实例并返回，查看RequestBuilder的构造函数：
+`asDrawable()`方法最终创建了 RequestBuilder 的实例并返回，查看RequestBuilder的构造函数：
 
 ```java
   protected RequestBuilder(
@@ -799,6 +1025,8 @@ apply是将默认选项应用于请求，实现如下：
 #### 2.2 RequestBuilder#load()
 
 ```java
+  @Nullable private Object model;
+
   public RequestBuilder<TranscodeType> load(@Nullable String string) {
     //调用了 loadGeneric() 方法
     return loadGeneric(string);
@@ -818,11 +1046,13 @@ apply是将默认选项应用于请求，实现如下：
 
 #### 2.3 总结
 
-load() 方法比较简单，主要是通过前面实例化的 Glide 与 RequestManager 来创建 RequestBuilder，然后将传进来的参数赋值给 model。
+load() 方法比较简单了，主要是通过前面实例化的 Glide 与 RequestManager 来创建 RequestBuilder，然后将传进来的参数赋值给 model。
 
 ### 3. into()
 
 前两个方法都没有涉及到图片的请求、缓存、解码等逻辑，其实都在 into() 方法中，这个方法也是最复杂的。
+
+
 
 
 
@@ -837,6 +1067,14 @@ load() 方法比较简单，主要是通过前面实例化的 Glide 与 RequestM
 
 
 into和缓存机制的分析后续再添加。
+
+
+
+## 参考资料
+
+
+
+
 
 ---
 
