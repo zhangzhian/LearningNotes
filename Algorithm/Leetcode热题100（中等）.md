@@ -4378,3 +4378,270 @@ class Solution {
 时间复杂度 O(N + M)： 遍历一个图需要访问所有节点和所有临边，N 和 M 分别为节点数量和临边数量；
 空间复杂度 O(N + M)： 为建立邻接表所需额外空间，adjacency 长度为 N ，并存储 M 条临边的数据。
 
+### [036] 环形链表 II  
+
+给定一个链表，返回链表开始入环的第一个节点。 如果链表无环，则返回 null。
+
+为了表示给定链表中的环，我们使用整数 pos 来表示链表尾连接到链表中的位置（索引从 0 开始）。 如果 pos 是 -1，则在该链表中没有环。注意，pos 仅仅是用于标识环的情况，并不会作为参数传递到函数中。
+
+说明：不允许修改给定的链表。
+
+进阶：
+
+你是否可以使用 O(1) 空间解决此题？
+
+
+示例 1：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist.png)
+
+```
+输入：head = [3,2,0,-4], pos = 1
+输出：返回索引为 1 的链表节点
+解释：链表中有一个环，其尾部连接到第二个节点。
+```
+
+示例 2：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist_test2.png)
+
+```
+输入：head = [1,2], pos = 0
+输出：返回索引为 0 的链表节点
+解释：链表中有一个环，其尾部连接到第一个节点。
+```
+
+示例 3：
+
+![img](https://assets.leetcode-cn.com/aliyun-lc-upload/uploads/2018/12/07/circularlinkedlist_test3.png)
+
+```
+输入：head = [1], pos = -1
+输出：返回 null
+解释：链表中没有环。
+```
+
+
+提示：
+
+- 链表中节点的数目范围在范围 `[0, 10^4]` 内
+- `-10^5 <= Node.val <= 10^5`
+- pos 的值为 -1 或者链表中的一个有效索引
+
+方法一·：哈希表
+
+我们遍历链表中的每个节点，并将它记录下来；一旦遇到了此前遍历过的节点，就可以判定链表中存在环。借助哈希表可以很方便地实现。
+
+```java
+public class Solution {
+    public ListNode detectCycle(ListNode head) {
+        ListNode pos = head;
+        Set<ListNode> visited = new HashSet<ListNode>();
+        while (pos != null) {
+            if (visited.contains(pos)) {
+                return pos;
+            } else {
+                visited.add(pos);
+            }
+            pos = pos.next;
+        }
+        return null;
+    }
+}
+```
+
+- 时间复杂度：O(N)，其中 N 为链表中节点的数目。我们恰好需要访问链表中的每一个节点。
+
+- 空间复杂度：O(N)，其中 N 为链表中节点的数目。我们需要将链表中的每个节点都保存在哈希表当中。
+
+方法二：快慢指针
+
+**1. 双指针第一次相遇**：
+
+设两指针 `fast`，`slow` 指向链表头部 `head`，`fast` 每轮走 2 步，`slow` 每轮走 1 步；
+
+第一种结果： `fast` 指针走过链表末端，说明链表无环，直接返回 null；
+
+> TIPS: 若有环，两指针一定会相遇。因为每走 1 轮，fast 与 slow 的间距 +1，fast 终会追上 slow；
+
+**第二种结果**： 当`fast == slow`时， 两指针在环中 **第一次相遇** 。下面分析此时`fast` 与 `slow`走过的 **步数关系** ：
+
+设链表共有 a+b 个节点，其中 链表头部到链表入口 有 a 个节点（不计链表入口节点）， 链表环 有 b 个节点（这里需要注意，a 和 b 是未知数，例如图解上链表 a=4 , b=5）；设两指针分别走了 f，s 步，则有：
+
+- fast 走的步数是slow步数的 2 倍，即` f = 2s`；（解析： fast 每轮走 2 步）
+- fast 比 slow多走了 n 个环的长度，即 `f = s + nb`；（ 解析： 双指针都走过 a 步，然后在环内绕圈直到重合，重合时 fast 比 slow 多走 环的长度整数倍 ）；
+
+以上两式相减得：`f = 2nb`，`s = nb`，即`fast`和`slow` 指针分别走了 2n，n 个 **环的周长** （注意： n 是未知数，不同链表的情况不同）。
+
+> 如果让指针从链表头部一直向前走并统计步数k，那么所有 走到链表入口节点时的步数是：k=a+nb（先走 a 步到入口节点，之后每绕 1 圈环（ b 步）都会再次到入口节点）。
+> 而目前，slow 指针走过的步数为 nb 步。因此，我们只要想办法让 slow 再走 a 步停下来，就可以到环的入口。
+> 但是我们不知道 a 的值，该怎么办？依然是使用双指针法。我们构建一个指针，此指针需要有以下性质：此指针和slow 一起向前走 a 步后，两者在入口节点重合。那么从哪里走到入口节点需要 a 步？答案是链表头部head。
+
+**2. 双指针第二次相遇**：
+
+slow指针 位置不变 ，将fast指针重新指向链表头部节点 ；slow和fast同时每轮向前走 1 步；
+TIPS：此时 `f = 0`，`s = nb` ；
+当 fast 指针走到 `f = a` 步时，slow 指针走到步 `s = a+nb`，此时 两指针重合，并同时指向链表环入口 。
+
+**3. 返回slow指针指向的节点**。
+
+```java
+public class Solution {
+    public ListNode detectCycle(ListNode head) {
+        ListNode fast = head, slow = head;
+        while (true) {
+            if (fast == null || fast.next == null) return null;
+            fast = fast.next.next;
+            slow = slow.next;
+            if (fast == slow) break;
+        }
+        fast = head;
+        while (slow != fast) {
+            slow = slow.next;
+            fast = fast.next;
+        }
+        return fast;
+    }
+}
+```
+
+时间复杂度：O(N)：总体为线性复杂度
+
+空间复杂度：O(1)：双指针使用常数大小的额外空间。
+
+### [037] 字符串解码  
+
+给定一个经过编码的字符串，返回它解码后的字符串。
+
+编码规则为: `k[encoded_string]`，表示其中方括号内部的 encoded_string 正好重复 k 次。注意 k 保证为正整数。
+
+你可以认为输入字符串总是有效的；输入字符串中没有额外的空格，且输入的方括号总是符合格式要求的。
+
+此外，你可以认为原始数据不包含数字，所有的数字只表示重复的次数 k ，例如不会出现像 3a 或 2[4] 的输入。
+
+示例 1：
+
+```
+输入：s = "3[a]2[bc]"
+输出："aaabcbc"
+```
+
+示例 2：
+
+```
+输入：s = "3[a2[c]]"
+输出："accaccacc"
+```
+
+示例 3：
+
+```
+输入：s = "2[abc]3[cd]ef"
+输出："abcabccdcdcdef"
+```
+
+示例 4：
+
+```
+输入：s = "abc3[cd]xyz"
+输出："abccdcdcdxyz"
+```
+
+方法一：辅助栈法
+
+本题难点在于括号内嵌套括号，需要**从内向外**生成与拼接字符串，这与栈的**先入后出**特性对应。
+
+算法流程：
+
+- 构建辅助栈 stack， 遍历字符串 s 中每个字符 c；
+  - 当 c 为数字时，将数字字符转化为数字 multi，用于后续倍数计算；
+  - 当 c 为字母时，在 res 尾部添加 c；
+  - 当 c 为 [ 时，将当前 multi 和 res 入栈，并分别置空置 0：
+    - 记录此 [ 前的临时结果 res 至栈，用于发现对应 ] 后的拼接操作；
+    - 记录此 [ 前的倍数 multi 至栈，用于发现对应 ] 后，获取 `multi × [...]` 字符串。
+    - 进入到新 [ 后，res 和 multi 重新记录。
+  - 当 c 为 ] 时，stack 出栈，拼接字符串 `res = last_res + cur_multi * res`，其中:
+    - last_res是上个 [ 到当前 [ 的字符串，例如 `"3[a2[c]]"` 中的 a；
+    - cur_multi是当前 [ 到 ] 内字符串的重复倍数，例如 `"3[a2[c]]"` 中的 2。
+- 返回字符串 res。
+
+```java
+public class Solution {
+    public String decodeString(String s) {
+        //保存已拼接好的字符串
+        StringBuilder res = new StringBuilder();
+        //数字字符，字符串出现次数
+        int multi = 0;
+        //辅助栈
+        LinkedList<Integer> stack_multi = new LinkedList<>();
+        LinkedList<String> stack_res = new LinkedList<>();
+        for(Character c : s.toCharArray()) {
+            //将当前multi和res入栈
+            //multi和res置0
+            if(c == '[') {
+                stack_multi.addLast(multi);
+                stack_res.addLast(res.toString());
+                multi = 0;
+                res = new StringBuilder();
+            }
+            //出栈
+            else if(c == ']') {
+                StringBuilder tmp = new StringBuilder();
+                int cur_multi = stack_multi.removeLast();
+                //生成字符串
+                for(int i = 0; i < cur_multi; i++) tmp.append(res);
+                //拼接，保存
+                res = new StringBuilder(stack_res.removeLast() + tmp);
+            }
+            //数字可能不止一位
+            else if(c >= '0' && c <= '9') multi = multi * 10 + Integer.parseInt(c + "");
+            //字符直接加入结果
+            else res.append(c);
+        }
+        return res.toString();
+    }
+```
+
+- 时间复杂度 O(N)，一次遍历 `s`；
+- 空间复杂度 O(N)，辅助栈在极端情况下需要线性空间，例如 `2[2[2[a]]]`。
+
+方法二：递归法
+
+总体思路与辅助栈法一致，不同点在于将 [ 和 ] 分别作为递归的开启与终止条件：
+
+- 当 `s[i] == ']'` 时，返回当前括号内记录的 res 字符串与 ] 的索引 i （更新上层递归指针位置）；
+- 当 `s[i] == '['` 时，开启新一层递归，记录此 [...] 内字符串 tmp 和递归后的最新索引 i，并执行 `res + multi * tmp` 拼接字符串。
+  遍历完毕后返回 res。
+
+```java
+class Solution {
+    public String decodeString(String s) {
+        return dfs(s, 0)[0];
+    }
+    private String[] dfs(String s, int i) {
+        StringBuilder res = new StringBuilder();
+        int multi = 0;
+        while(i < s.length()) {
+            if(s.charAt(i) >= '0' && s.charAt(i) <= '9') 
+                multi = multi * 10 + Integer.parseInt(String.valueOf(s.charAt(i))); 
+            else if(s.charAt(i) == '[') {
+                String[] tmp = dfs(s, i + 1);
+                i = Integer.parseInt(tmp[0]);
+                while(multi > 0) {
+                    res.append(tmp[1]);
+                    multi--;
+                }
+            }
+            else if(s.charAt(i) == ']') 
+                return new String[] { String.valueOf(i), res.toString() };
+            else 
+                res.append(String.valueOf(s.charAt(i)));
+            i++;
+        }
+        return new String[] { res.toString() };
+    } 
+}
+```
+
+- 时间复杂度 O(N)，递归会更新索引，因此实际上还是一次遍历 `s`；
+- 空间复杂度 O(N)，极端情况下递归深度将会达到线性级别。
