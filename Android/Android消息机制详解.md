@@ -1,4 +1,4 @@
-# 开发者营地|Android消息机制Handler详解
+# 开发者营地|Android消息机制详解
 
 ## 一、Handler基础
 
@@ -149,12 +149,19 @@ MessageQueue的初始化过程中保存了是否能退出这一状态，且调�
 主线程中不需要自己创建Looper，这是由于在程序启动的时候，系统已经帮我们自动调用了`Looper.prepare()`方法。查看ActivityThread中的`main()`方法，代码如下所示：
 
 ```java
-  public static void main(String[] args) {
+    public static void main(String[] args) {
         ...
         Looper.prepareMainLooper();
-  		...
+        
+        ActivityThread thread = new ActivityThread();
+        thread.attach(false);
+
+        if (sMainThreadHandler == null) {
+        	sMainThreadHandler = thread.getHandler();
+        }
+        
         Looper.loop();
-		...
+        ...
     }
 ```
 
@@ -185,6 +192,8 @@ Android主线程的`Looper#prepareMainLooper()`方法，我们看下其实现。
 ```
 
 这里首先也是调用了`prepare(false)`方法，false表示当前Looper不可以退出，主线程的Handler是不允许退出的。
+
+> `Looper.loop()` 是个死循环，后面的代码正常情况不会执行。因为主线程不允许退出，退出就意味 APP 要挂。
 
 通过`myLooper()`方法获取主线程的Looper，赋值给sMainLooper。
 
@@ -297,6 +306,26 @@ public static void loop() {
 
 可以看到`quit()`和`quitSafely()`对应立即结束和安全结束方法。
 
+特别地，对于主线程，在App退出时，ActivityThread中的 mH(Handler)收到消息后，才会执行退出。
+
+```java
+//ActivityThread.java
+case EXIT_APPLICATION:
+    if (mInitialApplication != null) {
+        mInitialApplication.onTerminate();
+    }
+    Looper.myLooper().quit();
+    break;
+```
+
+手动退出主线程Looper，便会抛出异常：
+
+```
+ Caused by: java.lang.IllegalStateException: Main thread not allowed to quit.
+```
+
+主线程不允许退出，一旦退出就意味着程序挂了。
+
 ### 2. Handler
 
 #### 2.1 创建Handler
@@ -330,7 +359,7 @@ public static void loop() {
 
 对于Handler的无参构造方法，默认采用当前线程TLS中的Looper对象，并且callback回调方法为null，且消息为同步处理方式。只要执行的`Looper.prepare()`方法，那么便可以获取有效的Looper对象。
 
-#### 2.2其他构造方法
+#### 2.2 其他构造方法
 
 ```java
     public Handler() {
@@ -664,7 +693,7 @@ private static void handleCallback(Message message) {
 
 ### 6. 移除消息
 
-#### 6.1 removeAllMessagesLocked()
+removeAllMessagesLocked()，实现如下:
 
 ```java
     private void removeAllMessagesLocked() {
@@ -680,7 +709,7 @@ private static void handleCallback(Message message) {
 
 立即删除消息，不管消息是否在当前时间应该执行。
 
-#### 6.2 removeAllFutureMessagesLocked()
+removeAllFutureMessagesLocked()，实现如下:
 
 ````java
     private void removeAllFutureMessagesLocked() {
@@ -714,6 +743,51 @@ private static void handleCallback(Message message) {
 
 等待当前时间应该执行的消息执行完成后删除所有消息。
 
+removeCallbacksAndMessages()，实现如下:
+
+```java
+    //Handler
+	public final void removeCallbacksAndMessages(Object token) {
+        mQueue.removeCallbacksAndMessages(this, token);
+    }
+
+	//MessageQueue
+    void removeCallbacksAndMessages(Handler h, Object object) {
+        if (h == null) {
+            return;
+        }
+
+        synchronized (this) {
+            Message p = mMessages;
+
+            // Remove all messages at front.
+            while (p != null && p.target == h
+                    && (object == null || p.obj == object)) {
+                Message n = p.next;
+                mMessages = n;
+                p.recycleUnchecked();
+                p = n;
+            }
+
+            // Remove all messages after front.
+            while (p != null) {
+                Message n = p.next;
+                if (n != null) {
+                    if (n.target == h && (object == null || n.obj == object)) {
+                        Message nn = n.next;
+                        n.recycleUnchecked();
+                        p.next = nn;
+                        continue;
+                    }
+                }
+                p = n;
+            }
+        }
+    }
+```
+
+移除所有的回调和消息。
+
 ### 7. 总结
 
 以上便是消息机制的原理，以及从源码角度来解析消息机制的运行过程。可以简单地用下图来理解。
@@ -745,6 +819,9 @@ Looper.myQueue().addIdleHandler(new IdleHandler() {
  */
 public final class MessageQueue {
     ......
+	Message mMessages;
+    private final ArrayList<IdleHandler> mIdleHandlers = new ArrayList<IdleHandler>();
+    
     /**
      * 当前队列将进入阻塞等待消息时调用该接口回调，即队列空闲
      */
@@ -756,7 +833,6 @@ public final class MessageQueue {
     }
 
     /**
-     * <p>This method is safe to call from any thread.
      * 判断当前队列是不是空闲的，辅助方法
      */
     public boolean isIdle() {
@@ -767,7 +843,6 @@ public final class MessageQueue {
     }
 
     /**
-     * <p>This method is safe to call from any thread.
      * 添加一个IdleHandler到队列，如果IdleHandler接口方法返回false则执行完会自动删除，
      * 否则需要手动removeIdleHandler。
      */
@@ -800,15 +875,11 @@ public final class MessageQueue {
             synchronized (this) {
                 ......
                 //把通过addIdleHandler添加的IdleHandler转成数组存起来在mPendingIdleHandlers中
-                // If first time idle, then get the number of idlers to run.
-                // Idle handles only run if the queue is empty or if the first message
-                // in the queue (possibly a barrier) is due to be handled in the future.
                 if (pendingIdleHandlerCount < 0
                         && (mMessages == null || now < mMessages.when)) {
                     pendingIdleHandlerCount = mIdleHandlers.size();
                 }
                 if (pendingIdleHandlerCount <= 0) {
-                    // No idle handlers to run.  Loop and wait some more.
                     mBlocked = true;
                     continue;
                 }
@@ -819,8 +890,6 @@ public final class MessageQueue {
                 mPendingIdleHandlers = mIdleHandlers.toArray(mPendingIdleHandlers);
             }
 
-            // Run the idle handlers.
-            // We only ever reach this code block during the first iteration.
             //循环遍历所有IdleHandler
             for (int i = 0; i < pendingIdleHandlerCount; i++) {
                 final IdleHandler idler = mPendingIdleHandlers[i];
@@ -853,12 +922,16 @@ Message分为3中：普通消息（同步消息）、屏障消息（同步屏障
 我们通常使用的都是普通消息，而屏障消息就是在消息队列中插入一个屏障，在屏障之后的所有普通消息都会被挡着，不能被处理。不过异步消息却例外，屏障不会挡住异步消息，因此可以这样认为：屏障消息就是为了确保异步消息的优先级，设置了屏障后，只能处理其后的异步消息，同步消息会被挡住，除非撤销屏障。
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20190809160420302.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3N0YXJ0X21hbw==,size_16,color_FFFFFF,t_70)
 
-### 1. 屏障消息
+### 1. 插入屏障消息
 
-同步屏障是通过MessageQueue的postSyncBarrier方法插入到消息队列的。
+同步屏障是通过`MessageQueue#postSyncBarrier`方法插入到消息队列的。
 
 ```java
 //MessageQueue#postSyncBarrier
+public int postSyncBarrier() {
+    return postSyncBarrier(SystemClock.uptimeMillis());
+}
+
  private int postSyncBarrier(long when) {
         synchronized (this) {
             final int token = mNextBarrierToken++;
@@ -918,7 +991,7 @@ Message next() {
                 }
                 if (msg != null) {
                 	//4、如果找到异步消息
-                    if (now < msg.when) {//异步消息还没到处理时间，就在等会（超时时间）
+                    if (now < msg.when) {//异步消息还没到处理时间，就再等会（超时时间）
                         nextPollTimeoutMillis = (int) Math.min(msg.when - now, Integer.MAX_VALUE);
                     } else {
                         //异步消息到了处理时间，就从链表移除，返回它。
@@ -965,15 +1038,18 @@ Handler有几个构造方法，可以传入async标志为true，这样构造的H
     public Handler(Looper looper, Callback callback, boolean async) {}
 ```
 
-当调用handler.sendMessage(msg)发送消息，最终会走到：
+当调用`handler.sendMessage(msg)`发送消息，最终会走到：
 
 ```java
-private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
+	private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
         msg.target = this;
         if (mAsynchronous) {
             msg.setAsynchronous(true);//把消息设置为异步消息
         }
         return queue.enqueueMessage(msg, uptimeMillis);
+    }
+    public boolean isAsynchronous() {
+        return (flags & FLAG_ASYNCHRONOUS) != 0;
     }
 ```
 
@@ -985,15 +1061,15 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
         handler.sendMessage(message);
 ```
 
-在发送消息时通过 message.setAsynchronous(true)将消息设为异步的，这个方法是公开的，我们可以正常使用。
+在发送消息时通过 `message.setAsynchronous(true)`将消息设为异步的，这个方法是公开的，我们可以正常使用。
 
 ### 4. 移除屏障
 
 移除屏障可以通过MessageQueue的removeSyncBarrier方法：
 
 ```java
-//注释已经写的很清楚了，就是通过插入同步屏障时返回的token 来移除屏障
-/**
+	//注释已经写的很清楚了，就是通过插入同步屏障时返回的token 来移除屏障
+	/**
      * Removes a synchronization barrier.
      *
      * @param token The synchronization barrier token that was returned by
@@ -1144,6 +1220,448 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     
 }
 ```
+
+## 五、Handler扩展
+
+### 1. 内存泄漏
+
+Handler 允许我们发送**延时消息**，如果在延时期间用户关闭了 Activity，那么该 Activity 会泄露。
+
+这个泄露是因为 Message 会持有 Handler，而又因为 **Java 的特性，内部类会持有外部类**，使得 Activity 会被 Handler 持有，这样最终就导致 Activity 泄露。
+
+解决该问题的最有效的方法是：**将 Handler 定义成静态的内部类，在内部持有 Activity 的弱引用，并及时移除所有消息**。
+
+```java
+private static class SafeHandler extends Handler {
+
+    private WeakReference<HandlerActivity> ref;
+
+    public SafeHandler(HandlerActivity activity) {
+        this.ref = new WeakReference(activity);
+    }
+
+    @Override
+    public void handleMessage(final Message msg) {
+        HandlerActivity activity = ref.get();
+        if (activity != null) {
+            activity.handleMessage(msg);
+        }
+    }
+}
+```
+
+并且再在 `Activity.onDestroy()` 前移除消息，加一层保障：
+
+```java
+@Override
+protected void onDestroy() {
+  safeHandler.removeCallbacksAndMessages(null);
+  super.onDestroy();
+}
+```
+
+注意：单纯的在 `onDestroy` 移除消息并不保险，因为 `onDestroy` 并不一定执行。
+
+### 2. 创建 Message 实例的最佳方式
+
+由于 Handler 极为常用，所以为了节省开销，Android 给 Message 设计了回收机制，所以我们在使用的时候尽量复用 Message ，减少内存消耗。
+
+- 通过 Message 的静态方法 `Message.obtain()`  获取，源码如下：
+
+```java
+    private static final Object sPoolSync = new Object();
+    private static Message sPool;
+    private static int sPoolSize = 0;
+
+    private static final int MAX_POOL_SIZE = 50;
+
+    public static Message obtain() {
+        synchronized (sPoolSync) {
+            if (sPool != null) {
+                Message m = sPool;
+                sPool = m.next;
+                m.next = null;
+                m.flags = 0; // clear in-use flag
+                sPoolSize--;
+                return m;
+            }
+        }
+        return new Message();
+   }
+
+   public static Message obtain(Message orig) {
+        Message m = obtain();
+        m.what = orig.what;
+        m.arg1 = orig.arg1;
+        m.arg2 = orig.arg2;
+        m.obj = orig.obj;
+        m.replyTo = orig.replyTo;
+        m.sendingUid = orig.sendingUid;
+        if (orig.data != null) {
+            m.data = new Bundle(orig.data);
+        }
+        m.target = orig.target;
+        m.callback = orig.callback;
+
+        return m;
+    }
+
+    public static Message obtain(Handler h) {
+        Message m = obtain();
+        m.target = h;
+
+        return m;
+    }
+
+    public static Message obtain(Handler h, Runnable callback) {
+        Message m = obtain();
+        m.target = h;
+        m.callback = callback;
+
+        return m;
+    }
+
+    public static Message obtain(Handler h, int what) {
+        Message m = obtain();
+        m.target = h;
+        m.what = what;
+
+        return m;
+    }
+
+
+    public static Message obtain(Handler h, int what, Object obj) {
+        Message m = obtain();
+        m.target = h;
+        m.what = what;
+        m.obj = obj;
+
+        return m;
+    }
+
+    public static Message obtain(Handler h, int what, int arg1, int arg2) {
+        Message m = obtain();
+        m.target = h;
+        m.what = what;
+        m.arg1 = arg1;
+        m.arg2 = arg2;
+
+        return m;
+    }
+
+    public static Message obtain(Handler h, int what,
+            int arg1, int arg2, Object obj) {
+        Message m = obtain();
+        m.target = h;
+        m.what = what;
+        m.arg1 = arg1;
+        m.arg2 = arg2;
+        m.obj = obj;
+
+        return m;
+    }
+```
+
+从sPool中取一个Message，复制后返回。
+
+- 通过 Handler 的公有方法 `handler.obtainMessage()` ，源码如下：
+
+```java
+    public final Message obtainMessage()
+    {
+        return Message.obtain(this);
+    }
+
+    public final Message obtainMessage(int what)
+    {
+        return Message.obtain(this, what);
+    }
+    
+    public final Message obtainMessage(int what, Object obj)
+    {
+        return Message.obtain(this, what, obj);
+    }
+
+    public final Message obtainMessage(int what, int arg1, int arg2)
+    {
+        return Message.obtain(this, what, arg1, arg2);
+    }
+    
+    public final Message obtainMessage(int what, int arg1, int arg2, Object obj)
+    {
+        return Message.obtain(this, what, arg1, arg2, obj);
+    }
+```
+
+可以看到是其实就是第一个方式的封装。
+
+### 3. 子线程使用Handler
+
+示例代码：
+
+```java
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_three);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //创建Looper，MessageQueue
+                Looper.prepare();
+                new Handler().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(HandlerActivity.this,"toast",Toast.LENGTH_LONG).show();
+                    }
+                });
+                //开始处理消息
+                Looper.loop();
+            }
+        }).start();
+    }
+
+```
+
+添加Looper.prepare()创建Looper，同时调用Looper.loop()方法开始处理消息。
+
+> 在所有事情处理完成后应该调用quit方法来终止消息循环，否则这个子线程就会一直处于循环等待的状态，因此不需要的时候终止Looper，调用`Looper.myLooper().quit()`。
+
+### 4. 妙用 Looper 机制
+
+我们可以利用 Looper 的机制来帮助我们做一些事情：
+
+- 将 Runnable post 到主线程执行；
+
+- 利用 Looper 判断当前线程是否是主线程。
+
+示例代码如下：
+
+```java
+public final class MainThread {
+
+    private MainThread() {
+    }
+
+    private static final Handler HANDLER = new Handler(Looper.getMainLooper());
+	
+    //将 Runnable post 到主线程执行
+    public static void run(@NonNull Runnable runnable) {
+        if (isMainThread()) {
+            runnable.run();
+        }else{
+            HANDLER.post(runnable);
+        }
+    }
+
+    public static boolean isMainThread() {
+        //利用 Looper 判断当前线程是否是主线程。
+        return Looper.myLooper() == Looper.getMainLooper();
+    }
+
+}
+```
+
+### 5. epoll机制
+
+Looper会在线程中不断的检索消息，如果是子线程的Looper死循环，一旦任务完成，用户应该手动退出，而不是让其一直休眠等待。而对于主线程，我们是绝不希望会被运行一段时间自己就退出，所以通过死循环来保证不会被退出。
+
+主线程的死循环并不会特别消耗 CPU 资源。这就涉及到 Linux  pipe/epoll机制：简单说就是在主线程的 MessageQueue 没有消息时，便阻塞在 loop 的 `queue.next()` 中的 `nativePollOnce(`) 方法里，此时主线程会释放 CPU 资源进入休眠状态，直到下个消息到达或者有事务发生，通过往 pipe 管道写端写入数据来唤醒主线程工作。
+
+这里采用的 epoll 机制，是一种IO多路复用机制，可以同时监控多个描述符，当某个描述符就绪(读或写就绪)，则立刻通知相应程序进行读或写操作，本质同步I/O，即读写是阻塞的。 所以说，主线程大多数时候都是处于休眠状态，并不会消耗大量CPU资源。
+
+[聊聊IO多路复用之select,poll,epoll详解](https://www.jianshu.com/p/dfd940e7fca2)
+
+### 6.  ThreadLocal
+
+ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线程存储数据，数据存储后，只能在指定的线程可以获取到存储的数据，对于其他线程则无法获取到数据。一般来说，当数据是以线程作为作用域并且不同线程有不同副本的时候，就可以考虑使用ThreadLocal。
+
+Java中的实现是下面这样，Java 的实现里面也有一个 Map，叫做 ThreadLocalMap，不过持有 ThreadLocalMap 的不是 ThreadLocal，而是 Thread。Thread 这个类内部有一个私有属性 threadLocals，其类型就是 ThreadLocalMap，ThreadLocalMap 的 Key 是 ThreadLocal。
+
+![img](https://p6-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6dc583d20e32447e962d91f663d89429~tplv-k3u1fbpfcp-watermark.image)
+
+#### 6.1 整体
+
+精简之后的代码如下：
+
+```java
+class Thread {
+    //内部持有ThreadLocalMap
+    ThreadLocal.ThreadLocalMap threadLocals;
+}
+class ThreadLocal<T>{
+    public T get() {
+        //首先获取线程持有的ThreadLocalMap
+        ThreadLocalMap map = Thread.currentThread().threadLocals;
+        //在ThreadLocalMap中查找变量
+        Entry e = map.getEntry(this);
+        return e.value;  
+    }
+    
+	public void set(T value) {
+        //首先获取线程持有的ThreadLocalMap
+        ThreadLocalMap map = Thread.currentThread().threadLocals;
+        //在ThreadLocalMap中设置变量
+        if (map != null)
+            map.set(this, value);
+        else
+            //创建ThreadLocalMap
+            createMap(t, value);
+    }
+    
+  static class ThreadLocalMap{
+    //内部是数组而不是Map
+    Entry[] table;
+    //根据ThreadLocal查找Entry
+    Entry getEntry(ThreadLocal key){
+      //省略查找逻辑
+    }
+    //Entry定义
+    static class Entry extends WeakReference<ThreadLocal<?>>{
+		Object value;
+		Entry(ThreadLocal<?> k, Object v) {
+			super(k);
+            value = v;
+		}
+    }
+  }
+}
+```
+
+#### 6.2 get
+
+```java
+    //ThreadLocal
+	public T get() {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null) {
+            ThreadLocalMap.Entry e = map.getEntry(this);
+            if (e != null) {
+                @SuppressWarnings("unchecked")
+                T result = (T)e.value;
+                return result;
+            }
+        }
+        return setInitialValue();
+    }
+
+   ThreadLocalMap getMap(Thread t) {
+        return t.threadLocals;
+    }
+
+	//ThreadLocal.ThreadLocalMap
+    private Entry getEntry(ThreadLocal<?> key) {
+        int i = key.threadLocalHashCode & (table.length - 1);
+        Entry e = table[i];
+        if (e != null && e.get() == key)
+            return e;
+        else
+            return getEntryAfterMiss(key, i, e);
+    }
+```
+
+#### 6.3 set
+
+```java
+    //ThreadLocal
+	public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+    }
+
+   ThreadLocalMap getMap(Thread t) {
+        return t.threadLocals;
+    }
+
+    void createMap(Thread t, T firstValue) {
+        t.threadLocals = new ThreadLocalMap(this, firstValue);
+    }
+
+	//ThreadLocal.ThreadLocalMap
+	ThreadLocalMap(ThreadLocal<?> firstKey, Object firstValue) {
+        table = new Entry[INITIAL_CAPACITY];
+        int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
+        table[i] = new Entry(firstKey, firstValue);
+        size = 1;
+        setThreshold(INITIAL_CAPACITY);
+    }
+
+    private void set(ThreadLocal<?> key, Object value) {
+
+        Entry[] tab = table;
+        int len = tab.length;
+        int i = key.threadLocalHashCode & (len-1);
+
+        for (Entry e = tab[i];
+             e != null;
+             e = tab[i = nextIndex(i, len)]) {
+            ThreadLocal<?> k = e.get();
+
+            if (k == key) {
+                e.value = value;
+                return;
+            }
+
+            if (k == null) {
+                replaceStaleEntry(key, value, i);
+                return;
+            }
+        }
+
+        tab[i] = new Entry(key, value);
+        int sz = ++size;
+        if (!cleanSomeSlots(i, sz) && sz >= threshold)
+            rehash();
+    }
+
+```
+
+在Java的实现方案中，ThreadLocal仅仅只是一个代理工具类，内部并不持有任何线程相关的数据，所有和线程相关的数据都存储在Thread里。
+
+这样的设计从数据的亲缘性上来讲，ThreadLocalMap属于Thread也更加合理。**所以ThreadLocal的get方法，其实就是拿到每个线程独有的ThreadLocalMap**。
+
+还有一个原因，就是**不容易产生内存泄漏**。Thread持有ThreadLocalMap，而且ThreadLocalMap里对ThreadLocal的引用还是弱引用，所以只要Thread对象可以被回收，那么ThreadLocalMap就能被回收。**Java的实现方案虽然看上去复杂一些，但是更安全**。
+
+但是，如果在线程池中使用ThreadLocal可能会导致内存泄漏，原因是线程池中线程的存活时间太长，往往和程序都是同生共死的，这就意味着Thread持有的ThreadLocalMap一直都不会被回收，再加上ThreadLocalMap中的Entry对ThreadLocal是弱引用，所以只要ThreadLocal结束了自己的生命周期是可以被回收掉的。**但是Entry中的Value却是被Entry强引用的，所以即便Value的生命周期结束了，Value也是无法被回收的，从而导致内存泄漏**。
+
+所以我们可以通过`try{} finally{}`方案来手动释放资源。
+
+
+```java
+    ExecutorService pools;
+    ThreadLocal tl;
+
+    pools.execute(()->{
+      //ThreadLocal增加变量
+      tl.set(obj);
+      try {
+        // 省略业务逻辑代码
+      }finally {
+        //手动清理ThreadLocal 
+        tl.remove();
+      }
+    });
+```
+
+### 7. Handler锁相关
+
+`enqueueMessage()`通过synchronized关键字保证线程安全。同时`messagequeue.next()`内部也会通过synchronized加锁，确保取的时候线程安全，同时插入也会加锁。
+
+
+
+
+
+---
+
+**我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork**
+
+**欢迎关注我的公众号，持续分析优质技术文章**
+![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
 
 
 
