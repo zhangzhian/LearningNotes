@@ -1032,3 +1032,16 @@ Glide.with(this).load(url).diskCacheStrategy(DiskCacheStrategy.DATA).into(imageV
 
 
 
+
+
+
+
+---
+
+**我的[学习笔记](https://github.com/zhangzhian/LearningNotes)，欢迎star和fork**
+
+**欢迎关注我的公众号，持续分析优质技术文章**
+![欢迎关注我的公众号](https://img-blog.csdnimg.cn/20190906092641631.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhaWR1XzMyMjM3NzE5,size_16,color_FFFFFF,t_70)
+
+
+
