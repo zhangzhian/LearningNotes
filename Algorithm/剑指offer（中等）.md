@@ -2528,6 +2528,20 @@ class Solution {
 
 方法一：DFS + 剪枝
 
+DFS 解析：
+
+- 递归参数： 当前元素在矩阵 board 中的行列索引 i 和 j ，当前目标字符在 word 中的索引 k 。
+- 终止条件：
+  返回 false ： (1) 行或列索引越界 或 (2) 当前矩阵元素与目标字符不同 或 (3) 当前矩阵元素已访问过 （ (3) 可合并至 (2) ） 。
+  返回 true ： `k = len(word) - 1` ，即字符串 word 已全部匹配。
+- 递推工作：
+  标记当前矩阵元素： 将 `board[i][j]` 修改为 空字符` '' `，代表此元素已访问过，防止之后搜索时重复访问。
+  搜索下一单元格： 朝当前元素的 上、下、左、右 四个方向开启下层递归，使用 `或` 连接 （代表只需找到一条可行路径就直接返回，不再做后续 DFS ），并记录结果至 res 。
+  还原当前矩阵元素： 将 `board[i][j] `元素还原至初始值，即 `word[k]` 。
+- 返回值： 返回布尔量 res ，代表是否搜索到目标字符串。
+
+> 使用空字符（ Java: '\0' ）做标记是为了防止标记字符与矩阵原有字符重复。当存在重复时，此算法会将矩阵原有字符认作标记字符，从而出现错误
+
 ![Picture0.png](https://pic.leetcode-cn.com/1604944042-glmqJO-Picture0.png)
 
 ```java
@@ -2635,7 +2649,9 @@ class Solution {
         int i = matrix.length - 1, j = 0;
         while(i >= 0 && j < matrix[0].length)
         {
+            //消去第 i 行元素
             if(matrix[i][j] > target) i--;
+            //消去第 j 列元素
             else if(matrix[i][j] < target) j++;
             else return true;
         }
@@ -2648,7 +2664,7 @@ class Solution {
 时间复杂度：O(n+m)。访问到的下标的行最多增加 n 次，列最多减少 m 次，因此循环体最多执行 n + m 次。
 空间复杂度：O(1)。
 
-### [027] 数字序列中某一位的数字
+### [027] 数字序列中某一位的数字※
 
 数字以0123456789101112131415…的格式序列化到一个字符序列中。在这个序列中，第5位（从下标0开始计数）是5，第13位是1，第19位是4，等等。
 
@@ -2677,20 +2693,53 @@ class Solution {
 
 [分析](https://leetcode-cn.com/problems/shu-zi-xu-lie-zhong-mou-yi-wei-de-shu-zi-lcof/solution/mian-shi-ti-44-shu-zi-xu-lie-zhong-mou-yi-wei-de-6/)
 
+- 将 101112⋯ 中的每一位称为 数位 ，记为 n ；
+- 将 10,11,12,⋯ 称为 数字 ，记为 num ；
+- 数字 1010 是一个两位数，称此数字的 位数 为 2 ，记为 digit ；
+- 每 digit 位数的起始数字（即：1,10,100,⋯），记为 start 。
+
+![Picture1.png](https://pic.leetcode-cn.com/2cd7d8a6a881b697a43f153d6c10e0e991817d78f92b9201b6ab71e44cb619de-Picture1.png)
+
+可推出各 digit 下的数位数量 count 的计算公式：
+
+```
+count=9×start×digit
+```
+
+根据以上分析，可将求解分为三步：
+
+1. 确定 n 所在 数字 的 位数 ，记为 digit ；
+2. 确定 n 所在的 数字 ，记为 num ；
+3. 确定 n 是 num 中的哪一数位，并返回结果。
+
+**第一步**：
+
+![Picture2.png](https://pic.leetcode-cn.com/16836ca609f8b4d9af776b35eab4a4c4a86d76f4628a1bc931e56d197617bbb4-Picture2.png)
+
+**第二步**：
+
+![Picture3.png](https://pic.leetcode-cn.com/1f2cefd22a9825eb4a52d606a4aee2f93dd659d1b332d3b6a6ed68e5289e8d01-Picture3.png)
+
+**第三步**：
+
+![Picture4.png](https://pic.leetcode-cn.com/09af6bd37d9c79d9b904bedef01f0464aee1cd15e18d8a2ea86b70b312a830c3-Picture4.png)
+
+代码实现：
+
 ```java
 class Solution {
     public int findNthDigit(int n) {
         int digit = 1;
         long start = 1;
         long count = 9;
-        while (n > count) { // 1.
+        while (n > count) { // 1.确定 n 所在 数字 的 位数 ，记为 digit
             n -= count;
             digit += 1;
             start *= 10;
             count = digit * start * 9;
         }
-        long num = start + (n - 1) / digit; // 2.
-        return Long.toString(num).charAt((n - 1) % digit) - '0'; // 3.
+        long num = start + (n - 1) / digit; // 2.确定 n 所在的 数字 ，记为 num
+        return Long.toString(num).charAt((n - 1) % digit) - '0'; // 3.确定 n 是 num 中的哪一数位，并返回结果
     }
 }
 ```
@@ -2699,7 +2748,7 @@ class Solution {
 
 空间复杂度 O(logn)
 
-### [028] 数值的整数次方
+### [028] 数值的整数次方※
 
 实现函数`double Power(double base, int exponent)`，求base的exponent次方。不得使用库函数，同时不需要考虑大数问题。
 
@@ -2731,9 +2780,9 @@ class Solution {
 - -100.0 < x < 100.0
 - n 是 32 位有符号整数，其数值范围是 [−231, 231 − 1] 。
 
-方法一：
+方法一：快速幂法
 
-> 最简单的方法是通过循环将 nn 个 xx 乘起来，依次求 x^1, x^2, ..., x^{n-1}, x^nx，时间复杂度为 O(n)。
+> 最简单的方法是通过循环将 n 个 x 乘起来，依次求 x^1, x^2, ..., x^{n-1}, x^nx，时间复杂度为 O(n)。
 > 快速幂法可将时间复杂度降低至 O(logn) 
 
 [分析](https://leetcode-cn.com/problems/shu-zhi-de-zheng-shu-ci-fang-lcof/solution/mian-shi-ti-16-shu-zhi-de-zheng-shu-ci-fang-kuai-s/)
@@ -2761,7 +2810,7 @@ class Solution {
 时间复杂度 O(logn) ： 二分的时间复杂度为对数级别。
 空间复杂度 O(1) ： 占用常数大小额外空间。
 
-### [029] 剪绳子 II
+### [029] 剪绳子 II※
 
 给你一根长度为 n 的绳子，请把绳子剪成整数长度的 m 段（m、n都是整数，n>1并且m>1），每段绳子的长度记为 `k[0],k[1]...k[m - 1]` 。请问 `k[0]*k[1]*...*k[m - 1]` 可能的最大乘积是多少？例如，当绳子的长度是8时，我们把它剪成长度分别为2、3、3的三段，此时得到的最大乘积是18。
 
@@ -2814,7 +2863,7 @@ class Solution {
   - 幂运算：查阅资料，提到浮点取幂为 O(1) 。
 - 空间复杂度 O(1)： 变量 a, b, p, x, rem 使用常数大小额外空间。
 
-### [030] 把字符串转换成整数
+### [030] 把字符串转换成整数※
 
 写一个函数 StrToInt，实现把字符串转换成整数这个功能。不能使用 atoi 或者其他类似的库函数。
 
@@ -2902,7 +2951,7 @@ class Solution {
 - 时间复杂度 O(N) ： 其中 N 为字符串长度，线性遍历字符串占用 O(N) 时间。
 - 空间复杂度 O(N) ： 删除首尾空格后需建立新字符串，最差情况下占用 O(N) 额外空间。
 
-### [031] 表示数值的字符串
+### [031] 表示数值的字符串※
 
 请实现一个函数用来判断字符串是否表示数值（包括整数和小数）。例如，字符串"+100"、"5e2"、"-123"、"3.1416"、"-1E-16"、"0123"都表示数值，但"12e"、"1a3.14"、"1.2.3"、"+-5"及"12e+5.4"都不是。
 
