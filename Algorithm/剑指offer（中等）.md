@@ -2080,27 +2080,34 @@ class Solution {
         // 向右和向下的方向数组
         int[] dx = {0, 1};
         int[] dy = {1, 0};
+        //记录是否已经访问
         boolean[][] vis = new boolean[m][n];
+        //队列中放入
         queue.offer(new int[]{0, 0});
+        //置true，表示已经访问
         vis[0][0] = true;
         int ans = 1;
         while (!queue.isEmpty()) {
             int[] cell = queue.poll();
             int x = cell[0], y = cell[1];
+            //向右和向下check
             for (int i = 0; i < 2; ++i) {
                 int tx = dx[i] + x;
                 int ty = dy[i] + y;
+                //越界/访问过/大于k
                 if (tx < 0 || tx >= m || ty < 0 || ty >= n || vis[tx][ty] || get(tx) + get(ty) > k) {
                     continue;
                 }
+                //放入队列
                 queue.offer(new int[]{tx, ty});
+                //置已经访问过
                 vis[tx][ty] = true;
                 ans++;
             }
         }
         return ans;
     }
-
+    
     private int get(int x) {
         int res = 0;
         while (x != 0) {
@@ -2109,6 +2116,7 @@ class Solution {
         }
         return res;
     }
+
 }
 ```
 
@@ -2138,14 +2146,18 @@ class Solution {
         if (k == 0) {
             return 1;
         }
+        //记录是否可达
         boolean[][] vis = new boolean[m][n];
         int ans = 1;
         vis[0][0] = true;
         for (int i = 0; i < m; ++i) {
             for (int j = 0; j < n; ++j) {
+                //不符合
                 if ((i == 0 && j == 0) || get(i) + get(j) > k) {
                     continue;
                 }
+                // 可达性判断
+                // 搜索方向只需朝下或朝右，因此 (i, j) 的格子只会从 (i - 1, j) 或者 (i, j - 1) 两个格子走过来
                 // 边界判断
                 if (i - 1 >= 0) {
                     vis[i][j] |= vis[i - 1][j];
@@ -2171,8 +2183,56 @@ class Solution {
 ```
 
 - 时间复杂度：O(mn)，其中 m 为方格的行数， n 为方格的列数。一共有 O(mn) 个状态需要计算，每个状态递推计算的时间复杂度为 O(1)，所以总时间复杂度为 O(mn)。
-
 - 空间复杂度：O(mn)，其中 m 为方格的行数，n 为方格的列数。我们需要 O(mn) 大小的结构来记录每个位置是否可达。
+
+方法三：深度优先遍历 
+
+暴力法模拟机器人在矩阵中的所有路径。DFS 通过递归，先朝一个方向搜到底，再回溯至上个节点，沿另一个方向搜索，以此类推。
+
+在搜索中，遇到数位和超出目标值、此元素已访问，则应立即返回，称之为 `可行性剪枝` 。
+
+**递归参数**： 当前元素在矩阵中的行列索引 i 和 j ，两者的数位和 si, sj 。
+
+**终止条件**： 当 ① 行列索引越界 或 ② 数位和超出目标值 k 或 ③ 当前元素已访问过 时，返回 0 ，代表不计入可达解。
+
+**递推工作**：
+
+- **标记当前单元格** ：将索引 (i, j) 存入 visited 中，代表此单元格已被访问过。
+
+- **搜索下一单元格**： 计算当前元素的 下、右 两个方向元素的数位和，并开启下层递归 。
+
+**回溯返回值**： 返回 `1 + 右方搜索的可达解总数 + 下方搜索的可达解总数`，代表从本单元格递归搜索的可达解总数。
+
+```java
+class Solution {
+    int m, n, k;
+    boolean[][] visited;
+    public int movingCount(int m, int n, int k) {
+        this.m = m; this.n = n; this.k = k;
+        this.visited = new boolean[m][n];
+        return dfs(0, 0, 0, 0);
+    }
+    public int dfs(int i, int j, int si, int sj) {
+        if(i >= m || j >= n || k < si + sj || visited[i][j]) return 0;
+        visited[i][j] = true;
+        return 1 + dfs(i + 1, j, get(i+1), sj)
+                + dfs(i, j + 1, si, get(j+1));
+    }
+
+    private int get(int x) {
+        int res = 0;
+        while (x != 0) {
+            res += x % 10;
+            x /= 10;
+        }
+        return res;
+    }
+}
+```
+
+时间复杂度 O(mn) ： 最差情况下，机器人遍历矩阵所有单元格，此时时间复杂度为 O(mn) 。
+
+空间复杂度 O(mn) ： 最差情况下，Set visited 内存储矩阵所有单元格的索引，使用 O(mn)的额外空间。
 
 ### [022] 队列的最大值
 
@@ -2206,10 +2266,22 @@ class Solution {
 
 方法一：维护一个单调的双端队列
 
+本算法基于问题的一个重要性质：当一个元素进入队列的时候，它前面所有比它小的元素就不会再对答案产生影响。
+
+可以设计这样的方法：从队列尾部插入元素时，我们可以提前取出队列中所有比这个元素小的元素，使得队列中只保留对结果有影响的数字。这样的方法等价于要求维持队列单调递减，即要保证每个元素的前面都没有比它小的元素。
+
+高效实现一个始终递减的队列：只需要在插入每一个元素 value 时，从队列尾部依次取出比当前元素 value 小的元素，直到遇到一个比当前元素大或相等的元素 value' 即可。
+
+上面的过程保证了只要在元素 value 被插入之前队列递减，那么在 value 被插入之后队列依然递减。
+
+上面的过程需要从队列尾部取出元素，因此需要使用双端队列来实现。另外我们也需要一个辅助队列来记录所有被插入的值，以确定 pop_front 函数的返回值。
+
+保证了队列单调递减后，求最大值时只需要直接取双端队列中的第一项即可。
+
 ```java
 class MaxQueue {
-    Queue<Integer> q;
-    Deque<Integer> d;
+    Queue<Integer> q;//辅助队列来记录所有被插入的值
+    Deque<Integer> d;//双端队列记录最大的值
 
     public MaxQueue() {
         q = new LinkedList<Integer>();
@@ -2224,6 +2296,7 @@ class MaxQueue {
     }
     
     public void push_back(int value) {
+        //从队列尾部依次取出比当前元素 value 小的元素
         while (!d.isEmpty() && d.peekLast() < value) {
             d.pollLast();
         }
@@ -2305,8 +2378,8 @@ B是A的子结构， 即 A中有出现和B相同的结构和节点值。
 
 若树 B 是树 A 的子结构，则子结构的根节点可能为树 A 的任意一个节点。因此，判断树 B 是否是树 A 的子结构，需完成以下两步工作：
 
-- 先序遍历树 A 中的每个节点 n_A；（对应函数 isSubStructure(A, B)）
-- 判断树 A 中 以 n_A为根节点的子树 是否包含树 B 。（对应函数 recur(A, B)）
+- 先序遍历树 A 中的每个节点 n_A；（对应函数 `isSubStructure(A, B)`）
+- 判断树 A 中 以 n_A为根节点的子树 是否包含树 B 。（对应函数 `recur(A, B)`）
 
 ![Picture1.png](https://pic.leetcode-cn.com/27d9f65b79ae4982fb58835d468c2a23ec2ac399ba5f38138f49538537264d03-Picture1.png)
 
@@ -2344,12 +2417,15 @@ B是A的子结构， 即 A中有出现和B相同的结构和节点值。
  * }
  */
 class Solution {
+    //遍历A树的节点，判断节点对于的子树是否包含B树
     public boolean isSubStructure(TreeNode A, TreeNode B) {
-        return (A != null && B != null) 
-            	&& (recur(A, B) 
-                || isSubStructure(A.left, B) 
-                || isSubStructure(A.right, B));
+        return (A != null && B != null)
+                && (recur(A, B)                 //A包含B
+                || isSubStructure(A.left, B)    //A的左子树包含B
+                || isSubStructure(A.right, B)); //A的右子树包含B
     }
+
+    //判断以A树包含B
     boolean recur(TreeNode A, TreeNode B) {
         if(B == null) return true;
         if(A == null || A.val != B.val) return false;
