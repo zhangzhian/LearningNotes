@@ -4645,3 +4645,359 @@ class Solution {
 
 - 时间复杂度 O(N)，递归会更新索引，因此实际上还是一次遍历 `s`；
 - 空间复杂度 O(N)，极端情况下递归深度将会达到线性级别。
+
+### [038] 岛屿数量
+
+给你一个由 '1'（陆地）和 '0'（水）组成的的二维网格，请你计算网格中岛屿的数量。
+
+岛屿总是被水包围，并且每座岛屿只能由水平方向和/或竖直方向上相邻的陆地连接形成。
+
+此外，你可以假设该网格的四条边均被水包围。
+
+ 示例 1：
+
+```
+输入：grid = [
+  ["1","1","1","1","0"],
+  ["1","1","0","1","0"],
+  ["1","1","0","0","0"],
+  ["0","0","0","0","0"]
+]
+输出：1
+```
+
+示例 2：
+
+```
+输入：grid = [
+  ["1","1","0","0","0"],
+  ["1","1","0","0","0"],
+  ["0","0","1","0","0"],
+  ["0","0","0","1","1"]
+]
+输出：3
+```
+
+
+提示：
+
+- m == grid.length
+- n == grid[i].length
+- 1 <= m, n <= 300
+- `grid[i][j]` 的值为 '0' 或 '1'
+
+方法一：深度优先搜索
+
+我们可以将二维网格看成一个无向图，竖直或水平相邻的 1 之间有边相连。
+
+为了求出岛屿的数量，我们可以扫描整个二维网格。如果一个位置为 1，则以其为起始节点开始进行深度优先搜索。在深度优先搜索的过程中，每个搜索到的 1 都会被重新标记为 0。
+
+最终岛屿的数量就是我们进行深度优先搜索的次数。
+
+```java
+class Solution {
+    public int numIslands(char[][] grid) {
+        if (grid == null || grid.length == 0) {
+            return 0;
+        }
+
+        int nr = grid.length;
+        int nc = grid[0].length;
+        int num_islands = 0;
+        for (int r = 0; r < nr; ++r) {
+            for (int c = 0; c < nc; ++c) {
+                //找到一个grid[r][c] == '1'的点，岛屿数+1，开始做dfs
+                if (grid[r][c] == '1') {
+                    num_islands++;
+                    dfs(grid, r, c);
+                }
+            }
+        }
+
+        return num_islands;
+    }
+
+    void dfs(char[][] grid, int r, int c) {
+        int nr = grid.length;
+        int nc = grid[0].length;
+
+        if (r < 0 || c < 0 || r >= nr || c >= nc || grid[r][c] == '0') {
+            return;
+        }
+        //grid[r][c] == 1, 以该节点做dfs，访问后置0
+        //把连通的岛屿都置0
+        grid[r][c] = '0';
+        dfs(grid, r - 1, c);
+        dfs(grid, r + 1, c);
+        dfs(grid, r, c - 1);
+        dfs(grid, r, c + 1);
+    }
+}
+```
+
+- 时间复杂度：O(MN)，其中 MM 和 NN 分别为行数和列数。
+
+- 空间复杂度：O(MN)，在最坏情况下，整个网格均为陆地，深度优先搜索的深度达到 MN。
+
+方法二：广度优先搜索
+
+可以使用广度优先搜索代替深度优先搜索。
+
+为了求出岛屿的数量，我们可以扫描整个二维网格。如果一个位置为 1，则将其加入队列，开始进行广度优先搜索。在广度优先搜索的过程中，每个搜索到的 1 都会被重新标记为 0。直到队列为空，搜索结束。
+
+最终岛屿的数量就是我们进行广度优先搜索的次数。
+
+```java
+class Solution {
+    public int numIslands(char[][] grid) {
+        if (grid == null || grid.length == 0) {
+            return 0;
+        }
+
+        int nr = grid.length;
+        int nc = grid[0].length;
+        int num_islands = 0;
+
+        for (int r = 0; r < nr; ++r) {
+            for (int c = 0; c < nc; ++c) {
+                if (grid[r][c] == '1') {
+                    ++num_islands;
+                    grid[r][c] = '0';
+                    Queue<Integer> neighbors = new LinkedList<>();
+                    neighbors.add(r * nc + c);
+                    while (!neighbors.isEmpty()) {
+                        int id = neighbors.remove();
+                        int row = id / nc;
+                        int col = id % nc;
+                        if (row - 1 >= 0 && grid[row-1][col] == '1') {
+                            neighbors.add((row-1) * nc + col);
+                            grid[row-1][col] = '0';
+                        }
+                        if (row + 1 < nr && grid[row+1][col] == '1') {
+                            neighbors.add((row+1) * nc + col);
+                            grid[row+1][col] = '0';
+                        }
+                        if (col - 1 >= 0 && grid[row][col-1] == '1') {
+                            neighbors.add(row * nc + col-1);
+                            grid[row][col-1] = '0';
+                        }
+                        if (col + 1 < nc && grid[row][col+1] == '1') {
+                            neighbors.add(row * nc + col+1);
+                            grid[row][col+1] = '0';
+                        }
+                    }
+                }
+            }
+        }
+
+        return num_islands;
+    }
+}
+```
+
+时间复杂度：O(MN)，其中 MM 和 NN 分别为行数和列数。
+
+空间复杂度：O(min(M,N))，在最坏情况下，整个网格均为陆地，队列的大小可以达到min(M,N)。
+
+### [039] LRU 缓存机制
+
+运用你所掌握的数据结构，设计和实现一个  LRU (最近最少使用) 缓存机制 。
+实现 LRUCache 类：
+
+- `LRUCache(int capacity)` 以正整数作为容量 capacity 初始化 LRU 缓存
+- `int get(int key)` 如果关键字 key 存在于缓存中，则返回关键字的值，否则返回 -1 。
+- `void put(int key, int value)` 如果关键字已经存在，则变更其数据值；如果关键字不存在，则插入该组「关键字-值」。当缓存容量达到上限时，它应该在写入新数据之前删除最久未使用的数据值，从而为新的数据值留出空间。
+
+
+进阶：你是否可以在 O(1) 时间复杂度内完成这两种操作？ 
+
+示例：
+
+```
+输入
+["LRUCache", "put", "put", "get", "put", "get", "put", "get", "get", "get"]
+[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]
+输出
+[null, null, null, 1, null, -1, null, -1, 3, 4]
+
+解释
+LRUCache lRUCache = new LRUCache(2);
+lRUCache.put(1, 1); // 缓存是 {1=1}
+lRUCache.put(2, 2); // 缓存是 {1=1, 2=2}
+lRUCache.get(1);    // 返回 1
+lRUCache.put(3, 3); // 该操作会使得关键字 2 作废，缓存是 {1=1, 3=3}
+lRUCache.get(2);    // 返回 -1 (未找到)
+lRUCache.put(4, 4); // 该操作会使得关键字 1 作废，缓存是 {4=4, 3=3}
+lRUCache.get(1);    // 返回 -1 (未找到)
+lRUCache.get(3);    // 返回 3
+lRUCache.get(4);    // 返回 4
+```
+
+
+提示：
+
+- 1 <= capacity <= 3000
+- 0 <= key <= 3000
+- 0 <= value <= 10^4
+- 最多调用 3 * 10^4 次 get 和 put
+
+方法一：
+
+```java
+class LRUCache {
+
+    class DLinkedNode {
+        int key;
+        int value;
+        DLinkedNode prev;
+        DLinkedNode next;
+        public DLinkedNode() {}
+        public DLinkedNode(int _key, int _value) {key = _key; value = _value;}
+    }
+
+    private Map<Integer, DLinkedNode> cache = new HashMap<Integer, DLinkedNode>();
+    private int size;
+    private int capacity;
+    private DLinkedNode head, tail;
+
+    public LRUCache(int capacity) {
+        this.size = 0;
+        this.capacity = capacity;
+        // 使用伪头部和伪尾部节点
+        head = new DLinkedNode();
+        tail = new DLinkedNode();
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    public int get(int key) {
+        DLinkedNode node = cache.get(key);
+        if (node == null) {
+            return -1;
+        }
+        // 如果 key 存在，先通过哈希表定位，再移到头部
+        moveToHead(node);
+        return node.value;
+    }
+
+    public void put(int key, int value) {
+        DLinkedNode node = cache.get(key);
+        if (node == null) {
+            // 如果 key 不存在，创建一个新的节点
+            DLinkedNode newNode = new DLinkedNode(key, value);
+            // 添加进哈希表
+            cache.put(key, newNode);
+            // 添加至双向链表的头部
+            addToHead(newNode);
+            ++size;
+            if (size > capacity) {
+                // 如果超出容量，删除双向链表的尾部节点
+                DLinkedNode tail = removeTail();
+                // 删除哈希表中对应的项
+                cache.remove(tail.key);
+                --size;
+            }
+        }
+        else {
+            // 如果 key 存在，先通过哈希表定位，再修改 value，并移到头部
+            node.value = value;
+            moveToHead(node);
+        }
+    }
+
+    private void addToHead(DLinkedNode node) {
+        node.prev = head;
+        node.next = head.next;
+        head.next.prev = node;
+        head.next = node;
+    }
+
+    private void removeNode(DLinkedNode node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    private void moveToHead(DLinkedNode node) {
+        removeNode(node);
+        addToHead(node);
+    }
+
+    private DLinkedNode removeTail() {
+        DLinkedNode res = tail.prev;
+        removeNode(res);
+        return res;
+    }
+}
+```
+
+时间复杂度：对于 put 和 get 都是 O(1)。
+
+空间复杂度：O(capacity)，因为哈希表和双向链表最多存储 capacity+1 个元素。
+
+### [040] 分割等和子集
+
+给定一个只包含正整数的非空数组。是否可以将这个数组分割成两个子集，使得两个子集的元素和相等。
+
+注意:
+
+- 每个数组中的元素不会超过 100
+- 数组的大小不会超过 200
+
+示例 1:
+
+```
+输入: [1, 5, 11, 5]
+
+输出: true
+
+解释: 数组可以分割成 [1, 5, 5] 和 [11].
+```
+
+
+示例 2:
+
+```
+输入: [1, 2, 3, 5]
+
+输出: false
+
+解释: 数组不能分割成两个元素和相等的子集.
+```
+
+方法一：
+
+[题解](https://leetcode-cn.com/problems/partition-equal-subset-sum/solution/0-1-bei-bao-wen-ti-xiang-jie-zhen-dui-ben-ti-de-yo/)
+
+```java
+    public boolean canPartition(int[] nums) {
+        int len = nums.length;
+        int sum = 0;
+        for (int num : nums) {
+            sum += num;
+        }
+        if ((sum & 1) == 1) {
+            return false;
+        }
+
+        int target = sum / 2;
+        boolean[] dp = new boolean[target + 1];
+        dp[0] = true;
+
+        if (nums[0] <= target) {
+            dp[nums[0]] = true;
+        }
+        for (int i = 1; i < len; i++) {
+            for (int j = target; nums[i] <= j; j--) {
+                if (dp[target]) {
+                    return true;
+                }
+                dp[j] = dp[j] || dp[j - nums[i]];
+            }
+        }
+        return dp[target];
+    }
+```
+
+时间复杂度：O(NC)：这里 N 是数组元素的个数，C 是数组元素的和的一半；
+空间复杂度：O(C)：减少了物品那个维度，无论来多少个数，用一行表示状态就够了。
+
