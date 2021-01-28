@@ -9,6 +9,20 @@
 
 ## 一、Activity
 
+#### 0. 说下Activity生命周期 ？
+
+在正常情况下，Activity的常用生命周期就只有如下7个：
+
+- **onCreate()**：表示Activity**正在被创建**，常用来**初始化工作**，比如调用setContentView加载界面布局资源，初始化Activity所需数据等；
+- **onRestart()**：表示Activity**正在重新启动**，一般情况下，当前Acitivty从不可见重新变为可见时，OnRestart就会被调用；
+- **onStart()**：表示Activity**正在被启动**，此时Activity**可见但不在前台**，还处于后台，无法与用户交互；
+- **onResume()**：表示Activity**获得焦点**，此时Activity**可见且在前台**并开始活动，这是与onStart的区别所在；
+- **onPause()**：表示Activity**正在停止**，此时可做一些**存储数据、停止动画**等工作，但是不能太耗时，因为这会影响到新Activity的显示，onPause必须先执行完，新Activity的onResume才会执行；
+- **onStop()**：表示Activity**即将停止**，可以做一些稍微重量级的回收工作，比如注销广播接收器、关闭网络连接等，同样不能太耗时；
+- **onDestroy()**：表示Activity**即将被销毁**，这是Activity生命周期中的最后一个回调，常做**回收工作、资源释放**；
+
+延伸：从**整个生命周期**来看，onCreate和onDestroy是配对的，分别标识着Activity的创建和销毁，并且只可能有**一次调用**； 从Activity**是否可见**来说，onStart和onStop是配对的，这两个方法可能被**调用多次**； 从Activity**是否在前台**来说，onResume和onPause是配对的，这两个方法可能被**调用多次**；
+
 #### 1. Activity A 跳转Activity B，Activity B再按back键回退，两个过程各自的生命周期
 
 **(1) ActivityA跳转ActivityB的过程中,各自生命周期的执行顺序?**
@@ -41,7 +55,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 - `standard`：标准模式，每次都会在活动栈中生成一个新的`Activity`实例。通常我们使用的活动都是标准模式。
 - `singleTop`：栈顶复用，如果`Activity`实例已经存在栈顶，那么就不会在活动栈中创建新的实例，并回调`onNewIntent`方法。比较常见的场景就是给通知跳转的`Activity`设置，因为你肯定不想前台`Activity`已经是该`Activity`的情况下，点击通知，又给你再创建一个同样的`Activity`。
-- `singleTask`：栈内复用，如果`Activity`实例在当前栈中已经存在，就会将当前`Activity`实例上面的其他`Activity`实例都移除栈，并回调onNewIntent方法。常见于跳转到主界面。
+- `singleTask`：栈内复用，如果`Activity`实例在当前栈中已经存在，就会将当前`Activity`实例上面的其他`Activity`实例都移除栈，并回调`onNewIntent`方法。常见于跳转到主界面。
 - `singleInstance`：单实例模式，创建一个新的任务栈，这个活动实例独自处在这个活动栈中，同样被重复调用的时候会调用并回调onNewIntent方法。
 
 #### 3. Activity中onStart和onResume的区别？onPause和onStop的区别？
@@ -139,15 +153,19 @@ Activity依次A→B→C→B，其中B启动模式为singleTask，AC都为standar
 **onSaveInstanceState在onstop前，个onPause没有既定的关系**
 
 - 切换屏幕的生命周期是：onConfigurationChanged->onPause->onSaveInstanceState->onStop->onDestroy->onCreate->onStart->onRestoreInstanceState->onResume
-- 如果需要防止旋转时候，`Activity`重新创建的话需要做如下配置：
+- 如果需要防止旋转时候（切屏不会重新调用各个生命周期，只会执行onConfigurationChanged方法），`Activity`重新创建的话需要做如下配置：
    在`targetSdkVersion`的值小于或等于12时，配置 android:configChanges="orientation"，
    在`targetSdkVersion`的值大于12时，配置 android:configChanges="orientation|screenSize"
 
 #### 10. onSaveInstanceState() 与 onRestoreIntanceState()
 
-当应用遇到意外情况（如：内存不足、用户直接按Home键）由系统销毁一个Activity时，onSaveInstanceState() 会被调用。但是当用户主动去销毁一个Activity时，例如在应用中按返回键，onSaveInstanceState()就不会被调用。因为在这种情况下，用户的行为决定了不需要保存Activity的状态。通常onSaveInstanceState()只适合用于保存一些临时性的状态，而onPause()适合用于数据的持久化保存。
+当应用遇到意外情况（如：内存不足、用户直接按Home键）由系统销毁一个Activity时，onSaveInstanceState() 会被调用，此方法调用在onStop之前，与onPause没有既定的时序关系。
 
-在activity被杀掉之前调用保存每个实例的状态，以保证该状态可以在onCreate(Bundle)或者onRestoreInstanceState(Bundle) 中恢复。这个方法在一个activity被杀死前调用，当该activity在将来某个时刻回来时可以恢复其先前状态。
+但是当用户主动去销毁一个Activity时，例如在应用中按返回键，onSaveInstanceState()就不会被调用。因为在这种情况下，用户的行为决定了不需要保存Activity的状态。通常onSaveInstanceState()只适合用于保存一些临时性的状态，而onPause()适合用于数据的持久化保存。
+
+在activity被杀掉之前调用保存每个实例的状态，以保证该状态可以在onCreate(Bundle)或者onRestoreInstanceState(Bundle) 中恢复。
+
+![异常情况下Activity的重建过程](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaea26f833?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 #### 11.android中进程的优先级？
 
@@ -208,12 +226,49 @@ mContext.startActivity(intent);
 - 提高 Adapter 和 AdapterView 的效率。
 - 优化布局文件。
 
+#### 18. 了解哪些Activity常用的标记位Flags？
+
+- **FLAG_ACTIVITY_NEW_TASK** : 对应singleTask启动模式，其效果和在XML中指定该启动模式相同；
+- **FLAG_ACTIVITY_SINGLE_TOP** : 对应singleTop启动模式，其效果和在XML中指定该启动模式相同；
+- **FLAG_ACTIVITY_CLEAR_TOP** : 具有此标记位的Activity，当它启动时，在同一个任务栈中所有位于它上面的Activity都要出栈。这个标记位一般会和singleTask模式一起出现，在这种情况下，被启动Activity的实例如果已经存在，那么系统就会回调onNewIntent。如果被启动的Activity采用standard模式启动，那么它以及连同它之上的Activity都要出栈，系统会创建新的Activity实例并放入栈中；
+- **FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS** : 具有这个标记的 Activity 不会出现在历史 Activity 列表中；
+
+#### 19. 说下 Activity跟window，view之间的关系？
+
+- Activity在创建时会调用 **attach()** 方法初始化一个**PhoneWindow(继承于Window)**，**每一个Activity都包含了唯一一个PhoneWindow**
+
+- Activity通过**setContentView**实际上是调用的 **getWindow().setContentView()**将View设置到PhoneWindow上，而PhoneWindow内部是通过 **WindowManager** 的**addView**、**removeView**、**updateViewLayout**这三个方法来管理View，**WindowManager本质是接口，最终由WindowManagerImpl实现**
+
+- **WindowManager**为每个**Window**创建**Surface**对象，然后应用就可以通过这个**Surface**来绘制任何它想要绘制的东西。而对于**WindowManager**来说，这只不过是一块矩形区域而已
+
+- **Surface**其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个**Window**（包括对话框、全屏的**Activity**、状态栏等）都有他自己绘制的**Surface**。而最终的显示可能存在**Window**之间遮挡的问题，此时就是通过**SurfaceFlinger**对象渲染最终的显示，使他们以正确的**Z-order**显示出来。一般**Surface**拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
+
+- **View**是**Window**里面用于交互的**UI**元素。**Window**只**attach**一个**View Tree（组合模式）**，当**Window**需要重绘（如，当**View**调用**invalidate**）时，最终转为**Window**的**Surface**，**Surface**被锁住（**locked**）并返回**Canvas**对象，此时**View**拿到**Canvas**对象来绘制自己。当所有**View**绘制完成后，**Surface**解锁（**unlock**），并且**post**到绘制缓存用于绘制，通过**Surface Flinger**来组织各个**Window**，显示最终的整个屏幕
+
+#### 20. 如何启动其他应用的Activity？
+
+在保证有权限访问的情况下，通过隐式Intent进行目标Activity的IntentFilter匹配，原则是：
+
+- 一个intent只有同时匹配某个Activity的intent-filter中的action、category、data才算完全匹配，才能启动该Activity；
+- 一个Activity可以有多个 intent-filter，一个 intent只要成功匹配任意一组 intent-filter，就可以启动该Activity；
 
 
 
 ## 二、Service
 
-#### 1. Activity怎么启动Service，Activity与Service交互，Service与Thread的区别
+#### 0. 谈一谈Service的生命周期？
+
+- **onCreate()**：如果service没被创建过，调用startService()后会执行onCreate()回调；如果service已处于运行中，调用startService()不会执行onCreate()方法。也就是说，onCreate()只会在第一次创建service时候调用，多次执行startService()不会重复调用onCreate()，此方法适合完成一些初始化工作；
+
+- **onStartComand()**：服务启动时调用，此方法适合完成一些数据加载工作，比如会在此处创建一个线程用于下载数据或播放音乐；
+
+- **onBind()**：服务被绑定时调用；
+
+- **onUnBind()**：服务被解绑时调用；
+
+- **onDestroy()**：服务停止时调用；
+
+#### 1. Activity怎么启动Service，Activity与Service交互，Service与Thread的区别?
 
 2种方式：
 
@@ -234,6 +289,12 @@ bindService(mIntent,conn,BIND_AUTO_CREATE);
 
 startService(mIntent)
 ```
+
+**startService()**：通过这种方式调用startService，onCreate()只会被调用一次，多次调用startSercie会多次执行onStartCommand()方法。如果外部没有调用stopService()或stopSelf()方法，service会一直运行。
+
+**bindService()**：如果该服务之前**还没创建**，系统回调顺序为onCreate()→onBind()。如果调用bindService()方法前服务**已经被绑定**，多次调用bindService()方法不会多次创建服务及绑定。如果调用者希望与正在绑定的服务**解除绑定**，可以调用unbindService()方法，回调顺序为onUnbind()→onDestroy()；
+
+![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaec35fdba?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 **Activity与Service交互：**Intent，Binder，跨进程通信方式都可
 
@@ -279,9 +340,13 @@ A.提供进程优先级，降低进程被杀死的概率
 
 方法二：启动前台service。
 
-方法三：提升service优先级：
+> 进程优先级由高到低：前台进程 一 可视进程 一 服务进程 一 后台进程 一 空进程 可以使用startForeground将service放到前台状态，这样低内存时，被杀死的概率会低一些；
 
-在AndroidManifest.xml文件中对于intent-filter可以通过android:priority = "1000"这个属性设置最高优先级，1000是最高值，如果数字越小则优先级越低，同时适用于广播。
+方法三：提升service优先级。
+
+>  在AndroidManifest.xml文件中对于intent-filter可以通过android:priority = "1000"这个属性设置最高优先级，1000是最高值，如果数字越小则优先级越低，同时适用于广播。
+
+方法四：将APK安装到/system/app，变身为系统级应用
 
 B. 在进程被杀死后，进行拉活
 
@@ -296,6 +361,8 @@ B. 在进程被杀死后，进行拉活
 C. 依靠第三方
 
 根据终端不同，在小米手机（包括 MIUI）接入小米推送、华为手机接入华为推送；其他手机可以考虑接入腾讯信鸽或极光推送与小米推送做 A/B Test。
+
+> **注意**：以上机制都不能百分百保证Service不被杀死，除非做到系统白名单，与系统同生共死
 
 #### 6. 什么是 IntentService？有何优点？
 
@@ -366,6 +433,20 @@ c) 只作为后台来理解的话，相比于线程，服务具备完善的生�
 
 d) 服务自己就有上下文(Context)对象，可以确定上下文是正常可用的。线程需要从外部获取上下文对象，在运 行时无法保证该对象没有被系统销毁。
 
+#### 12. 用过哪些系统Service ？
+
+WindowManager：管理打开的窗口程序
+
+ActivityManager：管理应用程序的系统状态
+
+PowerManager：电源服务
+
+AlarmManager：闹钟服务
+
+NotificationManager：状态栏服务
+
+KeyguardManager：键盘锁服务
+
 
 
 ## 三、BroadcaseReceiver
@@ -384,6 +465,8 @@ Intent在传递数据时是有大小限制的，大约限制在1MB之内，你�
 
 #### 3. 广播注册一般有几种，各有什么优缺点？
 
+**按注册方式**：
+
 第一种是常驻型(静态注册)：当应用程序关闭后如果有信息广播来，程序也会被系统调用，自己运行。
 
 第二种不常驻(动态注册)：广播会跟随程序的生命周期。
@@ -397,6 +480,16 @@ Intent在传递数据时是有大小限制的，大约限制在1MB之内，你�
 静态注册 
 
 优点： 无需担忧广播接收器是否被关闭，只要设备是开启状态，广播接收器就是打开着的。
+
+**按类型**：
+
+普通广播：开发者自身定义 intent的广播（最常用），所有的广播接收器几乎会在同一时刻接受到此广播信息，**接受的先后顺序随机**；
+
+有序广播：发送出去的广播被广播接收者**按照先后顺序接收**，同一时刻只会有一个广播接收器能够收到这条广播消息，当这个广播接收器中的逻辑执行完毕后，广播才会继续传递，且优先级（priority）高的广播接收器会先收到广播消息。有序广播可以被接收器截断使得后面的接收器无法收到它；
+
+本地广播：仅在自己的应用内发送接收广播，也就是只有自己的应用能收到，数据更加安全，效率更高，但只能采用**动态注册**的方式；
+
+粘性广播：这种广播会**一直滞留**，当有匹配该广播的接收器被注册后，该接收器就会收到此条广播；
 
 #### 4. BroadCastReceiver 的生命周期 ?
 
@@ -561,13 +654,11 @@ Fragment状态保存入口:
 
 #### 5. Fragment 的 replace 和 add 方法的区别?
 
-Fragment 的容器一个 FrameLayout，add 的时候是把所有的 Fragment 一层一层的叠加到了 FrameLayout 上 了，而 replace 的话首先将该容器中的其他 Fragment 去除掉然后将当前 Fragment 添加到容器中。
+- Fragment 的容器一个 FrameLayout，add 的时候是把所有的 Fragment 一层一层的叠加到了 FrameLayout 上 了，而 replace 的话首先将该容器中的其他 Fragment 去除掉然后将当前 Fragment 添加到容器中。
 
-一个 Fragment 容器中只能添加一个 Fragment 种类，如果多次添加则会报异常，导致程序终止，而 replace 则 无所谓，随便切换。
+- 一个 Fragment 容器中只能添加一个 Fragment 种类，如果多次添加则会报异常，导致程序终止，而 replace 则无所谓，随便切换。
 
-因为通过 add 的方法添加的 Fragment，每个 Fragment 只能添加一次，因此如果要想达到切换效果需要通过 Fragment 的的 hide 和 show 方法结合者使用。将要显示的 show 出来，将其他 hide 起来。这个过程 Fragment 的 生命周期没有变化。
-
-通过 replace 切换 Fragment， 每次都会执行上一个Fragment 的 onDestroyView ， 新 Fragment 的 onCreateView、onStart、onResume 方法。
+- 因为通过 add 的方法添加的 Fragment，每个 Fragment 只能添加一次，因此如果要想达到切换效果需要通过 Fragment 的的 hide 和 show 方法结合者使用。将要显示的 show 出来，将其他 hide 起来。这个过程 Fragment 的 生命周期没有变化。通过 replace 切换 Fragment， 每次都会执行上一个Fragment 的 onDestroyView ， 新 Fragment 的 onCreateView、onStart、onResume 方法。
 
 #### 6. Fragment 如何实现类似 Activity 栈的压栈和出栈效果的？
 
@@ -624,6 +715,26 @@ public void onBackPressed() {
 }
 ```
 
+#### 7. 谈谈Activity和Fragment的区别？
+
+相似点：都可包含布局、可有自己的生命周期
+
+不同点：
+
+- Fragment相比较于Activity多出4个回调周期，在控制操作上更灵活；
+- Fragment可以在XML文件中直接进行写入，也可以在Activity中动态添加；
+- Fragment可以使用show()/hide()或者replace()随时对Fragment进行切换，并且切换的时候不会出现明显的效果，用户体验会好；Activity虽然也可以进行切换，但是Activity之间切换会有明显的翻页或者其他的效果，在小部分内容的切换上给用户的感觉不是很好；
+
+#### 8. getFragmentManager、getSupportFragmentManager 、getChildFragmentManager之间的区别？
+
+- getFragmentManager()所得到的是所在fragment 的**父容器**的管理器， getChildFragmentManager()所得到的是在fragment  里面**子容器**的管理器， 如果是fragment嵌套fragment，那么就需要利用getChildFragmentManager()；
+- 因为Fragment是3.0 Android系统API版本才出现的组件，所以3.0以上系统可以直接调用getFragmentManager()来获取FragmentManager()对象，而3.0以下则需要调用getSupportFragmentManager() 来间接获取；
+
+#### 9. FragmentPagerAdapter与FragmentStatePagerAdapter的区别与使用场景
+
+- 相同点 ：二者都继承PagerAdapter
+- 不同点 ：**FragmentPagerAdapter**的每个Fragment会持久的保存在FragmentManager中，只要用户可以返回到页面中，它都不会被销毁。因此适用于那些数据**相对静态**的页，Fragment**数量也比较少**的那种； **FragmentStatePagerAdapter**只保留当前页面，当页面不可见时，该Fragment就会被消除，释放其资源。因此适用于那些**数据动态性**较大、**占用内存**较多，多Fragment的情况；
+
 
 
 ## 六、屏幕适配
@@ -654,7 +765,7 @@ LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺�
 
 ## 八、Android消息机制
 
-见《Android基础》中第六章Android消息机制章节
+见《Android消息机制详解》
 
 #### 1. Android消息机制介绍？
 
@@ -683,13 +794,11 @@ Android消息机制中的五大概念：
 
 #### 2. Looper在主线程中死循环为什么没有导致界面的卡死？
 
-1. 导致卡死的是在Ui线程中执行耗时操作导致界面出现掉帧，甚至`ANR`，`Looper.loop()`这个操作本身不会导致这个情况。
+1. 造成**ANR**的不是主线程阻塞，而是主线程的Looper消息处理过程发生了**任务阻塞**，无法响应手势操作，不能及时刷新UI，`Looper.loop()`这个操作本身不会导致这个情况。
 
-2. 有人可能会说，我在点击事件中设置死循环会导致界面卡死，同样都是死循环，不都一样的吗？Looper会在没有消息的时候阻塞当前线程，释放CPU资源，等到有消息到来的时候，再唤醒主线程。
+2. **阻塞与程序无响应**没有必然关系，虽然主线程在没有消息可处理的时候是阻塞的，但是只要保证有消息的时候能够立刻处理，程序是不会无响应的。Looper会在没有消息的时候阻塞当前线程，释放CPU资源，等到有消息到来的时候，再唤醒主线程。
 
 3. App进程中是需要死循环的，如果循环结束的话，App进程就结束了。
-
-[《Android中为什么主线程不会因为Looper.loop()里的死循环卡死？》](https://www.zhihu.com/question/34652589)
 
 #### 3. IdHandler(闲时机制）介绍
 
@@ -782,6 +891,8 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
 ```
 
 handler.postDelay并不是先等待一定的时间再放入到MessageQueue中，而是直接进入MessageQueue，以MessageQueue的时间顺序排列和唤醒的方式结合实现的。
+
+如果队列中只有这个消息，那么消息不会被发送，而是计算到时唤醒的时间，先将Looper阻塞，到时间就唤醒它。但如果此时要加入新消息，该消息队列的对头跟delay时间相比更长，则插入到头部，按照触发时间进行排序，队头的时间最小、队尾的时间最大。
 
 如下
 
@@ -1000,6 +1111,59 @@ case EXIT_APPLICATION:
 #### 11.Handler锁相关问题
 
 `MessageQueue#enqueueMessage()`内部通过synchronized关键字保证线程安全。同时`messagequeue.next()`内部也会通过synchronized加锁，确保取的时候线程安全。
+
+#### 12. 一个线程能否创建多个Handler，Handler跟Looper之间的对应关系 ？
+
+- 一个Thread只能有一个Looper，一个MessageQueen，可以有多个Handler
+- 以一个线程为基准，他们的数量级关系是： Thread(1) : Looper(1) : MessageQueue(1) : Handler(N)
+
+#### 13. Handler 引起的内存泄露原因以及最佳解决方案
+
+泄露原因：
+
+Handler 允许我们发送延时消息，如果在延时期间用户关闭了 Activity，那么该 Activity 会泄露。 这个泄露是因为 Message 会持有 Handler，而又因为 Java 的特性，内部类会持有外部类，使得 Activity 会被 Handler 持有，这样最终就导致 Activity 泄露。
+
+解决方案：
+
+将 Handler 定义成静态的内部类，在内部持有Activity的弱引用，并在Acitivity的`onDestroy()`中调用`handler.removeCallbacksAndMessages(null)`及时移除所有消息。
+
+#### 14. 可以在子线程直接new一个Handler吗？怎么做？
+
+不可以，因为在**主线程**中，Activity内部包含一个Looper对象，它会自动管理Looper，处理子线程中发送过来的消息。而对于**子线程**而言，没有任何对象帮助我们维护Looper对象，所以需要我们自己手动维护。所以要在子线程开启Handler要先创建Looper，并开启Looper循环。
+
+```java
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_three);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //创建Looper，MessageQueue
+                Looper.prepare();
+                new Handler().post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(HandlerActivity.this,"toast",Toast.LENGTH_LONG).show();
+                    }
+                });
+                //开始处理消息
+                Looper.loop();
+            }
+        }).start();
+    }
+```
+
+#### 15. Message可以如何创建？哪种效果更好，为什么？
+
+可以通过三种方法创建：
+
+- 直接生成实例**Message m = new Message()**
+- 通过**Message m = Message.obtain()**
+- 通过**Message m = mHandler.obtainMessage()**
+
+后两者效果更好，因为Android默认的消息池中消息数量是50(8.0)，而后两者是直接在消息池中取出一个Message实例，这样做就可以避免多生成Message实例。
+
 
 
 
@@ -1243,6 +1407,20 @@ public void consumeEvent(MotionEvent event) {
 ```
 
 `requestDisallowInterceptTouchEvent(true)`的意思是阻止父view拦截事件，也就是传入true之后，父view就不会再调用`onInterceptTouchEvent`。反之，传入false就代表父view可以拦截，也就是会走到父view的`onInterceptTouchEvent`方法。所以需要父view拦截的时候，就传入flase，需要父view不拦截的时候就传入true。
+
+#### 7. MotionEvent是什么？包含几种事件？什么条件下会产生？
+
+MotionEvent是手指接触屏幕后所产生的一系列事件。典型的事件类型有如下：
+
+- **ACTION_DOWN**：手指刚接触屏幕
+- **ACTION_MOVE**：手指在屏幕上移动
+- **ACTION_UP**：手指从屏幕上松开的一瞬间
+- **ACTION_CANCELL**：手指保持按下操作，并从当前控件转移到外层控件时触发
+
+正常情况下，一次手指触摸屏幕的行为会触发一系列点击事件，考虑如下几种情况：
+
+- 点击屏幕后松开，事件序列：DOWN→UP
+- 点击屏幕滑动一会再松开，事件序列为DOWN→MOVE→.....→MOVE→UP
 
 ## 十、View绘制
 
@@ -1505,6 +1683,46 @@ private int getParents(ViewParents view){
 
 自定义view效率高于xml定义：少了解析xml；自定义View 减少了ViewGroup与View之间的测量,包括父量子,子量自身,子在父中位置摆放,当子view变化时,父的某些属性都会跟着变化。
 
+#### 13. scrollTo()和scollBy()的区别？
+
+- scollBy内部调用了scrollTo，它是基于当前位置的相对滑动；而scrollTo是绝对滑动，因此如果使用相同输入参数多次调用scrollTo方法，由于View的初始位置是不变的，所以只会出现一次View滚动的效果
+
+- 两者都只能对View内容的滑动，而非使View本身滑动。可以使用Scroller有过度滑动的效果
+
+#### 14. Scroller是怎么实现View的弹性滑动？
+
+在MotionEvent.ACTION_UP事件触发时调用`startScroll()`方法，该方法并没有进行实际的滑动操作，而是记录滑动相关量（滑动距离、滑动时间）
+
+接着调用`invalidate/postInvalidate`方法，请求 View 重绘，导致`View.draw`方法被执行
+
+当View重绘后会在draw方法中调用`computeScroll`方法，而`computeScroll`又会去向`Scroller`获取当前的`scrollX`和`scrollY`；然后通过`scrollTo`方法实现滑动；接着又调用`postInvalidate`方法来进行第二次重绘，和之前流程一样，如此反复导致View不断进行小幅度的滑动，而多次的小幅度滑动就组成了弹性滑动，直到整个滑动过成结束。
+
+![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c37ec2b0e11b?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+
+
+#### 15. invalidate()和postInvalidate()的区别 ？
+
+- invalidate()与postInvalidate()都用于刷新View，主要区别是invalidate()在主线程中调用，若在子线程中使用需要配合handler
+
+- postInvalidate()可在子线程中直接调用
+
+#### 16. 自定义View如何考虑机型适配 ?
+
+- 合理使用warp_content，match_parent
+
+- 尽可能的是使用RelativeLayout
+
+- 针对不同的机型，使用不同的布局文件放在对应的目录下，android会自动匹配。
+
+- 尽量使用点9图片。
+
+- 使用与密度无关的像素单位dp，sp
+
+- 引入android的约束布局。
+
+- 切图的时候切大分辨率的图，应用到布局当中。在小分辨率的手机上也会有很好的显示效果。
+
 
 
 ## 十一、Drawbale和动画
@@ -1694,7 +1912,7 @@ save和restore要配对使用（restore可以比save少，但不能多），如�
 
 播放补间动画的时候，我们所看到的变化，都只是临时的。而属性动画呢，它所改变的东西，却会更新到这个View所对应的矩阵中，所以当ViewGroup分派事件的时候，会正确的将当前触摸坐标，转换成矩阵变化后的坐标。
 
-## 十二、AsyncTask
+## 十二、多线程
 
 #### 1. AsyncTask的缺陷和问题，说说他的原理。
 
@@ -1745,6 +1963,54 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 2. AsyncTask 封装了两个线程池和一个Handler（SerialExecutor用于排队，THREAD_POOL_EXECUTOR为真正的执行任务，Handler将工作线程切换到主线程），其必须在 UI线程中创建，execute 方法必须在 UI线程中执行，一个任务实例只允许执行一次，执行多次抛出异常，用于网络请求或者简单数据处理。
 3. IntentService：处理异步请求，实现多线程，在onHandleIntent中处理耗时操作，多个耗时任务会依次执行，执行完毕自动结束。
 
+#### 3. Android中了解哪些方便线程切换的类？
+
+- **AsyncTask**：底层封装了线程池和Handler，便于执行后台任务以及在子线程中进行UI操作。
+
+- **HandlerThread**：一种具有消息循环的线程，其内部可使用Handler。
+
+- **IntentService**：是一种异步、会自动停止的服务，内部采用HandlerThread。
+
+#### 4. 直接在Activity中创建一个thread跟在service中创建一个thread之间的区别？
+
+**在Activity中被创建**：该Thread的就是为这个Activity服务的，完成这个特定的Activity交代的任务，主动通知该Activity一些消息和事件，Activity销毁后，该Thread也没有存活的意义了。
+
+**在Service中被创建**：这是保证最长生命周期的Thread的唯一方式，只要整个Service不退出，Thread就可以一直在后台执行，一般在Service的onCreate()中创建，在onDestroy()中销毁。所以，在Service中创建的Thread，适合长期执行一些独立于APP的后台任务，比较常见的就是：在Service中保持与服务器端的长连接。
+
+#### 5. Handler、Thread和HandlerThread的差别？
+
+**Handler**：在android中负责发送和处理消息，通过它可以实现其他支线线程与主线程之间的消息通讯。
+
+**Thread**：Java进程中执行运算的最小单位，亦即执行处理机调度的基本单位。某一进程中一路单独运行的程序。
+
+**HandlerThread**：一个继承自Thread的类HandlerThread，Android中没有对Java中的Thread进行任何封装，而是提供了一个继承自Thread的类HandlerThread类，这个类对Java的Thread做了很多便利的封装。HandlerThread继承于Thread，所以它本质就是个Thread。与普通Thread的差别就在于，它在内部直接实现了Looper的实现，这是Handler消息机制必不可少的。有了自己的looper，可以让我们在自己的线程中分发和处理消息。如果不用HandlerThread的话，需要手动去调用Looper.prepare()和Looper.loop()这些方法。
+
+#### 6. 多线程是否一定会高效
+
+多线程的优点：
+
+- 方便高效的内存共享，多进程下内存共享比较不便，且会抵消掉多进程编程的好处
+- 较轻的上下文切换开销，不用切换地址空间，不用更改CR3寄存器，不用清空TLB
+- 线程上的任务执行完后自动销毁
+
+多线程的缺点：
+
+- 开启线程需要占用一定的内存空间(默认情况下,每一个线程都占512KB)
+- 如果开启大量的线程,会占用大量的内存空间,降低程序的性能
+- 线程越多,cpu在调用线程上的开销就越大
+- 程序设计更加复杂,比如线程间的通信、多线程的数据共享
+
+综上得出，多线程**不一定**能提高效率，在内存空间紧张的情况下反而是一种负担，因此在日常开发中，应尽量
+
+- **不要频繁创建，销毁线程，如有需求需要使用线程池**
+- **减少线程间同步和通信（最为关键）**
+- **避免需要频繁共享写的数据**
+- **合理安排共享数据结构，避免伪共享（false sharing）**
+- **使用非阻塞数据结构/算法**
+- **避免可能产生可伸缩性问题的系统调用（比如mmap）**
+- **避免产生大量缺页异常，尽量使用Huge Page**
+- **可以的话使用用户态轻量级线程代替内核线程**
+
 
 
 ## 十三、Bitmap
@@ -1789,7 +2055,17 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 内存大小 = 240 * 240 * 2 = 115200byte 约等于 112.5kb
 ```
 
-> [《Android Bitmap的内存大小是如何计算的？》](https://ivonhoe.github.io/2017/03/22/Bitmap&Memory/)
+Bitamp 所占内存大小 = 宽度像素 x （inTargetDensity / inDensity） x 高度像素 x （inTargetDensity / inDensity）x 一个像素所占的内存字节大小
+
+> 这里inDensity表示目标图片的dpi（放在哪个资源文件夹下），inTargetDensity表示目标屏幕的dpi，所以你可以发现inDensity和inTargetDensity会对Bitmap的宽高进行拉伸，进而改变Bitmap占用内存的大小。
+
+在Bitmap里有两个获取内存占用大小的方法。
+
+- **getByteCount()**：API12 加入，代表存储 Bitmap 的像素需要的最少内存。
+- **getAllocationByteCount()**：API19 加入，代表在内存中为 Bitmap 分配的内存大小，代替了 getByteCount() 方法。
+- 在**不复用 Bitmap** 时，getByteCount() 和 getAllocationByteCount 返回的结果是一样的。在通过**复用 Bitmap** 来解码图片时，那么 getByteCount() 表示新解码图片占用内存的大 小，getAllocationByteCount() 表示被复用 Bitmap 真实占用的内存大小。
+
+
 
 #### 3.  Bitmap的高效加载？
 
@@ -1803,9 +2079,19 @@ Bitmap的高效加载在Glide中也用到了，思路：
 #### 4. 谈谈你对 Bitmap 的理解 , 什么时候应该手动调用 bitmap.recycle()？
 
 Bitmap 是 android 中经常使用的一个类，它代表了一个图片资源。Bitmap消耗内存很严重，如果不注意优化代码，经常会出现 OOM 问题，优化方式通常有这么几种： 1. 使用缓存； 2. 压缩图片； 3. 及时回收；
+
 至于什么时候需要手动调用 recycle，这就看具体场景了，原则是当我们不再使用 Bitmap 时，需要回收之。另外，我们需要注意，2.3 之前 Bitmap 对象与像素数据是分开存放的，Bitmap 对象存在 java Heap 中而像素数据存放在 Native Memory 中，这时很有必要调用 recycle 回收内存。但是 2.3 之后，Bitmap 对
 象和像素数据都是存在 Heap 中，GC 可以回收其内存。
 
+#### 5. 内存中如果加载一张500*500的png高清图片应该是占用多少的内存?
+
+**不考虑屏幕比的话**：占用内存=500 * 500 * 4 = 1000000B ≈ 0.95MB
+
+**考虑屏幕比的的话**：占用内存= 宽度像素 x （inTargetDensity / inDensity） x 高度像素 x （inTargetDensity / inDensity）x 一个像素所占的内存字节大小
+
+inDensity表示目标图片的dpi（放在哪个资源文件夹下），inTargetDensity表示目标屏幕的dpi
+
+![img](https://user-gold-cdn.xitu.io/2019/3/19/169957db5956a922?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 
 
@@ -2152,7 +2438,24 @@ public abstract class LazyLoadFragment extends BaseFragment {
 
 
 
-## 十六、SharedPreferences
+## 十六、数据存储
+
+#### 0. 描述一下Android数据持久存储方式？
+
+- **SharedPreferences存储**：一种轻型的数据存储方式，本质是基于XML文件存储的key-value键值对数据，通常用来存储一些简单的配置信息（如应用程序的各种配置信息）；
+
+  > - 勿存储大型复杂数据，这会引起内存GC、阻塞主线程使页面卡顿产生ANR
+  > - 勿在多进程模式下，操作Sp
+  > - 不要多次edit和apply，尽量批量修改一次提交
+  > - 建议apply，少用commit
+
+- **SQLite数据库存储**：一种轻量级嵌入式数据库引擎，它的运算速度非常快，占用资源很少，常用来存储大量复杂的关系数据；
+
+- **ContentProvider**：四大组件之一，用于数据的存储和共享，不仅可以让不同应用程序之间进行数据共享，还可以选择只对哪一部分数据进行共享，可保证程序中的隐私数据不会有泄漏风险；
+
+- **File文件存储**：写入和读取文件的方法和 Java中实现I/O的程序一样；
+
+- **网络存储**：主要在远程的服务器中存储相关数据，用户操作的相关数据可以同步到服务器上；
 
 #### 1. SharedPreferences是如何保证线程安全的，其内部的实现用到了哪些锁
 
@@ -2232,14 +2535,41 @@ synchronized (mWritingToDiskLock) {
 
 #### 5. SharedPrefrences的apply和commit有什么区别？
 
-1. apply没有返回值而commit返回boolean，表明修改是否提交成功。
-2. apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
-3. apply方法不会提示任何失败的提示。 
-   由于在一个进程中，sharedPreference是单实例，一般不会出现并发冲突，如果对提交的结果不关心的话，建议使用apply，当然需要确保提交成功且有后续操作的话，还是需要用commit的。
+- apply没有返回值而commit返回boolean，表明修改是否提交成功。
+
+- apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
+
+- apply方法不会提示任何失败的提示。 由于在一个进程中，sharedPreference是单实例，一般不会出现并发冲突，如果对提交的结果不关心的话，建议使用apply，当然需要确保提交成功且有后续操作的话，还是需要用commit的。
 
 #### 6. sp 频繁操作有什么后果？sp 能存多少数据？
 
 Sp 的底层是由 xml 来实现的，操作 sp 的过程就是 xml 的序列化和解析的过程。Xml 是存储在磁盘上的，因此考 虑到需要 I/O 速度问题，sp 不适宜频繁操作。同时序列化 xml 是就是将内存中的数据写到 xml 文件中，由于 dvm 的内存是很有限的，因此单个 sp 文件不建议太大，具体多大是没有一个具体的要求的，数据大小肯定不能超过DVM 堆内存。其实 sp 设置的目的就是为了保存用户的偏好和配置信息的，因此不要保存太多的数据。
+
+#### 7. 了解SQLite中的事务操作吗？是如何做的?
+
+SQLite在做CRDU操作时都默认开启了事务，然后把SQL语句翻译成对应的SQLiteStatement并调用其相应的CRUD方法，此时整个操作还是在rollback journal这个临时文件上进行，只有操作顺利完成才会更新db数据库，否则会被回滚；
+
+#### 8. 使用SQLite做批量操作有什么好的方法吗？
+
+使用SQLiteDatabase的beginTransaction()方法开启一个事务，将批量操作SQL语句转化为SQLiteStatement并进行批量操作，结束后endTransaction()
+
+#### 9. 如何删除SQLite中表的个别字段
+
+SQLite数据库只允许增加字段而不允许修改和删除表字段，只能创建新表保留原有字段，删除原表
+
+#### 10. 使用SQLite时会有哪些优化操作？
+
+- 使用事务做批量操作
+
+- 及时关闭Cursor，避免内存泄露
+
+- 耗时操作异步化：数据库的操作属于本地IO耗时操作，建议放入异步线程中处理
+
+- ContentValues的容量调整：ContentValues内部采用HashMap来存储Key-Value数据，ContentValues初始容量为8，扩容时翻倍。因此建议对ContentValues填入的内容进行估量，设置合理的初始化容量，减少不必要的内部扩容操作
+
+- 使用索引加快检索速度：对于查询操作量级较大、业务对查询要求较高的推荐使用索引
+
+
 
 ## 十七、其他控件
 
@@ -2362,31 +2692,33 @@ Parcelable（android专用）：
 
 除了Serializable之外，使用Parcelable也可以实现相同的效果，不过不同于将对象进行序列化，Parcelable方式的实现原理是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的数据类型，这也就实现传递对象的功能了。
 
-区别总结如下所示：
+**区别总结如下所示**：
 
-平台区别：
+**平台区别**：
 
 Serializable是属于 Java 自带的，表示一个对象可以转换成可存储或者可传输的状态，序列化后的对象可以在网络上进行传输，也可以存储到本地。
 
 Parcelable 是属于 Android 专用。不过不同于Serializable，Parcelable实现的原理是将一个完整的对象进行分解。而分解后的每一部分都是Intent所支持的数据类型。
 
-编写上的区别：
+**编写上的区别**：
 
 Serializable代码量少，写起来方便
 
 Parcelable代码多一些，略复杂
 
-选择的原则：
+**选择的原则**：
 
 如果是仅仅在内存中使用，比如activity、service之间进行对象的传递，强烈推荐使用Parcelable，因为Parcelable比Serializable性能高很多。因为Serializable在序列化的时候会产生大量的临时变量， 从而引起频繁的GC。
 
 如果是持久化操作，推荐Serializable，虽然Serializable效率比较低，但是还是要选择它，因为在外界有变化的情况下，Parcelable不能很好的保存数据的持续性。
 
-本质的区别：
+**本质的区别**：
 
 Serializable的本质是使用了反射，序列化的过程比较慢，这种机制在序列化的时候会创建很多临时的对象，比引起频繁的GC
 
 Parcelable方式的本质是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的类型，这样就实现了传递对象的功能了。
+
+
 
 #### 10. 怎么优化xml inflate的时间，涉及IO与反射？
 
@@ -2809,7 +3141,9 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 
 #### 35. 系统为什么不建议在子线程中访问UI？
 
-这是因为 Android 的UI控件不是线程安全的，如果在多线程中并发访问可能会导致UI控件处于不可预期的状态，那么为什么系统不对UI控件的访问加上锁机制呢？缺点有两个：
+这是因为 Android 的UI控件不是线程安全的，如果在多线程中并发访问可能会导致UI控件处于不可预期的状态，
+
+那么为什么系统不对UI控件的访问加上锁机制呢？缺点有两个：
 
 1. 首先加上锁机制会让UI访问的逻辑变得复杂
 2. 锁机制会降低UI访问的效率，因为锁机制会阻塞某些线程的执行。

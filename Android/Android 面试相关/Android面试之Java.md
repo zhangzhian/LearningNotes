@@ -1838,6 +1838,17 @@ ExecutorService线程池就提供了shutdown和shutdownNow这样的生命周期�
 
 终止等待执行的线程，并返回它们的列表。试图停止所有正在执行的线程，试图终止的方法是调用Thread.interrupt()，但是大家知道，如果线程中没有sleep 、wait、Condition、定时锁等应用, interrupt()方法是无法中断当前的线程的。所以，ShutdownNow()并不代表线程池就一定立即就能退出，它可能必须要等待所有正在执行的任务都执行完成了才能退出。
 
+#### 13. ThreadLocal的原理
+
+ThreadLocal是一个关于创建线程局部变量的类。使用场景如下所示：
+
+- **实现单个线程单例以及单个线程上下文信息存储，比如交易id等。**
+- **实现线程安全，非线程安全的对象使用ThreadLocal之后就会变得线程安全，因为每个线程都会有一个对应的实例。 承载一些线程相关的数据，避免在方法中来回传递参数。**
+
+当需要使用多线程时，有个变量恰巧不需要共享，此时就不必使用synchronized这么麻烦的关键字来锁住，每个线程都相当于在堆内存中开辟一个空间，线程中带有对共享变量的缓冲区，通过缓冲区将堆内存中的共享变量进行读取和操作，ThreadLocal相当于线程内的内存，一个局部变量。每次可以对线程自身的数据读取和操作，并不需要通过缓冲区与 主内存中的变量进行交互。并不会像synchronized那样修改主内存的数据，再将主内存的数据复制到线程内的工作内存。ThreadLocal可以让线程独占资源，存储于线程内部，避免线程堵塞造成CPU吞吐下降。
+
+在每个Thread中包含一个ThreadLocalMap，ThreadLocalMap的key是ThreadLocal的对象，value是独享数据。
+
 
 
 
@@ -2260,6 +2271,10 @@ public class LoggingWidget extends Widget {
 #### 1. notify和notifyAll方法的区别？
 
 `notify`随机唤醒一个线程，`notifyAll`唤醒所有等待的线程，让他们竞争锁。
+
+当一个拥有Object锁的线程调用`wait()`方法时，就会使当前线程加入`Object.wait` 等待队列中，并且释放当前占用的Object锁，这样其他线程就有机会获取这个Object锁，获得Object锁的线程调用`notify()`方法，就能在`Object.wait` 等待队列中随机唤醒一个线程（该唤醒是随机的与加入的顺序无关，优先级高的被唤醒概率会高）
+
+如果调用`notifyAll()`方法就唤醒全部的线程。**注意:调用`notify()`方法后并不会立即释放Object锁，会等待该线程执行完毕后释放Object锁。**
 
 #### 2. wait/notify和Condition类实现的等待通知有什么区别？
 
@@ -2936,6 +2951,8 @@ d.Integer对象的hash值为数值本身；
 - `软引用`：对于软引用关联的对象，在系统发生内存溢出异常之前，将会把这些对象列进回收范围进行第二次回收，如果这次回收还没有足够的内存，才会抛出内存溢出异常。
 - `弱引用`：被若引用关联的对象只能存活到下一次GC之前。
 - `虚引用`：为对象设置虚引用的目的仅仅是为了GC之前收到一个系统通知。
+
+![img](https://user-gold-cdn.xitu.io/2019/3/11/1696c45ababaed39?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 #### 5. 圾回收的GCRoot是什么？
 

@@ -402,6 +402,10 @@ App进程的binder线程（ApplicationThread）在收到请求后，通过handle
 
 4个。Launcher，system_server，Zygote，APP。
 
+#### (7) 广播发送和接收的原理了解吗 ？（Binder机制、AMS）
+
+![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaeac26f8d?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
 ### 4. Window
 
 #### (1) Activity启动过程跟Window的关系？
@@ -1462,7 +1466,13 @@ void test(){
 
 #### 1. 有做过什么Bitmap优化的实际经验
 
+#### 2. 图片的三级缓存中,图片加载到内存中,如果内存快爆了,会发生什么？怎么处理？
 
+首先我们要清楚图片的三级缓存是如何的
+
+![img](https://user-gold-cdn.xitu.io/2019/3/19/169956a4db82e9f3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+如果内存足够时不回收。内存不够时就回收软引用对象。
 
 ### 7. 线程优化
 
@@ -1472,7 +1482,7 @@ void test(){
 
 
 
-### 9.其他
+### 9. 其他
 
 #### 1. 什么是ANR 如何避免它？有没有实际的ANR定位问题的经历
 
@@ -2061,6 +2071,8 @@ System.exit(0)
 - WebView初始化慢，就随时`初始化`好一个WebView待用。
 - DNS和链接慢，想办法复用客户端使用的`域名和链接`。
 - 脚本执行慢，可以把`框架代码拆分`出来，在请求页面之前就执行好。
+
+推荐文章：[WebView性能、体验分析与优化](https://tech.meituan.com/2017/06/09/webviewperf.html)
 
 #### 10. WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
 
