@@ -763,6 +763,69 @@ px = dp * density
 
 LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在集合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。
 
+#### (1) LruCache原理
+
+之前，我们会使用内存缓存技术实现，也就是软引用或弱引用，在Android 2.3（APILevel 9）开始，垃圾回收器会更倾向于回收持有软引用或弱引用的对象，这让软引用和弱引用变得不再可靠。
+
+其实LRU缓存的实现类似于一个特殊的栈，把访问过的元素放置到栈顶（若栈中存在，则更新至栈顶；若栈中不存在则直接入栈），然后如果栈中元素数量超过限定值，则删除栈底元素（即最近最少使用的元素）。
+
+它的内部存在一个 LinkedHashMap 和 maxSize，把最近使用的对象用强引用存储在 LinkedHashMap 中，给出来 put 和 get 方法，每次 put 图片时计算缓存中所有图片的总大小，跟 maxSize 进行比较，大于 maxSize，就将最久添加的图片移除，反之小于 maxSize 就添加进来。
+
+LruCache的原理就是利用LinkedHashMap持有对象的强引用，按照Lru算法进行对象淘汰。具体说来假设我们从表尾访问数据，在表头删除数据，当访问的数据项在链表中存在时，则将该数据项移动到表尾，否则在表尾新建一个数据项。当链表容量超过一定阈值，则移除表头的数据。
+
+详细来说就是LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队头元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队尾。
+
+##### LruCache put方法核心逻辑
+
+在添加过缓存对象后，调用trimToSize()方法，来判断缓存是否已满，如果满了就要删除近期最少使用的对象。trimToSize()方法不断地删除LinkedHashMap中队头的元素，即近期最少访问的，直到缓存大小小于最大值（maxSize）。
+
+##### LruCache get方法核心逻辑
+
+当调用LruCache的get()方法获取集合中的缓存对象时，就代表访问了一次该元素，将会更新队列，保持整个队列是按照访问顺序排序的。
+
+为什么会选择LinkedHashMap呢？
+
+这跟LinkedHashMap的特性有关，LinkedHashMap的构造函数里有个布尔参数accessOrder，当它为true时，LinkedHashMap会以访问顺序为序排列元素，否则以插入顺序为序排序元素。
+
+##### LinkedHashMap原理
+
+LinkedHashMap 几乎和 HashMap 一样：从技术上来说，不同的是它定义了一个 Entry<K,V> header，这个 header 不是放在 Table 里，它是额外独立出来的。LinkedHashMap 通过继承 hashMap 中的 Entry<K,V>,并添加两个属性 Entry<K,V> before,after,和 header 结合起来组成一个双向链表，来实现按插入顺序或访问顺序排序。
+
+#### (2) DisLruCache原理
+
+DiskLruCache与LruCache原理相似，只是多了一个journal文件来做磁盘文件的管理，如下所示：
+
+```
+libcore.io.DiskLruCache
+1
+1
+1
+
+DIRTY 1517126350519
+CLEAN 1517126350519 5325928
+REMOVE 1517126350519
+```
+
+注：这里的缓存目录是应用的缓存目录`/data/data/pckagename/cache`，未root的手机可以通过以下命令进入到该目录中或者将该目录整体拷贝出来：
+
+```shell
+//进入/data/data/pckagename/cache目录
+adb shell
+run-as com.your.packagename 
+cp /data/data/com.your.packagename/
+
+//将/data/data/pckagename目录拷贝出来
+adb backup -noapk com.your.packagename
+```
+
+我们来分析下这个文件的内容：
+
+第一行：libcore.io.DiskLruCache，固定字符串。 第二行：1，DiskLruCache源码版本号。 第三行：1，App的版本号，通过open()方法传入进去的。 第四行：1，每个key对应几个文件，一般为1. 第五行：空行 第六行及后续行：缓存操作记录。 第六行及后续行表示缓存操作记录，关于操作记录，我们需要了解以下三点：
+
+DIRTY 表示一个entry正在被写入。写入分两种情况，如果成功会紧接着写入一行CLEAN的记录；如果失败，会增加一行REMOVE记录。注意单独只有DIRTY状态的记录是非法的。 当手动调用remove(key)方法的时候也会写入一条REMOVE记录。 READ就是说明有一次读取的记录。 CLEAN的后面还记录了文件的长度，注意可能会一个key对应多个文件，那么就会有多个数字。
+
+
+
 ## 八、Android消息机制
 
 见《Android消息机制详解》
@@ -1422,6 +1485,14 @@ MotionEvent是手指接触屏幕后所产生的一系列事件。典型的事件
 - 点击屏幕后松开，事件序列：DOWN→UP
 - 点击屏幕滑动一会再松开，事件序列为DOWN→MOVE→.....→MOVE→UP
 
+#### 8. ACTION_CANCEL什么时候触发，触摸button然后滑动到外部抬起会触发点击事件吗，再滑动回去抬起会么？
+
+- 一般ACTION_CANCEL和ACTION_UP都作为View一段事件处理的结束。如果在父View中拦截ACTION_UP或ACTION_MOVE，在第一次父视图拦截消息的瞬间，父视图指定子视图不接受后续消息了，同时子视图会收到ACTION_CANCEL事件。
+- 如果触摸某个控件，但是又不是在这个控件的区域上抬起（移动到别的地方了），就会出现action_cancel。
+
+
+
+
 ## 十、View绘制
 
 #### 1. 怎么计算一个View在屏幕可见部分的百分比？
@@ -1723,6 +1794,20 @@ private int getParents(ViewParents view){
 
 - 切图的时候切大分辨率的图，应用到布局当中。在小分辨率的手机上也会有很好的显示效果。
 
+#### 17. 说下Measurepec这个类
+
+作用：通过宽测量值**widthMeasureSpec**和高测量值**heightMeasureSpec**决定View的大小
+
+组成：一个32位int值，高2位代表**SpecMode**(测量模式)，低30位代表**SpecSize**( 某种测量模式下的规格大小)。
+
+三种模式：
+
+- **UNSPECIFIED**：父容器不对View有任何限制，要多大有多大。常用于系统内部。
+- **EXACTLY**(精确模式)：父视图为子视图指定一个确切的尺寸SpecSize。对应LyaoutParams中的match_parent或具体数值。
+- **AT_MOST**(最大模式)：父容器为子视图指定一个最大尺寸SpecSize，View的大小不能大于这个值。对应LayoutParams中的wrap_content。
+
+决定因素：值由**子View的布局参数LayoutParams**和父容器的**MeasureSpec**值共同决定。具体规则见下图：![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7a649cc67de5?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
 
 
 ## 十一、Drawbale和动画
@@ -1911,6 +1996,8 @@ save和restore要配对使用（restore可以比save少，但不能多），如�
 #### 10. 为什么属性动画移动后仍可点击？
 
 播放补间动画的时候，我们所看到的变化，都只是临时的。而属性动画呢，它所改变的东西，却会更新到这个View所对应的矩阵中，所以当ViewGroup分派事件的时候，会正确的将当前触摸坐标，转换成矩阵变化后的坐标。
+
+
 
 ## 十二、多线程
 
@@ -2144,7 +2231,7 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 
 
-#### 7. Recycleview和listview区别
+#### 7. Recycleview和Listview区别
 
 `Recycleview布局效果更多`，增加了纵向，表格，瀑布流等效果
 
@@ -2157,6 +2244,30 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 `Recycleview自带了一些布局变化的动画效果`，也可以通过自定义ItemAnimator类实现自定义动画效果
 
 `Recycleview缓存机制更全面`，增加两级缓存，还支持自定义缓存逻辑
+
+动画区别：
+
+- 在**RecyclerView**中，内置有许多动画API，例如：`notifyItemChanged()`, `notifyDataInserted()`, `notifyItemMoved()`等等；如果需要自定义动画效果，可以通过实现（`RecyclerView.ItemAnimator`类）完成自定义动画效果，然后调用`RecyclerView.setItemAnimator()`；
+- 但是**ListView**并没有实现动画效果，但我们可以在Adapter自己实现item的动画效果；
+
+刷新区别：
+
+- ListView中通常刷新数据是用全局刷新`notifyDataSetChanged()`，这样一来就会非常消耗资源；**本身无法实现局部刷新**，但是如果要在ListView实现**局部刷新**，依然是可以实现的，当一个item数据刷新时，我们可以在Adapter中，实现一个`onItemChanged()`方法，在方法里面获取到这个item的position（可以通过`getFirstVisiblePosition()`），然后调用`getView()`方法来刷新这个item的数据；
+- RecyclerView中可以实现局部刷新，例如：`notifyItemChanged()`
+
+缓存区别：
+
+- RecyclerView比ListView多两级缓存，支持多个ItemView缓存，支持开发者自定义缓存处理逻辑，支持所有RecyclerView共用同一个RecyclerViewPool(缓存池)。
+- ListView和RecyclerView缓存机制基本一致，但缓存使用不同
+
+推荐文章：
+
+- [【腾讯Bugly干货分享】Android ListView 与 RecyclerView 对比浅析—缓存机制](https://zhuanlan.zhihu.com/p/23339185)
+- [ListView 与 RecyclerView 简单对比](https://blog.csdn.net/shu_lance/article/details/79566189)
+- [Android开发：ListView、AdapterView、RecyclerView全面解析](https://www.jianshu.com/p/4e8e4fd13cf7)
+
+
+
 
 #### 8. 说说RecyclerView性能优化。
 
@@ -2288,6 +2399,15 @@ public class ScrollViewWithListView extends ListView {
     }
 }
 ```
+
+#### 18. ListView的adapter是什么adapter
+
+![img](https://user-gold-cdn.xitu.io/2019/3/20/1699a79b39f0c556?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+- **BaseAdapter**：抽象类，实际开发中我们会继承这个类并且重写相关方法，用得最多的一个适配器。
+- **ArrayAdapter**：支持泛型操作，最简单的一个适配器，只能展现一行文字。
+- **SimpleAdapter**：同样具有良好扩展性的一个适配器，可以自定义多种效果。
+- **SimpleCursorAdapter**：用于显示简单文本类型的listView，一般在数据库那里会用到，不过有点过时，不推荐使用。
 
 
 
@@ -2617,16 +2737,33 @@ GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用
 
 #### 6. LinearLayout、FrameLayout、RelativeLayout性能对比，为什么？
 
-RelativeLayout会让子View调用2次onMeasure，LinearLayout 在有weight时，也会调用子 View 2次onMeasure
+- RelativeLayout会让子View调用2次onMeasure，LinearLayout 在有weight时，也会调用子 View 2次onMeasure
 
-RelativeLayout的子View如果高度和RelativeLayout不同，则会引发效率问题，当子View很复杂时，这个问题会更加严重。如果可以，尽量使用padding代替margin。
+- RelativeLayout的子View如果高度和RelativeLayout不同，则会引发效率问题，当子View很复杂时，这个问题会更加严重。如果可以，尽量使用padding代替margin。
 
-在不影响层级深度的情况下,使用LinearLayout和FrameLayout而不是RelativeLayout。
+- 在不影响层级深度的情况下,使用LinearLayout和FrameLayout而不是RelativeLayout。
 
 #### 7. 为什么Google给开发者默认新建了个RelativeLayout，而自己却在DecorView中用了个LinearLayout？
 
 因为DecorView的层级深度是已知而且固定的，上面一个标题栏，下面一个内容栏。采用RelativeLayout并不会降低层级深度，所以此时在根节点上用LinearLayout是效率最高的。而之所以给开发者默认新建了个RelativeLayout是希望开发者能采用尽量少的View层级来表达布局以实现性能最优，因为复杂的View嵌套对性能的影响会更大一些。
 
+#### 8. 请例举Android中常用布局类型，并简述其用法以及排版效率
+
+Android中常用布局分为**传统布局**和**新型布局**
+
+传统布局（编写XML代码、代码生成）：
+
+- **框架布局（FrameLayout）**
+- **线性布局（LinearLayout）**
+- **绝对布局（AbsoluteLayout）**
+- **相对布局（RelativeLayout）**
+- **表格布局（TableLayout）**
+
+新型布局（可视化拖拽控件、编写XML代码、代码生成）：
+
+- **约束布局（ConstrainLayout）**
+
+![img](https://user-gold-cdn.xitu.io/2019/4/18/16a2f8e1327c53b4?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 
 
@@ -2635,6 +2772,60 @@ RelativeLayout的子View如果高度和RelativeLayout不同，则会引发效率
 #### 1. 描述一下 Android 的系统架构
 
 ![img](https://pic1.zhimg.com/80/v2-24518bd357cd59ec75b5cf96db1457d8_720w.jpg)
+
+Android 是一种基于 Linux 的开放源代码软件栈，为广泛的设备和机型而创建。下图所示为 Android 平台的五大组件：
+
+**应用程序**
+
+Android 随附一套用于电子邮件、短信、日历、互联网浏览和联系人等的核心应用。平台随附的应用与用户可以选择安装的应用一样，没有特殊状态。因此第三方应用可成为用户的默认网络浏览器、短信 Messenger 甚至默认键盘（有一些例外，例如系统的“设置”应用）。
+
+系统应用可用作用户的应用，以及提供开发者可从其自己的应用访问的主要功能。例如，如果您的应用要发短信，您无需自己构建该功能，可以改为调用已安装的短信应用向您指定的接收者发送消息。
+
+**Java API 框架**
+
+您可通过以 Java 语言编写的 API 使用 Android OS 的整个功能集。这些 API 形成创建 Android 应用所需的构建块，它们可简化核心模块化系统组件和服务的重复使用，包括以下组件和服务：
+
+- 丰富、可扩展的视图系统，可用以构建应用的 UI，包括列表、网格、文本框、按钮甚至可嵌入的网络浏览器
+- 资源管理器，用于访问非代码资源，例如本地化的字符串、图形和布局文件
+- 通知管理器，可让所有应用在状态栏中显示自定义提醒
+- Activity 管理器，用于管理应用的生命周期，提供常见的导航返回栈
+- 内容提供程序，可让应用访问其他应用（例如“联系人”应用）中的数据或者共享其自己的数据
+
+开发者可以完全访问 Android 系统应用使用的框架 API。
+
+**系统运行库**
+
+1) 原生 C/C++ 库
+
+许多核心 Android 系统组件和服务（例如 ART 和 HAL）构建自原生代码，需要以 C 和 C++ 编写的原生库。Android 平台提供 Java 框架 API 以向应用显示其中部分原生库的功能。例如，您可以通过 Android 框架的 Java OpenGL API 访问 OpenGL ES，以支持在应用中绘制和操作 2D 和 3D 图形。如果开发的是需要 C 或 C++ 代码的应用，可以使用 Android NDK 直接从原生代码访问某些原生平台库。
+
+2) Android Runtime
+
+对于运行 Android 5.0（API 级别 21）或更高版本的设备，每个应用都在其自己的进程中运行，并且有其自己的 Android Runtime (ART) 实例。ART 编写为通过执行 DEX 文件在低内存设备上运行多个虚拟机，DEX 文件是一种专为 Android 设计的字节码格式，经过优化，使用的内存很少。编译工具链（例如 Jack）将 Java 源代码编译为 DEX 字节码，使其可在 Android 平台上运行。
+
+ART 的部分主要功能包括：
+
+- 预先 (AOT) 和即时 (JIT) 编译
+- 优化的垃圾回收 (GC)
+- 更好的调试支持，包括专用采样分析器、详细的诊断异常和崩溃报告，并且能够设置监视点以监控特定字段
+
+在 Android 版本 5.0（API 级别 21）之前，Dalvik 是 Android Runtime。如果您的应用在 ART 上运行效果很好，那么它应该也可在 Dalvik 上运行，但反过来不一定。
+
+Android 还包含一套核心运行时库，可提供 Java API 框架使用的 Java 编程语言大部分功能，包括一些 Java 8 语言功能。
+
+**硬件抽象层 (HAL)**
+
+硬件抽象层 (HAL) 提供标准界面，向更高级别的 Java API 框架显示设备硬件功能。HAL 包含多个库模块，其中每个模块都为特定类型的硬件组件实现一个界面，例如相机或蓝牙模块。当框架 API 要求访问设备硬件时，Android 系统将为该硬件组件加载库模块。
+
+**Linux 内核**
+
+Android 平台的基础是 Linux 内核。例如，Android Runtime (ART) 依靠 Linux 内核来执行底层功能，例如线程和低层内存管理。使用 Linux 内核可让 Android 利用主要安全功能，并且允许设备制造商为著名的内核开发硬件驱动程序。
+
+对于Android应用开发来说，最好能手绘下面的系统架构图：
+
+![image](https://user-gold-cdn.xitu.io/2020/3/1/17095ea677939c5b?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+
 
 #### 2. 谈一谈 Android 的安全机制 
 
@@ -2789,7 +2980,7 @@ Parcelable方式的本质是将一个完整的对象进行分解，而分解后�
 
 
 
-#### 11. Android各版本新特性
+#### 11. Android5.0~10.0各版本新特性
 
 Android5.0新特性
 
@@ -2848,6 +3039,8 @@ Android10.0（Q）新特性
 - **夜间模式**：包括手机上的所有应用都可以为其设置暗黑模式。
 - **桌面模式**：提供类似于PC的体验，但是远远不能代替PC。
 - **屏幕录制**：通过长按“电源”菜单中的"屏幕快照"来开启。
+
+推荐文章：[Android Developers 官方文档](https://developer.android.com/guide/topics/manifest/uses-sdk-element.html#ApiLevels)
 
 #### 12. android中有哪几种解析xml的类，官方推荐哪种？以及它们的原理和区别？
 
@@ -2974,12 +3167,14 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 #### 23. 对于应用更新这块是如何做的？(灰度，强制更新，增量更新)
 
-1、通过接口获取线上版本号，versionCode
-2、比较线上的versionCode 和本地的versionCode，弹出更新窗口
-3、下载APK文件（文件下载）
-4、安装APK
+**内部更新**：
 
-灰度：
+- 通过接口获取线上版本号，versionCode
+- 比较线上的versionCode 和本地的versionCode，弹出更新窗口
+- 下载APK文件（文件下载）
+- 安装APK
+
+**灰度更新**：
 
 (1) 找单一渠道投放特别版本。
 
@@ -2989,14 +3184,15 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 (4) 是两个版本的代码都打到app包里，然后在app端植入测试框架，用来控制显示哪个版本。测试框架负责与服务器端api通信，由服务器端控制app上A/B版本的分布，可以实现指定的一组用户看到A版本，其它用户看到B版本。服务端会有相应的报表来显示A/B版本的数量和效果对比。最后可以由服务端的后台来控制，全部用户在线切换到A或者B版本~
 
-无论哪种方法都需要做好版本管理工作，分配特别的版本号以示区别。
+无论哪种方法都需要做好版本管理工作，分配特别的版本号以示区别。当然，既然是做灰度，数据监控（常规数据、新特性数据、主要业务数据）还是要做到位，该打的数据桩要打。还有，灰度版最好有收回的能力，一般就是强制升级下一个正式版。
 
-当然，既然是做灰度，数据监控（常规数据、新特性数据、主要业务数据）还是要做到位，该打的数据桩要打。
-还有，灰度版最好有收回的能力，一般就是强制升级下一个正式版。
+**强制更新**：
 
-强制更新：一般的处理就是进入应用就弹窗通知用户有版本更新，弹窗可以没有取消按钮并不能取消。这样用户就只能选择更新或者关闭应用了，当然也可以添加取消按钮，但是如果用户选择取消则直接退出应用。
+一般的处理就是进入应用就弹窗通知用户有版本更新，弹窗可以没有取消按钮并不能取消。这样用户就只能选择更新或者关闭应用了，当然也可以添加取消按钮，但是如果用户选择取消则直接退出应用。
 
-增量更新：bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个不同版本的二进制文件，生成补丁文件.patch文件。通过bspatch使旧的apk文件与不定文件合成新的apk。 注意通过apk文件的md5值进行区分版本。
+**增量更新**：
+
+bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个不同版本的二进制文件，生成补丁文件.patch文件。通过bspatch使旧的apk文件与不定文件合成新的apk。 注意通过apk文件的md5值进行区分版本。
 
 #### 24. 请解释安卓为啥要加签名机制。
 
@@ -3006,24 +3202,29 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 #### 25. 如何通过Gradle配置多渠道包？
 
-用于生成不同渠道的包
+首先要了解设置多渠道的原因。在安装包中添加不同的标识，配合自动化埋点，应用在请求网络的时候携带渠道信息，方便后台做运营统计，比如说统计我们的应用在不同应用市场的下载量等信息。
 
-    android {  
-        productFlavors {
-            xiaomi {}
-            baidu {}
-            wandoujia {}
-            _360 {}        // 或“"360"{}”，数字需下划线开头或加上双引号
-        }
-    }
+这里以友盟统计为例
 
-执行./gradlew assembleRelease ，将会打出所有渠道的release包；
+- 首先在manifest.xml文件中设置动态渠道变量：
 
-执行./gradlew assembleWandoujia，将会打出豌豆荚渠道的release和debug版的包；
+  ![img](https://user-gold-cdn.xitu.io/2019/3/28/169c30d0cdbfb111?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-执行./gradlew assembleWandoujiaRelease将生成豌豆荚的release包。
+- 接着在app目录下的build.gradle中配置productFlavors，也就是配置打包的渠道：
+
+  ![img](https://user-gold-cdn.xitu.io/2019/3/28/169c31116ef61848?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+- 最后在编辑器下方的Teminal输出命令行：
+
+执行`./gradlew assembleRelease` ，将会打出所有渠道的release包；
+
+执行`./gradlew assembleVIVO，将会打出VIVO渠道的release和debug版的包；
+
+执行`./gradlew assembleVIVORelease`将生成VIVO渠道的release包。
 
 因此，可以结合buildType和productFlavor生成不同的Build Variants，即类型与渠道不同的组合。
+
+推荐文章：[美团Android自动化之旅—Walle生成渠道包](https://github.com/Meituan-Dianping/walle)
 
 #### 26. DDMS 和 TraceView 的区别？
 
@@ -3150,4 +3351,12 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 
 所以最简单且高效的方法就是采用单线程模型来处理UI操作。
 
+#### 36. Android的签名机制？
 
+Android的签名机制包含有**消息摘要**、**数字签名**和**数字证书**
+
+- **消息摘要**：在消息数据上，执行一个单向的 Hash 函数，生成一个固定长度的Hash值
+- **数字签名**：一种以电子形式存储消息签名的方法，一个完整的数字签名方案应该由两部分组成：**签名算法和验证算法**
+- **数字证书**：一个经证书授权（Certificate Authentication）中心数字签名的包含公钥拥有者信息以及公钥的文件
+
+推荐文章：[一篇文章看明白 Android v1 & v2 签名机制](https://blog.csdn.net/freekiteyu/article/details/84849651)

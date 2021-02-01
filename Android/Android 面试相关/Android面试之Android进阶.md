@@ -217,6 +217,21 @@ Binder驱动（如同路由器）：负责进程之间binder通信的建立，�
 
 ![img](https://api2.mubu.com/v3/document_image/7e61e800-dcad-4f98-aa5b-035064b23847-2297223.jpg)
 
+#### (8) 跨进程传递大内存数据如何做？
+
+binder 肯定是不行的，因为映射的最大内存只有 1M，可以采用 binder + 匿名共享内存的形式，像跨进程传递大的 bitmap 需要打开系统底层的 ashmem 机制。
+
+请按顺序仔细阅读下列文章提升对Binder机制的理解程度：
+
+[写给 Android 应用工程师的 Binder 原理剖析](https://juejin.im/post/6844903589635162126)
+
+[Binder学习指南](http://weishu.me/2016/01/12/binder-index-for-newer/)
+
+[Binder设计与实现](https://blog.csdn.net/universus/article/details/6211589)
+
+[老罗Binder机制分析系列或Android系统源代码情景分析Binder章节](https://blog.csdn.net/luoshengyang/article/details/6618363)
+
+
 
 
 ### 2. 进程
@@ -406,6 +421,105 @@ App进程的binder线程（ApplicationThread）在收到请求后，通过handle
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaeac26f8d?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
+#### (8) Android系统启动流程是什么？
+
+（提示：init进程 -> Zygote进程 –> SystemServer进程 –> 各种系统服务 –> 应用进程）
+
+Android系统启动的核心流程如下：
+
+- **启动电源以及系统启动**：当电源按下时引导芯片从预定义的地方（固化在ROM）开始执行，加载引导程序BootLoader到RAM，然后执行。
+- **引导程序BootLoader**：BootLoader是在Android系统开始运行前的一个小程序，主要用于把系统OS拉起来并运行。
+- **Linux内核启动**：当内核启动时，设置缓存、被保护存储器、计划列表、加载驱动。当其完成系统设置时，会先在系统文件中寻找init.rc文件，并启动init进程。
+- **init进程启动**：初始化和启动属性服务，并且启动Zygote进程。
+- **Zygote进程启动**：创建JVM并为其注册JNI方法，创建服务器端Socket，启动SystemServer进程。
+- **SystemServer进程启动**：启动Binder线程池和SystemServiceManager，并且启动各种系统服务。
+- **Launcher启动**：被SystemServer进程启动的AMS会启动Launcher，Launcher启动后会将已安装应用的快捷图标显示到系统桌面上。
+
+需要更详细的分析请查看以下系列文章：
+
+[Android系统启动流程之init进程启动](https://jsonchao.github.io/2019/02/18/Android系统启动流程之init进程启动/)
+
+[Android系统启动流程之Zygote进程启动](https://jsonchao.github.io/2019/02/24/Android系统启动流程之Zygote进程启动/)
+
+[Android系统启动流程之SystemServer进程启动](https://jsonchao.github.io/2019/03/03/Android系统启动流之SystemServer进程启动/)
+
+[Android系统启动流程之Launcher进程启动](https://jsonchao.github.io/2019/03/09/Android系统启动流程之Launcher进程启动/)
+
+#### (9) 系统是怎么帮我们启动找到桌面应用的？
+
+通过意图，PMS 会解析所有 apk 的 AndroidManifest.xml ，如果解析过会存到 package.xml 中不会反复解析，PMS 有了它就能找到了。
+
+#### (10) 启动一个程序，可以主界面点击图标进入，也可以从一个程序中跳转过去，二者有什么区别？
+
+是因为启动程序（主界面也是一个app），发现了在这个程序中存在一个设置为的activity, 所以这个launcher会把icon提出来，放在主界面上。当用户点击icon的时候，发出一个Intent：
+
+```java
+Intent intent = mActivity.getPackageManager().getLaunchIntentForPackage(packageName);
+mActivity.startActivity(intent);   
+```
+
+从一个程序中跳过去可以跳到任意允许的页面。
+
+唯一的一点不同的是从icon的点击启动的intent的action是相对单一的，从程序中跳转或者启动可能样式更多一些。本质是相同的。
+
+#### (11) AMS家族重要术语解释。
+
+1. **ActivityManagerServices**，简称AMS，服务端对象，负责系统中所有Activity的生命周期。
+
+2. **ActivityThread**，App的真正入口。当开启App之后，调用main()开始运行，开启消息循环队列，这就是传说的UI线程或者叫主线程。与ActivityManagerService一起完成Activity的管理工作。
+
+3. **ApplicationThread**，用来实现ActivityManagerServie与ActivityThread之间的交互。在ActivityManagerSevice需要管理相关Application中的Activity的生命周期时，通过ApplicationThread的代理对象与ActivityThread通信。
+
+4. **ApplicationThreadProxy**，是ApplicationThread在服务器端的代理，负责和客户端的ApplicationThread通信。AMS就是通过该代理与ActivityThread进行通信的。
+
+5. **Instrumentation**，每一个应用程序只有一个Instrumetation对象，每个Activity内都有一个对该对象的引用，Instrumentation可以理解为应用进程的管家，ActivityThread要创建或暂停某个Activity时，都需要通过Instrumentation来进行具体的操作。
+
+6. **ActivityStack**，Activity在AMS的栈管理，用来记录经启动的Activity的先后关系，状态信息等。通过ActivtyStack决定是否需要启动新的进程。
+
+7. **ActivityRecord**，ActivityStack的管理对象，每个Acivity在AMS对应一个ActivityRecord，来记录Activity状态以及其他的管理信息。其实就是服务器端的Activit对象的映像。
+
+8. **TaskRecord**，AMS抽象出来的一个“任务”的概念，是记录ActivityRecord的栈，一个“Task”包含若干个ActivityRecord。AMS用TaskRecord确保Activity启动和退出的顺序。
+
+#### (12) App启动流程（Activity的冷启动流程）-- 同（2）
+
+点击应用图标后会去启动应用的Launcher Activity，如果Launcer Activity所在的进程没有创建，还会创建新进程，整体的流程就是一个Activity的启动流程。
+
+Activity的启动流程图（放大可查看）如下所示：
+
+![image](https:////p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6ebde239d45d4c969ffa5673885a03ad~tplv-k3u1fbpfcp-zoom-1.image)
+
+整个流程涉及的主要角色有：
+
+- Instrumentation: 监控应用与系统相关的交互行为。
+- AMS：组件管理调度中心，什么都不干，但是什么都管。
+- ActivityStarter：Activity启动的控制器，处理Intent与Flag对Activity启动的影响，具体说来有：1 寻找符合启动条件的Activity，如果有多个，让用户选择；2 校验启动参数的合法性；3 返回int参数，代表Activity是否启动成功。
+- ActivityStackSupervisior：这个类的作用你从它的名字就可以看出来，它用来管理任务栈。
+- ActivityStack：用来管理任务栈里的Activity。
+- ActivityThread：最终干活的人，Activity、Service、BroadcastReceiver的启动、切换、调度等各种操作都在这个类里完成。
+
+> 这里单独提一下ActivityStackSupervisior，这是高版本才有的类，它用来管理多个ActivityStack，早期的版本只有一个ActivityStack对应着手机屏幕，后来高版本支持多屏以后，就有了多个ActivityStack，于是就引入了ActivityStackSupervisior用来管理多个ActivityStack。
+
+整个流程主要涉及四个进程：
+
+- 调用者进程，如果是在桌面启动应用就是Launcher应用进程。
+- ActivityManagerService等待所在的System Server进程，该进程主要运行着系统服务组件。
+- Zygote进程，该进程主要用来fork新进程。
+- 新启动的应用进程，该进程就是用来承载应用运行的进程了，它也是应用的主线程（新创建的进程就是主线程），处理组件生命周期、界面绘制等相关事情。
+
+有了以上的理解，整个流程可以概括如下：
+
+- 点击桌面应用图标，Launcher进程将启动Activity（MainActivity）的请求以Binder的方式发送给了AMS。
+- AMS接收到启动请求后，交付ActivityStarter处理Intent和Flag等信息，然后再交给ActivityStackSupervisior/ActivityStack 处理Activity进栈相关流程。同时以Socket方式请求Zygote进程fork新进程。
+- Zygote接收到新进程创建请求后fork出新进程。
+- 在新进程里创建ActivityThread对象，新创建的进程就是应用的主线程，在主线程里开启Looper消息循环，开始处理创建Activity。
+- ActivityThread利用ClassLoader去加载Activity、创建Activity实例，并回调Activity的onCreate()方法，这样便完成了Activity的启动。
+
+#### (13) ActivityThread工作原理。
+
+#### (14) AMS是如何管理Activity的？
+
+
+
 ### 4. Window
 
 #### (1) Activity启动过程跟Window的关系？
@@ -442,29 +556,75 @@ ViewRoot并不属于View树的一份子。从源码实现上来看，它既非Vi
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-e773ab2cb83ad214.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
+#### (3) 理解Window和WindowManager。
+
+- Window用于显示View和接收各种事件，Window有三种型：应用Window(每个Activity对应一个Window)、子Widow(不能单独存在，附属于特定Window)、系统window(toast和状态栏)
+- Window分层级，应用Window在1-99、子Window在1000-1999、系统Window在2000-2999.WindowManager提供了增改View的三个功能。
+- Window是个抽象概念：每一个Window对应着一个ViewRootImpl，Window通过ViewRootImpl来和View建立联系，View是Window存在的实体，只能通过WindowManager来访问Window。
+- WindowManager的实现是WindowManagerImpl，其再委托WindowManagerGlobal来对Window进行操作，其中有四种List分别储存对应的View、ViewRootImpl、WindowManger.LayoutParams和正在被删除的View。
+- Window的实体是存在于远端的WindowMangerService，所以增删改Window在本端是修改上面的几个List然后通过ViewRootImpl重绘View，通过WindowSession(每Window个对应一个)在远端修改Window。
+- .Activity创建Window：Activity会在attach()中创建Window并设置其回调(onAttachedToWindow()、dispatchTouchEvent())，Activity的Window是由Policy类创建PhoneWindow实现的。然后通过Activity#setContentView()调用PhoneWindow的setContentView。
+
+#### (4) WMS是如何管理Window的？
+
+
+
+
+
 ### 5. PMS
 
 #### (1) Apk的安装过程？
 
-*建议阅读：*
+建议阅读：[《Android Apk安装过程分析》](https://www.jianshu.com/p/953475cea991)
 
-> [《Android Apk安装过程分析》](https://www.jianshu.com/p/953475cea991)
+APK的安装流程如下所示：
+
+![image](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/91d5374ba2064521bb17f6df9f7b628b~tplv-k3u1fbpfcp-zoom-1.image)
+
+复制APK到/data/app目录下，解压并扫描安装包。
+
+资源管理器解析APK里的资源文件。
+
+解析AndroidManifest文件，并在/data/data/目录下创建对应的应用数据目录。
+
+然后对dex文件进行优化，并保存在dalvik-cache目录下。
+
+将AndroidManifest文件解析出的四大组件信息注册到PackageManagerService中。
+
+安装完成后，发送广播。
 
 #### (2) APK 的打包过程是什么？
 
-aapt 工具打包资源文件，生成 R.java 文件
+通过AAPT工具进行资源文件（包括AndroidManifest.xml、布局文件、各种xml资源等）的打包，生成R.java文件。
 
-aidl 工具处理 AIDL 文件，生成对应的 .java 文件
+通过AIDL工具处理AIDL文件，生成相应的Java文件。
 
-javac 工具编译 Java 文件，生成对应的 .class 文件
+通过Java Compiler编译R.java、Java接口文件、Java源文件，生成.class文件。
 
-把 .class 文件转化成 Davik VM 支持的 .dex 文件
+通过dex命令，将.class文件和第三方库中的.class文件处理生成classes.dex，该过程主要完成Java字节码转换成Dalvik字节码，压缩常量池以及清除冗余信息等工作。
 
-apkbuilder 工具打包生成未签名的 .apk 文件
+通过ApkBuilder工具将资源文件、DEX文件打包生成APK文件。
 
-jarsigner 对未签名 .apk 文件进行签名
+通过Jarsigner工具，利用KeyStore对生成的APK文件进行签名。
 
-zipalign 工具对签名后的 .apk 文件进行对齐处理
+如果是正式版的APK，还会利用ZipAlign工具进行对齐处理，对齐的过程就是将APK文件中所有的资源文件距离文件的起始距位置都偏移4字节的整数倍，这样通过内存映射访问APK文件的速度会更快，并且会减少其在设备上运行时的内存占用。
+
+#### apk组成
+
+- dex：最终生成的Dalvik字节码。
+- res：存放资源文件的目录。
+- asserts：额外建立的资源文件夹。
+- lib：如果存在的话，存放的是ndk编出来的so库。
+- META-INF：存放签名信息
+
+MANIFEST.MF（清单文件）：其中每一个资源文件都有一个SHA-256-Digest签名，MANIFEST.MF文件的SHA256（SHA1）并base64编码的结果即为CERT.SF中的SHA256-Digest-Manifest值。
+
+CERT.SF（待签名文件）：除了开头处定义的SHA256（SHA1）-Digest-Manifest值，后面几项的值是对MANIFEST.MF文件中的每项再次SHA256并base64编码后的值。
+
+CERT.RSA（签名结果文件）：其中包含了公钥、加密算法等信息。首先对前一步生成的MANIFEST.MF使用了SHA256（SHA1）-RSA算法，用开发者私钥签名，然后在安装时使用公钥解密。最后，将其与未加密的摘要信息（MANIFEST.MF文件）进行对比，如果相符，则表明内容没有被修改。
+
+- androidManifest：程序的全局清单配置文件。
+- resources.arsc：编译后的二进制资源文件。
 
 #### (3) APK 为什么要签名？是否了解过具体的签名机制？
 
@@ -515,6 +675,29 @@ dependencies {
 ```
 
 Android 5.0（API 级别 21）及更高版本使用名为 ART 的运行时，它本身支持从 APK 文件加载多个 DEX 文件。ART 在应用安装时执行预编译，这会扫描查找 `classesN.dex` 文件，并将它们编译成单个 `.oat` 文件，以供 Android 设备执行。因此，如果 `minSdkVersion` 为 21 或更高版本，系统会默认启用 MultiDex，并且您不需要 MultiDex 库。
+
+#### (5) v3签名key和v2还有v1有什么区别
+
+在**v1版本**的签名中，签名以文件的形式存在于apk包中，这个版本的apk包就是一个标准的zip包，**V2**和**V1**的差别是**V2**是对整个zip包进行签名，而且在zip包中增加了一个**apk signature block**，里面保存签名信息。
+
+![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7c3ea2437de3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+**v2版本**签名块（APK Signing Block）本身又主要分成三部分:
+
+- **SignerData**（签名者数据）：主要包括签名者的证书，整个APK完整性校验hash，以及一些必要信息
+- **Signature**（签名）：开发者对SignerData部分数据的签名数据
+- **PublicKey**（公钥）：用于验签的公钥数据
+
+**v3版本**签名块也分成同样的三部分，与v2不同的是在SignerData部分，v3新增了attr块，其中是由更小的level块组成。每个level块中可以存储一个证书信息。前一个level块证书验证下一个level证书，以此类推。最后一个level块的证书，要符合SignerData中本身的证书，即用来签名整个APK的公钥所属于的证书
+
+![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7c5908d3c159?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+
+
+推荐文章：
+
+- [APK 签名方案 v3](https://source.android.google.cn/security/apksigning/v3)
+- [Android P v3签名新特性](https://xuanxuanblingbling.github.io/ctf/android/2018/12/30/signature/)
 
 ### 6. Context
 
@@ -586,6 +769,128 @@ AIDL的本质是系统提供了一套可快速实现Binder的工具。关键类�
 当有多个业务模块都需要AIDL来进行IPC，此时需要为每个模块创建特定的aidl文件，那么相应的Service就会很多。必然会出现系统资源耗费严重、应用过度重量级的问题。解决办法是建立Binder连接池，即将每个业务模块的Binder请求统一转发到一个远程Service中去执行，从而避免重复创建Service。
 
 工作原理：每个业务模块创建自己的AIDL接口并实现此接口，然后向服务端提供自己的唯一标识和其对应的Binder对象。服务端只需要一个Service并提供一个queryBinder接口，它会根据业务模块的特征来返回相应的Binder对象，不同的业务模块拿到所需的Binder对象后就可以进行远程方法的调用了。
+
+#### (3) 手写实现简化版AMS（AIDL实现）
+
+与Binder相关的几个类的职责:
+
+- IBinder：跨进程通信的Base接口，它声明了跨进程通信需要实现的一系列抽象方法，实现了这个接口就说明可以进行跨进程通信，Client和Server都要实现此接口。
+- IInterface：这也是一个Base接口，用来表示Server提供了哪些能力，是Client和Server通信的协议。
+- Binder：提供Binder服务的本地对象的基类，它实现了IBinder接口，所有本地对象都要继承这个类。
+- BinderProxy：在Binder.java这个文件中还定义了一个BinderProxy类，这个类表示Binder代理对象它同样实现了IBinder接口，不过它的很多实现都交由native层处理。Client中拿到的实际上是这个代理对象。
+- Stub：这个类在编译aidl文件后自动生成，它继承自Binder，表示它是一个Binder本地对象；它是一个抽象类，实现了IInterface接口，表明它的子类需要实现Server将要提供的具体能力（即aidl文件中声明的方法）。
+- Proxy：它实现了IInterface接口，说明它是Binder通信过程的一部分；它实现了aidl中声明的方法，但最终还是交由其中的mRemote成员来处理，说明它是一个代理对象，mRemote成员实际上就是BinderProxy。
+
+aidl文件只是用来定义C/S交互的接口，Android在编译时会自动生成相应的Java类，生成的类中包含了Stub和Proxy静态内部类，用来封装数据转换的过程，实际使用时只关心具体的Java接口类即可。为什么Stub和Proxy是静态内部类呢？这其实只是为了将三个类放在一个文件中，提高代码的聚合性。通过上面的分析，我们其实完全可以不通过aidl，手动编码来实现Binder的通信，下面我们通过编码来实现ActivityManagerService：
+
+1、首先定义IActivityManager接口：
+
+```java
+public interface IActivityManager extends IInterface {
+    //binder描述符
+    String DESCRIPTOR = "android.app.IActivityManager";
+    //方法编号
+    int TRANSACTION_startActivity = IBinder.FIRST_CALL_TRANSACTION + 0;
+    //声明一个启动activity的方法，为了简化，这里只传入intent参数
+    int startActivity(Intent intent) throws RemoteException;
+}
+```
+
+2、然后，实现ActivityManagerService侧的本地Binder对象基类：
+
+```java
+// 名称随意，不一定叫Stub
+public abstract class ActivityManagerNative extends Binder implements IActivityManager {
+
+    public static IActivityManager asInterface(IBinder obj) {
+        if (obj == null) {
+            return null;
+        }
+        IActivityManager in = (IActivityManager) obj.queryLocalInterface(IActivityManager.DESCRIPTOR);
+        if (in != null) {
+            return in;
+        }
+        //代理对象，见下面的代码
+        return new ActivityManagerProxy(obj);
+    }
+
+    @Override
+    public IBinder asBinder() {
+        return this;
+    }
+
+    @Override
+    protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+        switch (code) {
+            // 获取binder描述符
+            case INTERFACE_TRANSACTION:
+                reply.writeString(IActivityManager.DESCRIPTOR);
+                return true;
+            // 启动activity，从data中反序列化出intent参数后，直接调用子类startActivity方法启动activity。
+            case IActivityManager.TRANSACTION_startActivity:
+                data.enforceInterface(IActivityManager.DESCRIPTOR);
+                Intent intent = Intent.CREATOR.createFromParcel(data);
+                int result = this.startActivity(intent);
+                reply.writeNoException();
+                reply.writeInt(result);
+                return true;
+        }
+        return super.onTransact(code, data, reply, flags);
+    }
+}
+```
+
+3、接着，实现Client侧的代理对象：
+
+```java
+public class ActivityManagerProxy implements IActivityManager {
+    private IBinder mRemote;
+
+    public ActivityManagerProxy(IBinder remote) {
+        mRemote = remote;
+    }
+
+    @Override
+    public IBinder asBinder() {
+        return mRemote;
+    }
+
+    @Override
+    public int startActivity(Intent intent) throws RemoteException {
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        int result;
+        try {
+            // 将intent参数序列化，写入data中
+            intent.writeToParcel(data, 0);
+            // 调用BinderProxy对象的transact方法，交由Binder驱动处理。
+            mRemote.transact(IActivityManager.TRANSACTION_startActivity, data, reply, 0);
+            reply.readException();
+            // 等待server执行结束后，读取执行结果
+            result = reply.readInt();
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
+        return result;
+    }
+}
+```
+
+4、最后，实现Binder本地对象（IActivityManager接口）：
+
+```java
+public class ActivityManagerService extends ActivityManagerNative {
+    @Override
+    public int startActivity(Intent intent) throws RemoteException {
+        // 启动activity
+        return 0;
+    }
+}
+```
+
+简化版的ActivityManagerService到这里就已经实现了，剩下就是Client只需要获取到AMS的代理对象IActivityManager就可以通信了。
+
 
 
 
@@ -661,6 +966,12 @@ flatMap：【化解循环嵌套和接口嵌套】将被观察者发送的事件�
 concatMap：【有序】与 flatMap 的 区别在于，拆分 & 重新合并生成的事件序列 的顺序与被观察者旧序列生产的顺序一致。
 
 buffer：定期从被观察者发送的事件中获取一定数量的事件并放到缓存区中，然后把这些数据集合打包发射。
+
+[RxJava中map和flatmap操作符的区别及底层实现](https://www.jianshu.com/p/af13a8278a05)
+
+#### (4) 手写rxjava遍历数组
+
+
 
 ### 2. OkHttp
 
@@ -944,6 +1255,31 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 调用 response.toString() 连接会断开，后面的取值会出问题。
 
+#### (8) 为什么要在项目中使用这个库？
+
+- OkHttp 提供了对最新的 HTTP 协议版本 HTTP/2 和 SPDY 的支持，这使得对同一个主机发出的所有请求都可以共享相同的套接字连接。
+- 如果 HTTP/2 和 SPDY 不可用，OkHttp 会使用连接池来复用连接以提高效率。
+- OkHttp 提供了对 GZIP 的默认支持来降低传输内容的大小。
+- OkHttp 也提供了对 HTTP 响应的缓存机制，可以避免不必要的网络请求。
+- 当网络出现问题时，OkHttp 会自动重试一个主机的多个 IP 地址。
+
+#### (9) 这个库的优缺点是什么，跟同类型库的比较？
+
+- 优点：在上面(8) 
+- 缺点：使用的时候仍然需要自己再做一层封装。
+
+#### (10) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现？
+
+OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Call的实例，然后执行它的execute()方法或enqueue()方法，内部最后都会执行到getResponseWithInterceptorChain()方法，这个方法里面通过拦截器组成的责任链，依次经过用户自定义普通拦截器、重试拦截器、桥接拦截器、缓存拦截器、连接拦截器和用户自定义网络拦截器以及访问服务器拦截器等拦截处理过程，来获取到一个响应并交给用户。其中，除了OKHttp的内部请求流程这点之外，还用到了缓存和连接池。
+
+#### (11) Okhttp如何处理网络缓存的？
+
+#### (12) 从网络加载一个10M的图片，说下注意事项？
+
+#### (13) http怎么知道文件过大是否传输完毕的响应？
+
+
+
 ### 3. Retrofit
 
 #### (1) 设计模式和封层解耦的理念
@@ -959,6 +1295,73 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 
 #### (4) retrofit怎么做post请求
+
+#### (5) 这个库是做什么用的？
+
+Retrofit 是一个 RESTful 的 HTTP 网络请求框架的封装。Retrofit 2.0 开始内置 OkHttp，前者专注于接口的封装，后者专注于网络请求的高效。
+
+#### (6) 为什么要在项目中使用这个库？
+
+功能强大：
+
+- 支持同步、异步
+- 支持多种数据的解析 & 序列化格式
+- 支持RxJava
+
+简洁易用：
+
+- 通过注解配置网络请求参数
+- 采用大量设计模式简化使用
+
+可扩展性好：
+
+- 功能模块高度封装
+- 解耦彻底，如自定义Converters
+
+#### (7) 这个库都有哪些用法？对应什么样的使用场景？
+
+后台API遵循Restful API设计风格 & 项目中使用到RxJava。
+
+#### (8) 这个库的优缺点是什么，跟同类型库的比较？
+
+优点：在上面(6) 
+
+缺点：扩展性差，高度封装所带来的必然后果，如果服务器不能给出统一的API形式，会很难处理。
+
+#### (9) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现？
+
+Retrofit主要是在create方法中采用动态代理模式（通过访问代理对象的方式来间接访问目标对象）实现接口方法，这个过程构建了一个ServiceMethod对象，根据方法注解获取请求方式，参数类型和参数注解拼接请求的链接，当一切都准备好之后会把数据添加到Retrofit的RequestBuilder中。然后当我们主动发起网络请求的时候会调用okhttp发起网络请求，okhttp的配置包括请求方式，URL等在Retrofit的RequestBuilder的build()方法中实现，并发起真正的网络请求。
+
+#### (10) 你从这个库中学到什么有价值的或者说可借鉴的设计思想？
+
+内部使用了优秀的架构设计和大量的设计模式，在我分析过Retrofit最新版的源码和大量优秀的Retrofit源码分析文章后，我发现，要想真正理解Retrofit内部的核心源码流程和设计思想，首先，需要对它使用到的九大设计模式有一定的了解，下面我简单说一说：
+
+**创建Retrofit实例**：
+
+- 使用建造者模式通过内部Builder类建立了一个Retroift实例。
+- 网络请求工厂使用了工厂方法模式。
+
+**创建网络请求接口的实例**：
+
+- 首先，使用外观模式统一调用创建网络请求接口实例和网络请求参数配置的方法。
+- 然后，使用动态代理动态地去创建网络请求接口实例。
+- 接着，使用了建造者模式 & 单例模式创建了serviceMethod对象。
+- 再者，使用了策略模式对serviceMethod对象进行网络请求参数配置，即通过解析网络请求接口方法的参数、返回值和注解类型，从Retrofit对象中获取对应的网络的url地址、网络请求执行器、网络请求适配器和数据转换器。
+- 最后，使用了装饰者模式ExecuteCallBack为serviceMethod对象加入线程切换的操作，便于接受数据后通过Handler从子线程切换到主线程从而对返回数据结果进行处理。
+
+**发送网络请求**：
+
+- 在异步请求时，通过静态delegate代理对网络请求接口的方法中的每个参数使用对应的ParameterHanlder进行解析。
+
+**解析数据**
+
+**切换线程**：
+
+- 使用了适配器模式通过检测不同的Platform使用不同的回调执行器，然后使用回调执行器切换线程，这里同样是使用了装饰模式。
+
+**处理结果**
+
+
 
 
 
@@ -1016,11 +1419,27 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (3) Glide缓存实现机制？
 
-内存缓存、硬盘缓存。
+常规三级缓存的流程：强引用->软引用->硬盘缓存
+
+当我们的APP中想要加载某张图片时，先去LruCache中寻找图片，如果LruCache中有，则直接取出来使用，如果LruCache中没有，则去SoftReference中寻找（软引用适合当cache，当内存吃紧的时候才会被回收。而weakReference在每次system.gc（）就会被回收）（当LruCache存储紧张时，会把最近最少使用的数据放到SoftReference中），如果SoftReference中有，则从SoftReference中取出图片使用，同时将图片重新放回到LruCache中，如果SoftReference中也没有图片，则去硬盘缓存中中寻找，如果有则取出来使用，同时将图片添加到LruCache中，如果没有，则连接网络从网上下载图片。图片下载完成后，将图片保存到硬盘缓存中，然后放到LruCache中。
+
+Glide缓存机制大致分为三层：内存缓存、弱引用缓存、磁盘缓存
+
+取的顺序是：内存、弱引用、磁盘。
+
+存的顺序是：弱引用、内存、磁盘。
 
 内存缓存一般都是用`LruCache`：Glide 默认内存缓存用的也是LruCache，只不过并没有用Android SDK中的LruCache，不过内部同样是基于LinkHashMap，所以原理是一样的。
 
 磁盘缓存 DiskLruCache：DiskLruCache 跟 LruCache 实现思路是差不多的，一样是设置一个总大小，每次往硬盘写文件，总大小超过阈值，就会将旧的文件删除。DiskLruCache 同样是利用LinkHashMap的特点，只不过数组里面存的 Entry 有点变化，Editor 用于操作文件。
+
+三层存储的机制在Engine中实现的。先说下Engine是什么？Engine这一层负责加载时做管理内存缓存的逻辑。持有MemoryCache、Map<Key, WeakReference<EngineResource<?>>>。通过load()来加载图片，加载前后会做内存存储的逻辑。如果内存缓存中没有，那么才会使用EngineJob这一层来进行异步获取硬盘资源或网络资源。EngineJob类似一个异步线程或observable。Engine是一个全局唯一的，通过Glide.getEngine()来获取。
+
+需要一个图片资源，如果Lrucache中有相应的资源图片，那么就返回，同时从Lrucache中清除，放到activeResources中。activeResources map是盛放正在使用的资源，以弱引用的形式存在。同时资源内部有被引用的记录。如果资源没有引用记录了，那么再放回Lrucache中，同时从activeResources中清除。如果Lrucache中没有，就从activeResources中找，找到后相应资源引用加1。如果Lrucache和activeResources中没有，那么进行资源异步请求（网络/diskLrucache），请求成功后，资源放到diskLrucache和activeResources中。
+
+使用一个弱引用map activeResources来盛放项目中正在使用的资源。Lrucache中不含有正在使用的资源。资源内部有个计数器来显示自己是不是还有被引用的情况，把正在使用的资源和没有被使用的资源分开有什么好处呢？因为当Lrucache需要移除一个缓存时，会调用resource.recycle()方法。注意到该方法上面注释写着只有没有任何consumer引用该资源的时候才可以调用这个方法。那么为什么调用resource.recycle()方法需要保证该资源没有任何consumer引用呢？glide中resource定义的recycle（）要做的事情是把这个不用的资源（假设是bitmap或drawable）放到bitmapPool中。bitmapPool是一个bitmap回收再利用的库，在做transform的时候会从这个bitmapPool中拿一个bitmap进行再利用。这样就避免了重新创建bitmap，减少了内存的开支。而既然bitmapPool中的bitmap会被重复利用，那么肯定要保证回收该资源的时候（即调用资源的recycle（）时），要保证该资源真的没有外界引用了。这也是为什么glide花费那么多逻辑来保证Lrucache中的资源没有外界引用的原因。
+
+
 
 #### (4) Glide如何处理生命周期？
 
@@ -1030,6 +1449,50 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 - 这样当生命周期变化的时候，就能通过接口回调去通知RequestManager处理请求.
 
 #### (5) 有用过Glide的什么深入的API，自定义model是在Glide的什么阶段？
+
+
+
+#### (6) 这个库都有哪些用法？对应什么样的使用场景？
+
+图片加载：Glide.with(this).load(imageUrl).override(800, 800).placeholder().error().animate().into()。
+
+多样式媒体加载：asBitamp、asGif。
+
+生命周期集成。
+
+可以配置磁盘缓存策略ALL、NONE、SOURCE、RESULT。
+
+#### (7) 这个库的优缺点是什么，跟同类型库的比较？
+
+库比较大，源码实现复杂。
+
+#### (8) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现
+
+**Glide&with**：
+
+1、初始化各式各样的配置信息（包括缓存，请求线程池，大小，图片格式等等）以及glide对象。
+
+2、将glide请求和application/SupportFragment/Fragment的生命周期绑定在一块。
+
+**Glide&load**：
+
+设置请求url，并记录url已设置的状态。
+
+**Glide&into**：
+
+1、首先根据转码类transcodeClass类型返回不同的ImageViewTarget：BitmapImageViewTarget、DrawableImageViewTarget。
+
+2、递归建立缩略图请求，没有缩略图请求，则直接进行正常请求。
+
+3、如果没指定宽高，会根据ImageView的宽高计算出图片宽高，最终执行到onSizeReay()方法中的engine.load()方法。
+
+4、engine是一个负责加载和管理缓存资源的类
+
+
+
+#### (9) Glide如何确定图片加载完毕？
+
+#### (10) Glide内存缓存如何控制大小？
 
 
 
@@ -1112,7 +1575,67 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
 
 可能泄露是因为GC不一定及时，所以LeakCanary会再调一次GC，然后再检测ReferenceQueue是否存在回收的对象。如果这次还没有就是泄露了，后面的逻辑就是给HAHA分析，Notification通知。
 
+#### (2) 为什么要在项目中使用这个库？
 
+- 针对Android Activity组件完全自动化的内存泄漏检查，在最新的版本中，还加入了android.app.fragment的组件自动化的内存泄漏检测。
+- 易用集成，使用成本低。
+- 友好的界面展示和通知。
+
+#### (3) 这个库的优缺点是什么，跟同类型库的比较？
+
+检测结果并不是特别的准确，因为内存的释放和对象的生命周期有关也和GC的调度有关。只能检测Activity和Fragment。
+
+#### (4) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现？
+
+主要分为如下7个步骤：
+
+- 1、RefWatcher.watch()创建了一个KeyedWeakReference用于去观察对象。
+- 2、然后，在后台线程中，它会检测引用是否被清除了，并且是否没有触发GC。
+- 3、如果引用仍然没有被清除，那么它将会把堆栈信息保存在文件系统中的.hprof文件里。
+- 4、HeapAnalyzerService被开启在一个独立的进程中，并且HeapAnalyzer使用了HAHA开源库解析了指定时刻的堆栈快照文件heap dump。
+- 5、从heap dump中，HeapAnalyzer根据一个独特的引用key找到了KeyedWeakReference，并且定位了泄露的引用。
+- 6、HeapAnalyzer为了确定是否有泄露，计算了到GC Roots的最短强引用路径，然后建立了导致泄露的链式引用。
+- 7、这个结果被传回到app进程中的DisplayLeakService，然后一个泄露通知便展现出来了。
+
+简单来说就是：
+
+在一个Activity执行完onDestroy()之后，将它放入WeakReference中，然后将这个WeakReference类型的Activity对象与ReferenceQueque关联。这时再从ReferenceQueque中查看是否有该对象，如果没有，执行gc，再次查看，还是没有的话则判断发生内存泄露了。最后用HAHA这个开源库去分析dump之后的heap内存（主要就是创建一个HprofParser解析器去解析出对应的引用内存快照文件snapshot）。
+
+流程图：
+
+![image](https://user-gold-cdn.xitu.io/2020/2/24/17074f730b83c0c3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+源码分析中一些核心分析点：
+
+AndroidExcludedRefs：它是一个enum类，它声明了Android SDK和厂商定制的SDK中存在的内存泄露的case，根据AndroidExcludedRefs这个类的类名就可看出这些case都会被Leakcanary的监测过滤掉。
+
+buildAndInstall()（即install方法）这个方法应该仅仅只调用一次。
+
+debuggerControl : 判断是否处于调试模式，调试模式中不会进行内存泄漏检测。为什么呢？因为在调试过程中可能会保留上一个引用从而导致错误信息上报。
+
+watchExecutor : 线程控制器，在 onDestroy() 之后并且主线程空闲时执行内存泄漏检测。
+
+gcTrigger : 用于 GC，watchExecutor 首次检测到可能的内存泄漏，会主动进行 GC，GC 之后会再检测一次，仍然泄漏的判定为内存泄漏，最后根据heapDump信息生成相应的泄漏引用链。
+
+gcTrigger的runGc()方法：这里并没有使用System.gc()方法进行回收，因为system.gc()并不会每次都执行。而是从AOSP中拷贝一段GC回收的代码，从而相比System.gc()更能够保证进行垃圾回收的工作。
+
+```
+Runtime.getRuntime().gc();
+```
+
+子线程延时1000ms；
+
+System.runFinalization();
+
+install方法内部最终还是调用了application的registerActivityLifecycleCallbacks()方法，这样就能够监听activity对应的生命周期事件了。
+
+在RefWatcher#watch()中使用随机的UUID保证了每个检测对象对应的key 的唯一性。
+
+在KeyedWeakReference内部，使用了key和name标识了一个被检测的WeakReference对象。在其构造方法中将弱引用和引用队列 ReferenceQueue 关联起来，如果弱引用reference持有的对象被GC回收，JVM就会把这个弱引用加入到与之关联的引用队列referenceQueue中。即 KeyedWeakReference 持有的 Activity 对象如果被GC回收，该对象就会加入到引用队列 referenceQueue 中。
+
+使用Android SDK的API Debug.dumpHprofData() 来生成 hprof 文件。
+
+在HeapAnalyzerService（类型为IntentService的ForegroundService）的runAnalysis()方法中，为了避免减慢app进程或占用内存，这里将HeapAnalyzerService设置在了一个独立的进程中。 
 
 ### 6. Android Jepack(非必需)
 
@@ -1158,10 +1681,155 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
 
 [《Android 性能优化最佳实践》](https://juejin.im/post/6844903641032163336)
 
+### 0. 稳定优化
+
+需要更全面更深入的理解请查看[深入探索Android稳定性优化](https://juejin.im/post/6844903972587716621)
+
+#### 1. 你们做了哪些稳定性方面的优化？
+
+随着项目的逐渐成熟，用户基数逐渐增多，DAU持续升高，我们遇到了很多稳定性方面的问题，对于我们技术同学遇到了很多的挑战，用户经常使用我们的App卡顿或者是功能不可用，因此我们就针对稳定性开启了专项的优化，我们主要优化了三项：
+
+- Crash专项优化（=>2)
+- 性能稳定性优化（=>2)
+- 业务稳定性优化（=>3)
+
+通过这三方面的优化我们搭建了移动端的高可用平台。同时，也做了很多的措施来让App真正地实现了高可用。
+
+#### 2. 性能稳定性是怎么做的？
+
+- 全面的性能优化：启动速度、内存优化、绘制优化
+- 线下发现问题、优化为主
+- 线上监控为主
+- Crash专项优化
+
+我们针对启动速度，内存、布局加载、卡顿、瘦身、流量、电量等多个方面做了多维的优化。
+
+我们的优化主要分为了两个层次，即线上和线下，针对于线下呢，我们侧重于发现问题，直接解决，将问题尽可能在上线之前解决为目的。而真正到了线上呢，我们最主要的目的就是为了监控，对于各个性能纬度的监控呢，可以让我们尽可能早地获取到异常情况的报警。
+
+同时呢，对于线上最严重的性能问题性问题：Crash，我们做了专项的优化，不仅优化了Crash的具体指标，而且也尽可能地获取了Crash发生时的详细信息，结合后端的聚合、报警等功能，便于我们快速地定位问题。
+
+#### 3. 业务稳定性如何保障？
+
+- 数据采集 + 报警
+- 需要对项目的主流程与核心路径进行埋点监控，
+- 同时还需知道每一步发生了多少异常，这样，我们就知道了所有业务流程的转换率以及相应界面的转换率
+- 结合大盘，如果转换率低于某个值，进行报警
+- 异常监控 + 单点追查
+- 兜底策略
+
+移动端业务高可用它侧重于用户功能完整可用，主要是为了解决一些线上一些异常情况导致用户他虽然没有崩溃，也没有性能问题，但是呢，只是单纯的功能不可用的情况，我们需要对项目的主流程、核心路径进行埋点监控，来计算每一步它真实的转换率是多少，同时呢，还需要知道在每一步到底发生了多少异常。这样我们就知道了所有业务流程的转换率以及相应界面的转换率，有了大盘的数据呢，我们就知道了，如果转换率或者是某些监控的成功率低于某个值，那很有可能就是出现了线上异常，结合了相应的报警功能，我们就不需要等用户来反馈了，这个就是业务稳定性保障的基础。
+
+同时呢，对于一些特殊情况，比如说，开发过程当中或代码中出现了一些catch代码块，捕获住了异常，让程序不崩溃，这其实是不合理的，程序虽然没有崩溃，当时程序的功能已经变得不可用，所以呢，这些被catch的异常我们也需要上报上来，这样我们才能知道用户到底出现了什么问题而导致的异常。此外，线上还有一些单点问题，比如说用户点击登录一直进不去，这种就属于单点问题，其实我们是无法找出其和其它问题的共性之处的，所以呢，我们就必须要找到它对应的详细信息。
+
+最后，如果发生了异常情况，我们还采取了一系列措施进行快速止损。（=>4）
+
+#### 4. 如果发生了异常情况，怎么快速止损？
+
+- 功能开关
+- 统跳中心
+- 动态修复：热修复、资源包更新
+- 自主修复：安全模式
+
+首先，需要让App具备一些高级的能力，我们对于任何要上线的新功能，要加上一个功能的开关，通过配置中心下发的开关呢，来决定是否要显示新功能的入口。如果有异常情况，可以紧急关闭新功能的入口，那就可以让这个App处于可控的状态了。
+
+然后，我们需要给App设立路由跳转，所有的界面跳转都需要通过路由来分发，如果我们匹配到需要跳转到有bug的这样一个新功能时，那我们就不跳转了，或者是跳转到统一的异常正处理中的界面。如果这两种方式都不可以，那就可以考虑通过热修复的方式来动态修复，目前热修复的方案其实已经比较成熟了，我们完全可以低成本地在我们的项目中添加热修复的能力，当然，如果有些功能是由RN或WeeX来实现就更好了，那就可以通过更新资源包的方式来实现动态更新。而这些如果都不可以的话呢，那就可以考虑自己去给应用加上一个自主修复的能力，如果App启动多次的话，那就可以考虑清空所有的缓存数据，将App重置到安装的状态，到了最严重的等级呢，可以阻塞主线程，此时一定要等App热修复成功之后才允许用户进入。
+
 ### 1. 布局优化
 
+需要更全面更深入的理解请查看[Android性能优化之绘制优化](https://juejin.im/post/6844904080989487118)、[深入探索Android布局优化（上）](https://juejin.im/post/6844904047355363341)、[深入探索Android布局优化（下）](https://juejin.im/post/6844904048068395015)、[深入探索Android卡顿优化（上）](https://juejin.im/post/6844904062610046990)、[深入探索Android卡顿优化（下）](https://juejin.im/post/6844904066259091469)
+
+#### 1. 你在做布局优化的过程中用到了哪些工具？
+
+我在做布局优化的过程中，用到了很多的工具，但是每一个工具都有它不同的使用场景，不同的场景应该使用不同的工具。下面我从线上和线下两个角度来进行分析。
+
+比如说，我要统计线上的FPS，我使用的就是Choreographer这个类，它具有以下特性：
+
+- 能够获取整体的帧率。
+- 能够带到线上使用。
+- 它获取的帧率几乎是实时的，能够满足我们的需求。
+
+同时，在线下，如果要去优化布局加载带来的时间消耗，那就需要检测每一个布局的耗时，对此我使用的是AOP的方式，它没有侵入性，同时也不需要别的开发同学进行接入，就可以方便地获取每一个布局加载的耗时。如果还要更细粒度地去检测每一个控件的加载耗时，那么就需要使用`LayoutInflaterCompat.setFactory2`这个方法去进行Hook。
+
+此外，我还使用了`LayoutInspector`和`Systrace`这两个工具，`Systrace`可以很方便地看到每帧的具体耗时以及这一帧在布局当中它真正做了什么。而`LayoutInspector`可以很方便地看到每一个界面的布局层级，帮助我们对层级进行优化。
+
+#### 2. 布局为什么会导致卡顿，你又是如何优化的？
+
+分析完布局的加载流程之后，我们发现有如下四点可能会导致布局卡顿：
+
+- 首先，系统会将我们的Xml文件通过**IO**的方式映射的方式加载到我们的内存当中，而IO的过程可能会导致卡顿。
+- 其次，布局加载的过程是一个反射的过程，而反射的过程也会可能会导致卡顿。
+- 同时，这个布局的层级如果比较深，那么进行布局遍历的过程就会比较耗时。
+- 最后，不合理的嵌套RelativeLayout布局也会导致重绘的次数过多。
+
+对此，我们的优化方式有如下几种：
+
+- 针对布局加载Xml文件的优化，我们使用了异步Inflate的方式，即AsyncLayoutInflater。它的核心原理是在子线程中对我们的Layout进行加载，而加载完成之后会将View通过Handler发送到主线程来使用。所以不会阻塞我们的主线程，加载的时间全部是在异步线程中进行消耗的。而这仅仅是一个从侧面缓解的思路。
+- 后面，我们发现了一个从根源解决上述痛点的方式，即使用X2C框架。它的一个核心原理就是在开发过程我们还是使用的XML进行编写布局，但是在编译的时候它会使用APT的方式将XML布局转换为Java的方式进行布局，通过这样的方式去写布局，它有以下优点：1、它省去了使用IO的方式去加载XML布局的耗时过程。2、它是采用Java代码直接new的方式去创建控件对象，所以它也没有反射带来的性能损耗。这样就从根本上解决了布局加载过程中带来的问题。
+- 然后，我们可以使用ConstraintLayout去减少我们界面布局的嵌套层级，如果原始布局层级越深，它能减少的层级就越多。而使用它也能避免嵌套RelativeLayout布局导致的重绘次数过多。
+- 最后，我们可以使用`AspectJ框架（即AOP）`和`LayoutInflaterCompat.setFactory2`的方式分别去建立线下全局的布局加载速度和控件加载速度的监控体系。
+
+#### 3. 做完布局优化有哪些成果产出？
+
+- 首先，我们建立了一个体系化的监控手段，这里的体系还指的是线上加线下的一个综合方案，针对线下，我们使用AOP或者ARTHook，可以很方便地获取到每一个布局的加载耗时以及每一个控件的加载耗时。针对线上，我们通过Choreographer.getInstance().postFrameCallback的方式收集到了FPS，这样我们可以知道用户在哪些界面出现了丢帧的情况。
+- 然后，对于布局监控方面，我们设立了FPS、布局加载时间、布局层级等一系列指标。
+- 最后，在每一个版本上线之前，我们都会对我们的核心路径进行一次Review，确保我们的FPS、布局加载时间、布局层级等达到一个合理的状态。
+
+#### 4. 你是怎么做卡顿优化的？
+
+从项目的初期到壮大期，最后再到成熟期，每一个阶段都针对卡顿优化做了不同的处理。各个阶段所做的事情如下所示：
+
+- 系统工具定位、解决
+- 自动化卡顿方案及优化
+- 线上监控及线下监测工具的建设
+
+我做卡顿优化也是经历了一些阶段，最初我们的项目当中的一些模块出现了卡顿之后，我是通过系统工具进行了定位，我使用了Systrace，然后看了卡顿周期内的CPU状况，同时结合代码，对这个模块进行了重构，将部分代码进行了异步和延迟，在项目初期就是这样解决了问题。但是呢，随着我们项目的扩大，线下卡顿的问题也越来越多，同时，在线上，也有卡顿的反馈，但是线上的反馈卡顿，我们在线下难以复现，于是我们开始寻找自动化的卡顿监测方案，其思路是来自于Android的消息处理机制，主线程执行任何代码都会回到Looper.loop方法当中，而这个方法中有一个mLogging对象，它会在每个message的执行前后都会被调用，我们就是利用这个前后处理的时机来做到的自动化监测方案的。同时，在这个阶段，我们也完善了线上ANR的上报，我们采取的方式就是监控ANR的信息，同时结合了ANR-WatchDog，作为高版本没有文件权限的一个补充方案。在做完这个卡顿检测方案之后呢，我们还做了线上监控及线下检测工具的建设，最终实现了一整套完善，多维度的解决方案。
+
+#### 5. 你是怎么样自动化的获取卡顿信息？
+
+我们的思路是来自于Android的消息处理机制，主线程执行任何代码它都会走到Looper.loop方法当中，而这个函数当中有一个**mLogging**对象，它会在每个message处理前后都会被调用，而主线程发生了卡顿，那就一定会在dispatchMessage方法中执行了耗时的代码，那我们在这个message执行之前呢，我们可以在子线程当中去postDelayed一个任务，这个Delayed的时间就是我们设定的阈值，如果主线程的messaege在这个阈值之内完成了，那就取消掉这个子线程当中的任务，如果主线程的message在阈值之内没有被完成，那子线程当中的任务就会被执行，它会获取到当前主线程执行的一个堆栈，那我们就可以知道哪里发生了卡顿。
+
+经过实践，我们发现这种方案获取的堆栈信息它不一定是准确的，因为获取到的堆栈信息它很可能是主线程最终执行的一个位置，而真正耗时的地方其实已经执行完成了，于是呢，我们就对这个方案做了一些优化，我们采取了**高频采集**的方案，也就是在一个周期内我们会多次采集主线程的堆栈信息，如果发生了卡顿，那我们就将这些卡顿信息压缩之后上报给APM后台，然后找出重复的堆栈信息，这些重复发生的堆栈大概率就是卡顿发生的一个位置，这样就提高了获取卡顿信息的一个准确性。
+
+#### 6. 卡顿的一整套解决方案是怎么做的？
+
+首先，针对卡顿，我们采用了**线上、线下工具相结合**的方式，线下工具我们册中医药尽可能早地去暴露问题，而针对于线上工具呢，我们侧重于监控的全面性、自动化以及异常感知的灵敏度。
+
+同时呢，卡顿问题还有很多的难题。比如说**有的代码呢，它不到你卡顿的一个阈值，但是执行过多，或者它错误地执行了很多次，它也会导致用户感官上的一个卡顿**，所以我们在线下通过AOP的方式对常见的耗时代码进行了Hook，然后对一段时间内获取到的数据进行分析，我们就可以知道这些耗时的代码发生的时机和次数以及耗时情况。然后，看它是不是满足我们的一个预期，不满足预期的话，我们就可以直接到线下进行修改。同时，卡顿监控它还有很多容易被忽略的一个**盲区**，比如说生命周期的一个间隔，那对于这种特定的问题呢，我们就采用了编译时注解的方式修改了项目当中所有Handler的父类，对于其中的两个方法进行了监控，我们就可以知道主线程message的执行时间以及它们的调用堆栈。
+
+对于**线上卡顿**，我们除了计算App的卡顿率、ANR率等常规指标之外呢，我们还计算了页面的秒开率、生命周期的执行时间等等。而且，在卡顿发生的时刻，我们也尽可能多地保存下来了当前的一个场景信息，这为我们之后解决或者复现这个卡顿留下了依据。
+
+#### 7. TextView setText耗时的原因，对TextView绘制层源码的理解？
+
+#### 8. 开放问题：优化一个列表页面的打开速度和流畅性。
+
+
+
 ### 2. 绘制优化
-### 3. 内容泄漏
+
+#### 1. 有没有做过UI方面的优化，做过哪些?
+
+[Android性能优化（二）之布局优化面面观](https://www.jianshu.com/p/4f44a178c547)
+
+- 调试GPU过度绘制，将Overdraw降低到合理范围内；
+- 减少嵌套层次及控件个数，保持view的树形结构尽量扁平（使用Hierarchy Viewer可以方便的查看），同时移除所有不需要渲染的view；
+- 使用GPU配置渲染工具，定位出问题发生在具体哪个步骤，使用TraceView精准定位代码；
+- 使用标签，merge减少嵌套层次、viewStub延迟初始化、include布局重用 (与merge配合使用)
+
+#### 2. 如何优化自定义View
+
+为了加速你的view，对于频繁调用的方法，需要尽量减少不必要的代码。先从onDraw开始，需要特别注意不应该在这里做内存分配的事情，因为它会导致GC，从而导致卡顿。在初始化或者动画间隙期间做分配内存的动作。不要在动画正在执行的时候做内存分配的事情。
+
+你还需要尽可能的减少onDraw被调用的次数，大多数时候导致onDraw都是因为调用了`invalidate()`。因此请尽量减少调用`invaildate()`的次数。如果可能的话，尽量调用含有4个参数的`invalidate()`方法而不是没有参数的`invalidate()`。没有参数的invalidate会强制重绘整个view。
+
+另外一个非常耗时的操作是请求layout。任何时候执行`requestLayout()`，会使得Android UI系统去遍历整个View的层级来计算出每一个view的大小。如果找到有冲突的值，它会需要重新计算好几次。另外需要尽量保持View的层级是扁平化的，这样对提高效率很有帮助。
+
+如果你有一个复杂的UI，你应该考虑写一个自定义的ViewGroup来执行他的layout操作。与内置的view不同，自定义的view可以使得程序仅仅测量这一部分，这避免了遍历整个view的层级结构来计算大小。
+
+
+
+### 3. 内存优化
+
+需要更全面更深入的理解请查看[Android性能优化之内存优化](https://juejin.im/post/6844904096541966350)、[深入探索Android内存优化](https://jsonchao.github.io/2019/12/29/深入探索Android内存优化/)
 
 #### 1. 什么是内存泄漏？有哪些原因会引起内存泄漏？
 
@@ -1370,15 +2038,71 @@ LeakCanary会单独开一进程，用来执行分析任务，和监听任务分�
 
 LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还得用MAT原始方法
 
+#### 4. 你们内存优化项目的过程是怎么做的？
+
+**分析现状、确认问题**
+
+我们发现我们的APP在内存方面可能存在很大的问题，第一方面的原因是我们的线上的OOM率比较高。第二点呢，我们经常会看到在我们的Android Studio的Profiler工具中内存的抖动比较频繁。这是我一个初步的现状，然后在我们知道了这个初步的现状之后，进行了问题的确认，我们经过一系列的调研以及深入研究，我们最终发现我们的项目中存在以下几点大问题，比如说：内存抖动、内存溢出、内存泄漏，还有我们的Bitmap使用非常粗犷。
+
+**针对性优化**
+
+比如内存抖动的解决 -> Memory Profiler工具的使用（呈现了锯齿张图形） -> 分析到具体代码存在的问题（频繁被调用的方法中出现了日志字符串的拼接），也可以说说内存泄漏或内存溢出的解决。
+
+**效率提升**
+
+为了不增加业务同学的工作量，我们使用了一些工具类或ARTHook这样的大图检测方案,没有任何的侵入性,同时,我们将这些技术教给了大家,然后让大家一起进行工作效率上的提升。
+
+我们对内存优化工具Memory Profiler、MAT的使用比较熟悉，因此针对一系列不同问题的情况，我们写了一系列解决方案的文档，分享给大家。这样，我们整个团队成员的内存优化意识就变强了。
+
+#### 5. 你做了内存优化最大的感受是什么？
+
+**磨刀不误砍柴工**
+
+我们一开始并没有直接去分析项目中代码哪些地方存在内存问题，而是先去学习了Google官方的一些文档，比如说学习了Memory Profiler工具的使用、学习了MAT工具的使用，在我们将这些工具学习熟练之后，当在我们的项目中遇到内存问题时，我们就能够很快地进行排查定位问题进行解决。
+
+**技术优化必须结合业务代码**
+
+一开始，我们做了整体APP运行阶段的一个内存上报，然后，我们在一些重点的内存消耗模块进行了一些监控，但是后面发现这些监控并没有紧密地结合我们的业务代码，比如说在梳理完项目之后，发现我们项目中存在使用多个图片库的情况，多个图片库的内存缓存肯定是不公用的，所以导致我们整个项目的内存使用量非常高。所以进行技术优化时必须结合我们的业务代码。
+
+**系统化完善解决方案**
+
+我们在做内存优化的过程中，不仅做了Android端的优化工作，还将我们Android端一些数据的采集上报到了我们的服务器，然后传到我们的后台，这样，方便我们的无论是Bug跟踪人员或者是Crash跟踪人员进行一系列问题的解决。
+
+**如何检测所有不合理的地方？**
+
+比如说大图片的检测，我们最初的一个方案是通过继承ImageView，重写它的onDraw方法来实现。但是，我们在推广它的过程中，发现很多开发人员并不接受，因为很多ImageView之前已经写过了，你现在让他去替换，工作成本是比较高的。所以说，后来我们就想，有没有一种方案可以免替换，最终我们就找到了ARTHook这样一个Hook的方案。
+
+**如何避免内存抖动？**（代码注意事项）
+
+内存抖动是由于短时间内有大量对象进出新生区导致的，它伴随着频繁的GC，gc会大量占用ui线程和cpu资源，会导致app整体卡顿。
+
+避免发生内存抖动的几点建议：
+
+- 尽量避免在循环体内创建对象，应该把对象创建移到循环体外。
+- 注意自定义View的onDraw()方法会被频繁调用，所以在这里面不应该频繁的创建对象。
+- 当需要大量使用Bitmap的时候，试着把它们缓存在数组或容器中实现复用。
+- 对于能够复用的对象，同理可以使用对象池将它们缓存起来。
+
+
+
+
 
 
 ### 4. 响应速度优化
 
 #### 1. 有什么实际解决UI卡顿优化的经历
 
+#### 2. Android怎么加速启动Activity？
 
+- onCreate() 中不执行耗时操作：把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 减少主线程阻塞时间。
+- 提高 Adapter 和 AdapterView 的效率。
+- 优化布局文件。
 
 ### 5. 启动优化
+
+需要更全面更深入的理解请查看[深入探索Android启动速度优化](https://juejin.im/post/6844904093786308622)
 
 #### 1. 具体有哪些启动优化方法？如果首页就要用到的初始化？
 
@@ -1460,7 +2184,76 @@ void test(){
 
 而记录时间的方法就是通过looper()方法中循环去从MessageQueue中去取msg的时候，在dispatchMessage方法前后会有logging日志打印，所以只需要自定义一个Printer，重写println(String x)方法即可实现耗时统计了。
 
+#### 3. 性能优化，怎么保证应用启动不卡顿? 黑白屏怎么处理?
 
+**应用启动速度**，取决于你在application里面时候做了什么事情，比如你集成了很多sdk，并且sdk的init操作都需要在主线程里实现所以会有卡顿的感觉。在非必要的情况下可以把加载延后或则开启子线程处理
+
+另外，影响**界面卡顿**的两大因素，分别是**界面绘制和数据处理。**
+
+- 布局优化(使用include，merge标签，复杂布局推荐使用ConstraintLayout等)
+- onCreate() 中不执行耗时操作 把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 减少主线程阻塞时间。
+- 提高 Adapter 和 AdapterView 的效率。
+
+推荐文章：[Android 性能优化之内存检测、卡顿优化、耗电优化、APK瘦身](https://blog.csdn.net/csdn_aiyang/article/details/74989318)
+
+**黑白屏产生原因**：当我们在启动一个应用时，系统会去检查是否已经存在这样一个进程，如果不存在，系统的服务会先检查startActivity中的intent的信息，然后在去创建进程，最后启动Acitivy，即冷启动。而启动出现白黑屏的问题，就是在这段时间内产生的。系统在绘制页面加载布局之前，首先会初始化窗口（Window），而在进行这一步操作时，系统会根据我们设置的Theme来指定它的Theme 主题颜色，我们在Style中的设置就决定了显示的是白屏还是黑屏。
+
+- windowIsTranslucent和windowNoTitle，将这两个属性都设置成true (会有明显的卡顿体验，不推荐)
+- 如果启动页只是是一张图片，那么为启动页专一设置一个新的主题，设置主题的android:windowBackground属性为启动页背景图即可
+- 使用layer-list制作一张图片launcher_layer.xml，将其设置为启动页专一主题的背景，并将其设置为启动页布局的背景。
+
+推荐文章：[Android启动页解决攻略](https://blog.csdn.net/zivensonice/article/details/51691136)
+
+#### 4. 启动优化是怎么做的？
+
+- 分析现状、确认问题
+- 针对性优化（先概括，引导其深入）
+- 长期保持优化效果
+
+在某一个版本之后呢，我们会发现这个启动速度变得特别慢，同时用户给我们的反馈也越来越多，所以，我们开始考虑对应用的启动速度来进行优化。然后，我们就对启动的代码进行了代码层面的梳理，我们发现应用的启动流程已经非常复杂，接着，我们通过一系列的工具来确认是否在主线程中执行了太多的耗时操作。
+
+我们经过了细查代码之后，发现应用主线程中的任务太多，我们就想了一个方案去针对性地解决，也就是进行异步初始化。（引导=>第5题） 然后，我们还发现了另外一个问题，也可以进行针对性的优化，就是在我们的初始化代码当中有些的优先级并不是那么高，它可以不放在Application的onCreate中执行，而完全可以放在之后延迟执行的，因为我们对这些代码进行了延迟初始化，最后，我们还结合了idealHandler做了一个更优的延迟初始化的方案，利用它可以在主线程的空闲时间进行初始化，以减少启动耗时导致的卡顿现象。做完这些之后，我们的启动速度就变得很快了。
+
+最后，我简单说下我们是怎么长期来保持启动优化的效果的。首先，我们做了我们的启动器，并且结合了我们的CI，在线上加上了很多方面的监控。（引导=> 第7题）
+
+#### 5. 是怎么异步的，异步遇到问题没有？
+
+- 体现演进过程
+- 详细介绍启动器
+
+我们最初是采用的普通的一个异步的方案，即new Thread + 设置线程优先级为后台线程的方式在Application的onCreate方法中进行异步初始化，后来，我们使用了线程池、IntentService的方式，但是，在我们应用的演进过程当中，发现代码会变得不够优雅，并且有些场景非常不好处理，比如说多个初始化任务直接的依赖关系，比如说某一个初始化任务需要在某一个特定的生命周期中初始化完成，这些都是使用线程池、IntentService无法实现的。所以说，我们就开始思考一个新的解决方案，它能够完美地解决我们刚刚所遇到的这些问题。
+
+这个方案就是我们目前所使用的启动器，在启动器的概念中，我们将每一个初始化代码抽象成了一个Task，然后，对它们进行了一个排序，根据它们之间的依赖关系排了一个有向无环图，接着，使用一个异步队列进行执行，并且这个异步队列它和CPU的核心数是强烈相关的，它能够最大程度地保证我们的主线程和别的线程都能够执行我们的任务，也就是大家几乎都可以同时完成。
+
+#### 6. 启动优化有哪些容易忽略的注意点？
+
+- cpu time与wall time
+- 注意延迟初始化的优化
+- 介绍下黑科技
+
+首先，在CPU Profiler和Systrace中有两个很重要的指标，即cpu time与wall time，我们必须清楚cpu time与wall time之间的区别，wall time指的是代码执行的时间，而cpu time指的是代码消耗CPU的时间，锁冲突会造成两者时间差距过大。我们需要以cpu time来作为我们优化的一个方向。
+
+其次，我们不仅只追求启动速度上的一个提升，也需要注意延迟初始化的一个优化，对于延迟初始化，通常的做法是在界面显示之后才去进行加载，但是如果此时界面需要进行滑动等与用户交互的一系列操作，就会有很严重的卡顿现象，因此我们使用了idealHandler来实现cpu空闲时间来执行耗时任务，这极大地提升了用户的体验，避免了因启动耗时任务而导致的页面卡顿现象。
+
+最后，对于启动优化，还有一些黑科技，首先，就是我们采用了类预先加载的方式，我们在MultiDex.install方法之后起了一个线程，然后用Class.forName的方式来预先触发类的加载，然后当我们这个类真正被使用的时候，就不用再进行类加载的过程了。同时，我们再看Systrace图的时候，有一部分手机其实并没有给我们应用去跑满cpu，比如说它有8核，但是却只给了我们4核等这些情况，然后，有些应用对此做了一些黑科技，它会将cpu的核心数以及cpu的频率在启动的时候去进行一个暴力的提升。
+
+#### 7. 版本迭代导致的启动变慢有好的解决方式吗？
+
+- 启动器
+- 结合CI
+- 监控完善
+
+这种问题其实我们之前也遇到过，这的确非常难以解决。但是，我们后面对此进行了反复的思考与尝试，终于找到了一个比较好的解决方式。
+
+首先，我们使用了启动器去管理每一个初始化任务，并且启动器中每一个任务的执行都是被其自动进行分配的，也就是说这些自动分配的task我们会尽量保证它会平均分配在我们每一个线程当中的，这和我们普通的异步是不一样的，它可以很好地缓解我们应用的启动变慢。
+
+其次，我们还结合了CI，比如说，我们现在限制了一些类，如Application，如果有人修改了它，我们不会让这部分代码合并到主干分支或者是修改之后会有一些内部的工具如邮件的形式发送到我，然后，我就会和他确认他加的这些代码到底是耗时多少，能否异步初始化，不能异步的话就考虑延迟初始化，如果初始化时间太长，则可以考虑是否能进行懒加载，等用到的时候再去使用等等。
+
+然后，我们会将问题尽可能地暴露在上线之前。同时，我们真正已经到了线上的一个环境下时，我们进行了监控的一个完善，我们不仅是监控了App的整个的启动时间，同时呢，我们也将每一个生命周期都进行了一个监控。比如说Application的onCreate与onAttachBaseContext方法的耗时，以及这两个生命周期之间间隔的时间，我们都进行了一个监控，如果说下一次我们发现了这个启动速度变慢了，我们就可以去查找到底是哪一个环节变慢了，我们会和以前的版本进行对比，对比完成之后呢，我们就可以来找这一段新加的代码。
+
+#### 8. [开放问题：如果提高启动速度，设计一个延迟加载框架或者sdk的方法和注意的问题](https://blog.csdn.net/dd864140130/article/details/53558011)
 
 ### 6. Bitmap优化
 
@@ -1482,7 +2275,42 @@ void test(){
 
 
 
-### 9. 其他
+### 9. 网络优化
+
+#### 1. 移动端获取网络数据优化的几个点
+
+- 连接复用：节省连接建立时间，如开启 keep-alive。于Android来说默认情况下HttpURLConnection和HttpClient都开启了keep-alive。只是2.2之前HttpURLConnection存在影响连接池的Bug。
+- 请求合并：即将多个请求合并为一个进行请求，比较常见的就是网页中的CSS Image Sprites。如果某个页面内请求过多，也可以考虑做一定的请求合并。
+- 减少请求数据的大小：对于post请求，body可以做gzip压缩的，header也可以做数据压缩(不过只支持http 2.0)。
+
+返回数据的body也可以做gzip压缩，body数据体积可以缩小到原来的30%左右（也可以考虑压缩返回的json数据的key数据的体积，尤其是针对返回数据格式变化不大的情况，支付宝聊天返回的数据用到了）。
+
+- 根据用户的当前的网络质量来判断下载什么质量的图片（电商用的比较多）。
+- 使用HttpDNS优化DNS：DNS存在解析慢和DNS劫持等问题，DNS 不仅支持 UDP，它还支持 TCP，但是大部分标准的 DNS 都是基于 UDP 与 DNS 服务器的 53 端口进行交互。HTTPDNS 则不同，顾名思义它是利用 HTTP 协议与 DNS 服务器的 80 端口进行交互。不走传统的 DNS 解析，从而绕过运营商的 LocalDNS 服务器，有效的防止了域名劫持，提高域名解析的效率。
+
+![image](https://user-gold-cdn.xitu.io/2020/3/1/17095ea619dfe002?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+[参考文章](https://www.jianshu.com/p/940be2e758ee)
+
+#### 2. [客户端网络安全实现](http://mrpeak.cn/blog/encrypt/)
+
+#### 3. 设计一个网络优化方案，针对移动端弱网环境。
+
+### 10. App电量优化
+
+![image](https://user-gold-cdn.xitu.io/2020/3/1/170960058d314ee7?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+### 11. 安卓的安全优化
+
+#### 1. 提高app安全性的方法？
+
+#### 2. 安卓的app加固如何做？
+
+#### 3. 安卓的混淆原理是什么？
+
+#### 4. 谈谈你对安卓签名的理解。
+
+### 12. 其他
 
 #### 1. 什么是ANR 如何避免它？有没有实际的ANR定位问题的经历
 
@@ -1538,26 +2366,47 @@ Android为每个进程分配内存时，采用弹性的分配方式，即刚开�
 
 这个内存限制的值是在 /system/build.prop文件中可以[查看与修改](https://links.jianshu.com/go?to=https%3A%2F%2Fwww.droidviews.com%2Fedit-build-prop-file-on-android%2F)
 
-#### 5. Android怎么加速启动Activity？
+#### 5. Apk的大小如何压缩 ？
 
-- onCreate() 中不执行耗时操作：把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
-- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
-- 减少主线程阻塞时间。
-- 提高 Adapter 和 AdapterView 的效率。
-- 优化布局文件。
+一个完整APK包含以下目录（将APK文件拖到Android Studio）：
 
-#### 6. 有没有做过UI方面的优化，做过哪些?
+- **META-INF/**：包含**CERT.SF**和**CERT.RSA**签名文件以及**MANIFEST.MF** 清单文件。
+- **assets/**：包含应用可以使用**AssetManager**对象检索的应用资源。
+- **res/**：包含未编译到的资源 resources.arsc。
+- **lib/**：包含特定于处理器软件层的编译代码。该目录包含了每种平台的子目录，像**armeabi，armeabi-v7a， arm64-v8a，x86，x86_64，和mips**。
+- **resources.arsc**：包含已编译的资源。该文件包含**res/values/** 文件夹所有配置中的XML内容。打包工具提取此XML内容，将其编译为二进制格式，并将内容归档。此内容包括语言字符串和样式，以及直接包含在`resources.arsc`文件中的内容路径 ，例如布局文件和图像。
+- **classes.dex**：包含以**Dalvik / ART**虚拟机可理解的**DEX**文件格式编译的类。
+- **AndroidManifest.xml**：包含核心Android清单文件。该文件列出应用程序的名称，版本，访问权限和引用的库文件。该文件使用Android的二进制XML格式。
 
-[Android性能优化（二）之布局优化面面观](https://www.jianshu.com/p/4f44a178c547)
+![img](https://user-gold-cdn.xitu.io/2019/3/27/169bd48e53be9928?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-- 调试GPU过度绘制，将Overdraw降低到合理范围内；
-- 减少嵌套层次及控件个数，保持view的树形结构尽量扁平（使用Hierarchy Viewer可以方便的查看），同时移除所有不需要渲染的view；
-- 使用GPU配置渲染工具，定位出问题发生在具体哪个步骤，使用TraceView精准定位代码；
-- 使用标签，merge减少嵌套层次、viewStub延迟初始化、include布局重用 (与merge配合使用)
+lib、class.dex和res占用了超过90%的空间，所以这三块是优化Apk大小的重点（实际情况不唯一）
 
+**减少res，压缩图文文件**
 
+图片文件压缩是针对jpg和png格式的图片。我们通常会放置多套不同分辨率的图片以适配不同的屏幕，这里可以进行适当的删减。在实际使用中，只保留一到两套就足够了（保留一套的话建议保留xxhdpi，两套的话就加上hdpi），然后再对剩余的图片进行压缩(jpg采用优图压缩，png尝试采用pngquant压缩)
+
+**减少dex文件大小**
+
+添加资源混淆。`shrinkResources`为true表示移除未引用资源，和代码压缩协同工作。`minifyEnabled`为true表示通过`ProGuard`启用代码压缩，配合`proguardFiles`的配置对代码进行混淆并移除未使用的代码。代码混淆在压缩apk的同时，也提升了安全性。
+
+![img](https://user-gold-cdn.xitu.io/2019/3/27/169be5f6fe340e53?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+推荐文章：[Android混淆最佳实践](https://www.jianshu.com/p/cba8ca7fc36d)
+
+**减少lib文件大小**
+
+- 由于引用了很多第三方库，lib文件夹占用的空间通常都很大，特别是有so库的情况下。很多so库会同时引入armeabi、armeabi-v7a和x86这几种类型，这里可以只保留armeabi或armeabi-v7a的其中一个就可以了，实际上微信等主流app都是这么做的。
+- 只需在build.gradle直接配置即可，NDK配置同理
+
+![img](https://user-gold-cdn.xitu.io/2019/3/27/169be64df0148df3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+推荐文章：[APK瘦身](https://www.jianshu.com/p/5921e9561f5f)
+
+![image](https://user-gold-cdn.xitu.io/2020/3/2/17098b45835e575c?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 ## 六、插件化
+
 #### 1. 为什么需要插件化？插件化的主要优点和缺点是什么？
 
 我觉得最主要的原因是可以动态扩展功能。
@@ -1568,13 +2417,49 @@ Android为每个进程分配内存时，采用弹性的分配方式，即刚开�
 
 **优点**
 
-
+- 低耦合
+- 应用间的接入和维护更便捷，每个应用团队只需要负责自己的那一部分。
+- 应用及主dex的体积也会相应变小，间接地避免了65536限制。
+- 第一次加载到内存的只有淘宝客户端，当使用到其它插件时才会加载相应插件到内存，以减少内存占用。
 
 **缺点**
 
+**对比**：
 
+- 最早的插件化框架：2012年大众点评的屠毅敏就推出了AndroidDynamicLoader框架。
+- 目前主流的插件化方案有滴滴任玉刚的VirtualApk、360的DroidPlugin、RePlugin、Wequick的Small框架。
+- 如果加载的插件不需要和宿主有任何耦合，也无须和宿主进行通信，比如加载第三方App，那么推荐使用RePlugin，其他情况推荐使用VirtualApk。由于VirtualApk在加载耦合插件方面是插件化框架的首选，具有普遍的适用性，因此有必要对它的源码进行了解。
 
 #### 2. 插件化的原理是怎样的？
+
+**插件化**是指将 APK 分为**宿主**和**插件**的部分。把需要实现的模块或功能当做一个独立的提取出来，在 APP 运行时，我们可以动态的**载入**或者**替换插件**部分，减少**宿主**的规模
+
+- 宿主： 就是当前运行的APP。
+- 插件： 相对于插件化技术来说，就是要加载运行的apk类文件。
+
+![img](https://user-gold-cdn.xitu.io/2019/4/7/169f6c21ae14fee0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+> **类加载机制**
+>
+> Android中常用的两种类加载器，**DexClassLoader**和**PathClassLoader**，它们都继承于**BaseDexClassLoader**，两者**区别**在于**PathClassLoader**只能加载**内部存储目录**的dex/jar/apk文件。**DexClassLoader**支持加载**指定目录**(不限于内部)的dex/jar/apk文件
+>
+> **插件通信**：通过给插件apk生成相应的DexClassLoader便可以访问其中的类，可分为单DexClassLoader和多DexClassLoader两种结构。
+>
+> - 若使用**多ClassLoader机制**，主工程引用插件中类需要先通过插件的ClassLoader加载该类再通过**反射**调用其方法。插件化框架一般会通过统一的入口去管理对各个插件中类的访问，并且做一定的限制。
+> - 若使用**单ClassLoader机制**，主工程则可以**直接通过**类名去访问插件中的类。该方式有个弊端，若两个不同的插件工程引用了一个库的不同版本，则程序可能会出错。
+>
+> **资源加载**
+>
+> 原理在于通过反射将插件apk的路径加入AssetManager中并创建Resource对象加载资源，有两种处理方式：
+>
+> - 合并式：addAssetPath时加入所有插件和主工程的路径；由于AssetManager中加入了所有插件和主工程的路径，因此生成的Resource可以同时访问插件和主工程的资源。但是由于主工程和各个插件都是独立编译的，生成的资源id会存在相同的情况，在访问时会产生资源冲突。
+> - 独立式：各个插件只添加自己apk路径，各个插件的资源是互相隔离的，不过如果想要实现资源的共享，必须拿到对应的Resource对象。
+>
+> 推荐文章：
+>
+> - [Android动态加载技术 简单易懂的介绍方式](https://segmentfault.com/a/1190000004062866#articleHeader1)
+> - [深入理解Android插件化技术](https://yq.aliyun.com/articles/361233?utm_content=m_40296)
+> - [为什么要做热更新](https://www.cnblogs.com/baiqiantao/p/9160806.html)
 
 要实现插件化，也就是实现从apk读取所有数据，要考虑三个问题：
 
@@ -1765,9 +2650,51 @@ public class InstrumentationProxy extends Instrumentation {
 
 虽然插件化用的不多了，但是我觉得技术还是可以了解的，而且热更新主要用的也是这些技术。方案可以被淘汰，但是技术不会。
 
+#### 8. Hook以及插桩技术
+
+**Hook**是一种用于**改变API执行结果**的技术，能够将系统的API函数执行**重定向**（应用的**触发事件**和**后台逻辑处理**是根据事件流程一步步地向下执行。而**Hook**的意思，就是在事件传送到终点前截获并监控事件的传输，像个钩子钩上事件一样，并且能够在钩上事件时，处理一些自己特定的事件，例如逆向破解App）
+
+![img](https://user-gold-cdn.xitu.io/2019/4/17/16a2a2f8cf3e4448?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+Android 中的 Hook 机制，大致有两个方式：
+
+- 要 root 权限，直接 Hook 系统，可以干掉所有的 App。
+- 无 root 权限，但是只能 Hook 自身app，对系统其它 App 无能为力。
+
+**插桩**是以静态的方式修改第三方的代码，也就是从编译阶段，对源代码（中间代码）进行编译，而后重新打包，是**静态的篡改**； 而**Hook**则不需要再编译阶段修改第三方的源码或中间代码，是在运行时通过反射的方式修改调用，是一种**动态的篡改**
+
+推荐文章：
+
+- [Android插件化原理解析——Hook机制之动态代理](http://weishu.me/2016/01/28/understand-plugin-framework-proxy-hook/)
+- [android 插桩基本概念](https://blog.csdn.net/fei20121106/article/details/51879047)
+- [Android逆向之旅](http://www.520monkey.com/)
+
+
+
+
 ## 七、组件化
 
 #### 1. 组件化有详细了解过吗？
+
+**引入组件化的原因**：项目随着需求的增加规模变得越来越大，规模的增大导致了各种业务错中复杂的交织在一起, 每个业务模块之间，代码没有约束，带来了代码边界的模糊，代码冲突时有发生, 更改一个小问题可能引起一些新的问题, 牵一发而动全身，增加一个新需求，需要熟悉相关的代码逻辑，增加开发时间
+
+- **避免重复造轮子，可以节省开发和维护的成本。**
+- **可以通过组件和模块为业务基准合理地安排人力，提高开发效率。**
+- **不同的项目可以共用一个组件或模块，确保整体技术方案的统一性。**
+- **为未来插件化共用同一套底层模型做准备。**
+
+**组件化开发流程**就是把一个功能完整的App或模块拆分成**多个子模块（Module）**，每个子模块可以**独立编译运行**，也可以任意组合成另一个新的 App或模块，每个模块即不相互依赖但又可以相互交互，但是最终发布的时候是将这些组件合并统一成一个apk，遇到某些特殊情况甚至可以**升级**或者**降级**
+
+举个简单的模型例子：
+
+![APP架构图](https://user-gold-cdn.xitu.io/2019/4/7/169f692c69f60c06?imageView2/0/w/1280/h/960/format/webp/ignore-error/1) ![APP代码结构图](https://user-gold-cdn.xitu.io/2019/4/7/169f690af8eea279?imageView2/0/w/1280/h/960/format/webp/ignore-error/1) App是主application，ModuleA和ModuleB是两个业务模块（**相对独立，互不影响**），Library是基础模块，包含所有模块需要的依赖库，以及一些工具类：如网络访问、时间工具等
+
+> 提供给各业务模块的基础组件，需要根据具体情况拆分成 aar 或者 library，像登录，基础网络层这样较为稳定的组件，一般直接打包成 aar，减少编译耗时。而像自定义 View 组件，由于随着版本迭代会有较多变化，就直接以源码形式抽离成 Library
+
+推荐文章：[干货 | 从智行 Android 项目看组件化架构实践](https://mp.weixin.qq.com/s?__biz=MjM5MDI3MjA5MQ==&mid=2697268363&idx=1&sn=3db2dce36a912936961c671dd1f71c78&scene=21#wechat_redirect)
+
+
+
 
 #### 2. ARouter详细原理
 
@@ -1795,9 +2722,9 @@ ARouter.getInstance().build("/test/activity").navigation();
 - 然后`new Intent`方法，如果有调用`ARouter`的`withString()`方法，就会调用`intent.putExtra(String name, String value)`方法添加参数
 - 最后调用`navigation()`方法，它的内部会调用startActivity(intent)进行跳转
 
-#### 3.ARouter怎么实现接口调用
+#### 3. ARouter怎么实现接口调用
 
-#### 4.ARouter怎么实现页面拦截
+#### 4. ARouter怎么实现页面拦截
 
 先说一个拦截器的案例，用作页面跳转时候检验是否登录，然后判断跳转到登录页面还是目标页面：
 
@@ -1892,7 +2819,67 @@ dependencies {
 
 然后就可以正常使用了。
 
-#### 4.如果不用ARouter，你会怎么去解藕。接口？设计接口有什么需要注意的？
+#### 6.如果不用ARouter，你会怎么去解藕。接口？设计接口有什么需要注意的？
+
+#### 7. 跨组件通信
+
+组件通信场景：
+
+- 第一种是组件之间的页面跳转 (Activity 到 Activity, Fragment 到 Fragment, Activity 到 Fragment, Fragment 到 Activity) 以及跳转时的数据传递 (基础数据类型和可序列化的自定义类类型)。
+- 第二种是组件之间的自定义类和自定义方法的调用(组件向外提供服务)。
+
+跨组件通信方案分析：
+
+- 第一种**组件之间的页面跳转**实现简单，跳转时想传递不同类型的数据提供有相应的 API即可。
+
+- 第二种组件之间的自定义类和
+
+  自定义方法的调用
+
+  要稍微复杂点，需要 ARouter 配合架构中的 公共服务(CommonService) 实现：
+
+  - 提供服务的业务模块：
+  - 在公共服务(CommonService) 中声明 Service 接口 (含有需要被调用的自定义方法), 然后在自己的模块中实现这个 Service 接口, 再通过 ARouter API 暴露实现类。
+  - 使用服务的业务模块：
+    - 通过 ARouter 的 API 拿到这个 Service 接口(多态持有, 实际持有实现类), 即可调用 Service 接口中声明的自定义方法, 这样就可以达到模块之间的交互。
+  - 此外，可以使用 AndroidEventBus 其独有的 Tag, 可以在开发时更容易定位发送事件和接受事件的代码, 如果以组件名来作为 Tag 的前缀进行分组, 也可以更好的统一管理和查看每个组件的事件, 当然也不建议大家过多使用 EventBus。
+
+如何管理过多的路由表？
+
+- RouterHub 存在于基础库, 可以被看作是所有组件都需要遵守的通讯协议, 里面不仅可以放路由地址常量, 还可以放跨组件传递数据时命名的各种 Key 值, 再配以适当注释, 任何组件开发人员不需要事先沟通只要依赖了这个协议, 就知道了各自该怎样协同工作, 既提高了效率又降低了出错风险, 约定的东西自然要比口头上说强。
+- Tips: 如果您觉得把每个路由地址都写在基础库的 RouterHub 中, 太麻烦了, 也可以在每个组件内部建立一个私有 RouterHub, 将不需要跨组件的路由地址放入私有 RouterHub 中管理, 只将需要跨组件的路由地址放入基础库的公有 RouterHub 中管理, 如果您不需要集中管理所有路由地址的话, 这也是比较推荐的一种方式。
+
+ARouter路由原理：
+
+- ARouter维护了一个路由表Warehouse，其中保存着全部的模块跳转关系，ARouter路由跳转实际上还是调用了startActivity的跳转，使用了原生的Framework机制，只是通过apt注解的形式制造出跳转规则，并人为地拦截跳转和设置跳转条件。
+
+常见的组件化方案如下：
+
+
+![img](https://user-gold-cdn.xitu.io/2019/4/7/169f6a3d472ef431?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+
+#### 8. 组件化中路由、埋点的实现
+
+因为在组件化中，各个业务模块之间是各自**独立**的, 并不会存在相互依赖的关系, 所以一个业务模块是访问不了其他业务模块的代码的, 如果想从 A 业务模块的 A 页面跳转到 B 业务模块的 B 页面, 光靠模块自身是不能实现的，这就需要一种跨组件通信方案—— **路由（Router）**
+
+路由
+
+主要有以下两种场景:
+
+- 第一种是**组件之间的页面跳转** (Activity 到 Activity, Fragment 到 Fragment, Activity 到 Fragment, Fragment 到 Activity) 以及跳转时的数据传递 (基础数据类型和可序列化的自定义类类型)
+- 第二种是**组件之间的自定义类**和**自定义方法的调用**(组件向外提供服务)
+
+其**原理**在于将分布在不同组件module中的某些类按照一定规则生成映射表（数据结构通常是Map，Key为一个字符串，Value为类或对象），然后在需要用到的时候从映射表中根据字符串从映射表中取出类或对象，本质上是类的查找
+
+埋点则是在应用中特定的流程收集一些信息，用来跟踪应用使用的状况
+
+- **代码埋点**：在某个事件发生时调用SDK里面相应的接口发送埋点数据，百度统计、友盟、TalkingData、Sensors Analytics等第三方数据统计服务商大都采用这种方案
+- **全埋点**：全埋点指的是将Web页面/App内产生的所有的、满足某个条件的行为，全部上报到后台服务器
+- **可视化埋点**：通过可视化工具（例如Mixpanel）配置采集节点，在Android端自动解析配置并上报埋点数据，从而实现所谓的**自动埋点**
+- **无埋点**：它并不是真正的不需要埋点，而是Android端自动采集全部事件并上报埋点数据，在后端数据计算时过滤出有用数据
+
+推荐文章：[安卓组件化开源方案实现](https://juejin.im/post/6844903565035569166)
 
 
 
@@ -1902,9 +2889,222 @@ dependencies {
 
 #### 2. 热修复的原理，资源的热修复的原理,会不会有资源冲突的问题
 
+#### 3. 热修复技术是怎样实现的，和插件化有什么区别？
+
+插件化：动态加载主要解决3个技术问题：
+
+- 1、使用ClassLoader加载类。
+- 2、资源访问。
+- 3、生命周期管理。
+
+插件化是体现在功能拆分方面的，它将某个功能独立提取出来，独立开发，独立测试，再插入到主应用中。以此来减少主应用的规模。
+
+热修复：为了修复Bug的。
+
+**代码热修复原理**：
+
+- 将编译好的class文件拆分打包成两个dex，绕过dex方法数量的限制以及安装时的检查，在运行时再动态加载第二个dex文件中。
+- 热修复是体现在bug修复方面的，它实现的是不需要重新发版和重新安装，就可以去修复已知的bug。
+- 利用PathClassLoader和DexClassLoader去加载与bug类同名的类，替换掉bug类，进而达到修复bug的目的，原理是在app打包的时候阻止类打上CLASS_ISPREVERIFIED标志，然后在热修复的时候动态改变BaseDexClassLoader对象间接引用的dexElements，替换掉旧的类。
+
+相同点:
+
+都使用ClassLoader来实现加载新的功能类，都可以使用PathClassLoader与DexClassLoader。
+
+不同点：
+
+热修复因为是为了修复Bug的，所以要将新的类替代同名的Bug类，要抢先加载新的类而不是Bug类，所以多做两件事：在原先的app打包的时候，阻止相关类去打上CLASS_ISPREVERIFIED标志，还有在热修复时动态改变BaseDexClassLoader对象间接引用的dexElements，这样才能抢先代替Bug类，完成系统不加载旧的Bug类.。  而插件化只是增加新的功能类或者是资源文件，所以不涉及抢先加载新的类这样的使命，就避过了阻止相关类去打上CLASS_ISPREVERIFIED标志和还有在热修复时动态改变BaseDexClassLoader对象间接引用的dexElements.
+
+所以插件化比热修复简单，热修复是在插件化的基础上在进行替换旧的Bug类。
+
+##### 热修复原理
+
+**1.资源修复**：
+
+很多热修复框架的资源修复参考了Instant Run的资源修复的原理。
+
+传统编译部署流程如下：
+
+Instant Run编译部署流程如下：
+
+- Hot Swap：修改一个现有方法中的代码时会采用Hot Swap。
+- Warm Swap：修改或删除一个现有的资源文件时会采用Warm Swap。
+- Cold Swap：有很多情况，如添加、删除或修改一个字段和方法、添加一个类等。
+
+Instant Run中的资源热修复流程：
+
+- 1、创建新的AssetManager，通过反射调用addAssetPath方法加载外部的资源，这样新创建的AssetManager就含有了外部资源。
+- 2、将AssetManager类型的mAssets字段的引用全部替换为新创建的AssetManager。
+
+**2.代码修复**：
+
+1、类加载方案：
+
+65536限制：
+
+65536的主要原因是DVM Bytecode的限制，DVM指令集的方法调用指令invoke-kind索引为16bits，最多能引用65535个方法。
+
+LinearAlloc限制：
+
+- DVM中的LinearAlloc是一个固定的缓存区，当方法数超过了缓存区的大小时会报错。
+
+Dex分包方案主要做的是在打包时将应用代码分成多个Dex，将应用启动时必须用到的类和这些类的直接引用类放到Dex中，其他代码放到次Dex中。当应用启动时先加载主Dex，等到应用启动后再动态地加载次Dex，从而缓解了主Dex的65536限制和LinearAlloc限制。
+
+加载流程：
+
+- 根据dex文件的查找流程，我们将有Bug的类Key.class进行修改，再将Key.class打包成包含dex的补丁包Patch.jar，放在Element数组dexElements的第一个元素，这样会首先找到Patch.dex中的Key.class去替换之前存在Bug的Key.class，排在数组后面的dex文件中存在Bug的Key.class根据ClassLoader的双亲委托模式就不会被加载。
+
+类加载方案需要重启App后让ClassLoader重新加载新的类，为什么需要重启呢？
+
+- 这是因为类是无法被卸载的，要想重新加载新的类就需要重启App，因此采用类加载方案的热修复框架是不能即时生效的。
+
+各个热修复框架的实现细节差异：
+
+- QQ空间的超级补丁和Nuwa是按照上面说的将补丁包放在Element数组的第一个元素得到优先加载。
+- 微信的Tinker将新旧APK做了diff，得到path.dex，再将patch.dex与手机中APK的classes.dex做合并，生成新的classes.dex，然后在运行时通过反射将classes.dex放在Elements数组的第一个元素。
+- 饿了么的Amigo则是将补丁包中每个dex对应的Elements取出来，之后组成新的Element数组，在运行时通过反射用新的Elements数组替换掉现有的Elements数组。
+
+2、底层替换方案：
+
+当我们要反射Key的show方法，会调用Key.class.getDeclaredMethod("show").invoke(Key.class.newInstance());，最终会在native层将传入的javaMethod在ART虚拟机中对应一个ArtMethod指针，ArtMethod结构体中包含了Java方法的所有信息，包括执行入口、访问权限、所属类和代码执行地址等。
+
+替换ArtMethod结构体中的字段或者替换整个ArtMethod结构体，这就是底层替换方案。
+
+AndFix采用的是替换ArtMethod结构体中的字段，这样会有兼容性问题，因为厂商可能会修改ArtMethod结构体，导致方法替换失败。
+
+Sophix采用的是替换整个ArtMethod结构体，这样不会存在兼容问题。
+
+底层替换方案直接替换了方法，可以立即生效不需要重启。采用底层替换方案主要是阿里系为主，包括AndFix、Dexposed、阿里百川、Sophix。
+
+3、Instant Run方案：
+
+什么是ASM？
+
+ASM是一个java字节码操控框架，它能够动态生成类或者增强现有类的功能。ASM可以直接产生class文件，也可以在类被加载到虚拟机之前动态改变类的行为。
+
+Instant Run在第一次构建APK时，使用ASM在每一个方法中注入了类似的代码逻辑：当change不为null时，则调用它的accesschange不为null时，则调用它的accesschange不为null时，则调用它的accessdispatch方法，参数为具体的方法名和方法参数。当MainActivity的onCreate方法做了修改，就会生成替换类MainActivityoverride，这个类实现了IncrementalChange接口，同时也会生成一个AppPatchesLoaderImpl类，这个类的getPatchedClasses方法会返回被修改的类的列表（里面包含了MainActivity），根据列表会将MainActivity的override，这个类实现了IncrementalChange接口，同时也会生成一个AppPatchesLoaderImpl类，这个类的getPatchedClasses方法会返回被修改的类的列表（里面包含了MainActivity），根据列表会将MainActivity的override，这个类实现了IncrementalChange接口，同时也会生成一个AppPatchesLoaderImpl类，这个类的getPatchedClasses方法会返回被修改的类的列表（里面包含了MainActivity），根据列表会将MainActivity的change设置为MainActivityoverride。最后这个override。最后这个override。最后这个change就不会为null，则会执行MainActivityoverride的accessoverride的accessoverride的accessdispatch方法，最终会执行onCreate方法，从而实现了onCreate方法的修改。
+
+借鉴Instant Run原理的热修复框架有Robust和Aceso。
+
+**3. 动态链接库修复**：
+
+重新加载so。
+
+加载so主要用到了System类的load和loadLibrary方法，最终都会调用到nativeLoad方法。其会调用JavaVMExt的LoadNativeLibrary函数来加载so。
+
+so修复主要有两个方案：
+
+- 1、将so补丁插入到NativeLibraryElement数组的前部，让so补丁的路径先被返回和加载。
+- 2、调用System的load方法来接管so的加载入口。
+
 
 
 ## 九、NDK
+
+#### 1. 对JNI是否了解
+
+Java的优点是**跨平台**，但也因为其跨平台的的特性导致其**本地交互的能力不够强大**，一些和操作系统相关的的特性Java无法完成，于是**Java提供JNI专门用于和本地代码交互，通过JNI，用户可以调用C、C++编写的本地代码**
+
+NDK是Android所提供的一个工具集合，通过NDK可以在Android中更加方便地通过JNI访问本地代码，其优点在于
+
+- 提高代码的安全性。由于so库反编译困难，因此NDK提高了Android程序的安全性
+- 可以很方便地使用目前已有的C/C++开源库
+- 便于平台的移植。通过C/C++实现的动态库可以很方便地在其它平台上使用
+- 提高程序在某些特定情形下的执行效率，但是并不能明显提升Android程序的性能
+
+**Java调用C++**
+
+- 在Java中声明Native方法（即需要调用的本地方法）
+- 编译上述 Java源文件javac（得到 .class文件） 3。 通过 javah 命令导出JNI的头文件（.h文件）
+- 使用 Java需要交互的本地代码 实现在 Java中声明的Native方法
+- 编译.so库文件
+- 通过Java命令执行 Java程序，最终实现Java调用本地代码
+
+**C++调用Java**
+
+- 从classpath路径下搜索ClassMethod这个类，并返回该类的Class对象。
+- 获取类的默认构造方法ID。
+- 查找实例方法的ID。
+- 创建该类的实例。
+- 调用对象的实例方法。
+
+```java
+JNIEXPORT void JNICALL Java_com_study_jnilearn_AccessMethod_callJavaInstaceMethod  (JNIEnv *env, jclass cls)  
+{  
+  jclass clazz = NULL;  
+  jobject jobj = NULL;  
+  jmethodID mid_construct = NULL;  
+  jmethodID mid_instance = NULL;  
+  jstring str_arg = NULL;  
+  // 1、从classpath路径下搜索ClassMethod这个类，并返回该类的Class对象  
+  clazz = (*env)->FindClass(env, "com/study/jnilearn/ClassMethod");  
+  if (clazz == NULL) {  
+      printf("找不到'com.study.jnilearn.ClassMethod'这个类");  
+      return;  
+  }  
+    
+  // 2、获取类的默认构造方法ID  
+  mid_construct = (*env)->GetMethodID(env,clazz, "<init>","()V");  
+  if (mid_construct == NULL) {  
+      printf("找不到默认的构造方法");  
+      return;  
+  }  
+
+  // 3、查找实例方法的ID  
+  mid_instance = (*env)->GetMethodID(env, clazz, "callInstanceMethod", "(Ljava/lang/String;I)V");  
+  if (mid_instance == NULL) {  
+
+      return;  
+  }  
+
+  // 4、创建该类的实例  
+  jobj = (*env)->NewObject(env,clazz,mid_construct);  
+  if (jobj == NULL) {  
+      printf("在com.study.jnilearn.ClassMethod类中找不到callInstanceMethod方法");  
+      return;  
+  }  
+
+  // 5、调用对象的实例方法  
+  str_arg = (*env)->NewStringUTF(env,"我是实例方法");  
+  (*env)->CallVoidMethod(env,jobj,mid_instance,str_arg,200);  
+
+  // 删除局部引用  
+  (*env)->DeleteLocalRef(env,clazz);  
+  (*env)->DeleteLocalRef(env,jobj);  
+  (*env)->DeleteLocalRef(env,str_arg);  
+}  
+```
+
+
+
+#### 2. 如何加载NDK库 ？如何在JNI中注册Native函数，有几种注册方法 ？
+
+```java
+   public class JniTest{
+        //加载NDK库 
+        static{
+            System.loadLirary("jni-test");
+        }
+    }
+```
+
+注册JNI函数的两种方法
+
+- 静态方法
+- 动态注册
+
+> [注册JNI函数的两种方式](https://blog.csdn.net/wwj_748/article/details/52347341)
+>
+> [Android JNI 篇 - 从入门到放弃](https://www.jianshu.com/p/3dab1be3b9a4)
+
+#### 3. 你用JNI来实现过什么功能 ？ 怎么实现的 ？（加密处理、影音方面、图形图像处理)
+
+> 推荐文章：[Android JNI 篇 - ffmpeg 获取音视频缩略图](https://www.jianshu.com/p/411761bd5f5b)
+
+#### 4. so 的加载流程是怎样的，生命周期是怎样的？
+
+这个要从 java 层去看源码分析，是从 ClassLoader 的 PathList 中去找到目标路径加载的，同时 so 是通过 mmap 加载映射到虚拟空间的。生命周期加载库和卸载库时分别调用 JNI_OnLoad() 和 JNI_OnUnload() 方法。
+
 
 
 
@@ -2166,6 +3366,28 @@ public @interface JavascriptInterface {
 }
 ```
 
+#### 15. 为什么WebView加载会慢呢？
+
+这是因为在客户端中，加载H5页面之前，需要先初始化WebView，在WebView完全初始化完成之前，后续的界面加载过程都是被阻塞的。
+
+优化手段围绕着以下两个点进行：
+
+- 预加载WebView。
+- 加载WebView的同时，请求H5页面数据。
+
+因此常见的方法是：
+
+- 全局WebView。
+- 客户端代理页面请求。WebView初始化完成后向客户端请求数据。
+- asset存放离线包。
+
+除此之外还有一些其他的优化手段：
+
+- 脚本执行慢，可以让脚本最后运行，不阻塞页面解析。
+- DNS链接慢，可以让客户端复用使用的域名与链接。
+- React框架代码执行慢，可以将这部分代码拆分出来，提前进行解析。
+
+
 
 
 
@@ -2178,7 +3400,7 @@ public @interface JavascriptInterface {
 - MVP：Model-View-Presenter，是对MVC的升级，Model层和View层与MVC的意思一致，但Model层和View层不再存在耦合，而是通过Presenter层这个桥梁进行交流。
 - MVVM：Model-View-ViewModel，不同于上面的两个框架，ViewModel持有数据状态，当数据状态改变的时候，会自动通知View层进行更新。
 
-MVC:
+**MVC**
 
 - 视图层(View)
   对应于xml布局文件和java代码动态view部分
@@ -2187,30 +3409,29 @@ MVC:
 - 模型层(Model)
   针对业务模型，建立数据结构和相关的类，它主要负责网络请求，数据库处理，I/O的操作。
 
-具有一定的分层，model彻底解耦，controller和view并没有解耦
-层与层之间的交互尽量使用回调或者去使用消息机制去完成，尽量避免直接持有
-controller和view在android中无法做到彻底分离，但在代码逻辑层面一定要分清
-业务逻辑被放置在model层，能够更好的复用和修改增加业务。
+具有一定的分层，model彻底解耦，controller和view并没有解耦。层与层之间的交互尽量使用回调或者去使用消息机制去完成，尽量避免直接持有controller和view，在android中无法做到彻底分离，但在代码逻辑层面一定要分清。业务逻辑被放置在model层，能够更好的复用和修改增加业务。
 
-MVP：
+**MVP**
 
 通过引入接口BaseView，让相应的视图组件如Activity，Fragment去实现BaseView，实现了视图层的独立，通过中间层Preseter实现了Model和View的完全解耦。MVP彻底解决了MVC中View和Controller傻傻分不清楚的问题，但是随着业务逻辑的增加，一个页面可能会非常复杂，UI的改变是非常多，会有非常多的case，这样就会造成View的接口会很庞大。
 
-MVVM：
+**MVVM**
 
 MVP中我们说过随着业务逻辑的增加，UI的改变多的情况下，会有非常多的跟UI相关的case，这样就会造成View的接口会很庞大。而MVVM就解决了这个问题，通过双向绑定的机制，实现数据和UI内容，只要想改其中一方，另一方都能够及时更新的一种设计理念，这样就省去了很多在View层中写很多case的情况，只需要改变数据就行。
 
-MVVM与DataBinding的关系？
+**MVVM与DataBinding的关系？**
 
 MVVM是一种思想，DataBinding是谷歌推出的方便实现MVVM的工具。
 
 看起来MVVM很好的解决了MVC和MVP的不足，但是由于数据和视图的双向绑定，导致出现问题时不太好定位来源，有可能数据问题导致，也有可能业务逻辑中对视图属性的修改导致。如果项目中打算用MVVM的话可以考虑使用官方的架构组件ViewModel、LiveData、DataBinding去实现MVVM。
 
-三者如何选择？
+**三者如何选择？**
 
 - 如果项目简单，没什么复杂性，未来改动也不大的话，那就不要用设计模式或者架构方法，只需要将每个模块封装好，方便调用即可，不要为了使用设计模式或架构方法而使用。
 - 对于偏向展示型的app，绝大多数业务逻辑都在后端，app主要功能就是展示数据，交互等，建议使用mvvm。
 - 对于工具类或者需要写很多业务逻辑app，使用mvp或者mvvm都可。
+
+推荐文章：[MVC、MVP、MVVM，我到底该怎么选？](https://juejin.im/post/6844903632446423054)
 
 #### 2. MVC和MVP的区别是什么？
 
@@ -2246,15 +3467,57 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 
 
+#### 12. 封装Presenter层之后.如果Presenter层数据过大,如何解决?
+
+对于MVP模式来说，P层如果数据逻辑过于臃肿，建议引入**RxJava**或则**Dagger**，越是复杂的逻辑，越能体现RxJava的优越性
+
+
+
 ## 十二、 Android 虚拟机 
 
 #### 1. DVM 和 JVM 的区别？
 
 a) dvm 执行的是.dex 文件，而 jvm 执行的是.class。Android 工程编译后的所有.class 字节码会被 dex 工具抽 取到一个.dex 文件中。 
 
+JVM：`.java -> javac -> .class -> jar -> .jar`
+
+DVM：`.java -> javac -> .class -> dx.bat -> .dex`
+
 b) dvm 是基于寄存器的虚拟机 而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
 
+JVM架构: 堆和栈的架构.
+
+DVM架构: 寄存器(cpu上的一块高速缓存)
+
 c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的.class 文件整合到.dex 文件中。减少 了 I/O 操作，提高了类的查找速度。
+
+#### 2. Android2个虚拟机的区别（一个5.0之前，一个5.0之后）
+
+什么是Dalvik：Dalvik是Google公司自己设计用于Android平台的Java虚拟机。Dalvik虚拟机是Google等厂商合作开发的Android移动设备平台的核心组成部分之一，它可以支持已转换为.dex(即Dalvik Executable)格式的Java应用程序的运行，.dex格式是专为Dalvik应用设计的一种压缩格式，适合内存和处理器速度有限的系统。Dalvik经过优化，允许在有限的内存中同时运行多个虚拟机的实例，并且每一个Dalvik应用作为独立的Linux进程执行。独立的进程可以防止在虚拟机崩溃的时候所有程序都被关闭。
+
+什么是ART:Android操作系统已经成熟，Google的Android团队开始将注意力转向一些底层组件，其中之一是负责应用程序运行的Dalvik运行时。Google开发者已经花了两年时间开发更快执行效率更高更省电的替代ART运行时。ART代表Android Runtime,其处理应用程序执行的方式完全不同于Dalvik，Dalvik是依靠一个Just-In-Time(JIT)编译器去解释字节码。开发者编译后的应用代码需要通过一个解释器在用户的设备上运行，这一机制并不高效，但让应用能更容易在不同硬件和架构上运行。ART则完全改变了这套做法，在应用安装的时候就预编译字节码为机器语言，这一机制叫Ahead-Of-Time(AOT)编译。在移除解释代码这一过程后，应用程序执行将更有效率，启动更快。
+
+ART优点：
+
+- 系统性能的显著提升。
+- 应用启动更快、运行更快、体验更流畅、触感反馈更及时。
+- 更长的电池续航能力。
+- 支持更低的硬件。
+
+ART缺点：
+
+- 更大的存储空间占用，可能会增加10%-20%。
+- 更长的应用安装时间。
+
+#### 3. ART和Davlik中垃圾回收的区别？
+
+#### 4. 安卓采用自动垃圾回收机制，请说下安卓内存管理的原理？
+
+#### 5. 开放性问题：如何设计垃圾回收算法？
+
+#### 6. Android中App是如何沙箱化的,为何要这么做？
+
+#### 7. [一个图片在app中调用R.id后是如何找到的](https://my.oschina.net/u/255456/blog/608229)？
 
 
 
@@ -2320,7 +3583,53 @@ c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，
 
   - 利用jni去修改。
 
+#### 7. 如何进行单元测试，如何保证App稳定 ？
+
+要测试Android应用程序，通常会创建以下类型自动单元测试
+
+- **本地测试**：只在本地机器JVM上运行，以最小化执行时间，这种单元测试不依赖于Android框架，或者即使有依赖，也很方便使用模拟框架来模拟依赖，以达到隔离Android依赖的目的，模拟框架如Google推荐的Mockito；
+- [**Android官网-建立本地单元测试**](https://developer.android.com/training/testing/unit-testing/local-unit-tests.html)
+- **检测测试**：真机或模拟器上运行的单元测试，由于需要跑到设备上，比较慢，这些测试可以访问仪器（Android系统）信息，比如被测应用程序的上下文，一般地，依赖不太方便通过模拟框架模拟时采用这种方式；
+- [**Android官网-建立仪表单元测试**](https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests.html)
+
+注意：单元测试不适合测试复杂的UI交互事件
+
+> 推荐文章：[Android 单元测试只看这一篇就够了](https://juejin.im/post/6844903645843030030)
+
+App的稳定主要决定于整体的系统架构设计，同时也不可忽略代码编程的细节规范，正所谓“千里之堤，溃于蚁穴”，一旦考虑不周，看似无关紧要的代码片段可能会带来整体软件系统的崩溃，所以上线之前除了自己**本地化测试**之外还需要进行**Monkey压力测试**
+
+少部分面试官可能会延伸，如Gradle自动化测试、机型适配测试等。
+
+#### 8. Android中如何查看一个对象的回收情况 ？
+
+首先要了解Java四种引用类型的场景和使用（强引用、软引用、弱引用、虛引用）
+
+举个场景例子：**SoftReference**对象是用来保存软引用的，但它同时也是一个Java对象，所以当软引用对象被回收之后，虽然这个**SoftReference**对象的get方法返回null，但**SoftReference**对象本身并不是null，而此时这个**SoftReference**对象已经不再具有存在的价值，需要一个适当的清除机制，避免大量**SoftReference**对象带来的**内存泄露**
+
+因此，Java提供**ReferenceQueue**来处理引用对象的回收情况。当**SoftReference**所引用的对象被GC后，**JVM**会先将**softReference**对象添加到**ReferenceQueue**这个队列中。当我们调用**ReferenceQueue的poll()方法**，如果这个队列中不是空队列，那么将返回并移除前面添加的那个Reference对象。
+
+![img](https://user-gold-cdn.xitu.io/2019/3/27/169bd0c28741e8e0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 
+推荐文章：[Java中的四种引用类型：强引用、软引用、弱引用和虚引用](https://segmentfault.com/a/1190000015282652#articleHeader3)
+
+#### 9. FC(Force Close)什么时候会出现？
+
+Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
+
+解决的办法：
+
+- 注意内存的使用和管理
+- 使用Thread.UncaughtExceptionHandler接口
+
+#### 10. [Java多线程引发的性能问题，怎么解决](https://blog.csdn.net/luofenghan/article/details/78596950)？
+
+#### 11. TraceView的实现原理，分析数据误差来源。
+
+#### 12. 是否使用过SysTrace，原理的了解？
+
+#### 13. mmap + native 日志优化？
+
+传统日志打印有两个性能问题，一个是反复操作文件描述符表，一个是反复进入内核态。所以需要使用mmap的方式去直接读写内存。
 
 
