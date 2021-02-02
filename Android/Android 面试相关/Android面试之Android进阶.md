@@ -1802,7 +1802,72 @@ install方法内部最终还是调用了application的registerActivityLifecycleC
 
 #### 8. 开放问题：优化一个列表页面的打开速度和流畅性。
 
+#### 9. 怎么优化xml inflate的时间(涉及IO与反射)？
 
+- 减少布局的嵌套层级
+
+- 异步加载
+
+  AsyncLayoutInflater，为`ViewGroup`动态添加子`View`时，我们往往使用一个layout的XML来inflate一个view，然后将其add到父容器。
+  inflate包含对XML文件的读取和解析(IO操作)，并通过反射创建`View`树。当XML文件过大或页面层级过深，布局的加载就会较为耗时。
+  由于这一步并非UI操作，可以转移到非主线程执行，为此，官方在扩展包提供了`AsyncLayoutInflater`。
+
+  ```java
+  AsyncLayoutInflater asyncLayoutInflater = new AsyncLayoutInflater(this);
+  AsyncLayoutInflater.OnInflateFinishedListener onInflateFinishedListener = new AsyncLayoutInflater.OnInflateFinishedListener() {
+      @Override
+      public void onInflateFinished(@NonNull View view, int resid, @Nullable ViewGroup parent) {
+          if (parent != null) {
+              parent.addView(view);
+          }
+      }
+  };
+  
+  for (int i = 0; i < 10; i++) {
+      asyncLayoutInflater.inflate(R.layout.view_jank, container, onInflateFinishedListener);
+  }
+  ```
+
+  使用`AsyncLayoutInflater`异步inflate后，主线程就不再有inflate的耗时了。
+
+  适用场景：动态加载layout较复杂的view
+
+- 懒加载ViewStub
+
+  ```xml
+  <ViewStub
+      android:id="@+id/stub"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout="@layout/real_view" />
+  ```
+
+  ```java
+  ViewStub stub = findViewById(R.id.stub);
+  if (stub != null) {
+      stub.inflate(); // inflate一次以后，view树中就不再包含这个ViewStub了
+  }
+  ```
+
+  适用场景：只在部分情况下才显示的View
+
+  例如：网络请求失败的提示；列表为空的提示；新内容、新功能的引导，因为引导基本上只显示一次
+
+- 延迟加载IdleHandler
+
+  ```java
+  Looper.myQueue().addIdleHandler(new MessageQueue.IdleHandler() {
+      @Override
+      public boolean queueIdle() {
+          // 当该Looper线程没有message要处理时才执行
+          return false;
+      }
+  });
+  ```
+
+  在主线程注册回调，当主线程"空闲"时才执行回调中的逻辑。
+
+  适用场景：非必需的页面元素的加载和渲染，比如未读信息的红点、新手引导等。
 
 ### 2. 绘制优化
 
