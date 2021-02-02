@@ -1683,8 +1683,18 @@ MotionEvent是手指接触屏幕后所产生的一系列事件。典型的事件
 - 一般`ACTION_CANCEL`和`ACTION_UP`都作为View一段事件处理的结束。如果在父View中拦截`ACTION_UP`或`ACTION_MOVE`，在第一次父视图拦截消息的瞬间，父视图指定子视图不接受后续消息了，同时子视图会收到`ACTION_CANCEL`事件。
 - 如果触摸某个控件，但是又不是在这个控件的区域上抬起（移动到别的地方了），就会出现`ACTION_CANCEL`事件。
 
-
 不会。
+
+#### 9. onAttachToWindow什么时候调用？
+
+View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, int visibility)`里被无条件调用的；
+
+而View的`dispatchAttachedToWindow()`有两个被调用途径:
+
+1. ViewRootImpl 第一次 `performTraversal()`时会将整个view tree里所有有view的 `dispatchAttachedToWindow()` DFS 调用一遍.
+2. ViewGroup 的 `addViewInner(View child, int index, LayoutParams params, boolean preventRequestLayout):`
+
+
 
 ## 十、View绘制
 
@@ -2497,18 +2507,22 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 四级缓存按照顺序需要依次读取。所以**完整缓存流程**是：
 
-保存缓存流程：
+**保存缓存流程**：
 
 - 插入或是删除itemView时，先把屏幕内的ViewHolder保存至AttachedScrap中
 - 滑动屏幕的时候，先消失的itemview会保存到CacheView，CacheView大小默认是2，超过数量的话按照先入先出原则，移出头部的itemview保存到RecyclerPool缓存池（如果有自定义缓存就会保存到自定义缓存里），RecyclerPool缓存池会按照itemview的itemtype进行保存，每个itemTyep缓存个数为5个，超过就会被回收。
 
-获取缓存流程：
+**获取缓存流程**：
 
 - AttachedScrap中获取，通过pos匹配holder
 
   ——>获取失败，从CacheView中获取，也是通过pos获取holder缓存
-  ——>获取失败，从自定义缓存中获取缓存——>获取失败，从mRecyclerPool中获取
-  ——>获取失败，重新创建viewholder——createViewHolder并bindview。
+  
+  ——>获取失败，从自定义缓存中获取缓存
+  
+  ——>获取失败，从mRecyclerPool中获取(bindview)
+  
+  ——>获取失败，重新创建viewholder(createViewHolder并bindview)。
 
 需要注意的是，如果从缓存池找到缓存，还需要重新bindview。
 
@@ -2516,7 +2530,7 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 
 
-#### 6. RecyclerView 缓存结构，RecyclerView预取，RecyclerView局部刷新
+#### 6. RecyclerView预取
 
 
 
@@ -2548,13 +2562,6 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 - RecyclerView比ListView多两级缓存，支持多个ItemView缓存，支持开发者自定义缓存处理逻辑，支持所有RecyclerView共用同一个RecyclerViewPool(缓存池)。
 - ListView和RecyclerView缓存机制基本一致，但缓存使用不同
-
-推荐文章：
-
-- [【腾讯Bugly干货分享】Android ListView 与 RecyclerView 对比浅析—缓存机制](https://zhuanlan.zhihu.com/p/23339185)
-- [ListView 与 RecyclerView 简单对比](https://blog.csdn.net/shu_lance/article/details/79566189)
-- [Android开发：ListView、AdapterView、RecyclerView全面解析](https://www.jianshu.com/p/4e8e4fd13cf7)
-
 
 
 
@@ -2588,7 +2595,7 @@ new LinearLayoutManager(this) {
 
 - 设置`RecyclerView.addOnScrollListener();`来在滑动过程中停止加载的操作。
 - 减少对象的创建，比如设置监听事件，可以全局创建一个，所有view公用一个listener，并且放到`CreateView`里面去创建监听，因为CreateView调用要少于bindview。这样就减少了对象创建所造成的消耗
-- 用`notifyDataSetChange`时，适配器不知道整个数据集中的那些内容以及存在，再重新匹配`ViewHolder`时会花生闪烁。设置adapter.setHasStableIds(true)，并重写`getItemId()`来给每个Item一个唯一的ID，也就是唯一标识，就使itemview的焦点固定，解决了闪烁问题。
+- 用`notifyDataSetChange`时，适配器不知道整个数据集中的那些内容以及存在，再重新匹配`ViewHolder`时会花生闪烁。设置`adapter.setHasStableIds(true)`，并重写`getItemId()`来给每个Item一个唯一的ID，也就是唯一标识，就使itemview的焦点固定，解决了闪烁问题。
 
 #### 9. ListView 如何提高其效率？ 
 
@@ -2606,7 +2613,9 @@ new LinearLayoutManager(this) {
 
 #### 11. ListView 使用了哪些设计模式？ 
 
-1、适配器 2、观察者 3、享元设计模式
+- 适配器
+- 观察者 
+- 享元设计模式
 
 #### 12. 当 ListView 数据集改变后，如何更新 ListView？ 
 
@@ -2620,9 +2629,9 @@ new LinearLayoutManager(this) {
 
 ② 在滚动状态发生改变的方法中，有三种状态：
 
-- 手指按下移动的状态： SCROLL_STATE_TOUCH_SCROLL: // 触摸滑动
-- 惯性滚动（滑翔（flging）状态）： SCROLL_STATE_FLING: // 滑翔
-- 静止状态： SCROLL_STATE_IDLE: // 静止
+- 手指按下移动的状态： `SCROLL_STATE_TOUCH_SCROLL`: // 触摸滑动
+- 惯性滚动（滑翔（flging）状态）： `SCROLL_STATE_FLING`: // 滑翔
+- 静止状态： `SCROLL_STATE_IDLE`: // 静止
 
 对不同的状态进行处理：
 
@@ -2630,7 +2639,7 @@ new LinearLayoutManager(this) {
 
 #### 14. ListView 可以显示多种类型的条目吗？ 
 
-可以的，ListView 显示的每个条目都是通过 baseAdapter 的 getView(int position, View convertView, ViewGroup parent)来展示的，理论上我们完全可以让每个条目都是不同类型的 view，除此之外 adapter 还提供了 getViewTypeCount（）和 getItemViewType(int position)两个方法。在 getView 方法中我们可以根据不同的 viewtype 加载不同的布局文件。 
+可以的，ListView 显示的每个条目都是通过 baseAdapter 的 `getView(int position, View convertView, ViewGroup parent)`来展示的，理论上我们完全可以让每个条目都是不同类型的 view，除此之外 adapter 还提供了 `getViewTypeCount()`和 `getItemViewType(int position)`两个方法。在 getView 方法中我们可以根据不同的 viewtype 加载不同的布局文件。 
 
 #### 15. ListView 如何定位到指定位置?
 
@@ -2669,10 +2678,10 @@ public void setListViewHeightBasedOnChildren(ListView listView) {
 }
 ```
 
-> 注意:如果直接将 ListView 放到 ScrollView 中,那么上面的代码依然是没有效果的.必须将 ListVIew 放到
+> 注意:如果直接将 ListView 放到 ScrollView 中,那么上面的代码依然是没有效果的。必须将 ListVIew 放到
 > LinearLayout 等其他容器中才行。
 
-现阶段最好的处理的方式是： 自定义 ListView，重载 onMeasure()方法，设置全部显示
+现阶段最好的处理的方式是： 自定义 ListView，重载 `onMeasure()`方法，设置全部显示
 
 ```java
 public class ScrollViewWithListView extends ListView {
@@ -2689,7 +2698,7 @@ public class ScrollViewWithListView extends ListView {
 }
 ```
 
-#### 18. ListView的adapter是什么adapter
+#### 18. ListView的Adapter是什么Adapter
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/20/1699a79b39f0c556?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -2751,13 +2760,11 @@ public class ChildViewPager extends ViewPager {
 }
 ```
 
-
-
 #### 3. Viewpager切换掉帧有什么处理经验？
 
 应用UI卡顿常见原因主要在以下几个方面：
 
-1. 人为在UI线程中做轻微耗时操作，导致UI线程卡顿；
+1. 在UI线程中做轻微耗时操作，导致UI线程卡顿；
 2. 布局Layout过于复杂，无法在16ms内完成渲染；
 3. 同一时间动画执行的次数过多，导致CPU或GPU负载过重；
 4. View过度绘制，导致某些像素在同一帧时间内被绘制多次，从而使CPU或GPU负载过重；
@@ -2802,8 +2809,6 @@ public class CustomViewPager extends ViewPager {
     }
 }
 ```
-
-
 
 #### 5. ViewPager使用细节，如何设置成每次只初始化当前的Fragment，其他的不初始化（提示：Fragment懒加载）？
 
@@ -2860,8 +2865,6 @@ public abstract class LazyLoadFragment extends BaseFragment {
 
 - **SQLite数据库存储**：一种轻量级嵌入式数据库引擎，它的运算速度非常快，占用资源很少，常用来存储大量复杂的关系数据；
 
-- **ContentProvider**：四大组件之一，用于数据的存储和共享，不仅可以让不同应用程序之间进行数据共享，还可以选择只对哪一部分数据进行共享，可保证程序中的隐私数据不会有泄漏风险；
-
 - **File文件存储**：写入和读取文件的方法和 Java中实现I/O的程序一样；
 
 - **网络存储**：主要在远程的服务器中存储相关数据，用户操作的相关数据可以同步到服务器上；
@@ -2881,7 +2884,9 @@ public String getString(String key, @Nullable String defValue) {
 }
 ```
 
-- 对于写操作，由于是两步操作，一个是editor.put，一个是commit或者apply所以其实是需要两把锁的：
+- 对于写操作，由于是两步操作，一个是`editor.put`，一个是`commit`或者`apply`所以其实是需要两把锁的：
+
+  `mEditorLock`和`mWritingToDiskLock`。
 
 ```java
 //第一把锁，操作Editor类的map对象
@@ -2921,12 +2926,12 @@ synchronized (mWritingToDiskLock) {
   }
 ```
 
-- 再写入所有数据，只有写入成功，并且通过 sync 完成落盘后，才会将 Backup（.bak） 文件删除。
+- 再写入所有数据，只有写入成功，并且通过 `sync` 完成落盘后，才会将 Backup（.bak） 文件删除。
 - 如果写入过程中进程被杀，或者关机等非正常情况发生。进程再次启动后如果发现该 SharedPreferences 存在 Backup 文件，就将 Backup 文件重名为源文件，原本未完成写入的文件就直接丢弃，这样就能保证之前数据的正确。
 
 #### 4.SharedPreference原理？读取xml是在哪个线程?
 
-（1）getSharedPreferences()在创建一个SharedPreferences，会先判断是否有对应的xml文件（SharedPreferences存储数据的保存格式），如果存在则会有一个预加载操作，这个操作将把xml文件的内容通过I/O操作和xmlUtil解析后保存在一个map对象中。如果不存在则会创建一个对应的xml。
+（1）`getSharedPreferences()`在创建一个SharedPreferences，会先判断是否有对应的xml文件（SharedPreferences存储数据的保存格式），如果存在则会有一个预加载操作，这个操作将把xml文件的内容通过I/O操作和xmlUtil解析后保存在一个map对象中。如果不存在则会创建一个对应的xml。
 
 （2）而在对数据进行读取时，是从内存中该map对象中进行读取；
 
@@ -2934,9 +2939,9 @@ synchronized (mWritingToDiskLock) {
 
 （4）写完数据后，要对写入的数据进行提交保存，主要有以下两种方式：
 
-​		a. commit()：线程安全，性能慢，一般在当前线程完成文件操作，会有返回值；
+​		a. `commit()`：线程安全，性能慢，一般在当前线程完成文件操作，会有返回值；
 
-​		b. apply()：线程不安全，性能高，异步处理I/O操作，一般在singleThreadExecutor中执行，没有返回值
+​		b. `apply()`：线程不安全，性能高，异步处理I/O操作，一般在singleThreadExecutor中执行，没有返回值
 
 第一次读的时候，主线程会挂起wait，等到**整个文件load完**毕，才被唤醒。
 
@@ -2944,7 +2949,7 @@ synchronized (mWritingToDiskLock) {
 
 #### 5. SharedPrefrences的apply和commit有什么区别？
 
-- apply没有返回值而commit返回boolean，表明修改是否提交成功。
+- apply没有返回值，而commit返回boolean，表明修改是否提交成功。
 
 - apply是将修改数据原子提交到内存, 而后异步真正提交到硬件磁盘, 而commit是同步的提交到硬件磁盘，因此，在多个并发的提交commit的时候，他们会等待正在处理的commit保存到磁盘后在操作，从而降低了效率。而apply只是原子的提交到内容，后面有调用apply的函数的将会直接覆盖前面的内存数据，这样从一定程度上提高了很多效率。 
 
@@ -2956,35 +2961,32 @@ Sp 的底层是由 xml 来实现的，操作 sp 的过程就是 xml 的序列化
 
 #### 7. 了解SQLite中的事务操作吗？是如何做的?
 
-SQLite在做CRDU操作时都默认开启了事务，然后把SQL语句翻译成对应的SQLiteStatement并调用其相应的CRUD方法，此时整个操作还是在rollback journal这个临时文件上进行，只有操作顺利完成才会更新db数据库，否则会被回滚；
+SQLite在做CRDU操作时都默认开启了事务，然后把SQL语句翻译成对应的`SQLiteStatement`并调用其相应的CRUD方法，此时整个操作还是在`rollback journal`这个临时文件上进行，只有操作顺利完成才会更新db数据库，否则会被回滚。
 
 #### 8. 使用SQLite做批量操作有什么好的方法吗？
 
-使用SQLiteDatabase的beginTransaction()方法开启一个事务，将批量操作SQL语句转化为SQLiteStatement并进行批量操作，结束后endTransaction()
+使用SQLiteDatabase的`beginTransaction()`方法开启一个事务，将批量操作SQL语句转化为`SQLiteStatement`并进行批量操作，结束后`endTransaction()`。
+
+> 在Android SQLite里，对所有的写入操作（insert、update）等，都会在底层默默创建一个Transaction来完成。如果上层已经创建Transaction了），底层则不会再次创建。
 
 #### 9. 如何删除SQLite中表的个别字段
 
-SQLite数据库只允许增加字段而不允许修改和删除表字段，只能创建新表保留原有字段，删除原表
+SQLite数据库只允许增加字段而不允许修改和删除表字段，只能创建新表保留原有字段，删除原表。
 
 #### 10. 使用SQLite时会有哪些优化操作？
 
 - 使用事务做批量操作
-
 - 及时关闭Cursor，避免内存泄露
-
 - 耗时操作异步化：数据库的操作属于本地IO耗时操作，建议放入异步线程中处理
-
 - ContentValues的容量调整：ContentValues内部采用HashMap来存储Key-Value数据，ContentValues初始容量为8，扩容时翻倍。因此建议对ContentValues填入的内容进行估量，设置合理的初始化容量，减少不必要的内部扩容操作
-
 - 使用索引加快检索速度：对于查询操作量级较大、业务对查询要求较高的推荐使用索引
-
-
+- ContentValues复用，Clear后再赋值
 
 ## 十七、其他控件
 
 #### 1. 请问 Gridview 能添加头布局吗？
 
-GridView 本身没有添加头布局的方法 api 可以使用 ScrollView 与 GridView 结合，让 GridView 充满 ScrollView，不 让 GridView 滑动而只让 ScrollView 滑动；具体做法是重载 GridView 的 onMeasure()方法。示例如下：
+GridView 本身没有添加头布局的方法 api 可以使用 ScrollView 与 GridView 结合，让 GridView 充满 ScrollView，不让 GridView 滑动而只让 ScrollView 滑动；具体做法是重载 GridView 的 onMeasure()方法。示例如下：
 
 ```java
 @Override
@@ -3004,6 +3006,8 @@ public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 
 #### 4. 一个wrap_content的ImageView，加载远程图片，传什么参数裁剪比较好?
 
+
+
 #### 5. SurfaceView的理解？
 
 它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
@@ -3013,14 +3017,14 @@ SurfaceView 中采用了双缓冲机制，保证了 UI 界面的流畅性，同�
 SurfaceView 继承于 View，他和 View 主要有以下三点区别：
 
 - View 底层没有双缓冲机制，SurfaceView 有；
-- view 主要适用于主动更新，而 SurfaceView 适用与被动的更新，如频繁的刷新
-- view 会在主线程中去更新 UI，而 SurfaceView 则在子线程中刷新；
+- View 主要适用于主动更新，而 SurfaceView 适用与被动的更新，如频繁的刷新
+- View 会在主线程中去更新 UI，而 SurfaceView 则在子线程中刷新；
 
-SurfaceView 的内容不在应用窗口上，所以不能使用变换（平移、缩放、旋转等）。也难以放在 ListView 或者 ScrollView 中，不能使用 UI 控件的一些特性比如View.setAlpha()
+SurfaceView 的内容不在应用窗口上，所以不能使用变换（平移、缩放、旋转等）。也难以放在 ListView 或者 ScrollView 中，不能使用 UI 控件的一些特性比如View.setAlpha()。
 
 View：显示视图，内置画布，提供图形绘制函数、触屏事件、按键事件函数等；必须在 UI 主线程内更新画面，速度较慢。
 
-SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏的开发；是 view的子类，类似使用双缓机制，在新的线程中更新画面所以刷新界面速度比 view快，Camera 预览界面使用 SurfaceView。
+SurfaceView：基于 view 视图进行拓展的视图类，更适合 2D 游戏的开发；是 View 的子类，类似使用双缓机制，在新的线程中更新画面所以刷新界面速度比 View 快，Camera 预览界面使用 SurfaceView。
 
 GLSurfaceView：基于 SurfaceView 视图再次进行拓展的视图类，专用于 3D 游戏开发的视图；是 SurfaceView 的子类，openGL 专用。 
 
@@ -3066,13 +3070,13 @@ Android 是一种基于 Linux 的开放源代码软件栈，为广泛的设备�
 
 **应用程序**
 
-Android 随附一套用于电子邮件、短信、日历、互联网浏览和联系人等的核心应用。平台随附的应用与用户可以选择安装的应用一样，没有特殊状态。因此第三方应用可成为用户的默认网络浏览器、短信 Messenger 甚至默认键盘（有一些例外，例如系统的“设置”应用）。
+Android 系统包括一套用于电子邮件、短信、日历、互联网浏览和联系人等的核心应用。与用户可以选择安装的应用一样，没有特殊状态。因此第三方应用可成为用户的默认网络浏览器、短信 Messenger 甚至默认键盘（有一些例外，例如系统的“设置”应用）。
 
-系统应用可用作用户的应用，以及提供开发者可从其自己的应用访问的主要功能。例如，如果您的应用要发短信，您无需自己构建该功能，可以改为调用已安装的短信应用向您指定的接收者发送消息。
+系统应用可用作用户的应用，以及提供开发者可从其自己的应用访问的主要功能。
 
-**Java API 框架**
+**Java API Framework**
 
-您可通过以 Java 语言编写的 API 使用 Android OS 的整个功能集。这些 API 形成创建 Android 应用所需的构建块，它们可简化核心模块化系统组件和服务的重复使用，包括以下组件和服务：
+可通过以 Java 语言编写的 API 使用 Android OS 的整个功能集。这些 API 形成创建 Android 应用所需的构建块，它们可简化核心模块化系统组件和服务的重复使用，包括以下组件和服务：
 
 - 丰富、可扩展的视图系统，可用以构建应用的 UI，包括列表、网格、文本框、按钮甚至可嵌入的网络浏览器
 - 资源管理器，用于访问非代码资源，例如本地化的字符串、图形和布局文件
@@ -3098,9 +3102,9 @@ ART 的部分主要功能包括：
 - 优化的垃圾回收 (GC)
 - 更好的调试支持，包括专用采样分析器、详细的诊断异常和崩溃报告，并且能够设置监视点以监控特定字段
 
-在 Android 版本 5.0（API 级别 21）之前，Dalvik 是 Android Runtime。如果您的应用在 ART 上运行效果很好，那么它应该也可在 Dalvik 上运行，但反过来不一定。
+在 Android 版本 5.0（API 级别 21）之前，Dalvik 是 Android Runtime。
 
-Android 还包含一套核心运行时库，可提供 Java API 框架使用的 Java 编程语言大部分功能，包括一些 Java 8 语言功能。
+Android 还包含一套**核心运行时库**，可提供 Java API 框架使用的 Java 编程语言大部分功能，包括一些 Java 8 语言功能。
 
 **硬件抽象层 (HAL)**
 
@@ -3118,11 +3122,10 @@ Android 平台的基础是 Linux 内核。例如，Android Runtime (ART) 依靠 
 
 #### 2. 谈一谈 Android 的安全机制 
 
-- Android 是基于 Linux 内核的，因此 Linux 对文件权限的控制同样适用于 Android 在 Android 中每个应用都有自己的/data/data/包名 文件夹，该文件夹只能该应用访问，而其他应用则无权访问。
-
-- Android 的权限机制保护了用户的合法权益 如果我们的代码想拨打电话、发送短信、访问通信录、定位、访问 sdcard 等所有可能侵犯用于权益的行为都是必须要在 AndroidManifest.xml 中进行声明的，这样就给了用户一个知情权。 
-
+- Android 是基于 Linux 内核的，因此 Linux 对文件权限的控制同样适用于 Android，在 Android 中每个应用都有自己的`/data/data/包名`文件夹，该文件夹只能该应用访问，而其他应用则无权访问。
+- Android 的权限机制保护了用户的合法权益 如果我们的代码想拨打电话、发送短信、访问通信录、定位、访问 sdcard 等所有可能侵犯用于权益的行为都是必须要在 `AndroidManifest.xml` 中进行声明的，这样就给了用户一个知情权。 
 - Android 的代码混淆保护了开发者的劳动成果
+- Android 的签名机制
 
 #### 3. Android 的四大组件都需要在清单文件中注册吗？
 
@@ -3132,35 +3135,19 @@ Activity 、 Service 、 ContentProvider 如 果 要 使 用 则 必 须 在 And
 
 Fiddler，Wireshark
 
-#### 5. 实现一个下载功能的接口
-
-```java
-
-```
-
-#### 6. onAttachToWindow什么时候调用？
-
-View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, int visibility)`里被无条件调用的；
-
-而View的`dispatchAttachedToWindow()`有两个被调用途径:
-
-1. ViewRootImpl 第一次 `performTraversal()`时会将整个view tree里所有有view的 `dispatchAttachedToWindow()` DFS 调用一遍.
-
-2. ViewGroup的 `addViewInner(View child, int index, LayoutParams params, boolean preventRequestLayout):`
-
-#### 7. Bundle是什么数据结构?利用什么传递数据
+#### 5. Bundle是什么数据结构? 利用什么传递数据
 
 Bundle主要用于传递数据；它保存的数据，内部其实就是维护了一个Map<String,Object>。
 
 我们经常使用Bundle在Activity之间传递数据，传递的数据可以是boolean、byte、int、long、float、double、string等基本类型或它们对应的数组，也可以是对象或对象数组。当Bundle传递的是对象或对象数组时，必须实现Serializable 或Parcelable接口。下面分别介绍Activity之间如何传递基本类型、传递对象。
 
-#### 8. 如何判断是否有 SD 卡？ 
+#### 6. 如何判断是否有 SD 卡？ 
 
 通过如下方法： 
 
 `Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)` 如果返回 true 就是有 sdcard，如果返回 false 则没有。
 
-#### 9. Bunder传递对象为什么需要序列化？Serialzable和Parcelable的区别？
+#### 7. Bundle传递对象为什么需要序列化？Serialzable和Parcelable的区别？
 
 因为bundle传递数据时只支持基本数据类型，所以在传递对象时需要序列化转换成可存储或可传输的本质状态（字节流）。序列化后的对象可以在网络、IPC（比如启动另一个进程的Activity、Service和Reciver）之间进行传输，也可以存储到本地。
 
@@ -3198,78 +3185,7 @@ Serializable的本质是使用了反射，序列化的过程比较慢，这种�
 
 Parcelable方式的本质是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的类型，这样就实现了传递对象的功能了。
 
-
-
-#### 10. 怎么优化xml inflate的时间，涉及IO与反射？
-
-- 减少布局的嵌套层级
-
-- 异步加载
-
-  AsyncLayoutInflater，为`ViewGroup`动态添加子`View`时，我们往往使用一个layout的XML来inflate一个view，然后将其add到父容器。
-  inflate包含对XML文件的读取和解析(IO操作)，并通过反射创建`View`树。当XML文件过大或页面层级过深，布局的加载就会较为耗时。
-  由于这一步并非UI操作，可以转移到非主线程执行，为此，官方在扩展包提供了`AsyncLayoutInflater`。
-
-  ```java
-  AsyncLayoutInflater asyncLayoutInflater = new AsyncLayoutInflater(this);
-  AsyncLayoutInflater.OnInflateFinishedListener onInflateFinishedListener = new AsyncLayoutInflater.OnInflateFinishedListener() {
-      @Override
-      public void onInflateFinished(@NonNull View view, int resid, @Nullable ViewGroup parent) {
-          if (parent != null) {
-              parent.addView(view);
-          }
-      }
-  };
-  
-  for (int i = 0; i < 10; i++) {
-      asyncLayoutInflater.inflate(R.layout.view_jank, container, onInflateFinishedListener);
-  }
-  ```
-
-  使用`AsyncLayoutInflater`异步inflate后，主线程就不再有inflate的耗时了。
-
-  适用场景：动态加载layout较复杂的view
-
-- 懒加载ViewStub
-
-  ```xml
-  <ViewStub
-      android:id="@+id/stub"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout="@layout/real_view" />
-  ```
-
-  ```java
-  ViewStub stub = findViewById(R.id.stub);
-  if (stub != null) {
-      stub.inflate(); // inflate一次以后，view树中就不再包含这个ViewStub了
-  }
-  ```
-
-  适用场景：只在部分情况下才显示的View
-
-  例如：网络请求失败的提示；列表为空的提示；新内容、新功能的引导，因为引导基本上只显示一次
-
-- 延迟加载IdleHandler
-
-  ```java
-  Looper.myQueue().addIdleHandler(new MessageQueue.IdleHandler() {
-      @Override
-      public boolean queueIdle() {
-          // 当该Looper线程没有message要处理时才执行
-          return false;
-      }
-  });
-  ```
-
-  在主线程注册回调，当主线程"空闲"时才执行回调中的逻辑。
-
-  适用场景：非必需的页面元素的加载和渲染，比如未读信息的红点、新手引导等。
-
-
-
-#### 11. Android5.0~10.0各版本新特性
+#### 8. Android5.0~10.0各版本新特性
 
 Android5.0新特性
 
@@ -3331,7 +3247,7 @@ Android10.0（Q）新特性
 
 推荐文章：[Android Developers 官方文档](https://developer.android.com/guide/topics/manifest/uses-sdk-element.html#ApiLevels)
 
-#### 12. android中有哪几种解析xml的类，官方推荐哪种？以及它们的原理和区别？
+#### 9. android中有哪几种解析xml的类，官方推荐哪种？以及它们的原理和区别？
 
 **DOM解析**
 
@@ -3371,21 +3287,21 @@ PULL解析器的运行方式和SAX类似，都是基于事件的模式。不同�
 
 优点：PULL解析器小巧轻便，解析速度快，简单易用，非常适合在Android移动设备中使用，Android系统内部在解析各种XML时也是用PULL解析器，**Android官方推荐开发者们使用Pull解析技术**。Pull解析技术是第三方开发的开源技术，它同样可以应用于Java开发。
 
-#### 13. Jar和Aar的区别?
+#### 10. Jar和Aar的区别?
 
 Jar包里面只有代码，aar里面不光有代码还包括资源文件，比如 drawable 文件，xml资源文件。对于一些不常变动的 Android Library，我们可以直接引用 aar，加快编译速度。
 
-#### 14. Android为每个应用程序分配的内存大小是多少?
+#### 11. Android为每个应用程序分配的内存大小是多少?
 
 android程序内存一般限制在16M，也有的是24M。近几年手机发展较快，一般都会分配两百兆左右，和具体机型有关。
 
-#### 15. Merge、ViewStub 的作用?
+#### 12. Merge、ViewStub 的作用?
 
 Merge: 减少视图层级，可以删除多余的层级。和Include标签配套使用
 
 ViewStub: 按需加载，减少内存使用量、加快渲染速度、不支持 merge 标签。
 
-#### 16. Asset目录与res目录的区别？
+#### 13. Asset目录与res目录的区别？
 
 assets：不会在 R 文件中生成相应标记，存放到这里的资源在打包时会打包到程序安装包中。（通过 AssetManager 类访问这些文件）
 
@@ -3395,7 +3311,7 @@ res/anim：存放动画资源。
 
 res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（会映射到 R 文件中）。
 
-#### 17. 通过google提供的Gson解析json时，定义JavaBean的规则是什么？
+#### 14. 通过google提供的Gson解析json时，定义JavaBean的规则是什么？
 
 1) 实现序列化 Serializable
 
@@ -3405,7 +3321,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 4) 属性名必须与json串中属性名保持一致 （因为Gson解析json串底层用到了Java的反射原理）
 
-#### 18. json解析方式的两种区别？
+#### 15. json解析方式的区别？
 
 1) SDK提供JSONArray，JSONObject
 
@@ -3417,7 +3333,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 3) 阿里的fastjson
 
-#### 19. 数据库升级增加表和删除表都不涉及数据迁移，但是修改表涉及到对原有数据进行迁移。升级的方法如下所示：
+#### 16. 数据库升级增加表和删除表都不涉及数据迁移，但是修改表涉及到对原有数据进行迁移。升级的方法如下所示：
 
 - 将现有表命名为临时表。
 - 创建新表。
@@ -3429,19 +3345,19 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 - 逐级升级，确定相邻版本与现在版本的差别，V1升级到V2,V2升级到V3，依次类推。
 - 跨级升级，确定每个版本与现在数据库的差别，为每个case编写专门升级大代码。
 
-#### 20. 编译期注解跟运行时注解
+#### 17. 编译期注解和运行时注解
 
-运行期注解(RunTime)利用反射去获取信息还是比较损耗性能的，对应@Retention（RetentionPolicy.RUNTIME）。
+运行期注解(RunTime)利用反射去获取信息还是比较损耗性能的，对应`@Retention（RetentionPolicy.RUNTIME）`。
 
-编译期(Compile time)注解，以及处理编译期注解的手段APT和Javapoet，对应@Retention(RetentionPolicy.CLASS)。
+编译期(Compile time)注解，以及处理编译期注解的手段APT和Javapoet，对应`@Retention(RetentionPolicy.CLASS)`。
 
 其中apt+javaPoet目前也是应用比较广泛，在一些大的开源库，如EventBus3.0+,页面路由 ARout、Dagger、Retrofit等均有使用的身影，注解不仅仅是通过反射一种方式来使用，也可以使用APT在编译期处理
 
-#### 21. 强引用置为null，会不会被回收？
+#### 18. 强引用置为null，会不会被回收？
 
 不会立即释放对象占用的内存。 如果对象的引用被置为null，只是断开了当前线程栈帧中对该对象的引用关系，而 垃圾收集器是运行在后台的线程，只有当用户线程运行到安全点(safe point)或者安全区域才会扫描对象引用关系，扫描到对象没有被引用则会标记对象，这时候仍然不会立即释放该对象内存，因为有些对象是可恢复的（在 finalize方法中恢复引用 ）。只有确定了对象无法恢复引用的时候才会清除对象内存。
 
-#### 22. 是否了解硬件加速？
+#### 19. 是否了解硬件加速？
 
 硬件加速就是运用GPU优秀的运算能力来加快渲染的速度，而通常的基于软件的绘制渲染模式是完全利用CPU来完成渲染。
 
@@ -3454,7 +3370,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 4. 硬件加速的优势还有display list的设计，使用这个我们不需要每次重绘都执行大量的代码，基于软件的绘制模式会重绘脏区域内的所有控件，而display只会更新列表，然后绘制列表内的控件。
 5. CPU更擅长复杂逻辑控制，而GPU得益于大量ALU和并行结构设计，更擅长数学运算。
 
-#### 23. 对于应用更新这块是如何做的？(灰度，强制更新，增量更新)
+#### 20. 对于应用更新这块是如何做的？(灰度，强制更新，增量更新)
 
 **内部更新**：
 
@@ -3483,13 +3399,13 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个不同版本的二进制文件，生成补丁文件.patch文件。通过bspatch使旧的apk文件与不定文件合成新的apk。 注意通过apk文件的md5值进行区分版本。
 
-#### 24. 请解释安卓为啥要加签名机制。
+#### 21. 请解释安卓为啥要加签名机制。
 
 1. 开发者的身份认证，由于开发商可能通过使用相同的 Package Name 来混淆替换已经安装的程序，以此保证签名不同的包不被替换。
 2. 保证信息传输的完整性，签名对于包中的每个文件进行处理，以此确保包中内容不被替换。
 3. 防止交易中的抵赖发生， Market 对软件的要求。
 
-#### 25. 如何通过Gradle配置多渠道包？
+#### 22. 如何通过Gradle配置多渠道包？
 
 首先要了解设置多渠道的原因。在安装包中添加不同的标识，配合自动化埋点，应用在请求网络的时候携带渠道信息，方便后台做运营统计，比如说统计我们的应用在不同应用市场的下载量等信息。
 
@@ -3507,7 +3423,7 @@ bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个�
 
 执行`./gradlew assembleRelease` ，将会打出所有渠道的release包；
 
-执行`./gradlew assembleVIVO，将会打出VIVO渠道的release和debug版的包；
+执行`./gradlew assembleVIVO`，将会打出VIVO渠道的release和debug版的包；
 
 执行`./gradlew assembleVIVORelease`将生成VIVO渠道的release包。
 
