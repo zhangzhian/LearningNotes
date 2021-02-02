@@ -212,16 +212,16 @@ mContext.startActivity(intent);
 
 #### 16. 隐式启动Activity，如何判断是否有Activity匹配
 
-- 采用PackageManage的resolveActivity方法或者Intent的resolveActivity，匹配不到就会返回null
-- 采用PackageManage的queryIntentActivities方法，返回匹配的Activity信息
+- 采用`PackageManage#resolveActivity`或者`Intent#resolveActivity`方法，匹配不到就会返回null
+- 采用`PackageManage#queryIntentActivities`方法，返回匹配的Activity信息
 
 #### 17. Android怎么加速启动Activity？
 
-- onCreate() 中不执行耗时操作
+- `onCreate()` 中不执行耗时操作
 
-把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+> 把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
 
-- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 利用多线程的目的就是尽可能的减少 `onCreate()` 和 `onReume()` 的时间，使得用户能尽快看到页面，操作页面。
 - 减少主线程阻塞时间。
 - 提高 Adapter 和 AdapterView 的效率。
 - 优化布局文件。
@@ -235,15 +235,15 @@ mContext.startActivity(intent);
 
 #### 19. 说下 Activity跟window，view之间的关系？
 
-- Activity在创建时会调用 **attach()** 方法初始化一个**PhoneWindow(继承于Window)**，**每一个Activity都包含了唯一一个PhoneWindow**
+- Activity在创建时会调用 `attach()` 方法初始化一个`PhoneWindow`(继承于Window)，**每一个Activity都包含了唯一一个PhoneWindow**
 
-- Activity通过**setContentView**实际上是调用的 **getWindow().setContentView()**将View设置到PhoneWindow上，而PhoneWindow内部是通过 **WindowManager** 的**addView**、**removeView**、**updateViewLayout**这三个方法来管理View，**WindowManager本质是接口，最终由WindowManagerImpl实现**
+- Activity通过`setContentView`实际上是调用的 `getWindow().setContentView()`将View设置到PhoneWindow上，而PhoneWindow内部是通过 WindowManager 的`addView`、`removeView`、`updateViewLayout`这三个方法来管理View，**WindowManager本质是接口，最终由WindowManagerImpl实现**
 
-- **WindowManager**为每个**Window**创建**Surface**对象，然后应用就可以通过这个**Surface**来绘制任何它想要绘制的东西。而对于**WindowManager**来说，这只不过是一块矩形区域而已
+- `WindowManager`为每个`Window`创建`Surface`对象，然后应用就可以通过这个`Surface`来绘制任何它想要绘制的东西。而对于`WindowManager`来说，这只不过是一块矩形区域而已
 
-- **Surface**其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个**Window**（包括对话框、全屏的**Activity**、状态栏等）都有他自己绘制的**Surface**。而最终的显示可能存在**Window**之间遮挡的问题，此时就是通过**SurfaceFlinger**对象渲染最终的显示，使他们以正确的**Z-order**显示出来。一般**Surface**拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
+- `Surface`其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个`Window`（包括对话框、全屏的Activity、状态栏等）都有他自己绘制的`Surface`。而最终的显示可能存在`Window`之间遮挡的问题，此时就是通过`Surface Flinger`对象渲染最终的显示，使他们以正确的`Z-order`显示出来。一般`Surface`拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
 
-- **View**是**Window**里面用于交互的**UI**元素。**Window**只**attach**一个**View Tree（组合模式）**，当**Window**需要重绘（如，当**View**调用**invalidate**）时，最终转为**Window**的**Surface**，**Surface**被锁住（**locked**）并返回**Canvas**对象，此时**View**拿到**Canvas**对象来绘制自己。当所有**View**绘制完成后，**Surface**解锁（**unlock**），并且**post**到绘制缓存用于绘制，通过**Surface Flinger**来组织各个**Window**，显示最终的整个屏幕
+- View是Window里面用于交互的UI元素。Window只attach一个View Tree（组合模式），当Window需要重绘（如，当View调用`invalidate`）时，最终转为Window的Surface，Surface被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，Surface解锁（unlock），并且`post`到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕
 
 #### 20. 如何启动其他应用的Activity？
 
@@ -258,7 +258,7 @@ mContext.startActivity(intent);
 
 #### 0. 谈一谈Service的生命周期？
 
-- **onCreate()**：如果service没被创建过，调用startService()后会执行onCreate()回调；如果service已处于运行中，调用startService()不会执行onCreate()方法。也就是说，onCreate()只会在第一次创建service时候调用，多次执行startService()不会重复调用onCreate()，此方法适合完成一些初始化工作；
+- **onCreate()**：如果service没被创建过，调用`startService()`后会执行`onCreate()`回调；如果service已处于运行中，调用`startService()`不会执行`onCreate()`方法。也就是说，`onCreate()`只会在第一次创建service时候调用，多次执行`startService()`不会重复调用`onCreate()`，此方法适合完成一些初始化工作；
 
 - **onStartComand()**：服务启动时调用，此方法适合完成一些数据加载工作，比如会在此处创建一个线程用于下载数据或播放音乐；
 
@@ -290,9 +290,9 @@ bindService(mIntent,conn,BIND_AUTO_CREATE);
 startService(mIntent)
 ```
 
-**startService()**：通过这种方式调用startService，onCreate()只会被调用一次，多次调用startSercie会多次执行onStartCommand()方法。如果外部没有调用stopService()或stopSelf()方法，service会一直运行。
+**startService()**：通过这种方式调用startService，onCreate()只会被调用一次，多次调用startSercie会多次执行`onStartCommand()`方法。如果外部没有调用`stopService()`或`stopSelf()`方法，service会一直运行。
 
-**bindService()**：如果该服务之前**还没创建**，系统回调顺序为onCreate()→onBind()。如果调用bindService()方法前服务**已经被绑定**，多次调用bindService()方法不会多次创建服务及绑定。如果调用者希望与正在绑定的服务**解除绑定**，可以调用unbindService()方法，回调顺序为onUnbind()→onDestroy()；
+**bindService()**：如果该服务之前**还没创建**，系统回调顺序为`onCreate()→onBind()`。如果调用`bindService()`方法前服务**已经被绑定**，多次调用`bindService()`方法**不会多次创建服务及绑定**。如果调用者希望与正在绑定的服务解除绑定，可以调用`unbindService()`方法，回调顺序为`onUnbind()→onDestroy()`；
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaec35fdba?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -300,9 +300,9 @@ startService(mIntent)
 
 **Service与Thread区别：**
 
-Service：在后台用来操作时间跨度较长的工作应用组件；Service的生命周期方法在主线程中执行，如果想执行一个长时间的工作，需要开启一个分线程（Thread）；远程服务在应用退出，Service不会停止，再次启动应用时，还可以以正在运行的Service通信。
+Service：在后台用来操作时间跨度较长的工作应用组件；Service的生命周期方法在主线程中执行，如果想执行一个长时间的工作，需要开启一个分线程（Thread）；**远程服务**在应用退出，Service不会停止，再次启动应用时，还可以以正在运行的Service通信。
 
-Thread：用来开启一个分线程的类，做一个长时间的工作；Thread类的run( )在分线程中执行；应用退出，Thread也不会停止；再次启动应用，不能再控制之前的Thread对象。
+Thread：用来开启一个分线程的类，做一个长时间的工作；Thread类的`run()`在分线程中执行；应用退出，Thread也不会停止；再次启动应用，不能再控制之前的Thread对象。
 
 #### 2. Service 一定没界面吗，Activity 一定有界面吗？
 
@@ -326,15 +326,123 @@ dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT)
 
 #### 4. 为什么bindService可以跟Activity生命周期联动？
 
-1、bindService 方法执行时，LoadApk 会记录 ServiceConnection 信息。
+- bindService 方法执行时，LoadApk 会记录 ServiceConnection 信息。
 
-2、Activity 执行 finish 方法时，会通过 LoadApk 检查 Activity 是否存在未注销/解绑的 BroadcastReceiver 和 ServiceConnection，如果有，那么会通知 AMS 注销/解绑对应的 BroadcastReceiver 和 Service，并打印异常信息，告诉用户应该主动执行注销/解绑的操作。
+- Activity 执行 finish 方法时，会通过 LoadApk 检查 Activity 是否存在未注销/解绑的 BroadcastReceiver 和 ServiceConnection，如果有，那么会通知 AMS 注销/解绑对应的 BroadcastReceiver 和 Service，并打印异常信息，告诉用户应该主动执行注销/解绑的操作。
+
+```java
+    //ContentImpl
+    @Override
+    public boolean bindService(Intent service, ServiceConnection conn,
+            int flags) {
+        warnIfCallingFromSystemProcess();
+        return bindServiceCommon(service, conn, flags, mMainThread.getHandler(),
+                Process.myUserHandle());
+    }
+
+    private boolean bindServiceCommon(Intent service, ServiceConnection conn, int flags, Handler handler, UserHandle user) {
+        // Keep this in sync with DevicePolicyManager.bindDeviceAdminServiceAsUser.
+        IServiceConnection sd;
+		...
+        if (mPackageInfo != null) {
+            sd = mPackageInfo.getServiceDispatcher(conn, getOuterContext(), handler, flags);
+        }
+        ...
+    }
+
+    //LoadedApk
+    private final ArrayMap<Context, ArrayMap<ServiceConnection, LoadedApk.ServiceDispatcher>> mServices  = new ArrayMap<>();
+
+    public final IServiceConnection getServiceDispatcher(ServiceConnection c,
+            Context context, Handler handler, int flags) {
+        synchronized (mServices) {
+            LoadedApk.ServiceDispatcher sd = null;
+            ArrayMap<ServiceConnection, LoadedApk.ServiceDispatcher> map = mServices.get(context);
+            if (map != null) {
+                if (DEBUG) Slog.d(TAG, "Returning existing dispatcher " + sd + " for conn " + c);
+                sd = map.get(c);
+            }
+            if (sd == null) {
+                sd = new ServiceDispatcher(c, context, handler, flags);
+                if (DEBUG) Slog.d(TAG, "Creating new dispatcher " + sd + " for conn " + c);
+                if (map == null) {
+                    map = new ArrayMap<>();
+                    mServices.put(context, map);
+                }
+                map.put(c, sd);
+            } else {
+                sd.validate(context, handler);
+            }
+            return sd.getIServiceConnection();
+        }
+    }
+
+//LoadedApk
+    public void removeContextRegistrations(Context context,
+            String who, String what) {
+        final boolean reportRegistrationLeaks = StrictMode.vmRegistrationLeaksEnabled();
+        synchronized (mReceivers) {
+            ArrayMap<BroadcastReceiver, LoadedApk.ReceiverDispatcher> rmap =
+                    mReceivers.remove(context);
+            if (rmap != null) {
+                for (int i = 0; i < rmap.size(); i++) {
+                    LoadedApk.ReceiverDispatcher rd = rmap.valueAt(i);
+                    IntentReceiverLeaked leak = new IntentReceiverLeaked(
+                            what + " " + who + " has leaked IntentReceiver "
+                            + rd.getIntentReceiver() + " that was " +
+                            "originally registered here. Are you missing a " +
+                            "call to unregisterReceiver()?");
+                    leak.setStackTrace(rd.getLocation().getStackTrace());
+                    Slog.e(ActivityThread.TAG, leak.getMessage(), leak);
+                    if (reportRegistrationLeaks) {
+                        StrictMode.onIntentReceiverLeaked(leak);
+                    }
+                    try {
+                        ActivityManager.getService().unregisterReceiver(
+                                rd.getIIntentReceiver());
+                    } catch (RemoteException e) {
+                        throw e.rethrowFromSystemServer();
+                    }
+                }
+            }
+            mUnregisteredReceivers.remove(context);
+        }
+
+        synchronized (mServices) {
+            //Slog.i(TAG, "Receiver registrations: " + mReceivers);
+            ArrayMap<ServiceConnection, LoadedApk.ServiceDispatcher> smap =
+                    mServices.remove(context);
+            if (smap != null) {
+                for (int i = 0; i < smap.size(); i++) {
+                    LoadedApk.ServiceDispatcher sd = smap.valueAt(i);
+                    ServiceConnectionLeaked leak = new ServiceConnectionLeaked(
+                            what + " " + who + " has leaked ServiceConnection "
+                            + sd.getServiceConnection() + " that was originally bound here");
+                    leak.setStackTrace(sd.getLocation().getStackTrace());
+                    Slog.e(ActivityThread.TAG, leak.getMessage(), leak);
+                    if (reportRegistrationLeaks) {
+                        StrictMode.onServiceConnectionLeaked(leak);
+                    }
+                    try {
+                        ActivityManager.getService().unbindService(
+                                sd.getIServiceConnection());
+                    } catch (RemoteException e) {
+                        throw e.rethrowFromSystemServer();
+                    }
+                    sd.doForget();
+                }
+            }
+            mUnboundServices.remove(context);
+            //Slog.i(TAG, "Service registrations: " + mServices);
+        }
+    }
+```
 
 #### 5. 如何保证Service不被杀死？
 
 Android 进程不死从3个层面入手：
 
-A.提供进程优先级，降低进程被杀死的概率
+**1) 提供进程优先级，降低进程被杀死的概率**
 
 方法一：监控手机锁屏解锁事件，在屏幕锁屏时启动1个像素的 Activity，在用户解锁时将 Activity 销毁掉。
 
@@ -344,11 +452,11 @@ A.提供进程优先级，降低进程被杀死的概率
 
 方法三：提升service优先级。
 
->  在AndroidManifest.xml文件中对于intent-filter可以通过android:priority = "1000"这个属性设置最高优先级，1000是最高值，如果数字越小则优先级越低，同时适用于广播。
+>  在AndroidManifest.xml文件中对于intent-filter可以通过`android:priority="1000"`这个属性设置最高优先级，1000是最高值，如果数字越小则优先级越低，同时适用于广播。
 
 方法四：将APK安装到/system/app，变身为系统级应用
 
-B. 在进程被杀死后，进行拉活
+**2) 在进程被杀死后，进行拉活**
 
 方法一：注册高频率广播接收器，唤起进程。如网络变化，解锁屏幕，开机等
 
@@ -358,7 +466,7 @@ B. 在进程被杀死后，进行拉活
 
 方法四：onDestroy方法里重启service：service + broadcast 方式，就是当service走ondestory的时候，发送一个自定义的广播，当收到广播的时候，重新启动service；
 
-C. 依靠第三方
+**3) 依靠第三方**
 
 根据终端不同，在小米手机（包括 MIUI）接入小米推送、华为手机接入华为推送；其他手机可以考虑接入腾讯信鸽或极光推送与小米推送做 A/B Test。
 
@@ -391,17 +499,17 @@ IntentService 是 Service 的子类。本质是采用Handler & HandlerThread。
 
 有四种返回值，不同值代表的意思如下： 
 
-- START_STICKY：如果 service 进程被 kill 掉，保留 service 的状态为开始状态，但不保留递送的 intent 对象。随 后 系 统 会 尝 试 重 新 创 建 service ， 由 于 服 务 状 态 为 开 始 状 态 ， 所 以 创 建 服 务 后 一 定 会 调 用 onStartCommand(Intent,int,int)方法。如果在此期间没有任何启动命令被传递到 service，那么参数 Intent 将为 null。 
+- `START_STICKY`：如果 service 进程被 kill 掉，保留 service 的状态为开始状态，但不保留递送的 intent 对象。随后系统会尝试重新创建 service ， 由于服务状态为开始状态，所以创建服务后一定会调用 `onStartCommand(Intent,int,int)`方法。如果在此期间没有任何启动命令被传递到 service，那么参数 Intent 将为 null。 
 
-- START_NOT_STICKY：“非粘性的”。使用这个返回值时，如果在执行完 onStartCommand 后，服务被异常 kill 掉，系统不会自动重启该服务。 
+- `START_NOT_STICKY`：“非粘性的”。使用这个返回值时，如果在执行完 `onStartCommand` 后，服务被异常 kill 掉，系统不会自动重启该服务。 
 
-- START_REDELIVER_INTENT：重传 Intent。使用这个返回值时，如果在执行完 onStartCommand 后，服务被异 kill 掉，系统会自动重启该服务，并将 Intent 的值传入。 
+- `START_REDELIVER_INTENT`：重传 Intent。使用这个返回值时，如果在执行完 `onStartCommand` 后，服务被异 kill 掉，系统会自动重启该服务，并将 Intent 的值传入。 
 
-- START_STICKY_COMPATIBILITY：START_STICKY 的兼容版本，但不保证服务被 kill 后一定能重启。
+- `START_STICKY_COMPATIBILITY`：`START_STICKY` 的兼容版本，但不保证服务被 kill 后一定能重启。
 
 #### 8. Service 的 onRebind（Intent）方法在什么情况下会执行？
 
-如果在 onUnbind（）方法返回 true 的情况下，且没有被销毁，再次绑定服务会被调用，否则不执行。
+如果在 `onUnbind()` 方法返回 true 的情况下，且没有被销毁，再次绑定服务会被调用，否则不执行。
 
 #### 9. Activity 调用 Service 中的方法都有哪些方式？
 
@@ -409,13 +517,13 @@ Activity 调用 Service 中的方法主要是通过绑定服务的模式实现�
 
 1) Extending the Binder class 
 
-通过 Binder 接口的形式实现，当 Activity 绑定 Service 成功的时候 Activity 会在 ServiceConnection 的类 的 onServiceConnected（）回调方法中获取到 Service 的 onBind（）方法 return 过来的 Binder 的子类。 
+通过 Binder 接口的形式实现，当 Activity 绑定 Service 成功的时候 Activity 会在 ServiceConnection 的类 的 `onServiceConnected()` 回调方法中获取到 Service 的 `onBind()` 方法 return 过来的 Binder 的子类。 
 
-2) Using a Messenger 
+2) Using a Messenger
 
 这是官方给出的另外一种沟通方式。
 
-3) Using AIDL 
+3) Using AIDL
 
 aidl 比较适合当客户端和服务端不在同一个应用下的场景。
 
@@ -431,7 +539,7 @@ b) 服务作为四大组件之一，是运行在主线程的，可以直接显�
 
 c) 只作为后台来理解的话，相比于线程，服务具备完善的生命周期，更方便随时释放资源。 
 
-d) 服务自己就有上下文(Context)对象，可以确定上下文是正常可用的。线程需要从外部获取上下文对象，在运 行时无法保证该对象没有被系统销毁。
+d) 服务自己就有上下文(Context)对象，可以确定上下文是正常可用的。线程需要从外部获取上下文对象，在运行时无法保证该对象没有被系统销毁。
 
 #### 12. 用过哪些系统Service ？
 
@@ -471,13 +579,13 @@ Intent在传递数据时是有大小限制的，大约限制在1MB之内，你�
 
 第二种不常驻(动态注册)：广播会跟随程序的生命周期。
 
-动态注册 
+**动态注册**
 
 优点： 在android的广播机制中，动态注册优先级高于静态注册优先级，因此在必要情况下，是需要动态注册广播接收者的。
 
 缺点： 当用来注册的 Activity 关掉后，广播也就失效了。
 
-静态注册 
+**静态注册** 
 
 优点： 无需担忧广播接收器是否被关闭，只要设备是开启状态，广播接收器就是打开着的。
 
@@ -493,9 +601,9 @@ Intent在传递数据时是有大小限制的，大约限制在1MB之内，你�
 
 #### 4. BroadCastReceiver 的生命周期 ?
 
-a. 广播接收者的生命周期非常短暂的，在接收到广播的时候创建，onReceive()方法结束之后销毁； 
+a. 广播接收者的生命周期非常短暂的，在接收到广播的时候创建，`onReceive()`方法结束之后销毁； 
 
-b. 广播接收者中不要做一些耗时的工作，否则会弹出 Application No Response 错误对话框； 
+b. 广播接收者中不要做一些耗时的工作，否则会弹出 `Application No Response` 错误对话框； 
 
 c. 最好也不要在广播接收者中创建子线程做耗时的工作，因为广播接收者被销毁后进程就成为了空进程，很容易被系统杀掉； 
 
@@ -509,19 +617,19 @@ d. 耗时的较长的工作最好放在服务中完成；
 
 #### 6. 什么是最终广播接收者？ 
 
-最终广播是我们自己应用发送有序广播时通过 `ContextWrapper.sendOrderedBroadcast()`方法指定的当前应用 下的广播，该广播可能会被执行两次，第一次是作为普通广播按照优先级接收广播，第二次是作为 final receiver 必须 接收一次。
+最终广播是我们自己应用发送有序广播时通过 `ContextWrapper.sendOrderedBroadcast()`方法指定的当前应用 下的广播，该广播可能会被执行两次，第一次是作为普通广播按照优先级接收广播，第二次是作为 final receiver 必须接收一次。
 
 #### 7. 广播的优先级对无序广播生效吗？ 
 
-生效的。广播的优先级推荐的范围是：[-1000,+1000]，但是如果设置的优先级值超过这个范围也是可以的。
+生效的。广播的优先级推荐的范围是：`[-1000,+1000]`，但是如果设置的优先级值超过这个范围也是可以的。
 
 #### 8. 动态注册的广播优先级谁高？ 
 
-谁先注册谁优先级高。
+优先级大的高，优先级一致的话谁先注册谁优先级高。
 
 #### 9. 如何判断当前接收到的是有序还是无序广播？
 
-在 BroadcastReceiver 类中 onReceive（）方法中，可以调用 `boolean b = isOrderedBroadcast();`该方法是 BroadcastReceiver 类中提供的方法，用于告诉我们当前的接收到的广播是否为有序广播。
+在 BroadcastReceiver 类中 `onReceive()`方法中，可以调用 `boolean b = isOrderedBroadcast();`该方法是 BroadcastReceiver 类中提供的方法，用于告诉我们当前的接收到的广播是否为有序广播。
 
 #### 10. Android 引入广播机制的用意
 
@@ -537,7 +645,7 @@ d.设计模式上(反转控制的一种应用，类似监听者模式)
 
 无序广播。不会。
 
-android 在 3.0 之后，对广播增加了一个标记：Intent.FLAG_EXCLUDE_STOPPED_PACKAGES， 这个是为了加强了对“停止”状态 APP 的管理（比如 app 安装后未启动或者被用户强制停止）。广播加上这个 Flag 之后，处于“停止”状态的 APP 是无法收到广播的，系统发出的广播基本都有这个 Flag。因此该类广播我们在使用的时候主要是采用动态注册的方式。
+android 在 3.0 之后，对广播增加了一个标记：`Intent.FLAG_EXCLUDE_STOPPED_PACKAGES`， 这个是为了加强了对“停止”状态 APP 的管理（比如 app 安装后未启动或者被用户强制停止）。广播加上这个 Flag 之后，处于“停止”状态的 APP 是无法收到广播的，系统发出的广播基本都有这个 Flag。因此该类广播我们在使用的时候主要是采用动态注册的方式。
 
 
 
@@ -545,19 +653,21 @@ android 在 3.0 之后，对广播增加了一个标记：Intent.FLAG_EXCLUDE_ST
 
 #### 1. ContentProvider使用方法?如何实现数据共享的？
 
-进行跨进程通信，实现进程间的数据交互和共享。通过Context 中 getContentResolver() 获得实例，通过 Uri匹配进行数据的增删改查。ContentProvider使用表的形式来组织数据，无论数据的来源是什么，ConentProvider 都会认为是一种表，然后把数据组织成表格。
+进行跨进程通信，实现进程间的数据交互和共享。通过Context 中 `getContentResolver()` 获得实例，通过 Uri匹配进行数据的增删改查。ContentProvider 使用表的形式来组织数据，无论数据的来源是什么，ConentProvider 都会认为是一种表，然后把数据组织成表格。
 
-#### 2. ContentProvider的权限管理(读写分离，权限控制-精确到表级，URL控制)?
+#### 2. ContentProvider的权限管理?
 
-对于ContentProvider暴露出来的数据，应该是存储在自己应用内存中的数据，对于一些存储在外部存储器上的数据，并不能限制访问权限，使用ContentProvider就没有意义了。对于ContentProvider而言，有很多权限控制，可以在AndroidManifest.xml文件中对<provider>节点的属性进行配置，一般使用如下一些属性设置：
+读写分离，权限控制-精确到表级，URI控制。
 
-- android:grantUriPermssions:临时许可标志。
-- android:permission:Provider读写权限。
-- android:readPermission:Provider的读权限。
-- android:writePermission:Provider的写权限。
-- android:enabled:标记允许系统启动Provider。
-- android:exported:标记允许其他应用程序使用这个Provider。
-- android:multiProcess:标记允许系统启动Provider相同的进程中调用客户端。
+对于ContentProvider暴露出来的数据，应该是存储在自己应用内存中的数据，对于一些存储在外部存储器上的数据，并不能限制访问权限，使用ContentProvider就没有意义了。对于ContentProvider而言，有很多权限控制，可以在`AndroidManifest.xml`文件中对`<provider>`节点的属性进行配置，一般使用如下一些属性设置：
+
+- `android:grantUriPermssions`:临时许可标志。
+- `android:permission`:Provider读写权限。
+- `android:readPermission`:Provider的读权限。
+- `android:writePermission`:Provider的写权限。
+- `android:enabled`:标记允许系统启动Provider。
+- `android:exported`:标记允许其他应用程序使用这个Provider。
+- `android:multiProcess`:标记允许系统启动Provider相同的进程中调用客户端。
 
 #### 3. 说说ContentProvider、ContentResolver、ContentObserver 之间的关系？
 
@@ -569,7 +679,7 @@ ContentObserver：观察ContentProvider中的数据变化，并将变化通知�
 
 #### 4. 为什么要用 ContentProvider？它和 sql 的实现上有什么差别？ 
 
-ContentProvider 屏蔽了数据存储的细节,内部实现对用户完全透明,用户只需要关心操作数据的 uri 就可以了， ContentProvider 可以实现不同 app 之间共享。 
+ContentProvider 屏蔽了数据存储的细节，内部实现对用户完全透明，用户只需要关心操作数据的 uri 就可以了， ContentProvider 可以实现不同 app 之间共享。 
 
 Sql 也有增删改查的方法，但是 sql 只能查询本应用下的数据库。而 ContentProvider 还可以去增删改查本地文件.xml 文件的读取等。
 
@@ -597,14 +707,42 @@ Sql 也有增删改查的方法，但是 sql 只能查询本应用下的数据�
 
 - `add()`: onAttach()->…->onResume()。
 - `remove()`: onPause()->…->onDetach()。
-- `replace()`: 相当于旧Fragment调用remove()，新Fragment调用add()。remove()+add()的生命周期加起来
+- `replace()`: 相当于旧Fragment调用`remove()`，新Fragment调用`add()`。`remove()+add()`的生命周期加起来
 - `show()`: 不调用任何生命周期方法，调用该方法的前提是要显示的 Fragment已经被添加到容器，只是纯粹把Fragment UI的setVisibility为true。
 - `hide()`: 不调用任何生命周期方法，调用该方法的前提是要显示的Fragment已经被添加到容器，只是纯粹把Fragment UI的setVisibility为false。
 
 #### 2. ViewPager切换Fragment遇到过什么问题吗? 什么最耗时？
 
 - 滑动的时候，调用setCurrentItem方法，要注意第二个参数`smoothScroll`。传false，就是直接跳到fragment，传true，就是平滑过去。一般主页切换页面都是用false。
+
+```java
+    /**
+     * Set the currently selected page.
+     * @param item Item index to select
+     * @param smoothScroll True to smoothly scroll to the new item, false to transition immediately
+     */
+    public void setCurrentItem(int item, boolean smoothScroll) {
+        mPopulatePending = false;
+        setCurrentItemInternal(item, smoothScroll, false);
+    }
+```
+
 - 禁止预加载的话，调用`setOffscreenPageLimit(0)`是无效的，因为方法里面会判断是否小于1。需要重写`setUserVisibleHint`方法，判断fragment是否可见。
+
+```java
+   //ViewPager
+	public void setOffscreenPageLimit(int limit) {
+        if (limit < DEFAULT_OFFSCREEN_PAGES) {//1
+            Log.w(TAG, "Requested offscreen page limit " + limit + " too small; defaulting to " + DEFAULT_OFFSCREEN_PAGES);
+            limit = DEFAULT_OFFSCREEN_PAGES;
+        }
+        if (limit != mOffscreenPageLimit) {
+            mOffscreenPageLimit = limit;
+            populate();
+        }
+    }
+```
+
 - 不要使用`getActivity()`获取activity实例，容易造成空指针，因为如果fragment已经`onDetach()`了，那么就会报空指针。所以要在`onAttach`方法里面，就去获取activity的上下文。
 - `FragmentStatePagerAdapter`对`limit`外的Fragment销毁，生命周期为onPause->onStop->onDestoryView->onDestory->onDetach, onAttach->onCreate->onCreateView->onStart->onResume。也就是说切换fragment的时候有可能会多次`onCreateView`，所以需要注意处理数据。
 - 由于可能多次`onCreateView`，所以我们可以把view保存起来，如果为空再去初始化数据。见代码：
@@ -613,9 +751,9 @@ Sql 也有增删改查的方法，但是 sql 只能查询本应用下的数据�
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         if (null == mFragmentView) {
-                mFragmentView = inflater.inflate(getContentViewLayoutID(), null);
-                initViewsAndEvents();
-            }
+			mFragmentView = inflater.inflate(getContentViewLayoutID(), null);
+			initViewsAndEvents();
+        }
         return mFragmentView;
     }
 ```
@@ -646,19 +784,57 @@ getActivity().getSupportFragmentManager().findFragmentByTag("mainFragment");
 
 Fragment状态保存入口:
 
-- Activity的状态保存, 在Activity的`onSaveInstanceState()`里, 调用了FragmentManger的`saveAllState()`方法, 其中会对mActive中各个Fragment的实例状态和View状态分别进行保存.
-
+- Activity的状态保存, 在Activity的`onSaveInstanceState()`里, 调用了FragmentController的`saveAllState()`方法, 其中会对mActive中各个Fragment的实例状态和View状态分别进行保存
 - FragmentManager还提供了public方法: `saveFragmentInstanceState()`, 可以对单个Fragment进行状态保存, 这是提供给我们用的。
+
+```java
+    @Override
+    public Fragment.SavedState saveFragmentInstanceState(Fragment fragment) {
+        if (fragment.mIndex < 0) {
+            throwException(new IllegalStateException("Fragment " + fragment
+                    + " is not currently in the FragmentManager"));
+        }
+        if (fragment.mState > Fragment.INITIALIZING) {
+            Bundle result = saveFragmentBasicState(fragment);
+            return result != null ? new Fragment.SavedState(result) : null;
+        }
+        return null;
+    }
+
+```
 
 - FragmentManager的`moveToState()`方法中, 当状态回退到`ACTIVITY_CREATED`, 会调用`saveFragmentViewState()`方法, 保存View的状态
 
 #### 5. Fragment 的 replace 和 add 方法的区别?
 
 - Fragment 的容器一个 FrameLayout，add 的时候是把所有的 Fragment 一层一层的叠加到了 FrameLayout 上 了，而 replace 的话首先将该容器中的其他 Fragment 去除掉然后将当前 Fragment 添加到容器中。
-
 - 一个 Fragment 容器中只能添加一个 Fragment 种类，如果多次添加则会报异常，导致程序终止，而 replace 则无所谓，随便切换。
-
 - 因为通过 add 的方法添加的 Fragment，每个 Fragment 只能添加一次，因此如果要想达到切换效果需要通过 Fragment 的的 hide 和 show 方法结合者使用。将要显示的 show 出来，将其他 hide 起来。这个过程 Fragment 的 生命周期没有变化。通过 replace 切换 Fragment， 每次都会执行上一个Fragment 的 onDestroyView ， 新 Fragment 的 onCreateView、onStart、onResume 方法。
+
+```java
+	//BackStackRecord
+   void executeOps() {
+        ...
+        switch (op.cmd) {
+            case OP_ADD:
+                f.setNextAnim(op.enterAnim);
+                mManager.addFragment(f, false);
+                break;
+                ...
+        }
+   }
+
+   //FragmentManagerImpl
+   public void addFragment(Fragment fragment, boolean moveToStateNow) {
+        ...
+        if (!fragment.mDetached) {
+            //只能添加一次
+            if (mAdded.contains(fragment)) {
+                throw new IllegalStateException("Fragment already added: " + fragment);
+            }
+        ...
+    }
+```
 
 #### 6. Fragment 如何实现类似 Activity 栈的压栈和出栈效果的？
 
@@ -679,7 +855,7 @@ public FragmentTransaction addToBackStack(String name) {
 //上面的源码仅仅做了一个标记
 ```
 
-除此之外因为我们要使用 FragmentManger 用的是 FragmentActivity，因 此 FragmentActivity 的 onBackPress 方法必定重新覆写了。打开看一下，发现确实如此。
+除此之外因为我们要使用 FragmentManger 用的是 FragmentActivity，因此 FragmentActivity 的 onBackPress 方法必定重新覆写了。打开看一下，发现确实如此。
 
 ```java
 /**
@@ -691,27 +867,40 @@ public void onBackPressed() {
     	finish();
     }
 }
-//mFragments 的原型是 FragmentManagerImpl，看看这个方法都干嘛了
 ```
 
+`mFragments` 的原型是 FragmentManagerImpl，看看这个方法都干嘛了
+
 ```java
-@Override
+	ArrayList<BackStackRecord> mBackStack;	
+	@Override
 	public boolean popBackStackImmediate() {
         checkStateLoss();
         executePendingTransactions();
         return popBackStackState(mActivity.mHandler, null, -1, 0);
     }
     //看看 popBackStackState 方法都干了啥，其实通过名称也能大概了解 只给几个片段，代码太多了
-    while (index >= 0) {
-    //从后退栈中取出当前记录对象
-    BackStackRecord bss = mBackStack.get(index);
-    if (name != null && name.equals(bss.getName())) {
-    	break;
+   private boolean popBackStackImmediate(String name, int id, int flags) {
+        execPendingActions();
+        ensureExecReady(true);
+        ...
+        boolean executePop = popBackStackState(mTmpRecords, mTmpIsPop, name, id, flags);
+        ...
+    }    
+
+boolean popBackStackState(ArrayList<BackStackRecord> records, ArrayList<Boolean> isRecordPop, String name, int id, int flags) {
+    ...
+	while (index >= 0) {
+        //从后退栈中取出当前记录对象
+        BackStackRecord bss = mBackStack.get(index);
+        if (name != null && name.equals(bss.getName())) {
+            break;
+        }
+        if (id >= 0 && id == bss.mIndex) {
+            break;
+        }
+        index--;
     }
-    if (id >= 0 && id == bss.mIndex) {
-    	break;
-    }
-    index--;
 }
 ```
 
@@ -723,12 +912,12 @@ public void onBackPressed() {
 
 - Fragment相比较于Activity多出4个回调周期，在控制操作上更灵活；
 - Fragment可以在XML文件中直接进行写入，也可以在Activity中动态添加；
-- Fragment可以使用show()/hide()或者replace()随时对Fragment进行切换，并且切换的时候不会出现明显的效果，用户体验会好；Activity虽然也可以进行切换，但是Activity之间切换会有明显的翻页或者其他的效果，在小部分内容的切换上给用户的感觉不是很好；
+- Fragment可以使用`show()/hide()`或者`replace()`随时对Fragment进行切换，并且切换的时候不会出现明显的效果，用户体验会好；Activity虽然也可以进行切换，但是Activity之间切换会有明显的翻页或者其他的效果，在小部分内容的切换上给用户的感觉不是很好；
 
 #### 8. getFragmentManager、getSupportFragmentManager 、getChildFragmentManager之间的区别？
 
-- getFragmentManager()所得到的是所在fragment 的**父容器**的管理器， getChildFragmentManager()所得到的是在fragment  里面**子容器**的管理器， 如果是fragment嵌套fragment，那么就需要利用getChildFragmentManager()；
-- 因为Fragment是3.0 Android系统API版本才出现的组件，所以3.0以上系统可以直接调用getFragmentManager()来获取FragmentManager()对象，而3.0以下则需要调用getSupportFragmentManager() 来间接获取；
+- `getFragmentManager()`所得到的是所在fragment的**父容器**的管理器， `getChildFragmentManager()`所得到的是在fragment里面**子容器**的管理器， 如果是fragment嵌套fragment，那么就需要利用`getChildFragmentManager()`；
+- 因为Fragment是3.0 Android系统API版本才出现的组件，所以3.0以上系统可以直接调用`getFragmentManager()`来获取`FragmentManager()`对象，而3.0以下则需要调用`getSupportFragmentManager()` 来间接获取；
 
 #### 9. FragmentPagerAdapter与FragmentStatePagerAdapter的区别与使用场景
 
@@ -743,7 +932,7 @@ public void onBackPressed() {
 
 #### 1. 你们 Android 开发的时候，对于 UI 稿的 px 是如何适配的？
 
-今日头条 AndroidAutoSize和smallestWidth方案。
+今日头条 AndroidAutoSize 和 smallestWidth 方案。
 
 ####  2. 平时如何有使用屏幕适配吗？原理是什么呢？
 
@@ -765,13 +954,7 @@ LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺�
 
 #### (1) LruCache原理
 
-之前，我们会使用内存缓存技术实现，也就是软引用或弱引用，在Android 2.3（APILevel 9）开始，垃圾回收器会更倾向于回收持有软引用或弱引用的对象，这让软引用和弱引用变得不再可靠。
-
-其实LRU缓存的实现类似于一个特殊的栈，把访问过的元素放置到栈顶（若栈中存在，则更新至栈顶；若栈中不存在则直接入栈），然后如果栈中元素数量超过限定值，则删除栈底元素（即最近最少使用的元素）。
-
 它的内部存在一个 LinkedHashMap 和 maxSize，把最近使用的对象用强引用存储在 LinkedHashMap 中，给出来 put 和 get 方法，每次 put 图片时计算缓存中所有图片的总大小，跟 maxSize 进行比较，大于 maxSize，就将最久添加的图片移除，反之小于 maxSize 就添加进来。
-
-LruCache的原理就是利用LinkedHashMap持有对象的强引用，按照Lru算法进行对象淘汰。具体说来假设我们从表尾访问数据，在表头删除数据，当访问的数据项在链表中存在时，则将该数据项移动到表尾，否则在表尾新建一个数据项。当链表容量超过一定阈值，则移除表头的数据。
 
 详细来说就是LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队头元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队尾。
 
@@ -791,7 +974,7 @@ LruCache的原理就是利用LinkedHashMap持有对象的强引用，按照Lru�
 
 LinkedHashMap 几乎和 HashMap 一样：从技术上来说，不同的是它定义了一个 Entry<K,V> header，这个 header 不是放在 Table 里，它是额外独立出来的。LinkedHashMap 通过继承 hashMap 中的 Entry<K,V>,并添加两个属性 Entry<K,V> before,after,和 header 结合起来组成一个双向链表，来实现按插入顺序或访问顺序排序。
 
-#### (2) DisLruCache原理
+#### (2) DiskLruCache原理
 
 DiskLruCache与LruCache原理相似，只是多了一个journal文件来做磁盘文件的管理，如下所示：
 
@@ -820,7 +1003,15 @@ adb backup -noapk com.your.packagename
 
 我们来分析下这个文件的内容：
 
-第一行：libcore.io.DiskLruCache，固定字符串。 第二行：1，DiskLruCache源码版本号。 第三行：1，App的版本号，通过open()方法传入进去的。 第四行：1，每个key对应几个文件，一般为1. 第五行：空行 第六行及后续行：缓存操作记录。 第六行及后续行表示缓存操作记录，关于操作记录，我们需要了解以下三点：
+第一行：libcore.io.DiskLruCache，固定字符串。
+
+第二行：1，DiskLruCache源码版本号。 
+
+第三行：1，App的版本号，通过open()方法传入进去的。 
+
+第四行：1，每个key对应几个文件，一般为1. 
+
+第五行：空行 第六行及后续行：缓存操作记录。 第六行及后续行表示缓存操作记录，关于操作记录，我们需要了解以下三点：
 
 DIRTY 表示一个entry正在被写入。写入分两种情况，如果成功会紧接着写入一行CLEAN的记录；如果失败，会增加一行REMOVE记录。注意单独只有DIRTY状态的记录是非法的。 当手动调用remove(key)方法的时候也会写入一条REMOVE记录。 READ就是说明有一次读取的记录。 CLEAN的后面还记录了文件的长度，注意可能会一个key对应多个文件，那么就会有多个数字。
 
@@ -1306,7 +1497,7 @@ Android事件分发顺序：**Activity（Window） -> ViewGroup -> View**
 #### 3. 代码实现一个长按事件
 
 ```java
-public class LongPressView2 extends View{  
+public class LongPressView extends View{  
     private int mLastMotionX, mLastMotionY;  
     //是否移动了  
     private boolean isMoved;  
@@ -1320,7 +1511,8 @@ public class LongPressView2 extends View{
         mLongPressRunnable = new Runnable() {  
               
             @Override  
-            public void run() {               
+            public void run() {     
+                //触发
                 performLongClick();  
             }  
         };  
@@ -1333,8 +1525,10 @@ public class LongPressView2 extends View{
         switch(event.getAction()) {  
         case MotionEvent.ACTION_DOWN:  
             mLastMotionX = x;  
-            mLastMotionY = y;  
+            mLastMotionY = y; 
+            //置false
             isMoved = false;  
+            //添加一个postDelayed事件
             postDelayed(mLongPressRunnable, ViewConfiguration.getLongPressTimeout());  
             break;  
         case MotionEvent.ACTION_MOVE:  
@@ -1343,6 +1537,7 @@ public class LongPressView2 extends View{
                     || Math.abs(mLastMotionY-y) > TOUCH_SLOP) {  
                 //移动超过阈值，则表示移动了  
                 isMoved = true;  
+                //remove
                 removeCallbacks(mLongPressRunnable);  
             }  
             break;  
@@ -1359,8 +1554,6 @@ public class LongPressView2 extends View{
 
 #### 4. 手势操作ActionCancel后怎么取消
 
-https://www.jianshu.com/p/3581fcf302fd
-
 如果某一个子View处理了Down事件，那么随之而来的Move和Up事件也会交给它处理。但是交给它处理之前，父View还是可以拦截事件的，如果拦截了事件，那么子View就会收到一个Cancel事件，并且不会收到后续的Move和Up事件。
 
 手势操作ActionCancel是ViewGroup拦截了Move事件，这个Move事件将会转化为Cancel事件传递给子View
@@ -1370,11 +1563,9 @@ https://www.jianshu.com/p/3581fcf302fd
 - 修改ViewGroup不拦截Move事件
 - 子View可以通过设置`requestDisallowInterceptTouchEvent(true)`来达到禁止父ViewGroup拦截事件的目的。
 
-[Android事件分发之ACTION_CANCEL机制及作用](https://blog.csdn.net/cufelsd/article/details/89471402)
-
 #### 5. setOnTouchListener,onClickeListener和onTouchEvent的关系
 
-如果它的`onTouchListener`被设置了的话，则onTouch会被调用，如果onTouch的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置onTouchListener，则会继续调用onTouchEvent。而onClick方法则是设置了`onClickListener`则会被正常调用。
+如果它的`onTouchListener`被设置了的话，则onTouch会被调用，如果onTouch的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置onTouchListener，则会继续调用onTouchEvent。而onClick方法则是onTouchEvent被调用且设置了`onClickListener`则会被正常调用。
 
 伪代码解释：
 
@@ -1388,7 +1579,9 @@ public void consumeEvent(MotionEvent event) {
     } else {
         onTouchEvent(event);
     }
+}
 
+public void onTouchEvent(event){
     if (setOnClickListener) {
         onClick();
     }
@@ -1487,11 +1680,11 @@ MotionEvent是手指接触屏幕后所产生的一系列事件。典型的事件
 
 #### 8. ACTION_CANCEL什么时候触发，触摸button然后滑动到外部抬起会触发点击事件吗，再滑动回去抬起会么？
 
-- 一般ACTION_CANCEL和ACTION_UP都作为View一段事件处理的结束。如果在父View中拦截ACTION_UP或ACTION_MOVE，在第一次父视图拦截消息的瞬间，父视图指定子视图不接受后续消息了，同时子视图会收到ACTION_CANCEL事件。
-- 如果触摸某个控件，但是又不是在这个控件的区域上抬起（移动到别的地方了），就会出现action_cancel。
+- 一般`ACTION_CANCEL`和`ACTION_UP`都作为View一段事件处理的结束。如果在父View中拦截`ACTION_UP`或`ACTION_MOVE`，在第一次父视图拦截消息的瞬间，父视图指定子视图不接受后续消息了，同时子视图会收到`ACTION_CANCEL`事件。
+- 如果触摸某个控件，但是又不是在这个控件的区域上抬起（移动到别的地方了），就会出现`ACTION_CANCEL`事件。
 
 
-
+不会。
 
 ## 十、View绘制
 
@@ -1665,16 +1858,42 @@ private void performTraversals() {
 
 可以看到在`performTraversals`方法中执行了，但是在view绘制之前，这是因为在绘制之前就把需要执行的`runnable`封装成Message发送到`MessageQueue`里排队了，但是Looper不会马上去取这个消息，因为`Looper`会按顺序取消息，主线程还有什么消息没执行完呢？其实就是当前的这个`performTraversals`所在的任务，所以要等下面的·performMeasure，performLayout，performDraw·都执行完，也就是view绘制完毕了，才会去执行之前我们post的那个runnable，也就是我们能在`view.post`方法里的`runnable`能获取宽高的主要原因了。
 
-View.post()的原理：**以Handler为基础，View.post() 将传入任务添加到 View绘制任务所在的消息队列尾部，从而保证View.post() 任务的执行时机是在View 绘制任务完成之后的。** 其中，几个关键点：
+`view.post()`的原理：
 
-- View.post()实际操作：将view.post()传入的任务保存到一个数组里 
-- View.post()添加的任务添加到 View绘制任务所在的消息队列尾部的时机：View 绘制流程的开始阶段，即 ViewRootImpl.performTraversals()
-- View.post()添加的任务执行时机：在View绘制任务之后
+**以Handler为基础，`view.post()` 将传入任务添加到 View绘制任务所在的消息队列尾部，从而保证View.post() 任务的执行时机是在View 绘制任务完成之后的。** 其中，几个关键点：
+
+- `view.post()`实际操作：将`view.post()`传入的任务保存到一个数组里 
+- `view.post()`添加的任务添加到 View绘制任务所在的消息队列尾部的时机：View 绘制流程的开始阶段，即 `ViewRootImpl.performTraversals()`
+- `view.post()`添加的任务执行时机：在View绘制任务之后
 
 #### 7. 自定义LinearLayout，怎么测量子View宽高
 
-```
+```java
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (mOrientation == VERTICAL) {
+            measureVertical(widthMeasureSpec, heightMeasureSpec);
+        } else {
+            measureHorizontal(widthMeasureSpec, heightMeasureSpec);
+        }
+    }
 
+	 void measureVertical(int widthMeasureSpec, int heightMeasureSpec) {
+         ...
+         for (int i = 0; i < count; ++i) {
+            final View child = getVirtualChildAt(i);
+         	final MarginLayoutParams lp = (MarginLayoutParams) child.getLayoutParams();
+
+            final int childWidthMeasureSpec = getChildMeasureSpec(parentWidthMeasureSpec,
+                    mPaddingLeft + mPaddingRight + lp.leftMargin + lp.rightMargin
+                            + widthUsed, lp.width);
+            final int childHeightMeasureSpec = getChildMeasureSpec(
+                parentHeightMeasureSpec, mPaddingTop + mPaddingBottom + lp.topMargin + lp.bottomMargin + heightUsed, lp.height);
+
+            child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+         }
+         ...
+     }
 ```
 
 #### 8. setFactory和setFactory2有什么区别？
@@ -1752,7 +1971,7 @@ private int getParents(ViewParents view){
 
 #### 12. 自定义view效率高于xml定义吗？说明理由。
 
-自定义view效率高于xml定义：少了解析xml；自定义View 减少了ViewGroup与View之间的测量,包括父量子,子量自身,子在父中位置摆放,当子view变化时,父的某些属性都会跟着变化。
+自定义view效率高于xml定义：少了解析xml；自定义View 减少了ViewGroup与View之间的测量，包括父量子，子量自身，子在父中位置摆放，当子view变化时，父的某些属性都会跟着变化。
 
 #### 13. scrollTo()和scollBy()的区别？
 
@@ -1774,23 +1993,21 @@ private int getParents(ViewParents view){
 
 #### 15. invalidate()和postInvalidate()的区别 ？
 
-- invalidate()与postInvalidate()都用于刷新View，主要区别是invalidate()在主线程中调用，若在子线程中使用需要配合handler
+- `invalidate()`与`postInvalidate()`都用于刷新View，主要区别是`invalidate()`在主线程中调用，若在子线程中使用需要配合handler
 
-- postInvalidate()可在子线程中直接调用
+- `postInvalidate()`可在子线程中直接调用
 
 #### 16. 自定义View如何考虑机型适配 ?
 
 - 合理使用warp_content，match_parent
 
-- 尽可能的是使用RelativeLayout
+- 尽可能的是使用RelativeLayout，引入android的约束布局
 
 - 针对不同的机型，使用不同的布局文件放在对应的目录下，android会自动匹配。
 
 - 尽量使用点9图片。
 
 - 使用与密度无关的像素单位dp，sp
-
-- 引入android的约束布局。
 
 - 切图的时候切大分辨率的图，应用到布局当中。在小分辨率的手机上也会有很好的显示效果。
 
@@ -1808,6 +2025,78 @@ private int getParents(ViewParents view){
 
 决定因素：值由**子View的布局参数LayoutParams**和父容器的**MeasureSpec**值共同决定。具体规则见下图：![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7a649cc67de5?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
+```java
+    public static int getChildMeasureSpec(int spec, int padding, int childDimension) {
+        int specMode = MeasureSpec.getMode(spec);
+        int specSize = MeasureSpec.getSize(spec);
+
+        int size = Math.max(0, specSize - padding);
+
+        int resultSize = 0;
+        int resultMode = 0;
+
+        switch (specMode) {
+        // Parent has imposed an exact size on us
+        case MeasureSpec.EXACTLY:
+            if (childDimension >= 0) {
+                resultSize = childDimension;
+                resultMode = MeasureSpec.EXACTLY;
+            } else if (childDimension == LayoutParams.MATCH_PARENT) {
+                // Child wants to be our size. So be it.
+                resultSize = size;
+                resultMode = MeasureSpec.EXACTLY;
+            } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+                // Child wants to determine its own size. It can't be
+                // bigger than us.
+                resultSize = size;
+                resultMode = MeasureSpec.AT_MOST;
+            }
+            break;
+
+        // Parent has imposed a maximum size on us
+        case MeasureSpec.AT_MOST:
+            if (childDimension >= 0) {
+                // Child wants a specific size... so be it
+                resultSize = childDimension;
+                resultMode = MeasureSpec.EXACTLY;
+            } else if (childDimension == LayoutParams.MATCH_PARENT) {
+                // Child wants to be our size, but our size is not fixed.
+                // Constrain child to not be bigger than us.
+                resultSize = size;
+                resultMode = MeasureSpec.AT_MOST;
+            } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+                // Child wants to determine its own size. It can't be
+                // bigger than us.
+                resultSize = size;
+                resultMode = MeasureSpec.AT_MOST;
+            }
+            break;
+
+        // Parent asked to see how big we want to be
+        case MeasureSpec.UNSPECIFIED:
+            if (childDimension >= 0) {
+                // Child wants a specific size... let him have it
+                resultSize = childDimension;
+                resultMode = MeasureSpec.EXACTLY;
+            } else if (childDimension == LayoutParams.MATCH_PARENT) {
+                // Child wants to be our size... find out how big it should
+                // be
+                resultSize = View.sUseZeroUnspecifiedMeasureSpec ? 0 : size;
+                resultMode = MeasureSpec.UNSPECIFIED;
+            } else if (childDimension == LayoutParams.WRAP_CONTENT) {
+                // Child wants to determine its own size.... find out how
+                // big it should be
+                resultSize = View.sUseZeroUnspecifiedMeasureSpec ? 0 : size;
+                resultMode = MeasureSpec.UNSPECIFIED;
+            }
+            break;
+        }
+        //noinspection ResourceType
+        return MeasureSpec.makeMeasureSpec(resultSize, resultMode);
+    }
+
+```
+
 
 
 ## 十一、Drawbale和动画
@@ -1821,7 +2110,7 @@ private int getParents(ViewParents view){
   - 通过 AnimationDrawable 实现，容易 OOM
 - 属性动画：
   - 可作用于任何对象，可用 xml 定义，Android 3.0 引入，建议代码实现比较灵活
-  - 包括 ObjectAnimator、ValuetAnimator、AnimatorSet
+  - 包括 ObjectAnimator、ValueAnimator、AnimatorSet
   - 时间插值器：根据时间流逝的百分比计算当前属性改变的百分比，系统预置匀速、加速、减速等插值器
   - 类型估值器：根据当前属性改变的百分比计算改变后的属性值，系统预置整型、浮点、色值等类型估值器
 
@@ -1880,9 +2169,9 @@ xml 文件实现的补间动画，复用率极高。在 Activity切换，窗口�
 
 使用帧动画时需要注意，不要使用过多特别大的图，容导致内存不足。
 
-#### 2.Bitmap、Drawable与View有什么区别,Drawable有哪些子类
+#### 2.Bitmap、Drawable与View有什么区别，Drawable有哪些子类
 
-Bitmap： 仅仅就是一个位图 你可以理解为一张图片在内存中的映射。 
+Bitmap： 仅仅就是一个位图，你可以理解为一张图片在内存中的映射。 
 
 View：View最大的作用是2个：一个是draw，也就是canvas的draw方法，还有一个作用就是测量大小
 
@@ -2114,7 +2403,7 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 
 - ARGB_8888：4个字节
 - ARGB_4444、ARGB_565：2个字节
-- ALPHA_8   每个像素占用1byte内存       
+- ALPHA_8   每个像素占用1字节      
 
 **资源文件位置**： 不同dpi对应存放的文件夹
 
@@ -2150,7 +2439,7 @@ Bitamp 所占内存大小 = 宽度像素 x （inTargetDensity / inDensity） x �
 
 - **getByteCount()**：API12 加入，代表存储 Bitmap 的像素需要的最少内存。
 - **getAllocationByteCount()**：API19 加入，代表在内存中为 Bitmap 分配的内存大小，代替了 getByteCount() 方法。
-- 在**不复用 Bitmap** 时，getByteCount() 和 getAllocationByteCount 返回的结果是一样的。在通过**复用 Bitmap** 来解码图片时，那么 getByteCount() 表示新解码图片占用内存的大 小，getAllocationByteCount() 表示被复用 Bitmap 真实占用的内存大小。
+- 在**不复用 Bitmap** 时，`getByteCount()` 和 `getAllocationByteCount()` 返回的结果是一样的。在通过**复用 Bitmap** 来解码图片时，那么 `getByteCount()` 表示新解码图片占用内存的大 小，`getAllocationByteCount()` 表示被复用 Bitmap 真实占用的内存大小。
 
 
 
