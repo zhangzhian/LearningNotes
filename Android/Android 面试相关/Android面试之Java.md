@@ -409,9 +409,257 @@ public class AnnotationDemo {
 
 由于该注解的保留策略为 `RetentionPolicy.RUNTIME` ，故可在运行期通过反射机 制来使用，否则无法通过反射机制来获取。
 
+#### 3. 注解可以用来做什么
+
+主要有以下几个用处：
+
+- 降低项目的耦合度。
+- 自动完成一些`规律性的代码`。
+- 自动生成`java代码`，减轻开发者的工作量。
+
 ### 五、序列化
 
+#### 1. 序列化指的是什么？有什么用
 
+**序列化**指的是讲对象变成有序的`字节流`，变成字节流之后才能进行传输存储等一系列操作。
+**反序列化**就是序列化的`相反操作`，也就是把序列化生成的字节流转为我们内存的对象。
+
+#### 2. 介绍下两种序列化接口
+
+- Serializable
+
+是`Java`提供的一个序列化接口，是一个空接口，专门为对象提供序列化和反序列化操作。具体使用如下：
+
+```java
+public class User implements Serializable {
+    private static final long serialVersionUID=519067123721561165l;
+    
+    private int id;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+}
+```
+
+实现`Serializable`接口，声明一个`serialVersionUID`。
+
+`serialVersionUID`不是必须的，因为不写的话，系统会自动生成这个变量。它有什么用呢？当序列化的时候，系统会把当前类的`serialVersionUID`写入序列化的文件中，当反序列化的时候会去检测这个`serialVersionUID`，看他是否和当前类的`serialVersionUID`一致，一样则可以正常反序列化，如果不一样就会报错了。
+
+所以这个`serialVersionUID`就是序列化和反序列化过程中的一个标识，代表一致性。不加的话会有什么影响?如果我们序列化后，改动了这个类的某些成员变量，那么`serialVersionUID`就会改变，这时候再拿之前序列化的数据来反序列化就会报错。所以如果我们手动指定`serialVersionUID`就能保证最大限度来恢复数据。
+
+- Parcelable
+
+Android自带的接口，使用起来要复杂些：需要实现Parcelable接口，重写`describeContents()，writeToParcel(Parcel dest, @WriteFlags int flags)`，并添加一个静态成员变量`CREATOR`并实现`Parcelable.Creator`接口
+
+```java
+public class User implements Parcelable {
+    
+    private int id;
+
+    protected User(Parcel in) {
+        id = in.readInt();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(id);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Creator<User> CREATOR = new Creator<User>() {
+        @Override
+        public User createFromParcel(Parcel in) {
+            return new User(in);
+        }
+
+        @Override
+        public User[] newArray(int size) {
+            return new User[size];
+        }
+    };
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+}
+```
+
+- `createFromParcel`，User(Parcel in) ，代表从序列化的对象中创建原始对象
+- `newArray`，代表创建指定长度的原始对象数组
+- `writeToParcel`，代表将当前对象写入到序列化结构中。
+- `describeContents`，代表返回当前对象的内容描述。如果还有文件描述符，返回1，否则返回0。
+
+#### 3. 两者有什么区别，该怎么使用选择
+
+`Serializable`是Java提供的序列化接口，使用简单但是开销很大，序列化和反序列化过程都需要大量`I/O`操作。
+`Parcelable`是Android中提供的，也是`Android`中推荐的序列化方式。虽然使用麻烦，但是效率很高。
+
+所以，如果是内存序列化层面，那么还是建议`Parcelable`，因为他效率会比较高。
+
+如果是网络传输和存储磁盘情况，就推荐`Serializable`，因为序列化方式比较简单，而且Parcelable不能保证，当外部条件发生变化时数据的连续性。
+
+- Serializable
+
+`Serializable`的实质其实是是把Java对象序列化为二进制文件，然后就能在进程之间传递，并且用于网络传输或者本地存储等一系列操作，因为他的本质就存储了文件。可以看看源码：
+
+```java
+private void writeObject0(Object obj, boolean unshared)
+    throws IOException
+{
+    ...
+    try {
+     
+        Object orig = obj;
+        Class<?> cl = obj.getClass();
+        ObjectStreamClass desc;
+       
+        desc = ObjectStreamClass.lookup(cl, true);
+   
+        if (obj instanceof Class) {
+            writeClass((Class) obj, unshared);
+        } else if (obj instanceof ObjectStreamClass) {
+            writeClassDesc((ObjectStreamClass) obj, unshared);
+        // END Android-changed:  Make Class and ObjectStreamClass replaceable.
+        } else if (obj instanceof String) {
+            writeString((String) obj, unshared);
+        } else if (cl.isArray()) {
+            writeArray(obj, desc, unshared);
+        } else if (obj instanceof Enum) {
+            writeEnum((Enum<?>) obj, desc, unshared);
+        } else if (obj instanceof Serializable) {
+            writeOrdinaryObject(obj, desc, unshared);
+        } else {
+            if (extendedDebugInfo) {
+                throw new NotSerializableException(
+                    cl.getName() + "\n" + debugInfoStack.toString());
+            } else {
+                throw new NotSerializableException(cl.getName());
+            }
+        }
+    } 
+    ...
+}
+
+
+private void writeOrdinaryObject(Object obj,
+                                     ObjectStreamClass desc,
+                                     boolean unshared)
+        throws IOException
+    {
+        ...
+        try {
+            desc.checkSerialize();
+            
+            //写入二进制文件，普通对象开头的魔数0x73
+            bout.writeByte(TC_OBJECT);
+            //写入对应的类的描述符，见底下源码
+            writeClassDesc(desc, false);
+            
+            handles.assign(unshared ? null : obj);
+            if (desc.isExternalizable() && !desc.isProxy()) {
+                writeExternalData((Externalizable) obj);
+            } else {
+                writeSerialData(obj, desc);
+            }
+        } finally {
+            if (extendedDebugInfo) {
+                debugInfoStack.pop();
+            }
+        }
+    }
+
+    public long getSerialVersionUID() {
+        // 如果没有定义serialVersionUID，序列化机制就会调用一个函数根据类内部的属性等计算出一个hash值
+        if (suid == null) {
+            suid = AccessController.doPrivileged(
+                new PrivilegedAction<Long>() {
+                    public Long run() {
+                        return computeDefaultSUID(cl);
+                    }
+                }
+            );
+        }
+        return suid.longValue();
+    }
+```
+
+可以看到是通过反射获取对象以及对象属性的相关信息，然后将数据写到了一个`二进制文件`，并且写入了序列化协议版本等等。而获取 `serialVersionUID` 的逻辑也体现出来，如果id为空则会生成计算一个hash值。
+
+- Parcelable
+
+`Parcelable`的存储是通过`Parcel`存储到内存的，简单地说，Parcel提供了一套机制，可以将序列化之后的数据写入到一个共享内存中，其他进程通过`Parcel`可以从这块共享内存中读出字节流，并反序列化成对象。
+
+这其中实际又是通过`native`方法实现的。
+
+当然，`Parcelable`也是可以持久化的，涉及到Parcel中的`unmarshall`和`marshall`方法。 这里简单贴一下代码：
+
+```java
+protected void saveParce() {
+        FileOutputStream fos;
+        try {
+            fos = getApplicationContext().openFileOutput(TAG,
+                    Context.MODE_PRIVATE);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
+            Parcel parcel = Parcel.obtain();
+            parcel.writeParcelable(new ParceData(), 0);
+
+            bos.write(parcel.marshall());
+            bos.flush();
+            bos.close();
+            fos.flush();
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected void loadParce() {
+        FileInputStream fis;
+        try {
+            fis = getApplicationContext().openFileInput(TAG);
+            byte[] bytes = new byte[fis.available()];
+            fis.read(bytes);
+            Parcel parcel = Parcel.obtain();
+            parcel.unmarshall(bytes, 0, bytes.length);
+            parcel.setDataPosition(0);
+
+            ParceData data = parcel.readParcelable(ParceData.class.getClassLoader());
+            fis.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+**序列化总结**
+
+1）对于内存序列化方面建议用`Parcelable`，为什么呢？
+
+因为`Serializable`是存储了一个二进制文件，所以会有频繁的IO操作，消耗也比较大，而且用到了大量反射，反射操作也是耗时的。相比之下`Parcelable`就要效率高很多。
+
+2）对于数据持久化还是建议用`Serializable`，为什么呢？
+
+首先，`Serializable`本身就是存储到二进制文件，所以用于持久化比较方便。而`Parcelable`序列化是在内存中操作，如果进程关闭或者重启的时候，内存中的数据就会消失，那么`Parcelable`序列化用来持久化就有可能会失败，也就是数据不会连续完整。而且`Parcelable`还有一个问题是兼容性，每个Android版本可能内部实现都不一样，知识用于内存中也就是传递数据的话是不影响的，但是如果持久化可能就会有问题了，低版本的数据拿到高版本可能会出现兼容性问题。 所以还是建议用`Serializable`进行持久化。
+
+3）Parcelable一定比Serializable快吗？
+
+有个比较有趣的例子是：当序列化一个超级大的对象图表（表示通过一个对象，拥有通过某路径能访问到其他很多的对象），并且每个对象有10个以上属性时，并且`Serializable`实现了`writeObject()`以及`readObject()`，在平均每台安卓设备上，`Serializable`序列化速度大于`Parcelable` 3.6倍，反序列化速度大于1.6倍.
+
+具体原因就是因为`Serilazable`的实现方式中，是有缓存的概念的，当一个对象被解析过后，将会缓存在`HandleTable`中，当下一次解析到同一种类型的对象后，便可以向二进制流中，写入对应的缓存索引即可。但是对于`Parcel`来说，没有这种概念，每一次的序列化都是独立的，每一个对象，都当作一种新的对象以及新的类型的方式来处理。
 
 ### 六、集合
 

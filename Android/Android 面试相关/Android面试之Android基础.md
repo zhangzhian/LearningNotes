@@ -952,7 +952,45 @@ px = dp * density
 
 LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在集合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。
 
-#### (1) LruCache原理
+#### 1. LruCache使用和原理
+
+使用：
+
+```java
+public class MyImageLoader {
+    private LruCache<String, Bitmap> mLruCache;
+
+    public MyImageLoader() {
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory())/1024;
+        int cacheSize = maxMemory / 8;
+        mLruCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getRowBytes()*value.getHeight()/1024;
+            }
+        };
+
+    }
+
+    /**
+     * 添加图片缓存
+     */
+    public void addBitmap(String key, Bitmap bitmap) {
+            mLruCache.put(key, bitmap);
+    }
+
+    /**
+     * 从缓存中获取图片
+     *
+     */
+    public Bitmap getBitmap(String key) {
+        return mLruCache.get(key);
+    }
+
+}
+```
+
+使用方法如上，只需要提供缓存的总容量大小并重写`sizeOf`方法计算缓存对象大小即可。这里总容量的大小也是通用方法，即进程可用内存的1/8，单位kb。然后就可以使用put方法来添加缓存对象，get方法来获取缓存对象。
 
 它的内部存在一个 LinkedHashMap 和 maxSize，把最近使用的对象用强引用存储在 LinkedHashMap 中，给出来 put 和 get 方法，每次 put 图片时计算缓存中所有图片的总大小，跟 maxSize 进行比较，大于 maxSize，就将最久添加的图片移除，反之小于 maxSize 就添加进来。
 
@@ -974,7 +1012,7 @@ LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺�
 
 LinkedHashMap 几乎和 HashMap 一样：从技术上来说，不同的是它定义了一个 Entry<K,V> header，这个 header 不是放在 Table 里，它是额外独立出来的。LinkedHashMap 通过继承 hashMap 中的 Entry<K,V>,并添加两个属性 Entry<K,V> before,after,和 header 结合起来组成一个双向链表，来实现按插入顺序或访问顺序排序。
 
-#### (2) DiskLruCache原理
+#### 2. DiskLruCache原理
 
 DiskLruCache与LruCache原理相似，只是多了一个journal文件来做磁盘文件的管理，如下所示：
 
@@ -1417,6 +1455,24 @@ Handler 允许我们发送延时消息，如果在延时期间用户关闭了 Ac
 - 通过**Message m = mHandler.obtainMessage()**
 
 后两者效果更好，因为Android默认的消息池中消息数量是50(8.0)，而后两者是直接在消息池中取出一个Message实例，这样做就可以避免多生成Message实例。
+
+#### 16. 当MessageQueue 没有消息的时候，在干什么，会占用CPU资源吗?
+
+`MessageQueue` 没有消息时，便阻塞在 loop 的 `queue.next()` 方法这里。具体就是会调用到`nativePollOnce`方法里，最终调用到`epoll_wait()`进行阻塞等待。
+
+这时，主线程会进行休眠状态，也就不会消耗CPU资源。当下个消息到达的时候，就会通过pipe管道写入数据然后唤醒主线程进行工作。
+
+这里涉及到阻塞和唤醒的机制叫做 `epoll 机制`。
+
+ `epoll 机制`是一种**文件描述符和I/O多路复用**：
+
+> 在Linux操作系统中，可以将一切都看作是文件，而文件描述符简称fd，当程序打开一个现有文件或者创建一个新文件时，内核向进程返回一个文件描述符，可以理解为一个索引值。
+
+> I/O多路复用是一种机制，让单个进程可以监视多个文件描述符，一旦某个描述符就绪（一般是读就绪或写就绪），能够通知程序进行相应的读写操作
+
+所以`I/O`多路复用其实就是一种监听读写的通知机制，而Linux提供的三种 IO 复用方式分别是：`select、poll 和 epoll` 。而这其中`epoll`是大部分情况下性能最好的多路I/O就绪通知方法。
+
+所以，这里用到的`epoll`其实就是一种I/O多路复用方式，用来监控多个文件描述符的I/O事件。通过`epoll_wait`方法等待I/O事件，如果当前没有可用的事件则阻塞调用线程。
 
 
 
@@ -1991,15 +2047,39 @@ private int getParents(ViewParents view){
 
 #### 14. Scroller是怎么实现View的弹性滑动？
 
-在MotionEvent.ACTION_UP事件触发时调用`startScroll()`方法，该方法并没有进行实际的滑动操作，而是记录滑动相关量（滑动距离、滑动时间）
+在`MotionEvent.ACTION_UP`事件触发时调用`startScroll()`方法，该方法并没有进行实际的滑动操作，而是记录滑动相关量（滑动距离、滑动时间）
 
-接着调用`invalidate/postInvalidate`方法，请求 View 重绘，导致`View.draw`方法被执行
+接着调用`invalidate/postInvalidate`方法，请求 View 重绘，导致`view.draw`方法被执行
 
-当View重绘后会在draw方法中调用`computeScroll`方法，而`computeScroll`又会去向`Scroller`获取当前的`scrollX`和`scrollY`；然后通过`scrollTo`方法实现滑动；接着又调用`postInvalidate`方法来进行第二次重绘，和之前流程一样，如此反复导致View不断进行小幅度的滑动，而多次的小幅度滑动就组成了弹性滑动，直到整个滑动过成结束。
+当View重绘后会在draw方法中调用`computeScroll()`方法，而`computeScroll()`又会去向`Scroller`获取当前的`scrollX`和`scrollY`；然后通过`scrollTo`方法实现滑动；接着又调用`postInvalidate`方法来进行第二次重绘，和之前流程一样，如此反复导致View不断进行小幅度的滑动，而多次的小幅度滑动就组成了弹性滑动，直到整个滑动过成结束。
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c37ec2b0e11b?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
+```java
+mScroller = new Scroller(context);
 
+
+@Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_UP:
+                // 滚动开始时X的坐标,滚动开始时Y的坐标,横向滚动的距离,纵向滚动的距离
+                mScroller.startScroll(getScrollX(), 0, dx, 0);
+                invalidate();
+                break;
+        }
+        return super.onTouchEvent(event);
+    }
+
+@Override
+    public void computeScroll() {
+        // 重写computeScroll()方法，并在其内部完成平滑滚动的逻辑
+        if (mScroller.computeScrollOffset()) {
+            scrollTo(mScroller.getCurrX(), mScroller.getCurrY());
+            invalidate();
+        }
+    }
+```
 
 #### 15. invalidate()和postInvalidate()的区别 ？
 
@@ -2033,7 +2113,9 @@ private int getParents(ViewParents view){
 - **EXACTLY**(精确模式)：父视图为子视图指定一个确切的尺寸SpecSize。对应LyaoutParams中的match_parent或具体数值。
 - **AT_MOST**(最大模式)：父容器为子视图指定一个最大尺寸SpecSize，View的大小不能大于这个值。对应LayoutParams中的wrap_content。
 
-决定因素：值由**子View的布局参数LayoutParams**和父容器的**MeasureSpec**值共同决定。具体规则见下图：![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7a649cc67de5?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+决定因素：值由**子View的布局参数LayoutParams**和父容器的**MeasureSpec**值共同决定，所以就有一个父布局测量模式，子视图布局参数，以及子view本身的`MeasureSpec`关系图,具体规则见下图：
+
+![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7a649cc67de5?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 ```java
     public static int getChildMeasureSpec(int spec, int padding, int childDimension) {
@@ -2106,6 +2188,87 @@ private int getParents(ViewParents view){
     }
 
 ```
+
+实际应用时：
+
+对于自定义的单一view，一般可以不处理`onMeasure`方法，如果要对宽高进行自定义，就重写onMeasure方法，并将算好的宽高通过`setMeasuredDimension`方法传进去。
+
+对于自定义的ViewGroup，一般需要重写`onMeasure`方法，并且调用`measureChildren`方法遍历所有子View并进行测量（measureChild方法是测量具体某一个view的宽高），然后可以通过`getMeasuredWidth/getMeasuredHeight`获取宽高，最后通过`setMeasuredDimension`方法存储本身的总宽高。
+
+#### 18. requestLayout和invalidate?
+
+`requestLayout`方法是用来触发绘制流程，他会会一层层调用 parent 的`requestLayout`，一直到最上层也就是`ViewRootImpl#requestLayout`，这里也就是判断线程的地方了，最后会执行到`performMeasure -> performLayout -> performDraw` 三个绘制流程，也就是测量——布局——绘制。
+
+```java
+    @Override
+    public void requestLayout() {
+        if (!mHandlingLayoutInLayoutRequest) {
+            checkThread();
+            mLayoutRequested = true;
+            scheduleTraversals();//执行绘制流程
+        }
+    }
+```
+
+其中`performMeasure`方法会执行到View的measure方法，用来测量大小。`performLayout`方法会执行到view的layout方法，用来计算位置。`performDraw`方法需要注意下，他会执行到view的draw方法，但是并不一定会进行绘制，只有只有 flag 被设置为 `PFLAG_DIRTY_OPAQUE` 才会进行绘制。
+
+`invalidate`方法也是用来触发绘制流程，主要表现就是会调用`draw()`方法。虽然他也会走到`scheduleTraversals`方法，也就是会走到三大流程，但是View会通过`mPrivateFlags`来判断是否进行`onMeasure`和`onLayout`操作。而在用`invalidate`方法时，更新了`mPrivateFlags`，所以不会进行`measure`和`layout`。同时他也会设置Flag为`PFLAG_DIRTY_OPAQUE`，所以肯定会执行onDraw方法。
+
+```java
+private void invalidateRectOnScreen(Rect dirty) {
+        final Rect localDirty = mDirty;
+        //...
+        if (!mWillDrawSoon && (intersected || mIsAnimating)) {
+            scheduleTraversals();//执行绘制流程
+        }
+    }
+```
+
+最后看一下`scheduleTraversals`方法中三大绘制流程逻辑，`FORCE_LAYOUT`标志才会`onMeasure`和`onLayout`，`PFLAG_DIRTY_OPAQUE`标志才会`onDraw`：
+
+```java
+  public final void measure(int widthMeasureSpec, int heightMeasureSpec) {
+    final boolean forceLayout = (mPrivateFlags & PFLAG_FORCE_LAYOUT) == PFLAG_FORCE_LAYOUT;
+    // 只有mPrivateFlags为PFLAG_FORCE_LAYOUT的时候才会进行onMeasure方法
+    if (forceLayout || needsLayout) {
+      onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    // 设置 LAYOUT_REQUIRED flag
+    mPrivateFlags |= PFLAG_LAYOUT_REQUIRED;
+  }
+
+
+  public void layout(int l, int t, int r, int b) {
+    ...
+    //判断标记位为PFLAG_LAYOUT_REQUIRED的时候才进行onLayout方法
+    if (changed || (mPrivateFlags & PFLAG_LAYOUT_REQUIRED) == PFLAG_LAYOUT_REQUIRED) {
+        onLayout(changed, l, t, r, b);
+        }
+    }
+
+
+
+public void draw(Canvas canvas) {
+    final int privateFlags = mPrivateFlags;
+    // flag 是 PFLAG_DIRTY_OPAQUE 则需要绘制
+    final boolean dirtyOpaque = (privateFlags & PFLAG_DIRTY_MASK) == PFLAG_DIRTY_OPAQUE &&
+            (mAttachInfo == null || !mAttachInfo.mIgnoreDirtyState);
+    mPrivateFlags = (privateFlags & ~PFLAG_DIRTY_MASK) | PFLAG_DRAWN;
+    if (!dirtyOpaque) {
+        drawBackground(canvas);
+    }
+    if (!dirtyOpaque) onDraw(canvas);
+    // 绘制 Child
+    dispatchDraw(canvas);
+    // foreground 不管 dirtyOpaque 标志，每次都会绘制
+    onDrawForeground(canvas);
+}   
+```
+
+总结：
+
+> 虽然两者都是用来触发绘制流程，但是在measure和layout过程中，只会对 flag 设置为 FORCE_LAYOUT 的情况进行重新测量和布局，而draw方法中只会重绘flag为 dirty 的区域。requestLayout 是用来设置FORCE_LAYOUT标志，invalidate 用来设置 dirty 标志。所以 requestLayout 只会触发 measure 和 layout，invalidate 只会触发 draw。
 
 
 
@@ -2564,6 +2727,23 @@ ClickRecyclerViewAdapter adapter=new ClickRecyclerViewAdapter(this, new ClickRec
 
 #### 3. 如何实现RecyclerView的局部更新，用过payload吗，notifyItemChanged方法中的参数？
 
+关于RecycleView的数据更新，主要有以下几个方法：
+
+- `notifyDataSetChanged()`，刷新全部可见的item。
+- `notifyItemChanged(int)`，刷新指定item。
+- `notifyItemRangeChanged(int,int)`，从指定位置开始刷新指定个item。
+- `notifyItemInserted(int)、notifyItemMoved(int)、notifyItemRemoved(int)`。插入、移动一个并自动刷新。
+- `notifyItemChanged(int, Object)`，局部刷新。
+
+可以看到，关于view的局部刷新就是`notifyItemChanged(int, Object)`方法，下面具体说说：
+
+`notifyItemChange`有两个构造方法：
+
+- `notifyItemChanged(int position, @Nullable Object payload)`
+- `notifyItemChanged(int position)`
+
+其中`payload`参数可以认为是你要刷新的一个标示，比如我有时候只想刷新`itemView`中的`textview`，有时候只想刷新`imageview`，那么我就可以通过`payload`参数来标示这个特殊的需求了。
+
 ```java
 public abstract static class Adapter<VH extends ViewHolder> {
     ...
@@ -2669,17 +2849,38 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 #### 5. RecyclerView嵌套RecyclerView，NestScrollView嵌套ScrollView滑动冲突
 
+1）`RecyclerView`嵌套`RecyclerView`的情况下，如果两者都要上下滑动，那么就会引起滑动冲突。默认情况下外层的RecycleView可滑，内层不可滑。
+
+解决滑动冲突的办法有两种：**内部拦截法和外部拦截法**。
+
 ```java
 public class ChildPresenter extends RecyclerView {
     ...
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        //父层ViewGroup不要拦截点击事件 
-        getParent().requestDisallowInterceptTouchEvent(true);
+        switch(ev){
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE: 
+                //父层ViewGroup不要拦截点击事件 
+        		getParent().requestDisallowInterceptTouchEvent(true);
+            case MotionEvent.ACTION_UP:
+                //正常走父view的滑动
+        		getParent().requestDisallowInterceptTouchEvent(false);
+        }
         return super.dispatchTouchEvent(ev);
     }
 }
 ```
+
+2）关于`ScrclerView`的滑动冲突还是同样的解决办法，就是进行事件拦截。
+
+还有一个办法就是用`Nestedscrollview`代替`ScrollView`，`Nestedscrollview`是官方为了解决滑动冲突问题而设计的新的View。它的定义就是支持嵌套滑动的ScrollView。
+
+所以直接替换成`Nestedscrollview`就能保证两者都能正常滑动了。但是要注意设置`RecyclerView.setNestedScrollingEnabled(false)`这个方法，用来取消RecyclerView本身的滑动效果。
+
+这是因为RecyclerView默认是`setNestedScrollingEnabled(true)`，这个方法的含义是支持嵌套滚动的。也就是说当它嵌套在`NestedScrollView`中时,默认会随着`NestedScrollView`滚动而滚动,放弃了自己的滚动。所以给我们的感觉就是滞留、卡顿。所以我们将它设置为false就解决了卡顿问题，让他正常的滑动，不受外部影响。
+
+
 
 #### 6. RecyclerView预取
 

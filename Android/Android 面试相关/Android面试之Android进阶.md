@@ -518,6 +518,16 @@ Activity的启动流程图（放大可查看）如下所示：
 
 #### (14) AMS是如何管理Activity的？
 
+#### (15) Activity从创建到我们看到界面，发生了哪些事
+
+首先是通过`setContentView`加载布局，这其中创建了一个`DecorView`，然后根据然后根据activity设置的主题（theme）或者特征（Feature）加载不同的根布局文件，最后再通过inflate方法加载`layoutResID`资源文件，其实就是解析了xml文件，根据节点生成了View对象。流程图：
+
+![img](https:////upload-images.jianshu.io/upload_images/8690467-b6f7a0a37aba3ad0.image?imageMogr2/auto-orient/strip|imageView2/2/w/1161/format/webp)
+
+其次就是进行view绘制到界面上，这个过程发生在`handleResumeActivity`方法中，也就是触发`onResume`的方法。在这里会创建一个`ViewRootImpl`对象，作为`DecorView`的`parent`然后对`DecorView`进行测量布局和绘制三大流程。流程图：
+
+![img](https:////upload-images.jianshu.io/upload_images/8690467-33ae193228b4436a.image?imageMogr2/auto-orient/strip|imageView2/2/w/1188/format/webp)
+
 
 
 ### 4. Window
@@ -1655,9 +1665,9 @@ install方法内部最终还是调用了application的registerActivityLifecycleC
 
 #### 1. LifeCycle的原理是怎样的？如果在onStart里面订阅，会回调onCreate吗？
 
-#### 2. ViewModel为什么在旋转屏幕后不会丢失状态
+#### 2. ViewModel为什么在旋转屏幕后不会丢失状态?
 
-#### 3. 有没有看一下Google官方的ViewModel demo
+#### 3. 有没有看一下Google官方的ViewModel demo?
 
 #### 4. ViewModel在Activity初始化与在Fragment中初始化，有什么区别？
 
@@ -2360,6 +2370,136 @@ void test(){
 #### 2. [客户端网络安全实现](http://mrpeak.cn/blog/encrypt/)
 
 #### 3. 设计一个网络优化方案，针对移动端弱网环境。
+
+#### 4. 怎么优化DNS解析
+
+- 安全优化
+
+解决方案就是用`HTTPDNS`。
+
+`HTTPDNS`是一个新概念，他会绕过传统的运营商DNS服务器，不走传统的DNS解析。而是换成HTTP协议，直接通过HTTP协议进行请求某个DNS服务器集群，获取地址。
+
+- 由于绕过了`运营商`，所以可以避免域名被劫持。
+- 它是基于访问的`来源ip`，所以能获得更准确的解析结果
+- 会有`预解析`，`解析缓存`等功能，所以解析延迟也很小
+
+所以首先的优化，针对安全方面，就是要替换成`HTTPDNS`解析方式，就要借用阿里云和腾讯云等服务，但是这些服务可不是免费的，免费的有七牛云的 `happy-dns`。
+
+添加依赖库，然后去实现Okhttp的DNS接口即可，简单写个例子：
+
+```java
+//导入库
+    implementation 'com.qiniu:happy-dns:0.2.13'
+    implementation 'com.qiniu.pili:pili-android-qos:0.8'
+
+
+//实现DNS接口
+public class HttpDns implements Dns {
+
+    private DnsManager dnsManager;
+
+    public HttpDns() {
+        IResolver[] resolvers = new IResolver[1];
+        try {
+            resolvers[0] = new Resolver(InetAddress.getByName("119.29.29.29"));
+            dnsManager = new DnsManager(NetworkInfo.normal, resolvers);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public List<InetAddress> lookup(String hostname) throws UnknownHostException {
+        if (dnsManager == null)  //当构造失败时使用默认解析方式
+            return Dns.SYSTEM.lookup(hostname);
+
+        try {
+            String[] ips = dnsManager.query(hostname);  //获取HttpDNS解析结果
+            if (ips == null || ips.length == 0) {
+                return Dns.SYSTEM.lookup(hostname);
+            }
+
+            List<InetAddress> result = new ArrayList<>();
+            for (String ip : ips) {  //将ip地址数组转换成所需要的对象列表
+                result.addAll(Arrays.asList(InetAddress.getAllByName(ip)));
+            }
+            //在返回result之前，我们可以添加一些其他自己知道的IP
+            return result;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //当有异常发生时，使用默认解析
+        return Dns.SYSTEM.lookup(hostname);
+    }
+}
+
+
+//替换okhttp的dns解析
+OkHttpClient okHttpClient = new OkHttpClient.Builder().dns(new HttpDns()).build();
+```
+
+- 速度优化
+
+如果在测试环境，其实我们可以直接配置ip白名单，然后跳过DNS解析流程，直接获取ip地址。比如：
+
+```java
+    private static class TestDNS implements Dns{
+        @Override
+        public List<InetAddress> lookup(@NotNull String hostname) throws UnknownHostException {
+            if ("www.test.com".equalsIgnoreCase(hostname)){
+                InetAddress byAddress=InetAddress.getByAddress(hostname,new byte[]{(byte)192,(byte)168,1,1});
+                return Collections.singletonList(byAddress);
+            }else {
+                return Dns.SYSTEM.lookup(hostname);
+            }
+        }
+    }
+```
+
+#### 5. DNS解析超时怎么办
+
+当我们在用OkHttp做网络请求时，如果网络设备切换路由，访问网络出现长时间无响应，很久之后会抛出 `UnknownHostException`。虽然我们在OkHttp中设置了`connectTimeout`超时时间，但是它其实对DNS的解析是不起作用的。
+
+这种情况我们就需要在自定义的Dns类中做超时判断：
+
+```java
+public class TimeDns implements Dns {
+    private long timeout;
+
+    public TimeDns(long timeout) {
+        this.timeout = timeout;
+    }
+
+    @Override
+    public List<InetAddress> lookup(final String hostname) throws UnknownHostException {
+        if (hostname == null) {
+            throw new UnknownHostException("hostname == null");
+        } else {
+            try {
+                FutureTask<List<InetAddress>> task = new FutureTask<>(
+                        new Callable<List<InetAddress>>() {
+                            @Override
+                            public List<InetAddress> call() throws Exception {
+                                return Arrays.asList(InetAddress.getAllByName(hostname));
+                            }
+                        });
+                new Thread(task).start();
+                return task.get(timeout, TimeUnit.MILLISECONDS);
+            } catch (Exception var4) {
+                UnknownHostException unknownHostException =
+                        new UnknownHostException("Broken system behaviour for dns lookup of " + hostname);
+                unknownHostException.initCause(var4);
+                throw unknownHostException;
+            }
+        }
+    }
+}
+
+//替换okhttp的dns解析
+OkHttpClient okHttpClient = new OkHttpClient.Builder().dns(new TimeDns(5000)).build();
+```
+
+
 
 ### 10. App电量优化
 
