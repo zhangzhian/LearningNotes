@@ -2488,12 +2488,109 @@ inDensity表示目标图片的dpi（放在哪个资源文件夹下），inTarget
 
 
 
-#### 2. 讲一下RecyclerView的缓存机制，滑动10个，再滑回去，会有几个执行onBindView
+#### 2. RecyclerView滑动10个，再滑回去，会有几个执行onBindView
 
+需要重新执行onBindView的只有一种缓存区，就是缓存池mRecyclerPool。
 
+所以我们假设从加载RecyclView开始（页面假设可以容纳7条数据）：
 
-#### 3. 如何实现RecyclerView的局部更新，用过payload吗,notifyItemChange方法中的参数？
+- 首先，7条数据会依次调用onCreateViewHolder和onBindViewHolder。
+- 往下滑一条（position=7），那么会把position=0的数据放到mCacheViews中。此时mCacheViews缓存区数量为1，mRecyclerPool数量为0。然后新出现的position=7的数据通过postion在mCacheViews中找不到对应的ViewHolder，通过itemtype也在mRecyclerPool中找不到对应的数据，所以会调用onCreateViewHolder和onBindViewHolder方法。
+- 再往下滑一条数据（position=8），如上。
+- 再往下滑一条数据（position=9），position=2的数据会放到mCacheViews中，但是由于mCacheViews缓存区默认容量为2，所以position=0的数据会被清空数据然后放到mRecyclerPool缓存池中。而新出现的position=9数据由于在mRecyclerPool中还是找不到相应type的ViewHolder，所以还是会走onCreateViewHolder和onBindViewHolder方法。所以此时mCacheViews缓存区数量为2，mRecyclerPool数量为1。
+- 再往下滑一条数据（position=10），这时候由于可以在mRecyclerPool中找到相同viewtype的ViewHolder了。所以就直接复用了，并调用onBindViewHolder方法绑定数据。
+- 后面依次类推，刚消失的两条数据会被放到mCacheViews中，再出现的时候是不会调用onBindViewHolder方法，而复用的第三条数据是从mRecyclerPool中取得，就会调用onBindViewHolder方法了。
 
+4）所以这个问题就得出结论了（假设mCacheViews容量为默认值2）：
+
+- 如果一开始滑动的是新数据，那么滑动10个，就会走10个bindview方法。然后滑回去，会走（10-2）个bindview方法。一共18次调用。
+- 如果一开始滑动的是老数据，那么滑动（10-2）个，就会走8个bindview方法。然后滑回去，会走（10-2）个bindview方法。一共16次调用。
+
+但是但是，实际情况又有点不一样。因为Recycleview在v25版本引入了一个新的机制，预取机制。
+
+预取机制，就是在滑动过程中，会把将要展示的一个元素提前缓存到mCachedViews中，所以滑动10个元素的时候，第11个元素也会被创建，也就多走了一次bindview方法。但是滑回去的时候不影响，因为就算提前取了一个缓存数据，只是把bindview方法提前了，并不影响总的绑定item数量。
+
+所以滑动的是新数据的情况下就会多一次调用bindview方法。
+
+总结
+
+- 滑动10个，再滑回去，bindview可以是19次调用，可以是16次调用。
+- 缓存的其实就是缓存item的view，在Recycleview中就是viewholder。
+- cachedView就是mCacheViews缓存区中的view，是不需要重新绑定数据的。
+
+#### 3. 如何实现RecyclerView的局部更新，用过payload吗，notifyItemChanged方法中的参数？
+
+```java
+public abstract static class Adapter<VH extends ViewHolder> {
+    ...
+	//payload Optional parameter, use null to identify a "full" update
+	//如果payload参数是null，那么就会来一个“完整的”更新，也就是说会全部更新。
+	public final void notifyItemChanged(int position, Object payload) {
+        mObservable.notifyItemRangeChanged(position, 1, payload);
+    }
+}
+
+static class AdapterDataObservable extends Observable<AdapterDataObserver> {
+    ...
+    public void notifyItemRangeChanged(int positionStart, int itemCount, Object payload) 	 {
+        for (int i = mObservers.size() - 1; i >= 0; i--) {
+            mObservers.get(i).onItemRangeChanged(positionStart, itemCount, payload);
+        }
+    }
+}
+```
+payload可以用来存储一些变量值或者常数，然后在notifyItemChanged中传进去payload，指定某个item进行刷新，在这个Item的onBindViewHolder中就可以从第三个参数拿到传过来的payload。
+
+如果payloads不为空并且viewHolder已经绑定了旧数据了，那么adapter会使用payloads参数进行布局刷新。如果payloads为空，adapter就会重新绑定数据，也就是刷新整个item。但是adapter不能保证payload通过nofityItemChanged方法会被onBindViewHolder接收，例如当view没有绑定到screen时，payloads就会失效被丢弃。
+
+```java
+@Override
+public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+//为空  不使用
+}
+
+@Override
+public void onBindViewHolder(final RecyclerView.ViewHolder holder, final int position, List payloads) {
+    final ContactHolder contact= (ContactHolder) holder;
+    if(payloads.isEmpty()){
+    //payloads为空 即不是调用notifyItemChanged(position,payloads)方法执行的
+    //在这里进行初始化item全部控件
+       contact.userName.setText(mList.get(position).getName());
+       contact.userId.setText(mList.get(position).getId());
+       contact.userImg.setImageResources(mList.get(position).getImg());
+
+    }else{
+        //payloads不为空 即调用notifyItemChanged(position,payloads)方法后执行的
+        //在这里可以获取payloads中的数据  进行局部刷新
+        //假设是int类型
+        int type= (int) payloads.get(0);// 刷新哪个部分 标志位
+        switch(type){
+        case 0:
+        contact.userName.setText(mList.get(position).getName());//只刷新userName
+        break;
+        case 1:
+        contact.userId.setText(mList.get(position).getId());//只刷新userId
+        break;
+        case 2:
+        contact.userImg.setImageResources(mList.get(position).getImg());//只刷新userImg
+        break;
+        }
+    }
+}
+
+public class ContactHolder extends RecyclerView.ViewHolder{
+    public TextView userName;
+    public TextView userId;
+    public ImageView userImg;
+
+    public ContactHolder(View itemView) {
+        super(itemView);
+        userName= (TextView) itemView.findViewById(R.id.ContactSelect_list_item_user_name);
+        userId= (TextView) itemView.findViewById(R.id.ContactSelect_list_item_user_employeeId);
+        userImg= (ImageView) itemView.findViewById(R.id.ContactSelect_list_item_img);
+    }
+}
+```
 
 
 #### 4. RecyclerView的缓存结构是怎样的？缓存的是什么？cachedView会执行onBindView吗?
@@ -2528,11 +2625,23 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 #### 5. RecyclerView嵌套RecyclerView，NestScrollView嵌套ScrollView滑动冲突
 
-
+```java
+public class ChildPresenter extends RecyclerView {
+    ...
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        //父层ViewGroup不要拦截点击事件 
+        getParent().requestDisallowInterceptTouchEvent(true);
+        return super.dispatchTouchEvent(ev);
+    }
+}
+```
 
 #### 6. RecyclerView预取
 
+因为Recycleview在v25版本引入了一个新的机制，预取机制。
 
+预取机制，就是在滑动过程中，会把将要展示的一个元素提前缓存到mCachedViews中。
 
 #### 7. Recycleview和Listview区别
 
@@ -2562,8 +2671,6 @@ Recycleview有四级缓存，分别是`mAttachedScrap(屏幕内)`，`mCacheViews
 
 - RecyclerView比ListView多两级缓存，支持多个ItemView缓存，支持开发者自定义缓存处理逻辑，支持所有RecyclerView共用同一个RecyclerViewPool(缓存池)。
 - ListView和RecyclerView缓存机制基本一致，但缓存使用不同
-
-
 
 #### 8. 说说RecyclerView性能优化。
 
@@ -2814,7 +2921,7 @@ public class CustomViewPager extends ViewPager {
 
 Viewpager 默认加载 3 个。1 个 Activity 里面可能会以 Viewpager（或其他容器）与多个 Fragment 来组合使用， 而如果每个 fragment 都需要去加载数据，或从本地加载，或从网络加载，那么在这个 Activity 刚创建的时候就变成 需要初始化大量资源。所以我们要进行懒加载。
 
-自定义一个 LazyLoadFragment 基类，利用 setUserVisibleHint 和 生命周期方法，通过对 Fragment 状态判断，进行数据加载，并将数据加载的接口提供开放出去，供子类使用。然后在子类 Fragment 中实现 requestData 方法即可。这里添加了一个 isDataLoaded 变量，目的是避免重复加载数据。考虑到有时候需要刷新数据的问题，便提供了一个用于强制刷新的参数判断。
+自定义一个 LazyLoadFragment 基类，利用 `setUserVisibleHint` 和 `生命周期方法`，通过对 Fragment 状态判断，进行数据加载，并将数据加载的接口提供开放出去，供子类使用。然后在子类 Fragment 中实现 requestData 方法即可。这里添加了一个 isDataLoaded 变量，目的是避免重复加载数据。考虑到有时候需要刷新数据的问题，便提供了一个用于强制刷新的参数判断。
 
 ```java
 public abstract class LazyLoadFragment extends BaseFragment {
