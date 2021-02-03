@@ -412,6 +412,26 @@ lv.addHeaderView(view);
 // lv.addFooterView(view); // 添加到底部View
 ```
 
+### 7. 缓存机制
+
+ListView 主要是二级缓存，缓存的对象是 View，ListView 是继承于 AbsListView 的，而 AbsListView 里面有个 mRecycler，用于存储不使用的 view，其将被下次 layout 的时候重新使用，以避免创建新的实例。
+
+```dart
+    /**
+     * The data set used to store unused views that should be reused during the next layout
+     * to avoid creating new ones
+     */
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P, trackingBug = 123769398)
+    final RecycleBin mRecycler = new RecycleBin();
+```
+
+RecycleBin 是 AbsListView 的内部类，其作用是通过两级缓存来缓存 view。（RecycleBin 在 layout 的过程中便于 view 重用，RecycleBin 有两级缓存：mActiveViews 和 mScrapViews）。
+
+- mActiveViews
+   第一级缓存，这些 View 是布局过程开始时屏幕上的 view，layout 开始时这个数组被填充，layout 结束，mActiveViews 中的 View 移动到 mScrapView，意义在于快速重用屏幕上可见的列表项 ItemView，而不需要重新 createView 和 bindView。
+- mScrapView
+   第二级缓存，mScrapView 是多个 List 组成的数据，数组的长度为 viewTypeCount，每个 List 缓存不同类型 Item 布局的 View，其意义在于缓存离开屏幕的 ItemView，目的是让即将进入屏幕的 itemView 重用，当 mAdapter 被更换时，mScrapViews 则被清空。
+
 ## RecyclerView
 
 ### 1. 基础用法
@@ -675,8 +695,7 @@ RecyclerView的缓存功能是定义在`RecyclerView#Recycler`中的。
 
         final ArrayList<ViewHolder> mCachedViews = new ArrayList<ViewHolder>();
 
-        private final List<ViewHolder>
-                mUnmodifiableAttachedScrap = Collections.unmodifiableList(mAttachedScrap);
+        private final List<ViewHolder> mUnmodifiableAttachedScrap = Collections.unmodifiableList(mAttachedScrap);
 
         private int mRequestedCacheMax = DEFAULT_CACHE_SIZE;
         int mViewCacheMax = DEFAULT_CACHE_SIZE;
@@ -713,7 +732,139 @@ mViewCacheExtension开发者自己实现的意义不大，基本上所有你想�
 
 ##### mRecyclerPool
 
-mRecyclerPool缓存可以针对多ItemType，设置缓存大小。默认每个ItemType的缓存个数是5。而且该缓存可以给多个RecyclerView共享。
+mRecyclerPool缓存可以针对多ItemType，设置缓存大小。默认每个ItemType的缓存个数是5。
+
+```csharp
+public static class RecycledViewPool {
+
+ // 根据 viewType 保存的被废弃的 ViewHolder 集合，以便下次使用
+ private SparseArray<ArrayList<ViewHolder>> mScrap = new SparseArray<ArrayList<ViewHolder>>();
+  /**
+   * 从缓存池移除并返回一个 ViewHolder
+   */
+  public ViewHolder getRecycledView(int viewType) {
+    final ArrayList<ViewHolder> scrapHeap = mScrap.get(viewType);
+    if (scrapHeap != null && !scrapHeap.isEmpty()) {
+      final int index = scrapHeap.size() - 1;
+      final ViewHolder scrap = scrapHeap.get(index);
+      scrapHeap.remove(index);
+      return scrap;
+    }
+      return null;
+    }
+
+  public void putRecycledView(ViewHolder scrap) {
+    final int viewType = scrap.getItemViewType();
+    final ArrayList scrapHeap = getScrapHeapForType(viewType);
+    if (mMaxScrap.get(viewType) <= scrapHeap.size()) {
+      return;
+    }
+    scrap.resetInternal();
+    scrapHeap.add(scrap);
+  }
+
+  /**
+   * 根据 viewType 获取对应缓存池
+   */
+  private ArrayList<ViewHolder> getScrapHeapForType(int viewType) {
+    ArrayList<ViewHolder> scrap = mScrap.get(viewType);
+      if (scrap == null) {
+        scrap = new ArrayList<>();
+        mScrap.put(viewType, scrap);
+          if (mMaxScrap.indexOfKey(viewType) < 0) {
+            mMaxScrap.put(viewType, DEFAULT_MAX_SCRAP);
+          }
+      }
+    return scrap;
+  }
+}
+```
+
+而且该缓存可以给多个RecyclerView共享。
+
+```dart
+/**
+ * Recycled view pools allow multiple RecyclerViews to share a common pool of scrap views.
+ * This can be useful if you have multiple RecyclerViews with adapters that use the same
+ * view types, for example if you have several data sets with the same kinds of item views
+ * displayed by a {@link android.support.v4.view.ViewPager ViewPager}.
+ *
+ * @param pool Pool to set. If this parameter is null a new pool will be created and used.
+ */
+public void setRecycledViewPool(RecycledViewPool pool) {
+    mRecycler.setRecycledViewPool(pool);
+}
+```
+
+### 4. DiffUtil
+
+在一次操作里面可能会同时出现`remove`、`add`、`change`三种操作。像这种情况，我们不能调用`notifyItemRemoved`、`notifyItemInserted`或者`notifyItemChanged`方法。为了视图立即刷新，我们只能通过调用`notifyDataSetChanged`方法来实现。但`notifyDataSetChanged` 刷新是全部刷新没有动画效果。
+
+那么有一种能通过对比知道两个列表的数据的差异，然后进行`remove`、`add`或`change`么？
+
+Google提供的`DiffUtil`是一个实用程序类，它计算两个列表之间的差异，并输出将第一个列表转换为第二个列表的更新操作列表。
+
+####  DiffUtil.Callback
+
+> DiffUtil在计算两个列表之间的差异时使用的Callback类。
+
+```java
+public abstract static class Callback {
+    //旧数据集的长度；
+    public abstract int getOldListSize();
+    //新数据集的长度
+    public abstract int getNewListSize();
+    //判断是否是同一个item；
+    public abstract boolean areItemsTheSame(int oldItemPosition, int newItemPosition);
+    //如果item相同，此方法用于判断是否同一个 Item 的内容也相同
+    public abstract boolean areContentsTheSame(int oldItemPosition, int newItemPosition);
+    @Nullable
+    //如果item相同，内容不同，用 payLoad 记录这个 ViewHolder 中，具体需要更新那个View
+    public Object getChangePayload(int oldItemPosition, int newItemPosition){
+        return null;
+    }
+}
+```
+
+#### DiffUtil.DiffResult
+
+此类包含有关`DiffUtil＃calculateDiff`调用的结果的信息。可以通过`dispatchUpdatesTo`使用`DiffResult`中的更新，也可以通过`dispatchUpdatesTo`直接将结果流式传输到`RecyclerView.Adapter`。
+
+#### DiffUtil使用
+
+```java
+public class RecyclerItemCallback extends DiffUtil.Callback {
+    private List<Bean> mOldDataList;
+    private List<Bean> mNewDataList;
+    public RecyclerItemCallback(List<Bean> oldDataList, List<Bean> newDataList) {
+        this.mOldDataList = oldDataList;
+        this.mNewDataList = newDataList;
+    }
+    @Override
+    public int getOldListSize() {
+        return mOldDataList.size();
+    }
+    @Override
+    public int getNewListSize() {
+        return mNewDataList.size();
+    }
+    @Override
+    public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+        return Objects.equals(mNewDataList.get(newItemPosition).getId(), mOldDataList.get(oldItemPosition).getId());
+    }
+    @Override
+    public boolean areContentsTheSame(int i, int i1) {
+        return Objects.equals(mOldDataList.get(i).getContent(), mNewDataList.get(i1).getContent());
+    }
+}
+
+private void refreshData(List<Bean> oldDataList,List<Bean> newDataList) {
+    RecyclerItemCallback recyclerItemCallback = new RecyclerItemCallback(oldDataList, newDataList);
+    DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(recyclerItemCallback, false);
+    diffResult.dispatchUpdatesTo(mRecyclerAdapter);
+}
+```
+
 
 
 
