@@ -252,6 +252,8 @@ mContext.startActivity(intent);
 - 一个intent只有同时匹配某个Activity的intent-filter中的action、category、data才算完全匹配，才能启动该Activity；
 - 一个Activity可以有多个 intent-filter，一个 intent只要成功匹配任意一组 intent-filter，就可以启动该Activity；
 
+#### 21. taskAffinity，allowTaskReparting的用法?
+
 
 
 ## 二、Service
@@ -290,7 +292,7 @@ bindService(mIntent,conn,BIND_AUTO_CREATE);
 startService(mIntent)
 ```
 
-**startService()**：通过这种方式调用startService，onCreate()只会被调用一次，多次调用startSercie会多次执行`onStartCommand()`方法。如果外部没有调用`stopService()`或`stopSelf()`方法，service会一直运行。
+**startService()**：通过这种方式调用startService，`onCreate()`只会被调用一次，多次调用startSercie会多次执行`onStartCommand()`方法。如果外部没有调用`stopService()`或`stopSelf()`方法，service会一直运行。
 
 **bindService()**：如果该服务之前**还没创建**，系统回调顺序为`onCreate()→onBind()`。如果调用`bindService()`方法前服务**已经被绑定**，多次调用`bindService()`方法**不会多次创建服务及绑定**。如果调用者希望与正在绑定的服务解除绑定，可以调用`unbindService()`方法，回调顺序为`onUnbind()→onDestroy()`；
 
@@ -554,6 +556,66 @@ AlarmManager：闹钟服务
 NotificationManager：状态栏服务
 
 KeyguardManager：键盘锁服务
+
+#### 13. 多个Activity共同bind一个service，一个Activity destory，问service的情况。
+
+这里就是问service的生命周期，考察bind跟start的区别。
+
+#### 14. 如何保证一个后台服务不被杀死？比较省电的方式是什么？
+
+[资料](https://www.jianshu.com/p/b5371df6d7cb)
+
+**保活方案**
+
+1、AIDL方式单进程、双进程方式保活Service。（基于onStartCommand() return START_STICKY）
+
+START_STICKY 在运行onStartCommand后service进程被kill后，那将保留在开始状态，但是不保留那些传入的intent。不久后service就会再次尝试重新创建，因为保留在开始状态，在创建 service后将保证调用onstartCommand。如果没有传递任何开始命令给service，那将获取到null的intent。
+
+除了华为此方案无效以及未更改底层的厂商不起作用外（START_STICKY字段就可以保持Service不被杀）。此方案可以与其他方案混合使用
+
+2、降低oom_adj的值（提升service进程优先级）：
+
+Android中的进程是托管的，当系统进程空间紧张的时候，会依照优先级自动进行进程的回收。Android将进程分为6个等级,它们按优先级顺序由高到低依次是:
+
+- 1.前台进程 (Foreground process)
+- 2.可见进程 (Visible process)
+- 3.服务进程 (Service process)
+- 4.后台进程 (Background process)
+- 5.空进程 (Empty process)
+
+当service运行在低内存的环境时，将会kill掉一些存在的进程。因此进程的优先级将会很重要，可以使用startForeground 将service放到前台状态。这样在低内存时被kill的几率会低一些。
+
+- 常驻通知栏（可通过启动另外一个服务关闭Notification，不对oom_adj值有影响）。
+- 使用”1像素“的Activity覆盖在getWindow()的view上。
+
+此方案无效果
+
+- 循环播放无声音频（黑科技，7.0下杀不掉）。
+
+成功对华为手机保活。小米8下也成功突破20分钟
+
+- 3、监听锁屏广播：使Activity始终保持前台。
+- 4、使用自定义锁屏界面：覆盖了系统锁屏界面。
+- 5、通过android:process属性来为Service创建一个进程。
+- 6、跳转到系统白名单界面让用户自己添加app进入白名单。
+
+**复活方案**
+
+1、onDestroy方法里重启service
+
+service + broadcast 方式，就是当service走onDestory的时候，发送一个自定义的广播，当收到广播的时候，重新启动service。
+
+2、JobScheduler：原理类似定时器，5.0,5.1,6.0作用很大，7.0时候有一定影响（可以在电源管理中给APP授权）。
+
+只对5.0，5.1、6.0起作用。
+
+3、推送互相唤醒复活：极光、友盟、以及各大厂商的推送。
+
+4、同派系APP广播互相唤醒：比如今日头条系、阿里系。
+
+此外还可以监听系统广播判断Service状态，通过系统的一些广播，比如：手机重启、界面唤醒、应用状态改变等等监听并捕获到，然后判断我们的Service是否还存活。
+
+**结论：高版本情况下可以使用弹出通知栏、双进程、无声音乐提高后台服务的保活概率。**
 
 
 
@@ -1474,6 +1536,18 @@ Handler 允许我们发送延时消息，如果在延时期间用户关闭了 Ac
 
 所以，这里用到的`epoll`其实就是一种I/O多路复用方式，用来监控多个文件描述符的I/O事件。通过`epoll_wait`方法等待I/O事件，如果当前没有可用的事件则阻塞调用线程。
 
+#### 17. Message#what的不同值，会影响Message在MessageQueue中的顺序么？
+
+
+
+#### 18. MessageQueue中的Message是如何排列的？
+
+#### 19. 如果在当前线程内使用Handler postdelayed 两个消息，一个延迟5s，一个延迟10s，然后使当前线程sleep 5秒，以上消息的执行时间会如何变化？
+
+sleep时间<=5 对两个消息无影响，5< sleep时间 <=10 对第一个消息有影响，第一个消息会延迟到sleep后执行，sleep时间>10 对两个时间都有影响，都会延迟到sleep后执行。
+
+
+
 
 
 
@@ -1749,6 +1823,8 @@ View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, 
 
 1. ViewRootImpl 第一次 `performTraversal()`时会将整个view tree里所有有view的 `dispatchAttachedToWindow()` DFS 调用一遍.
 2. ViewGroup 的 `addViewInner(View child, int index, LayoutParams params, boolean preventRequestLayout):`
+
+#### 10. MotionEvent#offsetLocation事件转发?
 
 
 
@@ -2270,7 +2346,13 @@ public void draw(Canvas canvas) {
 
 > 虽然两者都是用来触发绘制流程，但是在measure和layout过程中，只会对 flag 设置为 FORCE_LAYOUT 的情况进行重新测量和布局，而draw方法中只会重绘flag为 dirty 的区域。requestLayout 是用来设置FORCE_LAYOUT标志，invalidate 用来设置 dirty 标志。所以 requestLayout 只会触发 measure 和 layout，invalidate 只会触发 draw。
 
+#### 11. 绘制的数据是如何提交到远端的SurfaceFlinger?
 
+
+
+#### 12. GPU和surfaceFlinger之间的设计思想是什么？surfaceFlinger具体作用是什么？它对数据做了哪些操作？
+
+#### 13. Canvas的底层机制，绘制框架，硬件加速是什么原理，canvas lock的缓冲区是怎么回事？
 
 ## 十一、Drawbale和动画
 
@@ -2459,6 +2541,12 @@ save和restore要配对使用（restore可以比save少，但不能多），如�
 
 播放补间动画的时候，我们所看到的变化，都只是临时的。而属性动画呢，它所改变的东西，却会更新到这个View所对应的矩阵中，所以当ViewGroup分派事件的时候，会正确的将当前触摸坐标，转换成矩阵变化后的坐标。
 
+#### 11. Android动画框架实现原理。
+
+Animation 框架定义了透明度，旋转，缩放和位移几种常见的动画，而且控制的是整个View。实现原理：
+
+每次绘制视图时，View 所在的 ViewGroup 中的 drawChild 函数获取该View 的 Animation 的 Transformation 值，然后调用canvas.concat(transformToApply.getMatrix())，通过矩阵运算完成动画帧，如果动画没有完成，继续调用 invalidate() 函数，启动下次绘制来驱动动画，动画过程中的帧之间间隙时间是绘制函数所消耗的时间，可能会导致动画消耗比较多的CPU资源，最重要的是，动画改变的只是显示，并不能响应事件。
+
 
 
 ## 十二、多线程
@@ -2614,8 +2702,6 @@ Bitamp 所占内存大小 = 宽度像素 x （inTargetDensity / inDensity） x �
 - **getAllocationByteCount()**：API19 加入，代表在内存中为 Bitmap 分配的内存大小，代替了 getByteCount() 方法。
 - 在**不复用 Bitmap** 时，`getByteCount()` 和 `getAllocationByteCount()` 返回的结果是一样的。在通过**复用 Bitmap** 来解码图片时，那么 `getByteCount()` 表示新解码图片占用内存的大 小，`getAllocationByteCount()` 表示被复用 Bitmap 真实占用的内存大小。
 
-
-
 #### 3.  Bitmap的高效加载？
 
 Bitmap的高效加载在Glide中也用到了，思路：
@@ -2641,6 +2727,22 @@ Bitmap 是 android 中经常使用的一个类，它代表了一个图片资源�
 inDensity表示目标图片的dpi（放在哪个资源文件夹下），inTargetDensity表示目标屏幕的dpi
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/19/169957db5956a922?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
+
+#### 6. 如何在不改变图片质量的情况下优化？
+
+Bitmap内存复用（Options.inBitmap） 
+
+#### 7. 超大图加载（BitmapRegionDecoder）?
+
+
+
+####  8. 跨进程传递大图（Bundle#putBinder）?
+
+
+
+#### 9. 图片资源文件加载规则?
+
+图片存放在drawable-hdpi和drawable-xxhdpi下，xhdpi的手机会加载哪张？如果删除掉drawable-xxhdpi下的图片呢？
 
 
 
@@ -3059,6 +3161,17 @@ public class ScrollViewWithListView extends ListView {
 - **SimpleAdapter**：同样具有良好扩展性的一个适配器，可以自定义多种效果。
 - **SimpleCursorAdapter**：用于显示简单文本类型的listView，一般在数据库那里会用到，不过有点过时，不推荐使用。
 
+#### 19. 列表有多个不同的card，使用RecyclerView怎么解耦getViewType，获得不同的card？
+> 注解、反射，依赖注入
+
+#### 20. 想改变listview的高度，怎么做？
+
+#### 21. listview跟recyclerview上拉加载的时候分别应该如何处理？
+
+#### 22. 如何自己实现RecyclerView的侧滑删除？
+
+#### 23. RecyclerView的ItemTouchHelper的实现原理?
+
 
 
 ## 十五、ViewPager
@@ -3388,7 +3501,7 @@ adjustViewBounds影响的是ImageView的比例（不是图片的比例），所�
 
 #### 5. SurfaceView的理解？
 
-它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)。
+它是什么？他的继承方式是什么？与 View 的区别(从源码角度，如加载，绘制等)?作用?何时初始化?怎么使用的?
 
 SurfaceView 中采用了双缓冲机制，保证了 UI 界面的流畅性，同时 SurfaceView不在主线程中绘制，而是另开辟一个线程去绘制，所以它不妨碍 UI 线程；
 
@@ -3441,6 +3554,14 @@ Android中常用布局分为**传统布局**和**新型布局**
 Merge: 减少视图层级，可以删除多余的层级。和Include标签配套使用
 
 ViewStub: 按需加载，减少内存使用量、加快渲染速度、不支持 merge 标签。
+
+#### 10. 竖向的TextView如何实现?TextView文字描边效果如何实现?
+
+#### 11. 悬浮窗如何实现?
+
+#### 12. 通知的类别?
+
+#### 13. 获取TextView的行数时，StaticLayout原理?
 
 
 
@@ -3679,7 +3800,10 @@ Jar包里面只有代码，aar里面不光有代码还包括资源文件，比�
 
 android程序内存一般限制在16M，也有的是24M。近几年手机发展较快，一般都会分配两百兆左右，和具体机型有关。
 
+#### 12. 低版本SDK如何实现高版本api？
 
+- 在使用了高版本API的方法前面加一个 @TargetApi(API号)。
+- 在代码上用版本判断来控制不同版本使用不同的代码。
 
 #### 13. Asset目录与res目录的区别？
 
@@ -3920,3 +4044,46 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 2. 锁机制会降低UI访问的效率，因为锁机制会阻塞某些线程的执行。
 
 所以最简单且高效的方法就是采用单线程模型来处理UI操作。
+
+#### 32. Application中持有静态的用户信息，有何缺点？如何改进？
+
+#### 33. ANR的log中关键字是什么？
+
+#### 34. Debug跟Release的APK的区别？
+
+#### 35. 没有给权限如何定位，特定机型定位失败，如何解决?
+
+#### 36. [有什么提高编译速度的方法？](https://juejin.im/post/6844903481917046791)
+
+#### 37. Android中进程内存的分配，能不能自己分配定额内存？
+
+#### 38. Android长连接，怎么处理心跳机制。
+
+长连接：长连接是建立连接之后, 不主动断开. 双方互相发送数据, 发完了也不主动断开连接, 之后有需要发送的数据就继续通过这个连接发送.
+
+心跳包：其实主要是为了防止NAT超时，客户端隔一段时间就主动发一个数据，探测连接是否断开。
+
+服务器处理心跳包：假如客户端心跳间隔是固定的, 那么服务器在连接闲置超过这个时间还没收到心跳时, 可以认为对方掉线, 关闭连接. 如果客户端心跳会动态改变, 应当设置一个最大值, 超过这个最大值才认为对方掉线. 还有一种情况就是服务器通过TCP连接主动给客户端发消息出现写超时, 可以直接认为对方掉线.
+
+#### 39. CrashHandler实现原理？
+
+获取app crash的信息保存在本地然后在下一次打开app的时候发送到服务器。
+
+#### 40. 如何实现右滑finish activity？
+
+#### 41. 如何在整个系统层面实现界面的圆角效果。
+
+#### 42. 非UI线程可以更新UI吗?
+
+可以，当访问UI时，ViewRootImpl会调用checkThread方法去检查当前访问UI的线程是哪个，如果不是UI线程则会抛出异常。执行onCreate方法的那个时候ViewRootImpl还没创建，无法去检查当前线程.ViewRootImpl的创建在onResume方法回调之后。
+
+```java
+void checkThread() {
+    if (mThread != Thread.currentThread()) {
+        throw new CalledFromWrongThreadException(
+                "Only the original thread that created a view hierarchy can touch its views.");
+    }
+}
+```
+
+非UI线程是可以刷新UI的，前提是它要拥有自己的ViewRoot,即更新UI的线程和创建ViewRoot的线程是同一个，或者在执行checkThread()前更新UI。

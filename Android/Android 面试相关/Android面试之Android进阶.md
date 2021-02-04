@@ -231,6 +231,12 @@ binder 肯定是不行的，因为映射的最大内存只有 1M，可以采用 
 
 [老罗Binder机制分析系列或Android系统源代码情景分析Binder章节](https://blog.csdn.net/luoshengyang/article/details/6618363)
 
+#### (9) binder线程池默认最大数量?
+
+binder线程池中如果满了，对待新来的任务，会如何处理？此时client端会是什么效果？
+
+15
+
 
 
 
@@ -528,11 +534,23 @@ Activity的启动流程图（放大可查看）如下所示：
 
 ![img](https:////upload-images.jianshu.io/upload_images/8690467-33ae193228b4436a.image?imageMogr2/auto-orient/strip|imageView2/2/w/1188/format/webp)
 
+#### (16) AMS是如何确认Application启动完成的？关键条件是什么？
 
+zygote返给AMS的pid；应用的ActivityThread#main方法中会向AMS上报Application的binder对象
+
+#### (17) Application#constructor、Application#onCreate、Application#attach他们的执行顺序?
+
+1,3,2
+
+#### (18) ContentProvider具体实现?
+
+#### (19) 判断activity前台进程
+
+#### (20) 启动未注册的Activity
 
 ### 4. Window
 
-#### (1) Activity启动过程跟Window的关系？
+#### (1) Activity启动过程跟Window的关系？除了Activity还有别的方式显示Window出来么？
 
 > [《简析Window、Activity、DecorView以及ViewRoot之间的错综关系》](https://www.jianshu.com/p/8766babc40e0)
 
@@ -577,7 +595,13 @@ ViewRoot并不属于View树的一份子。从源码实现上来看，它既非Vi
 
 #### (4) WMS是如何管理Window的？
 
+#### (5) Surface的作用是什么？它是何时初始化的？View绘制的数据是如何显示到屏幕上的？
 
+#### (6) Activity#setContentView中的xml文件是如何转化成View并显示到Activity中的?
+
+#### (7) LayoutInflater是如何把xml布局文件转换成View对象的（反射）？View树如何生成的？怎么优化？
+
+#### (8) PhoneWindow是在哪里初始化的？
 
 
 
@@ -709,9 +733,15 @@ Android 5.0（API 级别 21）及更高版本使用名为 ART 的运行时，它
 - [APK 签名方案 v3](https://source.android.google.cn/security/apksigning/v3)
 - [Android P v3签名新特性](https://xuanxuanblingbling.github.io/ctf/android/2018/12/30/signature/)
 
+#### (6) 为什么会有R文件这个映射表？直接使用资源的路径不好么？
+
+#### (6) Android项目中都包含哪些资源？apk解压后都包含哪些资源？R文件打包后生成的文件是哪种？
+
+
+
 ### 6. Context
 
-#### (1) 关于Context的理解？
+#### (1) 关于Context的理解？四大组件里面的Context都来源于哪里?
 
 > [《Android Context 上下文 你必须知道的一切》](https://blog.csdn.net/lmj623565791/article/details/40481055)
 
@@ -959,7 +989,7 @@ d. AndroidManifest.xml 中的显式权限声明
 ## 四、第三方库
 ### 1. RxJava
 
-#### (1) RXJava怎么切换线程
+#### (1) RXJava线程种类，怎么切换线程
 
 
 
@@ -980,6 +1010,16 @@ buffer：定期从被观察者发送的事件中获取一定数量的事件并�
 [RxJava中map和flatmap操作符的区别及底层实现](https://www.jianshu.com/p/af13a8278a05)
 
 #### (4) 手写rxjava遍历数组
+
+
+
+#### (5) map和flatmap操作符区别? zip和merge操作符区别?
+
+
+
+#### (6) flatmap为何要生成多个Observable？
+
+
 
 
 
@@ -1282,11 +1322,13 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Call的实例，然后执行它的execute()方法或enqueue()方法，内部最后都会执行到getResponseWithInterceptorChain()方法，这个方法里面通过拦截器组成的责任链，依次经过用户自定义普通拦截器、重试拦截器、桥接拦截器、缓存拦截器、连接拦截器和用户自定义网络拦截器以及访问服务器拦截器等拦截处理过程，来获取到一个响应并交给用户。其中，除了OKHttp的内部请求流程这点之外，还用到了缓存和连接池。
 
-#### (11) Okhttp如何处理网络缓存的？
+#### (11) OkHttp如何处理网络缓存的？缓存逻辑(CacheInterceptor)实现?
 
 #### (12) 从网络加载一个10M的图片，说下注意事项？
 
 #### (13) http怎么知道文件过大是否传输完毕的响应？
+
+#### (14) OkHttp的线程池是怎样的？如何管理的？
 
 
 
@@ -1427,7 +1469,7 @@ Retrofit主要是在create方法中采用动态代理模式（通过访问代理
 
 - 列表滑动加载的问题：加载错乱、队满任务过多问题
 
-#### (3) Glide缓存实现机制？
+#### (3) Glide缓存实现机制？缓存前压缩，缓存命中？
 
 常规三级缓存的流程：强引用->软引用->硬盘缓存
 
@@ -1646,6 +1688,10 @@ install方法内部最终还是调用了application的registerActivityLifecycleC
 使用Android SDK的API Debug.dumpHprofData() 来生成 hprof 文件。
 
 在HeapAnalyzerService（类型为IntentService的ForegroundService）的runAnalysis()方法中，为了避免减慢app进程或占用内存，这里将HeapAnalyzerService设置在了一个独立的进程中。 
+
+#### (5) 为什么不用虚引用？引用队列里面存的是什么？内存数据是如何dump出来的？
+
+
 
 ### 6. Android Jepack(非必需)
 
@@ -2167,13 +2213,9 @@ LeakCanary检测只针对Activiy里的相关对象。其他类无法使用，还
 
 #### 1. 有什么实际解决UI卡顿优化的经历
 
-#### 2. Android怎么加速启动Activity？
+#### 2. App上线后用户使用时卡顿怎么查看是什么原因？
 
-- onCreate() 中不执行耗时操作：把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
-- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
-- 减少主线程阻塞时间。
-- 提高 Adapter 和 AdapterView 的效率。
-- 优化布局文件。
+
 
 ### 5. 启动优化
 
@@ -2330,6 +2372,14 @@ void test(){
 
 #### 8. [开放问题：如果提高启动速度，设计一个延迟加载框架或者sdk的方法和注意的问题](https://blog.csdn.net/dd864140130/article/details/53558011)
 
+#### 9. Android怎么加速启动Activity？
+
+- onCreate() 中不执行耗时操作：把页面显示的 View 细分一下，放在 AsyncTask 里逐步显示，用 Handler 更好。这样用户的看到的就是有层次有步骤的一个个的 View 的展示，不会是先看到一个黑屏，然后一下显示所有 View。最好做成动画，效果更自然。
+- 利用多线程的目的就是尽可能的减少 onCreate() 和 onReume() 的时间，使得用户能尽快看到页面，操作页面。
+- 减少主线程阻塞时间。
+- 提高 Adapter 和 AdapterView 的效率。
+- 优化布局文件。
+
 ### 6. Bitmap优化
 
 #### 1. 有做过什么Bitmap优化的实际经验
@@ -2369,7 +2419,7 @@ void test(){
 
 #### 2. [客户端网络安全实现](http://mrpeak.cn/blog/encrypt/)
 
-#### 3. 设计一个网络优化方案，针对移动端弱网环境。
+#### 3. 设计一个网络优化方案，针对移动端弱网环境?
 
 #### 4. 怎么优化DNS解析
 
@@ -2501,6 +2551,20 @@ OkHttpClient okHttpClient = new OkHttpClient.Builder().dns(new TimeDns(5000)).bu
 
 
 
+#### 6. 看视频的时候网络请求很慢怎么优化？
+
+
+
+#### 7.当网络带宽足够大，信号足够好，下载大文件，怎么快？
+
+开多个链接，wifi+4G同时，分片下。
+
+协议层 ，udp去下，本地做完整性校验。
+
+#### 8. 设计一个如何处理 app接收到服务器脏数据的方案？
+
+
+
 ### 10. App电量优化
 
 ![image](https://user-gold-cdn.xitu.io/2020/3/1/170960058d314ee7?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
@@ -2514,6 +2578,12 @@ OkHttpClient okHttpClient = new OkHttpClient.Builder().dns(new TimeDns(5000)).bu
 #### 3. 安卓的混淆原理是什么？
 
 #### 4. 谈谈你对安卓签名的理解。
+
+#### 5. apk安全措施，当apk已经被破解了，怎么处理？
+
+借助v1签名思想，本地做对文件md5的校验。或者借助v3的思想，连续签名。
+
+
 
 ### 12. 其他
 
@@ -3086,7 +3156,7 @@ ARouter路由原理：
 
 推荐文章：[安卓组件化开源方案实现](https://juejin.im/post/6844903565035569166)
 
-
+#### 9. 如何管理过多的路由表？
 
 ## 八、热修复
 
@@ -3122,7 +3192,7 @@ ARouter路由原理：
 
 所以插件化比热修复简单，热修复是在插件化的基础上在进行替换旧的Bug类。
 
-##### 热修复原理
+**热修复原理**
 
 **1.资源修复**：
 
@@ -3348,11 +3418,19 @@ JNIEXPORT void JNICALL Java_com_study_jnilearn_AccessMethod_callJavaInstaceMetho
 - 通过WebView的loadUrl（）
 
 ```java
-// 调用javascript的callJS()方法
+//载入JS代码 调用javascript的callJS()方法
 mWebView.loadUrl("javascript:callJS()");
 ```
 
 但是这种不常用，因为它会自动刷新页面而且没有返回值，有点影响交互。
+
+设置与Js交互的权限：`webSettings.setJavaScriptEnabled(true)`
+
+设置允许JS弹窗：`webSettings.setJavaScriptCanOpenWindowsAutomatically(true)`
+
+> WebView只是载体，内容的渲染需要使用webviewChromClient类去实现，通过设置WebChromeClient对象处理JavaScript的对话框。
+>
+> JS代码调用一定要在 onPageFinished（） 回调之后才能调用，否则不会调用。
 
 - 通过WebView的`evaluateJavascript（）`
 
@@ -3367,11 +3445,20 @@ mWebView.evaluateJavascript（"javascript:callJS()", new ValueCallback<String>()
 
 这种就比较全面了。调用方法并且获取返回值。
 
+该方法比第一种方法效率更高、使用更简洁，因为该方法的执行不会使页面刷新，而第一种方法（loadUrl ）的执行则会。
+
+Android 4.4 后才可使用。
+
 2） JS调用Android端代码
 
 **主要有两种方法：**
 
 - 通过WebView的`addJavascriptInterface（）`进行对象映射
+
+  定义一个与JS对象映射关系的Android类：AndroidtoJs：
+
+  - 定义JS需要调用的方法，被JS调用的方法必须加入`@JavascriptInterface`注解。
+  - 通过`addJavascriptInterface()`将Java对象映射到JS对象。
 
 ```java
 public class AndroidtoJs extends Object {
@@ -3392,11 +3479,13 @@ function callAndroid(){
 }
 ```
 
-这种方法虽然很好用，但是要注意的是4.2以后，对于被调用的函数以`@JavascriptInterface`进行注解，否则容易出发漏洞，因为js方可以通过反射调用一些本地命令，很危险。
+优点：使用简单，仅将Android对象和JS对象映射即可。
 
-- 通过 WebViewClient 的`shouldOverrideUrlLoading ()`方法回调拦截 url
+缺点：要注意的是4.2以后，对于被调用的函数以`@JavascriptInterface`进行注解，否则容易出发漏洞，因为js方可以通过反射调用一些本地命令，很危险。
 
-这种方法是通过`shouldOverrideUrlLoading`回调去拦截url，然后进行解析，如果是之前约定好的协议，就调用相应的方法。
+- 通过 WebViewClient 的`shouldOverrideUrlLoading()`方法回调拦截 url
+
+这种方法是通过`shouldOverrideUrlLoading`回调去拦截url，然后进行解析，如果是之前约定好的协议，就调用相应的方法。根据协议的参数，判断是否是所需要的url， 一般根据scheme（协议格式） & authority（协议名）判断（前两个参数）。
 
 ```java
 // 复写WebViewClient类的shouldOverrideUrlLoading方法
@@ -3420,6 +3509,10 @@ mWebView.setWebViewClient(new WebViewClient() {
         }
     );
 ```
+
+优点：不存在方式1的漏洞；
+
+缺点：JS获取Android方法的返回值复杂,如果JS想要得到Android方法的返回值，只能通过 WebView 的 `loadUrl()`去执行 JS 方法把返回值传递回去。
 
 #### 8. 如何避免WebView内存泄露
 
@@ -3460,6 +3553,18 @@ mWebView=null；
 
 System.exit(0)   
 ```
+
+3、通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调拦截JS对话框`alert()`、`confirm()`、`prompt()` 消息：
+
+原理：
+
+Android通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调分别拦截JS对话框 （警告框、确认框、输入框），得到他们的消息内容，然后解析即可。
+
+常用的拦截是：拦截 JS的输入框（即prompt()方法），因为只有prompt()可以返回任意类型的值，操作最全面方便、更加灵活；而alert()对话框没有返回值；confirm()对话框只能返回两种状态（确定 / 取消）两个值。
+
+![image](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d30fadf235d549798b205c3e28c2b37b~tplv-k3u1fbpfcp-zoom-1.image)
+
+[Android：你要的WebView与 JS 交互方式 都在这里了](https://blog.csdn.net/carson_ho/article/details/64904691)
 
 #### 9. webView还有哪些可以优化的地
 
@@ -3638,6 +3743,8 @@ MVVM是一种思想，DataBinding是谷歌推出的方便实现MVVM的工具。
 
 推荐文章：[MVC、MVP、MVVM，我到底该怎么选？](https://juejin.im/post/6844903632446423054)
 
+[MVC MVP MVVM原理和区别？](http://www.tianmaying.com/tutorial/AndroidMVC)
+
 #### 2. MVC和MVP的区别是什么？
 
 MVP是MVC的进一步解耦，简单来讲，在MVC中，View层既可以和Controller层交互，又可以和Model层交互；而在MVP中，View层只能和Presenter层交互，Model层也只能和Presenter层交互，减少了View层和Model层的耦合，更容易定位错误的来源。
@@ -3675,6 +3782,35 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 #### 12. 封装Presenter层之后.如果Presenter层数据过大,如何解决?
 
 对于MVP模式来说，P层如果数据逻辑过于臃肿，建议引入**RxJava**或则**Dagger**，越是复杂的逻辑，越能体现RxJava的优越性
+
+#### MVC的情况下怎么把Activity的C和V抽离？
+
+#### MVP 架构中 Presenter 定义为接口有什么好处？
+
+#### MVP如何管理Presenter的生命周期，何时取消网络请求？
+
+#### Fragment如果在Adapter中使用应该如何解耦？
+
+#### 项目框架里有没有Base类，BaseActivity和BaseFragment这种封装导致的问题，以及解决方法？
+
+#### 设计一个音乐播放界面，你会如何实现，用到那些类，如何设计，如何定义接口，如何与后台交互，如何缓存与下载，如何优化(15分钟时间)？
+
+#### 从0设计一款App整体架构，如何去做？
+
+#### 说一款你认为当前比较火的应用并设计？
+
+#### 实现一个库，完成日志的实时上报和延迟上报两种功能，该从哪些方面考虑？
+
+#### 如何实现一个推送，消息推送原理？推送到达率的问题？
+
+一：客户端不断的查询服务器，检索新内容，也就是所谓的pull 或者轮询方式。
+
+二：客户端和服务器之间维持一个TCP/IP长连接，服务器向客户端push。
+
+[blog.csdn.net/clh604/arti…](https://blog.csdn.net/clh604/article/details/20167263)
+
+[www.jianshu.com/p/45202dcd5…](https://www.jianshu.com/p/45202dcd5688)
+
 
 
 
@@ -3805,6 +3941,42 @@ App的稳定主要决定于整体的系统架构设计，同时也不可忽略�
 
 少部分面试官可能会延伸，如Gradle自动化测试、机型适配测试等。
 
+**首先，Android测试主要分为三个方面**：
+
+- 单元测试（Junit4、Mockito、PowerMockito、Robolectric）
+- UI测试（Espresso、UI Automator）
+- 压力测试（Monkey）
+
+WanAndroid项目和XXX项目中使用用到了单元测试和部分自动化UI测试，其中单元测试使用的是Junit4+Mockito+PowerMockito+Robolectric。下面我分别简单介绍下这些测试框架：
+
+1、Junit4：
+
+使用@Test注解指定一个方法为一个测试方法，除此之外，还有如下常用注解@BeforeClass->@Before->@Test->@After->@AfterClass以及@Ignore。
+
+Junit4的主要测试方法就是断言，即assertEquals()方法。然后，你可以通过实现TestRule接口的方式重写apply()方法去自定义Junit Rule，这样就可以在执行测试方法的前后做一些通用的初始化或释放资源等工作，接着在想要的测试类中使用@Rule注解声明使用JsonChaoRule即可。（注意被@Rule注解的变量必须是final的。最后，我们直接运行对应的单元测试方法或类，如果你想要一键运行项目中所有的单元测试类，直接点击运行Gradle Projects下的app/Tasks/verification/test即可，它会在module下的build/reports/tests/下生成对应的index.html报告。
+
+Junit4它的优点是速度快，支持代码覆盖率如jacoco等代码质量的检测工具。缺点就是无法单独对Android UI，一些类进行操作，与原生Java有一些差异。
+
+2、Mockito：
+
+可以使用mock()方法模拟各种各样的对象，以替代真正的对象做出希望的响应。除此之外，它还有很多验证方法调用的方式如Mockit.when(调用方法).thenReturn(验证的返回值)、verfiy(模拟对象).验证方法等等。
+
+这里有一点要补充下：简单的测试会使整体的代码更简洁，更可读、更可维护。如果你不能把测试写的很简单，那么请在测试时重构你的代码。
+
+最后，对于Mockito来说，它的优点是有各种各样的方式去验证"模仿对象"的互动或验证发生的某些行为。而它的缺点就是不支持mock匿名类、final类、static方法private方法。
+
+3、PowerMockito：
+
+因此，为了解决Mockito的缺陷，PoweMockito出现了，它扩展了Mockito，支持mock匿名类、final类、static方法、private方法。只要使用它提供的api如PowerMockito.mockStatic()去mock含静态方法或字段的类，PowerMockito.suppress(PowerMockito.method(类.class， 方法名)即可。
+
+4、Robolectric
+
+前面3种我们说的都是Java相关的单元测试方法，如果想在Java单元测试里面进行Android单元测试，还得使用Robolectric，它提供了一套能运行在JVM的Android代码。它提供了一系列类似ShadowToast.getLatestToast()、ShadowApplication.getInstance()这种方式来获取Android平台对应的对象。可以看到它的优点就是支持大部分Android平台依赖类的底层引用与模拟。缺点就是在异步测试的情况下有些问题，这是可以结合Mockito来将异步转为同步即可解决。
+
+最后，自动化UI测试项目中我使用的是Expresso，它提供了一系列类似onView().check().perform()的方式来实现点击、滑动、检测页面显示等自动化的UI测试效果，这里在我的WanAndroid项目下的BasePageTest基类里面封装了一系列通用的方法，有兴趣可以去看看。
+
+
+
 #### 8. Android中如何查看一个对象的回收情况 ？
 
 首先要了解Java四种引用类型的场景和使用（强引用、软引用、弱引用、虛引用）
@@ -3837,4 +4009,28 @@ Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
 
 传统日志打印有两个性能问题，一个是反复操作文件描述符表，一个是反复进入内核态。所以需要使用mmap的方式去直接读写内存。
 
+#### 14. 设计一个方案，apk已经发出去了，java代码是最新，但是分包下发的so文件是旧版本，如何做一个兼容方案，保证兼容可用？
 
+#### 15. 设计一个组件，统计Activity的前台时长，Fragment的前台时长。
+
+#### 16. 设计一个埋点库。需要哪些模块。
+
+#### 17. 友盟bug统计，混淆后怎么定位bug？没接入热修复的APP中，上线后遇到bug怎么解决？
+
+#### 18. T1、T2、T3三个线程，如何保证它们顺序执行？也就是异步转同步的方式。
+
+```
+①Thread#join
+②等待多线程完成的CountDownLatch
+③FutureTask
+④Executors#newSingleThreadExecutor
+⑤wait/notify
+```
+
+#### 19. 动态权限适配方案，权限组的概念
+
+#### 20. Runtime permission，如何把一个预置的app默认给它权限？不要授权。
+
+#### 21. 如何实现进程安全写文件？
+
+#### 22. 如何实现进程安全写文件？
