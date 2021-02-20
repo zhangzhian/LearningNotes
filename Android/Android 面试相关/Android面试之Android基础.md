@@ -17,7 +17,7 @@
 - **onRestart()**：表示Activity**正在重新启动**，一般情况下，当前Acitivty从不可见重新变为可见时，OnRestart就会被调用；
 - **onStart()**：表示Activity**正在被启动**，此时Activity**可见但不在前台**，还处于后台，无法与用户交互；
 - **onResume()**：表示Activity**获得焦点**，此时Activity**可见且在前台**并开始活动，这是与onStart的区别所在；
-- **onPause()**：表示Activity**正在停止**，此时可做一些**存储数据、停止动画**等工作，但是不能太耗时，因为这会影响到新Activity的显示，onPause必须先执行完，新Activity的onResume才会执行；
+- **onPause()**：表示Activity**正在停止**，此时可做一些存储数据、停止动画等工作，但是不能太耗时，因为这会影响到新Activity的显示，**onPause必须先执行完，新Activity的onResume才会执行**；
 - **onStop()**：表示Activity**即将停止**，可以做一些稍微重量级的回收工作，比如注销广播接收器、关闭网络连接等，同样不能太耗时；
 - **onDestroy()**：表示Activity**即将被销毁**，这是Activity生命周期中的最后一个回调，常做**回收工作、资源释放**；
 
@@ -43,11 +43,11 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 
 程序在运行时，一些设备的配置可能会改变，如：横竖屏的切换、键盘的可用性或语言的切换等，此时Activity会重新启动。
 
-其中的过程是：在销毁之前会先调用onSaveInstancestate()去保存应用中的一些数据，然后调用 onDestory()，最后才会去调用onCreate()或者onRestoreInstanceState方法重新启动Activiy。
+其中的过程是：在销毁之前会先调用`onSaveInstancestate()`去保存应用中的一些数据，然后调用 `onDestory()`，最后才会去调用`onCreate()`或者`onRestoreInstanceState()`方法重新启动Activiy。
 
-如果自己没有配置android:ConfigChanges，在切换屏幕时候会重新调用各个生命周期，切横屏时会执行一次onCreate，切竖屏时在2.3前会执行两次onCreate，在2.3版本及以后都执行一次。
+如果自己没有配置`android:ConfigChanges`，在切换屏幕时候会重新调用各个生命周期，切横屏时会执行一次onCreate，切竖屏时在2.3前会执行两次onCreate，在2.3版本及以后都执行一次。
 
-如果设置` <android:configChanges="orientation|keyboardHidden|screenSize">`，此时Activity的生命周期不会重走一遍，Activity不会重建，只会回调onConfigurationChanged方法。
+如果设置` <android:configChanges="orientation|keyboardHidden|screenSize">`，此时Activity的生命周期不会重走一遍，Activity不会重建，只会回调`onConfigurationChanged`方法。
 
 #### 2. Activity的四大启动模式，以及应用场景？
 
@@ -56,7 +56,7 @@ ActivityA跳转到ActivityB时，ActivityA失去焦点部分可见，故不会�
 - `standard`：标准模式，每次都会在活动栈中生成一个新的`Activity`实例。通常我们使用的活动都是标准模式。
 - `singleTop`：栈顶复用，如果`Activity`实例已经存在栈顶，那么就不会在活动栈中创建新的实例，并回调`onNewIntent`方法。比较常见的场景就是给通知跳转的`Activity`设置，因为你肯定不想前台`Activity`已经是该`Activity`的情况下，点击通知，又给你再创建一个同样的`Activity`。
 - `singleTask`：栈内复用，如果`Activity`实例在当前栈中已经存在，就会将当前`Activity`实例上面的其他`Activity`实例都移除栈，并回调`onNewIntent`方法。常见于跳转到主界面。
-- `singleInstance`：单实例模式，创建一个新的任务栈，这个活动实例独自处在这个活动栈中，同样被重复调用的时候会调用并回调onNewIntent方法。
+- `singleInstance`：单实例模式，创建一个新的任务栈，这个活动实例独自处在这个活动栈中，同样被重复调用的时候会调用并回调`onNewIntent`方法。
 
 #### 3. Activity中onStart和onResume的区别？onPause和onStop的区别？
 
@@ -117,7 +117,7 @@ requestWindowFeature(Window.FEATURE_NO_TITLE);
 （1）应用被强杀
 
 - 整个App进程都被杀掉了，所有变量全都被清空，包括Application实例，更别提静态变量；
-- 虽然变量被清空了，但 Activity 栈没有被清空，也就是说 A -> B -> C 这个栈还保存了，只是ABC 这几个 Activity 实例没有了。所以回到 App 时，显示的还是 C 页面。另外当 Activity 被强杀时，系统会调用 onSaveInstance 去让你保存一些变量；
+- 虽然变量被清空了，但 Activity 栈没有被清空，也就是说 A -> B -> C 这个栈还保存了，只是ABC 这几个 Activity 实例没有了。所以回到 App 时，显示的还是 C 页面。另外当 Activity 被强杀时，系统会调用 `onSaveInstanceState` 去让你保存一些变量；
 - 当应用回到前台时，如果C页面中有静态变量或有些Application的全局变量，就NullPointer了；
 - C页面不会正常走完生命周期onStop & onDestory
 
@@ -145,25 +145,25 @@ Activity依次A→B→C→B，其中B启动模式为singleTask，AC都为standar
 
 3)A→B→C,B启动模式为`singleInstance`,点击两次返回键
 
-- 如果B为singleInstance，A→B→C的过程，生命周期还是同前面一样正常调用。但是点击返回的时候，由于AC同任务栈，所以C点击返回，会回到A，再点击返回才回到B。所以生命周期是：(C)onPause→(A)onRestart→(A)onStart→(A)onResume→(C)onStop→(C)onDestory。
-- 再次点击返回，就会回到B，所以生命周期是：(A)onPause→(B)onRestart→(B)onStart→(B)onResume→(A)onStop→(A)onDestory。
+- 如果B为singleInstance，A→B→C的过程，生命周期还是同前面一样正常调用。但是点击返回的时候，由于AC同任务栈，所以C点击返回，会回到A，再点击返回才回到B。所以生命周期是：`(C)onPause→(A)onRestart→(A)onStart→(A)onResume→(C)onStop→(C)onDestory`。
+- 再次点击返回，就会回到B，所以生命周期是：`(A)onPause→(B)onRestart→(B)onStart→(B)onResume→(A)onStop→(A)onDestory`。
 
 #### 9. 屏幕旋转时Activity的生命周期，如何防止Activity重建。
 
 **onSaveInstanceState在onstop前，个onPause没有既定的关系**
 
-- 切换屏幕的生命周期是：onConfigurationChanged->onPause->onSaveInstanceState->onStop->onDestroy->onCreate->onStart->onRestoreInstanceState->onResume
-- 如果需要防止旋转时候（切屏不会重新调用各个生命周期，只会执行onConfigurationChanged方法），`Activity`重新创建的话需要做如下配置：
-   在`targetSdkVersion`的值小于或等于12时，配置 android:configChanges="orientation"，
-   在`targetSdkVersion`的值大于12时，配置 android:configChanges="orientation|screenSize"
+- 切换屏幕的生命周期是：`onConfigurationChanged->onPause->onSaveInstanceState->onStop->onDestroy->onCreate->onStart->onRestoreInstanceState->onResume`
+- 如果需要防止旋转时候（切屏不会重新调用各个生命周期，只会执行`onConfigurationChanged`方法），`Activity`重新创建的话需要做如下配置：
+   在`targetSdkVersion`的值小于或等于12时，配置 `android:configChanges="orientation"`，
+   在`targetSdkVersion`的值大于12时，配置 `android:configChanges="orientation|screenSize"`
 
 #### 10. onSaveInstanceState() 与 onRestoreIntanceState()
 
-当应用遇到意外情况（如：内存不足、用户直接按Home键）由系统销毁一个Activity时，onSaveInstanceState() 会被调用，此方法调用在onStop之前，与onPause没有既定的时序关系。
+当应用遇到意外情况（如：内存不足、用户直接按Home键）由系统销毁一个Activity时，`onSaveInstanceState()` 会被调用，此方法调用在onStop之前，与onPause没有既定的时序关系。
 
-但是当用户主动去销毁一个Activity时，例如在应用中按返回键，onSaveInstanceState()就不会被调用。因为在这种情况下，用户的行为决定了不需要保存Activity的状态。通常onSaveInstanceState()只适合用于保存一些临时性的状态，而onPause()适合用于数据的持久化保存。
+但是当用户主动去销毁一个Activity时，例如在应用中按返回键，`onSaveInstanceState()`就不会被调用。因为在这种情况下，用户的行为决定了不需要保存Activity的状态。通常`onSaveInstanceState()`只适合用于保存一些临时性的状态，而`onPause()`适合用于数据的持久化保存。
 
-在activity被杀掉之前调用保存每个实例的状态，以保证该状态可以在onCreate(Bundle)或者onRestoreInstanceState(Bundle) 中恢复。
+在activity被杀掉之前调用保存每个实例的状态，以保证该状态可以在`onCreate(Bundle)`或者`onRestoreInstanceState(Bundle) `中恢复。
 
 ![异常情况下Activity的重建过程](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaea26f833?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -208,7 +208,7 @@ mContext.startActivity(intent);
 - 记录打开的 Activity： 每打开一个 Activity，就记录下来。在需要退出时，关闭每一个 Activity 即可。
 - 发送特定广播： 在需要结束应用时，发送一个特定的广播，每个 Activity 收到广播后，关闭即可。
 - 递归退出 在打开新的 Activity 时使用 startActivityForResult，然后自己加标志，在 onActivityResult 中处理，递归关闭。
-- 其实 也可以通过 intent 的 flag 来实现 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)激活一个新的 activity。 此时如果该任务栈中已经有该 Activity，那么系统会把这个 Activity 上面的所有 Activity 干掉。其实相当于给 Activity 配置的启动模式为 SingleTop。
+- 其实 也可以通过 intent 的 flag 来实现 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)激活一个新的 activity。 此时如果该任务栈中已经有该 Activity，那么系统会把这个 Activity 上面的所有 Activity 干掉。其实相当于给 Activity 配置的启动模式为 SingleTask。
 
 #### 16. 隐式启动Activity，如何判断是否有Activity匹配
 
@@ -233,26 +233,22 @@ mContext.startActivity(intent);
 - **FLAG_ACTIVITY_CLEAR_TOP** : 具有此标记位的Activity，当它启动时，在同一个任务栈中所有位于它上面的Activity都要出栈。这个标记位一般会和singleTask模式一起出现，在这种情况下，被启动Activity的实例如果已经存在，那么系统就会回调onNewIntent。如果被启动的Activity采用standard模式启动，那么它以及连同它之上的Activity都要出栈，系统会创建新的Activity实例并放入栈中；
 - **FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS** : 具有这个标记的 Activity 不会出现在历史 Activity 列表中；
 
-#### 19. 说下 Activity跟window，view之间的关系？
-
-- Activity在创建时会调用 `attach()` 方法初始化一个`PhoneWindow`(继承于Window)，**每一个Activity都包含了唯一一个PhoneWindow**
-
-- Activity通过`setContentView`实际上是调用的 `getWindow().setContentView()`将View设置到PhoneWindow上，而PhoneWindow内部是通过 WindowManager 的`addView`、`removeView`、`updateViewLayout`这三个方法来管理View，**WindowManager本质是接口，最终由WindowManagerImpl实现**
-
-- `WindowManager`为每个`Window`创建`Surface`对象，然后应用就可以通过这个`Surface`来绘制任何它想要绘制的东西。而对于`WindowManager`来说，这只不过是一块矩形区域而已
-
-- `Surface`其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个`Window`（包括对话框、全屏的Activity、状态栏等）都有他自己绘制的`Surface`。而最终的显示可能存在`Window`之间遮挡的问题，此时就是通过`Surface Flinger`对象渲染最终的显示，使他们以正确的`Z-order`显示出来。一般`Surface`拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
-
-- View是Window里面用于交互的UI元素。Window只attach一个View Tree（组合模式），当Window需要重绘（如，当View调用`invalidate`）时，最终转为Window的Surface，Surface被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，Surface解锁（unlock），并且`post`到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕
-
-#### 20. 如何启动其他应用的Activity？
+#### 19. 如何启动其他应用的Activity？
 
 在保证有权限访问的情况下，通过隐式Intent进行目标Activity的IntentFilter匹配，原则是：
 
 - 一个intent只有同时匹配某个Activity的intent-filter中的action、category、data才算完全匹配，才能启动该Activity；
 - 一个Activity可以有多个 intent-filter，一个 intent只要成功匹配任意一组 intent-filter，就可以启动该Activity；
 
-#### 21. taskAffinity，allowTaskReparting的用法?
+#### 21. taskAffinity，allowTaskReparenting的用法?
+
+TaskAffinity 可以翻译为“任务相关性”，这个参数标示了一个 Activity 所需的任务栈名称，默认情况下，所有 Activity 的任务栈名都为应用包名；当然，我们也可以为每个 Activity 单独指定 TaskAffinity 属性，如果该属性值与应用包名一样，就相当于没有指定，TaskAffinity 主要和 singleTask 启动模式或者 allowTaskReparenting 属性配对使用，在其他情况下没意义。另外，任务栈为前台任务栈和后台任务栈，后台任务栈中的 Activity 处于暂停状态，用户可以通过切换将后台任务栈再次调到前台。
+
+当 TaskAffinity 和 singleTask启动模式配合使用时，该 Activity 会运行在名字和 TaskAffinity 相同的任务栈中。
+
+allowTaskReparenting 这个属性指的是一个 Activity 运行时，可以重新选择自己所属的task。
+
+当 TaskAffinity 和 allowTaskReparenting 结合的时候，若应用 A 启动了一个应用 B 中的某个 Activity C 后，如果 Activity C的 allowTaskReparenting 属性为 true ， 那么当应用 B 被启动后，此 Activity 会直接从应用 A 的任务栈转移到应用 B 的任务栈中；此时点击 Home 键回到桌面，点击应用 B 的桌面图标，这是不是启动应用 B 的主 Activity ，而是从新显示了被应用 A 启动的 Activity C ，或者说 C 中 A 的任务栈转移到了 B 的任务栈中。
 
 
 
