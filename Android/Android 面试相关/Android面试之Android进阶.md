@@ -42,7 +42,7 @@ Binder IPC 正是基于内存映射来实现的，但是 `mmap()` 通常是用�
 
 1. 首先 Binder 驱动在内核空间创建一个数据接收缓存区；
 2. 接着在内核空间开辟一块内核缓存区，建立**内核缓存区**和**内核中数据接收缓存区**之间的映射关系，以及**内核中数据接收缓存区**和**接收进程用户空间地址**的映射关系；
-3. 发送方进程通过系统调用 copy_from_user() 将数据 copy 到内核中的**内核缓存区**，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
+3. 发送方进程通过系统调用 `copy_from_user()` 将数据 copy 到内核中的**内核缓存区**，由于内核缓存区和接收进程的用户空间存在内存映射，因此也就相当于把数据发送到了接收进程的用户空间，这样便完成了一次进程间的通信。
 
 Binder通信的实质是利用**内存映射**，将用户进程的内存地址和内核的内存地址映射为同一块物理地址，也就是说他们使用的同一块物理空间，每次创建Binder的时候大概分配128的空间。数据进行传输的时候，从这个内存空间分配一点，用完了再释放即可。
 
@@ -78,7 +78,7 @@ Binder 通信中的代理模式：前面我们介绍过跨进程通信的过程�
 
 
 
-#### (3) Binder 怎么验证Pid? binder驱动了解吗？
+#### (3) Binder 怎么验证Pid? Binder驱动了解吗？
 
 ```java
 //作用是清空远程调用端的uid和pid，用当前本地进程的uid和pid替代；
@@ -117,7 +117,7 @@ void IPCThreadState::clearCaller()
 - mCallingUid(记为UID)，保存Binder IPC通信的调用方进程的Uid；
 - mCallingPid(记为PID)，保存Binder IPC通信的调用方进程的Pid；
 
-UID和PID是IPCThreadState的成员变量， 都是32位的int型数据，通过移位操作，将UID和PID的信息保存到`token`，其中高32位保存UID，低32位保存PID。然后调用clearCaller()方法将当前本地进程pid和uid分别赋值给PID和UID，最后返回`token`。
+UID和PID是IPCThreadState的成员变量， 都是32位的int型数据，通过移位操作，将UID和PID的信息保存到`token`，其中高32位保存UID，低32位保存PID。然后调用`clearCaller()`方法将当前本地进程pid和uid分别赋值给PID和UID，最后返回`token`。
 
 ```cpp
 static void android_os_Binder_restoreCallingIdentity(JNIEnv* env, jobject clazz, jlong token)
@@ -171,7 +171,9 @@ void IPCThreadState::restoreCallingIdentity(int64_t token)
 
 既然有现有的IPC方式，为什么重新设计一套Binder机制呢。主要是出于以下三个方面的考量：
 
-效率：传输效率主要影响因素是内存拷贝的次数，拷贝次数越少，传输速率越高。从Android进程架构角度分析：对于消息队列、Socket和管道来说，数据先从发送方的缓存区拷贝到内核开辟的缓存区中，再从内核缓存区拷贝到接收方的缓存区，一共两次拷贝，如图：
+效率：传输效率主要影响因素是内存拷贝的次数，拷贝次数越少，传输速率越高。
+
+从Android进程架构角度分析：对于消息队列、Socket和管道来说，数据先从发送方的缓存区拷贝到内核开辟的缓存区中，再从内核缓存区拷贝到接收方的缓存区，一共两次拷贝，如图：
 
 ![img](https://api2.mubu.com/v3/document_image/42784aab-0633-44d0-9b28-432f46d582b5-2297223.jpg)
 
@@ -231,13 +233,41 @@ binder 肯定是不行的，因为映射的最大内存只有 1M，可以采用 
 
 [老罗Binder机制分析系列或Android系统源代码情景分析Binder章节](https://blog.csdn.net/luoshengyang/article/details/6618363)
 
-#### (9) binder线程池默认最大数量?
+#### (9) Binder线程池默认最大数量?
 
-binder线程池中如果满了，对待新来的任务，会如何处理？此时client端会是什么效果？
+首先要管理线程池就要知道池子有多大，应用程序通过 `BINDER_SET_MAX_THREADS` 告诉驱动，最多可以创建几个线程。以后每个线程在创建，进入主循环，退出主循环时，都要分别使用 `BC_REGISTER_LOOP`，`BC_ENTER_LOOP`，`BC_EXIT_LOOP` 告知驱动，以便驱动标记当前线程池中各个线程的状态。每当驱动接收完数据包，并且把数据包返回给读 Binder 线程的用户空间时，都要检查一下，线程池中是不是已经没有闲置线程了。如果是，并且线程总数还没有达到线程池设定的最大线程数，就会在当前读出的数据包后面再追加一条 `BR_SPAWN_LOOPER` 命令，告诉 Server 端，线程即将不够用了，请再启动一个新线程，否则下一个请求可能不能及时响应。新线程一启动，又会通过 `BC_xxx_LOOP` 等一系列命令告知驱动更新线程的状态。这样确保了只要线程池的线程数量没有耗尽，总是会有空闲的线程在等待队列中随时待命，及时处理请求，这个就是 Binder 机制线程池管理的基本流程。
 
-15
+可以通过 `BINDER_SET_MAX_THREADS` 命令来告知 Binder 驱动每个进程可以创建的最大的 Binder 线程的个数，一般来说这个值默认值为15，当然我们可以自己设定。但是要注意的是，这个不是说 Binder 线程池中最大的线程数目就是15个了，这个值仅仅是对Binder 驱动来说的，它只统计使用 `BC_REGISTER_LOOPER` 命令创建的线程个数，如果达到就不在创建了。
 
+举个我们讨论的 MediaPlayerService 的例子：
 
+```cpp
+int main(int argc __unused, char **argv __unused)
+{
+    signal(SIGPIPE, SIG_IGN);
+    sp<ProcessState> proc(ProcessState::self());
+    sp<IServiceManager> sm(defaultServiceManager());
+    ALOGI("ServiceManager: %p", sm.get());
+    InitializeIcuOrDie();
+    MediaPlayerService::instantiate();//注册多媒体服务
+    ResourceManagerService::instantiate();
+    registerExtensions();
+    ProcessState::self()->startThreadPool();//启动Binder线程池
+    IPCThreadState::self()->joinThreadPool();//当前线程加入到线程池
+}
+```
+
+这个进程的线程池中最多可以有几个 Binder 线程呢？我们来计算下，因为在 ProcessState 初始化的过程中会调用 open_driver 函数，在这个函数中设置了最大线程数为15，所以这15个线程是保底的，另外 main 函数的最后二行代码的 startThreadPool，我们知道是新启动了一个线程，并设置为主线程，是通过 `BC_ENTER_LOOP` 来创建的，不计入15个之列，所以又可以创建一个线程；同时看最后一行代码 `IPCThreadState::self()->joinThreadPool()` 是把当前的线程添加到线程池中，joinThreadPool 默认参数为 true，所以也是主线程，也是通过 `BC_ENTER_LOOP` 命令来创建的，所以又可以创建一个线程了，所以这个Media服务进程最多可以有17个线程在工作。
+
+从以上对 Binder 线程池数量的分析我们已经知道了 Binder 线程可以有三类，总结如下：
+
+- Binder主线程：在进程的 main 函数中通过调用 `startThreadPool()` 函数创建的线程
+- Binder普通线程：是由 Binder 驱动通过发送 `BR_SPAWN_LOOPER` 命令，然后应用进程调用 `spawnPooledThread` 函数创建的线程
+- Binder其它线程：是调用 `IPC.joinThreadPool()`，将当前线程直接加入 Binder 线程队列的线程，例如 media 的主线程
+
+####  (10) Binder线程池中如果满了，对待新来的任务，会如何处理？此时client端会是什么效果？
+
+下一个请求可能不能及时响应。
 
 
 ### 2. 进程
@@ -285,8 +315,6 @@ binder线程池中如果满了，对待新来的任务，会如何处理？此�
 #### (6) Android中IPC方式、各种方式优缺点？
 
 ![img](https://api2.mubu.com/v3/document_image/40d5e692-a83d-41cc-9283-c3f2481ca830-2297223.jpg)
-
-
 
 ### 3. 四大组件启动相关
 
@@ -339,7 +367,7 @@ binder线程池中如果满了，对待新来的任务，会如何处理？此�
 
 ③该方法会通过socket通道传递参数给Zygote进程。Zygote `fork()`自身。调用`ZygoteInit.main()`方法来实例化ActivityThread对象并最终返回新进程的pid。
 
-④调用ActivityThread.main()方法，ActivityThread随后依次调用Looper.prepareLoop()和Looper.loop()来开启消息循环。
+④调用`ActivityThread.main()`方法，ActivityThread随后依次调用`Looper.prepareLoop()`和`Looper.loop()`来开启消息循环。
 
 **方法调用流程图如下:**
 
@@ -385,7 +413,7 @@ binder线程池中如果满了，对待新来的任务，会如何处理？此�
 
 #### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？从事件传递，网络请求, AMS交互角度分析
 
-
+AMS交互角度：同上
 
 #### (4) AMS交互调用生命周期是顺序调用的吗？
 
@@ -409,13 +437,13 @@ public static void main(String[] args){
 }
 ```
 
-`thread.attach(false)`，App进程，通过Binder IPC向sytem_server进程发起attachApplication请求；
+`thread.attach(false)`，App进程，通过Binder IPC向`sytem_server`进程发起`attachApplication`请求；
 
-system_server进程在收到请求后，进行一系列准备工作后，再通过binder IPC向App进程发送scheduleLaunchActivity请求；
+`system_server`进程在收到请求后，进行一系列准备工作后，再通过binder IPC向App进程发送`scheduleLaunchActivity`请求；
 
-App进程的binder线程（ApplicationThread）在收到请求后，通过handler向主线程发送LAUNCH_ACTIVITY消息；
+App进程的binder线程（`ApplicationThread`）在收到请求后，通过`Handler`向主线程发送`LAUNCH_ACTIVITY`消息；
 
-主线程在收到Message后，通过反射机制创建目标Activity，并回调Activity.onCreate()等方法。
+主线程在收到Message后，通过反射机制创建目标Activity，并回调`Activity.onCreate()`等方法。
 
 到此，第一个Activity启动。
 
@@ -423,7 +451,7 @@ App进程的binder线程（ApplicationThread）在收到请求后，通过handle
 
 4个。Launcher，system_server，Zygote，APP。
 
-#### (7) 广播发送和接收的原理了解吗 ？（Binder机制、AMS）
+#### (7) 广播发送和接收的原理了解吗 ？
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/8/1695c1aaeac26f8d?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -453,7 +481,7 @@ Android系统启动的核心流程如下：
 
 #### (9) 系统是怎么帮我们启动找到桌面应用的？
 
-通过意图，PMS 会解析所有 apk 的 AndroidManifest.xml ，如果解析过会存到 package.xml 中不会反复解析，PMS 有了它就能找到了。
+通过意图，PMS 会解析所有 apk 的 `AndroidManifest.xml` ，如果解析过会存到 `package.xml` 中不会反复解析，PMS 有了它就能找到了。
 
 #### (10) 启动一个程序，可以主界面点击图标进入，也可以从一个程序中跳转过去，二者有什么区别？
 
@@ -520,7 +548,7 @@ Activity的启动流程图（放大可查看）如下所示：
 - 在新进程里创建ActivityThread对象，新创建的进程就是应用的主线程，在主线程里开启Looper消息循环，开始处理创建Activity。
 - ActivityThread利用ClassLoader去加载Activity、创建Activity实例，并回调Activity的onCreate()方法，这样便完成了Activity的启动。
 
-#### (13) ActivityThread工作原理。
+#### (13) ActivityThread工作原理?
 
 #### (14) AMS是如何管理Activity的？
 
@@ -536,7 +564,9 @@ Activity的启动流程图（放大可查看）如下所示：
 
 #### (16) AMS是如何确认Application启动完成的？关键条件是什么？
 
-zygote返给AMS的pid；应用的ActivityThread#main方法中会向AMS上报Application的binder对象
+Zygote返给AMS的pid。
+
+应用的ActivityThread#main方法中会向AMS上报Application的binder对象。
 
 #### (17) Application#constructor、Application#onCreate、Application#attach他们的执行顺序?
 
@@ -544,9 +574,15 @@ zygote返给AMS的pid；应用的ActivityThread#main方法中会向AMS上报Appl
 
 #### (18) ContentProvider具体实现?
 
-#### (19) 判断activity前台进程
 
-#### (20) 启动未注册的Activity
+
+#### (19) 判断Activity前台进程？
+
+
+
+#### (20) 启动未注册的Activity？
+
+
 
 ### 4. Window
 
@@ -587,23 +623,39 @@ ViewRoot并不属于View树的一份子。从源码实现上来看，它既非Vi
 #### (3) 理解Window和WindowManager。
 
 - Window用于显示View和接收各种事件，Window有三种型：应用Window(每个Activity对应一个Window)、子Widow(不能单独存在，附属于特定Window)、系统window(toast和状态栏)
-- Window分层级，应用Window在1-99、子Window在1000-1999、系统Window在2000-2999.WindowManager提供了增改View的三个功能。
+- Window分层级，应用Window在1-99、子Window在1000-1999、系统Window在2000-2999，WindowManager提供了增改View的三个功能。
 - Window是个抽象概念：每一个Window对应着一个ViewRootImpl，Window通过ViewRootImpl来和View建立联系，View是Window存在的实体，只能通过WindowManager来访问Window。
 - WindowManager的实现是WindowManagerImpl，其再委托WindowManagerGlobal来对Window进行操作，其中有四种List分别储存对应的View、ViewRootImpl、WindowManger.LayoutParams和正在被删除的View。
 - Window的实体是存在于远端的WindowMangerService，所以增删改Window在本端是修改上面的几个List然后通过ViewRootImpl重绘View，通过WindowSession(每Window个对应一个)在远端修改Window。
-- .Activity创建Window：Activity会在attach()中创建Window并设置其回调(onAttachedToWindow()、dispatchTouchEvent())，Activity的Window是由Policy类创建PhoneWindow实现的。然后通过Activity#setContentView()调用PhoneWindow的setContentView。
+- Activity创建Window：Activity会在`attach()`中创建Window并设置其回调(`onAttachedToWindow()`、`dispatchTouchEvent())`，Activity的Window是由Policy类创建PhoneWindow实现的。然后通过`Activity#setContentView()`调用PhoneWindow的setContentView。
 
 #### (4) WMS是如何管理Window的？
 
 #### (5) Surface的作用是什么？它是何时初始化的？View绘制的数据是如何显示到屏幕上的？
 
-#### (6) Activity#setContentView中的xml文件是如何转化成View并显示到Activity中的?
+#### (6) Activity#setContentView中的Xml文件是如何转化成View并显示到Activity中的?
 
-#### (7) LayoutInflater是如何把xml布局文件转换成View对象的（反射）？View树如何生成的？怎么优化？
+LayoutInflater是如何把xml布局文件转换成View对象的（反射）？View树如何生成的？怎么优化？
 
-#### (8) PhoneWindow是在哪里初始化的？
+#### (7) PhoneWindow是在哪里初始化的？
 
+收到Handle的`H.LAUCH_ACTIVITY`消息，`performLaunchActivity`方法中调用了`Activity#attach()`，在该方法中：
 
+```Java
+mWindow = new PhoneWindow(this, window, activityConfigCallback);
+```
+
+#### (8) 说下 Activity跟Window，View之间的关系？
+
+- Activity在创建时会调用 `attach()` 方法初始化一个`PhoneWindow`(继承于Window)，**每一个Activity都包含了唯一一个PhoneWindow**
+
+- Activity通过`setContentView`实际上是调用的 `getWindow().setContentView()`将View设置到PhoneWindow上，而PhoneWindow内部是通过 WindowManager 的`addView`、`removeView`、`updateViewLayout`这三个方法来管理View，**WindowManager本质是接口，最终由WindowManagerImpl实现**
+
+- `WindowManager`为每个`Window`创建`Surface`对象，然后应用就可以通过这个`Surface`来绘制任何它想要绘制的东西。而对于`WindowManager`来说，这只不过是一块矩形区域而已
+
+- `Surface`其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个`Window`（包括对话框、全屏的Activity、状态栏等）都有他自己绘制的`Surface`。而最终的显示可能存在`Window`之间遮挡的问题，此时就是通过`Surface Flinger`对象渲染最终的显示，使他们以正确的`Z-order`显示出来。一般`Surface`拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
+
+- View是Window里面用于交互的UI元素。Window只attach一个View Tree（组合模式），当Window需要重绘（如，当View调用`invalidate`）时，最终转为Window的Surface，Surface被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，Surface解锁（unlock），并且`post`到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕
 
 ### 5. PMS
 
@@ -615,31 +667,31 @@ APK的安装流程如下所示：
 
 ![image](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/91d5374ba2064521bb17f6df9f7b628b~tplv-k3u1fbpfcp-zoom-1.image)
 
-复制APK到/data/app目录下，解压并扫描安装包。
+- 复制APK到/data/app目录下，解压并扫描安装包。
 
-资源管理器解析APK里的资源文件。
+- 资源管理器解析APK里的资源文件。
 
-解析AndroidManifest文件，并在/data/data/目录下创建对应的应用数据目录。
+- 解析AndroidManifest文件，并在/data/data/目录下创建对应的应用数据目录。
 
-然后对dex文件进行优化，并保存在dalvik-cache目录下。
+- 然后对dex文件进行优化，并保存在dalvik-cache目录下。
 
-将AndroidManifest文件解析出的四大组件信息注册到PackageManagerService中。
+- 将AndroidManifest文件解析出的四大组件信息注册到PackageManagerService中。
 
-安装完成后，发送广播。
+- 安装完成后，发送广播。
 
 #### (2) APK 的打包过程是什么？
 
-通过AAPT工具进行资源文件（包括AndroidManifest.xml、布局文件、各种xml资源等）的打包，生成R.java文件。
+- 通过AAPT工具进行资源文件（包括AndroidManifest.xml、布局文件、各种xml资源等）的打包，生成R.java文件。
 
-通过AIDL工具处理AIDL文件，生成相应的Java文件。
+- 通过AIDL工具处理AIDL文件，生成相应的Java文件。
 
-通过Java Compiler编译R.java、Java接口文件、Java源文件，生成.class文件。
+- 通过Java Compiler编译R.java、Java接口文件、Java源文件，生成.class文件。
 
-通过dex命令，将.class文件和第三方库中的.class文件处理生成classes.dex，该过程主要完成Java字节码转换成Dalvik字节码，压缩常量池以及清除冗余信息等工作。
+- 通过dex命令，将.class文件和第三方库中的.class文件处理生成classes.dex，该过程主要完成Java字节码转换成Dalvik字节码，压缩常量池以及清除冗余信息等工作。
 
-通过ApkBuilder工具将资源文件、DEX文件打包生成APK文件。
+- 通过ApkBuilder工具将资源文件、DEX文件打包生成APK文件。
 
-通过Jarsigner工具，利用KeyStore对生成的APK文件进行签名。
+- 通过Jarsigner工具，利用KeyStore对生成的APK文件进行签名。
 
 如果是正式版的APK，还会利用ZipAlign工具进行对齐处理，对齐的过程就是将APK文件中所有的资源文件距离文件的起始距位置都偏移4字节的整数倍，这样通过内存映射访问APK文件的速度会更快，并且会减少其在设备上运行时的内存占用。
 
@@ -651,13 +703,11 @@ APK的安装流程如下所示：
 - lib：如果存在的话，存放的是ndk编出来的so库。
 - META-INF：存放签名信息
 
-MANIFEST.MF（清单文件）：其中每一个资源文件都有一个SHA-256-Digest签名，MANIFEST.MF文件的SHA256（SHA1）并base64编码的结果即为CERT.SF中的SHA256-Digest-Manifest值。
+  - MANIFEST.MF（清单文件）：其中每一个资源文件都有一个SHA-256-Digest签名，MANIFEST.MF文件的SHA256（SHA1）并base64编码的结果即为CERT.SF中的SHA256-Digest-Manifest值。
+  - CERT.SF（待签名文件）：除了开头处定义的SHA256（SHA1）-Digest-Manifest值，后面几项的值是对MANIFEST.MF文件中的每项再次SHA256并base64编码后的值。
+  - CERT.RSA（签名结果文件）：其中包含了公钥、加密算法等信息。首先对前一步生成的MANIFEST.MF使用了SHA256（SHA1）-RSA算法，用开发者私钥签名，然后在安装时使用公钥解密。最后，将其与未加密的摘要信息（MANIFEST.MF文件）进行对比，如果相符，则表明内容没有被修改。
 
-CERT.SF（待签名文件）：除了开头处定义的SHA256（SHA1）-Digest-Manifest值，后面几项的值是对MANIFEST.MF文件中的每项再次SHA256并base64编码后的值。
-
-CERT.RSA（签名结果文件）：其中包含了公钥、加密算法等信息。首先对前一步生成的MANIFEST.MF使用了SHA256（SHA1）-RSA算法，用开发者私钥签名，然后在安装时使用公钥解密。最后，将其与未加密的摘要信息（MANIFEST.MF文件）进行对比，如果相符，则表明内容没有被修改。
-
-- androidManifest：程序的全局清单配置文件。
+- AndroidManifes.xml：程序的全局清单配置文件。
 - resources.arsc：编译后的二进制资源文件。
 
 #### (3) APK 为什么要签名？是否了解过具体的签名机制？
@@ -712,7 +762,7 @@ Android 5.0（API 级别 21）及更高版本使用名为 ART 的运行时，它
 
 #### (5) v3签名key和v2还有v1有什么区别
 
-在**v1版本**的签名中，签名以文件的形式存在于apk包中，这个版本的apk包就是一个标准的zip包，**V2**和**V1**的差别是**V2**是对整个zip包进行签名，而且在zip包中增加了一个**apk signature block**，里面保存签名信息。
+在**v1版本**的签名中，签名以文件的形式存在于apk包中，这个版本的apk包就是一个标准的zip包，**v2**和**v1**的差别是**v2**是对整个zip包进行签名，而且在zip包中增加了一个**apk signature block**，里面保存签名信息。
 
 ![img](https://user-gold-cdn.xitu.io/2019/4/1/169d7c3ea2437de3?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -735,9 +785,17 @@ Android 5.0（API 级别 21）及更高版本使用名为 ART 的运行时，它
 
 #### (6) 为什么会有R文件这个映射表？直接使用资源的路径不好么？
 
-#### (6) Android项目中都包含哪些资源？apk解压后都包含哪些资源？R文件打包后生成的文件是哪种？
+打开R文件查看R文件源码，通过R.java类中的注释可以看出，R.java是由啊aapt工具根据应用中的资源文件夹自动生成的，因此可以把R.java理解成android应用的资源字典。
 
+aapt生成的R.java文件的规则主要是如下两条:
 
+1.每类资源对应的R类的一个内部类。比如所有界面布局资源对应于layout内部类；所有字符串对应与string内部类；所有表示符资源对应于id内部类。
+
+2.每个具体的资源项对应内部类的一个public static final int类型的Field。例如前面在界面布局文件中用到了ok、show两个标识符，因此R.id类里就包含了这两个Field;由于drawable-xxxx文件里包含了icon.png图片，因此R.drawable类里包含了icon-Field。
+
+随着我们不断的想Android项目中添加资源，R.java文件的内容也会越来越多。
+
+主要是为了资源检索快速方法，使用资源变的简单。
 
 ### 6. Context
 
@@ -759,13 +817,13 @@ Context的数量等于Activity的个数 + Service的个数 +1，这个1为Applic
 
 #### (4) 如何跨进程拿 Context？Activity 还没启动的时候如何拿 Context？
 
-**getApplication 与 getApplicationContext 区别**：getApplication() 用用来获取 Application实例的，但这个方法只有在 Activity 和 Service 中才能调用。如果在一些其它的场景，比如BroadcastReceiver 中也想获得 Application 的实例，这时需要借助 getApplicationContext() 方法。也就是说，getApplicationContext() 方法的作用域会更广一些，任何一个 Context 的实例，只要调用 getApplicationContext() 方法都可以拿到我们的Application对象；
+**getApplication 与 getApplicationContext 区别**：`getApplication()` 用用来获取 Application实例的，但这个方法只有在 Activity 和 Service 中才能调用。如果在一些其它的场景，比如BroadcastReceiver 中也想获得 Application 的实例，这时需要借助 `getApplicationContext()` 方法。也就是说，`getApplicationContext()` 方法的作用域会更广一些，任何一个 Context 的实例，只要调用 `getApplicationContext()` 方法都可以拿到我们的Application对象；
 
-**Application 中方法的执行顺序为**：Application 构造方法 → attachBaseContext() → onCreate()。如果在 attachBaseContext() 中或执行前，调用 getApplicationContext() 得到的值为null
+**Application 中方法的执行顺序为**：Application 构造方法 → `attachBaseContext()` → `onCreate()`。如果在 `attachBaseContext()` 中或执行前，调用 `getApplicationContext()` 得到的值为null
 
 #### (5) ApplicationContext和ActivityContext的区别
 
-这是两种不同的context，也是最常见的两种。第一种中context的生命周期与Application的生命周期相关的，context随着Application的销毁而销毁，伴随application的一生，与activity的生命周期无关.第二种中的context跟Activity的生命周期是相关的，但是对一个Application来说，Activity可以销毁几次，那么属于Activity的context就会销毁多次。至于用哪种context，得看应用场景。还有就是，在使用context的时候，小心内存泄露，防止内存泄露，注意一下几个方面：
+这是两种不同的context，也是最常见的两种。第一种中context的生命周期与Application的生命周期相关的，context随着Application的销毁而销毁，伴随application的一生，与activity的生命周期无关。第二种中的context跟Activity的生命周期是相关的，但是对一个Application来说，Activity可以销毁几次，那么属于Activity的context就会销毁多次。至于用哪种context，得看应用场景。还有就是，在使用context的时候，小心内存泄露，防止内存泄露，注意一下几个方面：
 
 - 不要让生命周期长的对象引用activity context，即保证引用activity的对象要与activity本身生命周期是一样的。
 - 对于生命周期长的对象，可以使用application context。
@@ -773,18 +831,17 @@ Context的数量等于Activity的个数 + Service的个数 +1，这个1为Applic
 
 ### 7. AIDL
 
-#### (1) AIDL in out oneway代表什么意思？
+#### (1) AIDL in out inout oneway代表什么意思？
 
 in、out、inout表示跨进程通信中数据的流向（基本数据类型默认是in，非基本数据类型可以使用其它数据流向out、inout）。
 
 - in参数使得实参顺利传到服务方，但服务方对实参的任何改变，不会反应回调用方。
 - out参数使得实参不会真正传到服务方，只是传一个实参的初始值过去（这里实参只是作为返回值来使用的，这样除了return那里的返回值，还可以返回另外的东西），但服务方对实参的任何改变，在调用结束后会反应回调用方。
 - inout参数则是上面二者的结合，实参会顺利传到服务方，且服务方对实参的任何改变，在调用结束后会反应回调用方。
-- 其实inout，都是相对于服务方。in参数使得实参传到了服务方，所以是in进入了服务方；out参数使得实参在调用结束后从服务方传回给调用方，所以是out从服务方出来。
 
-oneway可以用来修饰在interface之前，这样会造成interface内所有的方法都隐式地带上oneway；oneway也可以修饰在interface里的各个方法之前。
+> 其实inout，都是相对于服务方。in参数使得实参传到了服务方，所以是in进入了服务方；out参数使得实参在调用结束后从服务方传回给调用方，所以是out从服务方出来。
 
-被oneway修饰了的方法不可以有返回值，也不可以有带out或inout的参数。
+- oneway可以用来修饰在interface之前，这样会造成interface内所有的方法都隐式地带上oneway；oneway也可以修饰在interface里的各个方法之前。被oneway修饰了的方法不可以有返回值，也不可以有带out或inout的参数。
 
 #### (2) 讲讲AIDL？如何优化多模块都使用AIDL的情况？
 
@@ -956,7 +1013,7 @@ d. AndroidManifest.xml 中的显式权限声明
 
 #### 2. Android6.0 的权限机制?
 
-1) 新权限思想 Android 的权限系统一直是首要的安全概念，因为这些权限只在安装的时候被询问一次。一旦安装了，app 可以 在用户毫不知晓的情况下访问权限内的所有东西，而且一般用户安装的时候很少会去仔细看权限列表，更不会去深入 了解这些权限可能带来的相关危害。 但是在 Android 6.0 版本之后，系统不会在软件安装的时候就赋予该 app 所有其申请的权限，对于一些危险级别的权限，app 需要在运行时一个一个询问用户授予权限。
+1) 新权限思想 Android 的权限系统一直是首要的安全概念，因为这些权限只在安装的时候被询问一次。一旦安装了，app 可以 在用户毫不知晓的情况下访问权限内的所有东西，而且一般用户安装的时候很少会去仔细看权限列表，更不会去深入了解这些权限可能带来的相关危害。 但是在 Android 6.0 版本之后，系统不会在软件安装的时候就赋予该 app 所有其申请的权限，对于一些危险级别的权限，app 需要在运行时一个一个询问用户授予权限。
 
 2) 对旧版本 App 的兼容 
 
@@ -966,9 +1023,9 @@ d. AndroidManifest.xml 中的显式权限声明
 
 只有那些危险级别的权限才需要。如果有需要申请危险级别中的一个权限，就需要进行特殊操作。还有一个比较 人 性 的 地 方 就 是 如 果 同 一 组 的 任 何 一 个 权 限 被 授 权 了 ， 其 他 权 限 也 自 动 被 授 权 。 例 如 ， 一 旦 `WRITE_EXTERNAL_STORAGE` 被授权了，app 也有 `READ_EXTERNAL_STORAGE` 权限了。
 
-4) 支持6.0新版本权限机制 在 Android M 的 api 中，可以通过 checkSelfPermission 检测软件是否有某一项权限，以及使用 requestPermissions 去请求一组权限。
+4) 支持6.0新版本权限机制 在 Android M 的 api 中，可以通过 `checkSelfPermission` 检测软件是否有某一项权限，以及使用 `requestPermissions` 去请求一组权限。
 
-向用户发起请求之后，请求完成，会有相对应的回调方法，通知软件用户是否授予了权限。 通过在 Activity 或者 Fragment 中重写 onRequestPermissionsResult 方法。
+向用户发起请求之后，请求完成，会有相对应的回调方法，通知软件用户是否授予了权限。 通过在 Activity 或者 Fragment 中重写 `onRequestPermissionsResult` 方法。
 
 
 
@@ -991,7 +1048,21 @@ d. AndroidManifest.xml 中的显式权限声明
 
 #### (1) RXJava线程种类，怎么切换线程
 
+`Schedulers.computation()`: 适合运行在密集计算的操作，大多数异步操作符使用该调度器
 
+`Schedulers.io()`:适合运行I/0和阻塞操作
+
+`Schedulers.single()`:适合需要单一线程的操作
+
+`Schedulers.trampoline()`: 适合需要顺序运行的操作
+
+`AndroidSchedulers.mainThread()`：Android的主线程
+
+通过 功能性操作符`subscribeOn()` 和 `observeOn()`实现。
+
+若`Observable.subscribeOn()`多次指定被观察者生产事件的线程，则只有第一次指定有效，其余的指定线程无效
+
+若`Observable.observeOn()`多次指定观察者接收和响应事件的线程，则每次指定均有效，即每指定一次，就会进行一次线程的切换。
 
 #### (2) Rxjava自定义操作符
 
@@ -1001,7 +1072,7 @@ d. AndroidManifest.xml 中的显式权限声明
 
 map：【数据类型转换】将被观察者发送的事件转换为另一种类型的事件。
 
-flatMap：【化解循环嵌套和接口嵌套】将被观察者发送的事件序列进行拆分 & 转换 后合并成一个新的事件序列，最后再进行发送。
+flatMap：【化解循环嵌套和接口嵌套】将被观察者发送的事件序列进行拆分和转换后合并成一个新的事件序列，最后再进行发送。
 
 concatMap：【有序】与 flatMap 的 区别在于，拆分 & 重新合并生成的事件序列 的顺序与被观察者旧序列生产的顺序一致。
 
@@ -1011,15 +1082,63 @@ buffer：定期从被观察者发送的事件中获取一定数量的事件并�
 
 #### (4) 手写rxjava遍历数组
 
+```java
+    // 1. 设置需要传入的数组
+    Integer[] items = { 0, 1, 2, 3, 4 };
 
+    // 2. 创建被观察者对象（Observable）时传入数组
+    // 在创建后就会将该数组转换成Observable & 发送该对象中的所有数据
+    Observable.fromArray(items)
+            .subscribe(new Observer<Integer>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+                    Log.d(TAG, "数组遍历");
+                }
 
-#### (5) map和flatmap操作符区别? zip和merge操作符区别?
+                @Override
+                public void onNext(Integer value) {
+                    Log.d(TAG, "数组中的元素 = "+ value  );
+                }
 
+                @Override
+                public void onError(Throwable e) {
+                    Log.d(TAG, "对Error事件作出响应");
+                }
 
+                @Override
+                public void onComplete() {
+                    Log.d(TAG, "遍历结束");
+                }
+
+            });
+```
+
+#### (5) zip和merge操作符区别?
+
+merge：可作用所有数据源类型，用于合并多个数据源到一个数据源。merge在合并数据源时，如果一个合并发生异常后会立即调用观察者的onError方法，并停止合并。可通过mergeDelayError操作符，将发生的异常留到最后处理。
+
+可作用于Flowable、Observable、Maybe、Single。将多个数据源的数据一个一个的合并在一起。当其中一个数据源发射完事件之后，若其他数据源还有数据未发射完毕，也会停止。
+
+区别是：
+
+- 方法的参数不一样，zip有一个合并函数，merge没有，所以zip发射数据是合并函数的返回值，merge则是交错排列多个源Observable发射的数据。
+- merge的终止不会受任何一个Observable的发射完成而终止，zip则只要有一个Observable的发射完成而终止发射（merge和zip中只要有一个错误通知终止，就都终止） 
 
 #### (6) flatmap为何要生成多个Observable？
 
 
+
+#### (7) 常见基类及区别？
+
+io.reactivex.Flowable：发送0个N个的数据，支持Reactive-Streams和背压
+
+io.reactivex.Observable：发送0个N个的数据，不支持背压，
+
+io.reactivex.Single：只能发送单个数据或者一个错误
+
+io.reactivex.Completable：没有发送任何数据，但只处理 onComplete 和 onError 事件。
+
+io.reactivex.Maybe：能够发射0或者1个数据，要么成功，要么失败。
 
 
 
@@ -1031,9 +1150,9 @@ buffer：定期从被观察者发送的事件中获取一定数量的事件并�
 
 #### (2) interceptors和networkInterceptors的区别？
 
-`addInterceptor(Interceptor)`，这是由开发者设置的，会按照开发者的要求，在所有的拦截器处理之前进行最早的拦截处理，比如一些公共参数，Header都可以在这里添加。
+`interceptors.addAll(client.interceptors());`，这是由开发者设置的，会按照开发者的要求，在所有的拦截器处理之前进行最早的拦截处理，比如一些公共参数，Header都可以在这里添加。
 
-`networkInterceptors`，这里也是开发者自己设置的，所以本质上和第一个拦截器差不多，但是由于位置不同，所以用处也不同。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。
+`interceptors.addAll(client.networkInterceptors());`，这里也是开发者自己设置的，所以本质上和第一个拦截器差不多，但是由于位置不同，所以用处也不同。这个位置添加的拦截器可以看到请求和响应的数据了，所以可以做一些网络调试。
 
 #### (3) OkHttp怎么实现连接池?里面怎么处理SSL？
 
@@ -1181,7 +1300,7 @@ long cleanup(long now) {
 
 #### (4) 如果让你来实现一个网络框架，你会考虑什么
 
-- 
+
 
 #### (5) OKHttp有哪些拦截器，分别起什么作用？
 
@@ -1320,17 +1439,33 @@ Okhttp中websocket的使用，由于webSocket属于长连接，所以需要进�
 
 #### (10) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现？
 
-OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Call的实例，然后执行它的execute()方法或enqueue()方法，内部最后都会执行到getResponseWithInterceptorChain()方法，这个方法里面通过拦截器组成的责任链，依次经过用户自定义普通拦截器、重试拦截器、桥接拦截器、缓存拦截器、连接拦截器和用户自定义网络拦截器以及访问服务器拦截器等拦截处理过程，来获取到一个响应并交给用户。其中，除了OKHttp的内部请求流程这点之外，还用到了缓存和连接池。
+OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Call的实例，然后执行它的`execute()`方法或`enqueue()`方法，内部最后都会执行到`getResponseWithInterceptorChain()`方法，这个方法里面通过拦截器组成的责任链，依次经过用户自定义普通拦截器、重试拦截器、桥接拦截器、缓存拦截器、连接拦截器和用户自定义网络拦截器以及访问服务器拦截器等拦截处理过程，来获取到一个响应并交给用户。其中，除了OKHttp的内部请求流程这点之外，还用到了缓存和连接池。
 
 #### (11) OkHttp如何处理网络缓存的？缓存逻辑(CacheInterceptor)实现?
 
-#### (12) 从网络加载一个10M的图片，说下注意事项？
+整体思路：使用缓存策略CacheStrategy来决定是否使用缓存及如何使用。
 
-#### (13) http怎么知道文件过大是否传输完毕的响应？
+总的来说需要知道：strategy.networkRequest为null，不使用网络；strategy.cacheResponse为null，不使用缓存。
 
-#### (14) OkHttp的线程池是怎样的？如何管理的？
+获取缓存策略：
 
+- 没有缓存、https但没有握手、不可缓存、忽略缓存或手动配置缓存过期，都是直接进行网络请求。
 
+- 以上都不满足时，如果缓存没过期，那么就是用缓存（可能要添加警告）。
+
+- 如果缓存过期了，但响应头有Etag，Last-Modified，Date，就添加这些header 进行**协商网络请求**。
+
+- 如果缓存过期了，且响应头**没有**设置Etag，Last-Modified，Date，就进行网络请求。
+
+#### (12) http怎么知道文件过大是否传输完毕的响应？
+
+- http协议有正文大小说明的：content-length
+
+- 或者分块传输chunked的话 读到0\r\n\r\n 就是读完了
+
+http响应内容比较大的话，会分成多个tcp  segment 发送，不是最后一个segment的话， tcp的payload不会有http header字段，
+
+如果是最后一个tcp segment 的话，就会有http header 字段，同时， 数据的最后会有 "0\r\n\r\n" 这个东西，这个东西就表示数据都发送完了。
 
 ### 3. Retrofit
 
@@ -1347,6 +1482,8 @@ OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Ca
 
 
 #### (4) retrofit怎么做post请求
+
+
 
 #### (5) 这个库是做什么用的？
 
@@ -1372,7 +1509,7 @@ Retrofit 是一个 RESTful 的 HTTP 网络请求框架的封装。Retrofit 2.0 �
 
 #### (7) 这个库都有哪些用法？对应什么样的使用场景？
 
-后台API遵循Restful API设计风格 & 项目中使用到RxJava。
+后台API遵循Restful API设计风格且项目中使用到RxJava。
 
 #### (8) 这个库的优缺点是什么，跟同类型库的比较？
 
@@ -1382,7 +1519,7 @@ Retrofit 是一个 RESTful 的 HTTP 网络请求框架的封装。Retrofit 2.0 �
 
 #### (9) 这个库的核心实现原理是什么？如果让你实现这个库的某些核心功能，你会考虑怎么去实现？
 
-Retrofit主要是在create方法中采用动态代理模式（通过访问代理对象的方式来间接访问目标对象）实现接口方法，这个过程构建了一个ServiceMethod对象，根据方法注解获取请求方式，参数类型和参数注解拼接请求的链接，当一切都准备好之后会把数据添加到Retrofit的RequestBuilder中。然后当我们主动发起网络请求的时候会调用okhttp发起网络请求，okhttp的配置包括请求方式，URL等在Retrofit的RequestBuilder的build()方法中实现，并发起真正的网络请求。
+Retrofit主要是在create方法中采用动态代理模式（通过访问代理对象的方式来间接访问目标对象）实现接口方法，这个过程构建了一个ServiceMethod对象，根据方法注解获取请求方式，参数类型和参数注解拼接请求的链接，当一切都准备好之后会把数据添加到Retrofit的RequestBuilder中。然后当我们主动发起网络请求的时候会调用okhttp发起网络请求，okhttp的配置包括请求方式，URL等在Retrofit的RequestBuilder的`build()`方法中实现，并发起真正的网络请求。
 
 #### (10) 你从这个库中学到什么有价值的或者说可借鉴的设计思想？
 
@@ -1412,8 +1549,6 @@ Retrofit主要是在create方法中采用动态代理模式（通过访问代理
 - 使用了适配器模式通过检测不同的Platform使用不同的回调执行器，然后使用回调执行器切换线程，这里同样是使用了装饰模式。
 
 **处理结果**
-
-
 
 
 
@@ -1489,14 +1624,14 @@ Glide缓存机制大致分为三层：内存缓存、弱引用缓存、磁盘缓
 
 需要一个图片资源，如果Lrucache中有相应的资源图片，那么就返回，同时从Lrucache中清除，放到activeResources中。activeResources map是盛放正在使用的资源，以弱引用的形式存在。同时资源内部有被引用的记录。如果资源没有引用记录了，那么再放回Lrucache中，同时从activeResources中清除。如果Lrucache中没有，就从activeResources中找，找到后相应资源引用加1。如果Lrucache和activeResources中没有，那么进行资源异步请求（网络/diskLrucache），请求成功后，资源放到diskLrucache和activeResources中。
 
-使用一个弱引用map activeResources来盛放项目中正在使用的资源。Lrucache中不含有正在使用的资源。资源内部有个计数器来显示自己是不是还有被引用的情况，把正在使用的资源和没有被使用的资源分开有什么好处呢？因为当Lrucache需要移除一个缓存时，会调用resource.recycle()方法。注意到该方法上面注释写着只有没有任何consumer引用该资源的时候才可以调用这个方法。那么为什么调用resource.recycle()方法需要保证该资源没有任何consumer引用呢？glide中resource定义的recycle（）要做的事情是把这个不用的资源（假设是bitmap或drawable）放到bitmapPool中。bitmapPool是一个bitmap回收再利用的库，在做transform的时候会从这个bitmapPool中拿一个bitmap进行再利用。这样就避免了重新创建bitmap，减少了内存的开支。而既然bitmapPool中的bitmap会被重复利用，那么肯定要保证回收该资源的时候（即调用资源的recycle（）时），要保证该资源真的没有外界引用了。这也是为什么glide花费那么多逻辑来保证Lrucache中的资源没有外界引用的原因。
+使用一个弱引用map activeResources来盛放项目中正在使用的资源。Lrucache中不含有正在使用的资源。资源内部有个计数器来显示自己是不是还有被引用的情况，把正在使用的资源和没有被使用的资源分开有什么好处呢？因为当Lrucache需要移除一个缓存时，会调用resource.recycle()方法。注意到该方法上面注释写着只有没有任何consumer引用该资源的时候才可以调用这个方法。那么为什么调用resource.recycle()方法需要保证该资源没有任何consumer引用呢？glide中resource定义的recycle()要做的事情是把这个不用的资源（假设是bitmap或drawable）放到bitmapPool中。bitmapPool是一个bitmap回收再利用的库，在做transform的时候会从这个bitmapPool中拿一个bitmap进行再利用。这样就避免了重新创建bitmap，减少了内存的开支。而既然bitmapPool中的bitmap会被重复利用，那么肯定要保证回收该资源的时候（即调用资源的recycle()时），要保证该资源真的没有外界引用了。这也是为什么glide花费那么多逻辑来保证Lrucache中的资源没有外界引用的原因。
 
 
 
 #### (4) Glide如何处理生命周期？
 
 - 创建一个无UI的Fragment，具体来说就是SupportRequestManagerFragment/RequestManagerFragment,并绑定到当前Activity，这样Fragment就可以感知Activity的生命周期；
-- 在创建Fragment时，初始化Lifecycle，LifecycleListener，并且在生命周期的onStart(),onStop(),onDestory()中调用相关方法;
+- 在创建Fragment时，初始化Lifecycle，LifecycleListener，并且在生命周期的`onStart()`,`onStop()`,`onDestory()`中调用相关方法;
 - 在创建RequestManger的时候传入Lifecycle对象，并且LifecycleListener实现了LifecycleListener接口；
 - 这样当生命周期变化的时候，就能通过接口回调去通知RequestManager处理请求.
 
@@ -1536,13 +1671,15 @@ Glide缓存机制大致分为三层：内存缓存、弱引用缓存、磁盘缓
 
 2、递归建立缩略图请求，没有缩略图请求，则直接进行正常请求。
 
-3、如果没指定宽高，会根据ImageView的宽高计算出图片宽高，最终执行到onSizeReay()方法中的engine.load()方法。
+3、如果没指定宽高，会根据ImageView的宽高计算出图片宽高，最终执行到`onSizeReay()`方法中的`engine.load()`方法。
 
 4、engine是一个负责加载和管理缓存资源的类
 
 
 
 #### (9) Glide如何确定图片加载完毕？
+
+
 
 #### (10) Glide内存缓存如何控制大小？
 
@@ -1560,7 +1697,7 @@ Glide缓存机制大致分为三层：内存缓存、弱引用缓存、磁盘缓
 
 LeakCanary检测内存泄露分两个部分：
 
-1.监听Activity生命周期，在Activity销毁的时候通知LeakCanary。
+**1.监听Activity生命周期，在Activity销毁的时候通知LeakCanary。**
 
 ```java
 public class LearnLeakCanaryApplication extends Application {
@@ -1573,7 +1710,7 @@ public class LearnLeakCanaryApplication extends Application {
 }
 ```
 
-注册主要做两件事，一是Application绑定Activity生命周期,Activity销毁的时候都能监听到。二是new了个RefWatcher对象，RefWatcher就做了一件事，检测泄露，如果泄露就捕捉给HAHA处理。这样看，这一句代码就完成了两件重要的工作。
+注册主要做两件事：一是Application绑定Activity生命周期,Activity销毁的时候都能监听到。二是new了个RefWatcher对象，RefWatcher就做了一件事，检测泄露，如果泄露就捕捉给HAHA处理。这样看，这一句代码就完成了两件重要的工作。
 
 ActivityRefWatcher注册时最后的调用watchActivities，在这个函数里完成Application和生命周期的监听注册。
 
@@ -1621,7 +1758,7 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
             };
 ```
 
-2.内存泄露检测
+**2.内存泄露检测**
 
 内存泄露判断主要是用到了WeakReference和ReferenceQueue，他们俩的关系很简单，弱引用对象回收了，弱引用对象就会在ReferenceQueue里，如果ReferenceQueue里没有，就说明可能泄露。
 
@@ -1641,17 +1778,17 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
 
 主要分为如下7个步骤：
 
-- 1、RefWatcher.watch()创建了一个KeyedWeakReference用于去观察对象。
-- 2、然后，在后台线程中，它会检测引用是否被清除了，并且是否没有触发GC。
-- 3、如果引用仍然没有被清除，那么它将会把堆栈信息保存在文件系统中的.hprof文件里。
-- 4、HeapAnalyzerService被开启在一个独立的进程中，并且HeapAnalyzer使用了HAHA开源库解析了指定时刻的堆栈快照文件heap dump。
-- 5、从heap dump中，HeapAnalyzer根据一个独特的引用key找到了KeyedWeakReference，并且定位了泄露的引用。
-- 6、HeapAnalyzer为了确定是否有泄露，计算了到GC Roots的最短强引用路径，然后建立了导致泄露的链式引用。
-- 7、这个结果被传回到app进程中的DisplayLeakService，然后一个泄露通知便展现出来了。
+- RefWatcher.watch()创建了一个KeyedWeakReference用于去观察对象。
+- 然后，在后台线程中，它会检测引用是否被清除了，并且是否没有触发GC。
+- 如果引用仍然没有被清除，那么它将会把堆栈信息保存在文件系统中的.hprof文件里。
+- HeapAnalyzerService被开启在一个独立的进程中，并且HeapAnalyzer使用了HAHA开源库解析了指定时刻的堆栈快照文件heap dump。
+- 从heap dump中，HeapAnalyzer根据一个独特的引用key找到了KeyedWeakReference，并且定位了泄露的引用。
+- HeapAnalyzer为了确定是否有泄露，计算了到GC Roots的最短强引用路径，然后建立了导致泄露的链式引用。
+- 这个结果被传回到app进程中的DisplayLeakService，然后一个泄露通知便展现出来了。
 
 简单来说就是：
 
-在一个Activity执行完onDestroy()之后，将它放入WeakReference中，然后将这个WeakReference类型的Activity对象与ReferenceQueque关联。这时再从ReferenceQueque中查看是否有该对象，如果没有，执行gc，再次查看，还是没有的话则判断发生内存泄露了。最后用HAHA这个开源库去分析dump之后的heap内存（主要就是创建一个HprofParser解析器去解析出对应的引用内存快照文件snapshot）。
+在一个Activity执行完`onDestroy()`之后，将它放入WeakReference中，然后将这个WeakReference类型的Activity对象与ReferenceQueque关联。这时再从ReferenceQueque中查看是否有该对象，如果没有，执行gc，再次查看，还是没有的话则判断发生内存泄露了。最后用HAHA这个开源库去分析dump之后的heap内存（主要就是创建一个HprofParser解析器去解析出对应的引用内存快照文件snapshot）。
 
 流程图：
 
@@ -1661,15 +1798,15 @@ private final Application.ActivityLifecycleCallbacks lifecycleCallbacks =
 
 AndroidExcludedRefs：它是一个enum类，它声明了Android SDK和厂商定制的SDK中存在的内存泄露的case，根据AndroidExcludedRefs这个类的类名就可看出这些case都会被Leakcanary的监测过滤掉。
 
-buildAndInstall()（即install方法）这个方法应该仅仅只调用一次。
+`buildAndInstall()`（即install方法）这个方法应该仅仅只调用一次。
 
 debuggerControl : 判断是否处于调试模式，调试模式中不会进行内存泄漏检测。为什么呢？因为在调试过程中可能会保留上一个引用从而导致错误信息上报。
 
-watchExecutor : 线程控制器，在 onDestroy() 之后并且主线程空闲时执行内存泄漏检测。
+watchExecutor : 线程控制器，在 `onDestroy()` 之后并且主线程空闲时执行内存泄漏检测。
 
 gcTrigger : 用于 GC，watchExecutor 首次检测到可能的内存泄漏，会主动进行 GC，GC 之后会再检测一次，仍然泄漏的判定为内存泄漏，最后根据heapDump信息生成相应的泄漏引用链。
 
-gcTrigger的runGc()方法：这里并没有使用System.gc()方法进行回收，因为system.gc()并不会每次都执行。而是从AOSP中拷贝一段GC回收的代码，从而相比System.gc()更能够保证进行垃圾回收的工作。
+gcTrigger的`runGc()`方法：这里并没有使用`System.gc()`方法进行回收，因为`System.gc()`并不会每次都执行。而是从AOSP中拷贝一段GC回收的代码，从而相比`System.gc()`更能够保证进行垃圾回收的工作。
 
 ```
 Runtime.getRuntime().gc();
@@ -1677,21 +1814,23 @@ Runtime.getRuntime().gc();
 
 子线程延时1000ms；
 
-System.runFinalization();
+`System.runFinalization();`
 
-install方法内部最终还是调用了application的registerActivityLifecycleCallbacks()方法，这样就能够监听activity对应的生命周期事件了。
+install方法内部最终还是调用了application的`registerActivityLifecycleCallbacks()`方法，这样就能够监听activity对应的生命周期事件了。
 
-在RefWatcher#watch()中使用随机的UUID保证了每个检测对象对应的key 的唯一性。
+在`RefWatcher#watch()`中使用随机的UUID保证了每个检测对象对应的key 的唯一性。
 
 在KeyedWeakReference内部，使用了key和name标识了一个被检测的WeakReference对象。在其构造方法中将弱引用和引用队列 ReferenceQueue 关联起来，如果弱引用reference持有的对象被GC回收，JVM就会把这个弱引用加入到与之关联的引用队列referenceQueue中。即 KeyedWeakReference 持有的 Activity 对象如果被GC回收，该对象就会加入到引用队列 referenceQueue 中。
 
-使用Android SDK的API Debug.dumpHprofData() 来生成 hprof 文件。
+使用Android SDK的API `Debug.dumpHprofData()` 来生成 hprof 文件。
 
-在HeapAnalyzerService（类型为IntentService的ForegroundService）的runAnalysis()方法中，为了避免减慢app进程或占用内存，这里将HeapAnalyzerService设置在了一个独立的进程中。 
+在HeapAnalyzerService（类型为IntentService的ForegroundService）的`runAnalysis()`方法中，为了避免减慢app进程或占用内存，这里将HeapAnalyzerService设置在了一个独立的进程中。 
 
 #### (5) 为什么不用虚引用？引用队列里面存的是什么？内存数据是如何dump出来的？
 
+弱引用对象回收了，弱引用对象就会在ReferenceQueue里，如果ReferenceQueue里没有，就说明可能泄露。
 
+使用Android SDK的API `Debug.dumpHprofData()` 来生成 hprof 文件。
 
 ### 6. Android Jepack(非必需)
 
@@ -4032,5 +4171,3 @@ Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
 #### 20. Runtime permission，如何把一个预置的app默认给它权限？不要授权。
 
 #### 21. 如何实现进程安全写文件？
-
-#### 22. 如何实现进程安全写文件？
