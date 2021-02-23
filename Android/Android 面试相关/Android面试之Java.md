@@ -182,7 +182,7 @@ Java采用unicode编码，2个字节来表示一个字符，这点与C语言中�
 - `String`是不可变的
 - `String`是不可变类，一旦创建了String对象，我们就无法改变它的值。因此，它是**线程安全**的，可以安全地用于多线程环境中
 
-#### 5. 为什么要设计成不可变的呢？如果String是不可变的，那我们平时赋值是改的什么呢？
+#### 5. String为什么要设计成不可变的呢？那我们平时赋值是改的什么呢？
 
 1）为什么设计不可变
 
@@ -365,7 +365,7 @@ Annotation能被用来为程序元素（类、方法、成员变量等）设置*
 
 **自定义注解类型**
 
-通过@interface关键字的方式，其实通过该方式会隐含地继承`Annotation`接口。
+通过`@interface`关键字的方式，其实通过该方式会隐含地继承`Annotation`接口。
 
 `@Documented`： @Documented 用户指定被该元Annotation修饰的Annotation类将会被javadoc工具提取成文档
 
@@ -407,7 +407,7 @@ public class AnnotationDemo {
 
 ```
 
-由于该注解的保留策略为 `RetentionPolicy.RUNTIME` ，故可在运行期通过反射机 制来使用，否则无法通过反射机制来获取。
+由于该注解的保留策略为 `RetentionPolicy.RUNTIME` ，故可在运行期通过反射机制来使用，否则无法通过反射机制来获取。
 
 #### 3. 注解可以用来做什么
 
@@ -936,6 +936,8 @@ get 方法：
 
 1.7 已经解决了并发问题，并且能支持 N 个 Segment 这么多次数的并发，但依然存在 HashMap 在 1.7 版本中的问题：那就是查询遍历链表效率太低。和 1.8 HashMap 结构类似：其中抛弃了原有的 Segment 分段锁，而采用了 CAS + synchronized 来保证并发安全性。
 
+![640?wx_fmt=png](https://ss.csdn.net/p?https://mmbiz.qpic.cn/mmbiz_png/QCu849YTaIPf1sDCN5zcDdGsibZwyzy9rAmicDlQ7SC7RxkBibdibTgymNdAb1S9eZmqrc0DFGEOVnPnj28bpkXAicw/640?wx_fmt=png)
+
 CAS：
 
 如果obj内的value和expect相等，就证明没有其他线程改变过这个变量，那么就更新它为update，如果这一步的CAS没有成功，那就采用自旋的方式继续进行CAS操作。
@@ -947,6 +949,8 @@ CAS：
 
 put 方法：
 
+![640?wx_fmt=png](https://ss.csdn.net/p?https://mmbiz.qpic.cn/mmbiz_png/QCu849YTaIPf1sDCN5zcDdGsibZwyzy9rGRv3PELiaM4r6UGLUCbodsGvLPSrUc6PmqDcj64JzLjakeH43psczXg/640?wx_fmt=png)
+
 - 根据 key 计算出 hashcode 。
 - 判断是否需要进行初始化。
 - 如果当前 key 定位出的 Node为空表示当前位置可以写入数据，利用 CAS 尝试写入，失败则自旋保证成功。
@@ -955,6 +959,8 @@ put 方法：
 - 最后，如果数量大于 TREEIFY_THRESHOLD 则要转换为红黑树。
 
 get 方法：
+
+![640?wx_fmt=png](https://ss.csdn.net/p?https://mmbiz.qpic.cn/mmbiz_png/QCu849YTaIPf1sDCN5zcDdGsibZwyzy9r3vfhssfaHjFeWRVCaOusk8jhrhMG5FQw3ribtxaIjmZE216vh2nibChw/640?wx_fmt=png)
 
 - 根据计算出来的 hashcode 寻址，如果就在桶上那么直接返回值。
 - 如果是红黑树那就按照树的方式获取值。
@@ -1009,9 +1015,19 @@ mArray[(index<<1)+1] = value;
 
 #### 19. 链表转红黑树的限制为何是8；红黑树转链表的限制为何是6?
 
-#### 20. CurrentHashmap在所有情况下都是线程安全的吗？Hashtable呢？
+**和hashcode碰撞次数的泊松分布有关，主要是为了寻找一种时间和空间的平衡。**
 
+红黑树中的TreeNode是链表中的Node所占空间的2倍，虽然红黑树的查找效率为o(logN)，要优于链表的o(N)，但是当链表长度比较小的时候，即使全部遍历，时间复杂度也不会太高。要寻找一种时间和空间的平衡，即在链表长度达到一个阈值之后再转换为红黑树。
 
+**之所以是8**，是因为Java的源码贡献者在进行大量实验发现，hash碰撞发生8次的概率已经降低到了0.00000006，几乎为不可能事件，如果真的碰撞发生了8次，那么这个时候说明由于元素本身和hash函数的原因，此时的链表性能已经已经很差了，操作的hash碰撞的可能性非常大了，后序可能还会继续发生hash碰撞。所以，在这种极端的情况下才会把链表转换为红黑树，链表转换为红黑树也是需要消耗性能的，为了挽回性能，权衡之下，才使用红黑树，提高性能的，大部分情况下hashMap还是使用链表。
+
+红黑树转链表的阈值为6，主要是因为，如果也将该阈值设置于8，那么当hash碰撞在8时，会反生链表和红黑树的不停相互激荡转换，白白浪费资源。中间有个差值7可以防止链表和树之间的频繁转换，
+假设一下：
+如果设计成链表个数超过8则链表转换成树结构，链表个数小于8则树结构转换成链表，如果HashMap不停的插入，删除元素，链表个数在8左右徘徊，就会频繁的发生红黑树转链表，链表转红黑树，效率会很低下。
+
+#### 20. CurrentHashMap在所有情况下都是线程安全的吗？Hashtable呢？
+
+ConcurrentHashMap 是一个并发散列映射表的实现，它允许完全并发的读取，并且支持给定数量的并发更新。相比于 HashTable 和 CurrentHashMap，Hashtable使用一个全局的锁来同步不同线程间的并发访问，同一时间点，只能有一个线程持有锁，也就是说在同一时间点，只能有一个线程能访问容器，这虽然保证多线程间的安全并发访问，但同时也导致对容器的访问变成串行化的了。
 
 ### 七、泛型
 
@@ -1021,7 +1037,7 @@ mArray[(index<<1)+1] = value;
 
 > 当创建了带泛型声明的接口、父类之后，可以为该接口创建实现类，或者从该父类派生子类，需要注意：使用这些接口、父类派生子类时不能再包含类型形参，需要 传入具体的类型。
 
-泛型是Java中的一种语法糖，能够在代码编写的时候起到类型检测的作用，但是虚拟机是不支持这些语法的。通过泛型使得在编译阶段完成一些类 型转换的工作，避免在运行时强制类型转换而出现 ClassCastException ，即类型转换异常。
+泛型是Java中的一种语法糖，能够在代码编写的时候起到类型检测的作用，但是虚拟机是不支持这些语法的。通过泛型使得在编译阶段完成一些类型转换的工作，避免在运行时强制类型转换而出现 ClassCastException ，即类型转换异常。
 
 泛型的优点：
 
@@ -1050,17 +1066,70 @@ Java泛型的处理几乎都在编译器中进行，编译器生成的字节码�
 
 #### 5. 既然泛型有编译期类型擦除，那么运行时无法获取到具体类型；而反射能在运行时获取到Class的类型；它们一个获取不到，一个可以获取到，这不就是矛盾么？请解释下细节。
 
+Java泛型是伪泛型，会在编译完成时进行类型的擦除，我们无法在运行时获取泛型参数的具体类型(类型擦除会被替换成泛型的限定类型，若没有限定则被替换成Object)。
+
+其实java虚拟机规范中为了响应在泛型类中如何获取传入的参数化类型等问题，引入了signature，LocalVariableTypeTable等新的属性来记录泛型信息，所以所谓的泛型类型擦除，仅仅是对方法的code属性中的字节码进行擦除，而元数据中还是保留了泛型信息的，这些信息被保存在class字节码的常量池中，使用了泛型的代码调用处会生成一个signature签名字段，signature指明了这个常量在常量池的地址，这样我们就就可以获取泛型的类型信息了。
+
+继承一个泛型类:
+
+```cpp
+public class Parent<T> {
+}
+public class Child extends Parent<String> {
+}
+
+public void getRuntime() {
+    Child child = new Child();
+    ParameterizedType parameterizedType = (ParameterizedType) child.getClass().getGenericSuperclass();
+    System.out.println(Arrays.toString(parameterizedType.getActualTypeArguments()));
+}
+```
+
+输出:
+
+```json
+[class java.lang.String]
+```
+
 #### 6. 泛型：为何会有协变和逆变，PECS规则?
+
+协变:可以利用通配符**实现泛型的协变：<? extends T>**子类通配符；这个通配符定义了?继承自T，可以帮助我们实现**向上转换**：
+
+```java
+List<? extends Fruit> list = new ArrayList<Apple>();
+```
+
+逆变:逆变则和协变相反，它是**向下转换**：
+
+```java
+List<? super Apple> list = new ArrayList<Fruit>();
+```
+
+总结一下，便于记忆：
+
+**协变：extends/向上转换/不能add/只能get（T及父类）**
+
+**逆变：super/向下转换/不能get/只能add（T及子类）**
+
+PECS（producer-extends, consumer-super）:
+
+- `<? extends E>`子类限定通配符：从泛型类读取类型 T 的数据，并且不能写入，用于生产者环境（Producer）；
+- `<? super E>`父类限定通配符： 从集合中写入类型 T 的数据，并且不需要读取，用于消费者场景（Consumer）；
+- 如果既要存数据又要取数据，那么通配符无法满足需求。
+
+> 注意：如果使用生产者对象，例如 List<? extends Foo>，你不允许再这个对象上 add() 或者 set() ，但并不意味着这个对象是不可变的，例如：没有什么可以阻止你调用 clear() 来从列表中删除所有元素，因为 clear() 根本不接受任何参数。通配符（或其他类型的型变）唯一能保证的是类型安全性。不变性则完全是另外一个回事。
+
+
 
 #### 7. 为什么反射能够在ArrayList< String >中添加int类型？
 
-
+擦除为 Object 类型。
 
 ### 八、反射机制
 
 #### 1. 动态代理和静态代理？
 
-静态代理：代理类是在编译时就实现好的。也就是说 Java 编译完成后代理类是一 个实际的 class 文件。 
+静态代理：代理类是在编译时就实现好的。也就是说 Java 编译完成后代理类是一个实际的 class 文件。 
 
 动态代理：代理类是在运行时生成的。也就是说 Java 编译完之后并没有实际的 class 文件，而是在运行时动态生成的类字节码，并加载到JVM中。
 
@@ -1085,7 +1154,7 @@ Java泛型的处理几乎都在编译器中进行，编译器生成的字节码�
 
 主要涉及两个类，这两个类都是`java.lang.reflect`包下的类，内部主要通过反射来实现的。
 
-`java.lang.reflect.Proxy`：这是生成代理类的主类，通过 Proxy 类生成的代理类都继 承了 Proxy 类。 Proxy提供了用户创建动态代理类和代理对象的静态方法，它是所有动态代理类的 父类。
+`java.lang.reflect.Proxy`：这是生成代理类的主类，通过 Proxy 类生成的代理类都继承了 Proxy 类。 Proxy提供了用户创建动态代理类和代理对象的静态方法，它是所有动态代理类的父类。
 
 `java.lang.reflect.InvocationHandler`：这里称他为"调用处理器"，它是一个接口。 当调用动态代理类中的方法时，将会直接转接到执行自定义的InvocationHandler中的`invoke()`方法。即我们动态生成的代理类需要完成的具体内容需要自己定义一个 类，而这个类必须实现 InvocationHandler 接口，通过重写`invoke()`方法来执行具体内容。
 
@@ -1377,7 +1446,7 @@ objectInputStream.close();
 
 new 操作符的本意是分配内存。程序执行到 new 操作符时， 首先去看 new 操作符后面的类型，因为知道了类型，才能知道要分配多大的内存空间。分配完内存之后，再调用构造函数，填充对象的各个域，这一步叫做对象的初始化，构造方法返回后，一个对象创建完毕，可以把他的引用（地址）发布到外部，在外部就可以使用这个引用操纵这个对象。
 
-clone 在第一步是和 new 相似的， 都是分配内存，调用 clone 方法时，分配的内存和原对象（即调用 clone 方 法的对象）相同，然后再使用原对象中对应的各个域，填充新对象的域， 填充完成之后，clone 方法返回，一个新的相同的对象被创建，同样可以把这个新对象的引用发布到外部。
+clone 在第一步是和 new 相似的， 都是分配内存，调用 clone 方法时，分配的内存和原对象（即调用 clone 方法的对象）相同，然后再使用原对象中对应的各个域，填充新对象的域， 填充完成之后，clone 方法返回，一个新的相同的对象被创建，同样可以把这个新对象的引用发布到外部。
 
 #### 3. clone 对象的使用？深拷贝和浅拷贝？
 
@@ -1623,7 +1692,7 @@ public interface Formula {
 
 #### 7. 抽象类的意义?
 
-为其子类提供一个公共的类型，封装子类中的重复内容，定义抽象方法，子类虽然有不同的实现 但是定义是一致的。
+为其子类提供一个公共的类型，封装子类中的重复内容，定义抽象方法，子类虽然有不同的实现但是定义是一致的。
 
 #### 8. 静态内部类、非静态内部类的理解？
 
@@ -1638,8 +1707,6 @@ public interface Formula {
 没有这个引用就意味着：
 
 它的创建是不需要依赖于外围类的。 它不能使用任何外围类的非static成员变量和方法。
-
-#### 10. 类的static属性字段，比如 public static int a = 1，被赋值几次？ 
 
 
 
@@ -1724,7 +1791,7 @@ public class DecimalUtil {
 }
 ```
 
-#### 3. Java里的幂等性了解吗？
+#### 2. Java里的幂等性了解吗？
 
 幂等性原本是数学上的一个概念，即：f(x) = f(f(x))，对同一个系统，使用同样的条件，一次请求和重复的多次请求对系统资源的影响是一致的。
 
@@ -1736,11 +1803,11 @@ public class DecimalUtil {
 
 例如：电商平台上的订单id就是最适合的token。当用户下单时，会经历多个环节，比如生成订单，减库存，减优惠券等等。每一个环节执行时都先检测一下该订单id是否已经执行过这一步骤，对未执行的请求，执行操作并缓存结果，而对已经执行过的id，则直接返回之前的执行结果，不做任何操 作。这样可以在最大程度上避免操作的重复执行问题，缓存起来的执行结果也能用于事务的控制等。
 
-#### 4. java为什么跨平台？
+#### 3. java为什么跨平台？
 
 因为Java程序编译之后的代码不是能被硬件系统直接运行的代码，而是一种“中间码”——字节码。然后不同的硬件平台上安装有不同的Java虚拟机(JVM)，由JVM来把字节码再“翻译”成所对应的硬件平台能够执行的代码。因此对于Java编程者来说，不需要考虑硬件平台是什么。所以Java可以跨平台。
 
-#### 5. final，finally，finalize的区别？
+#### 4. final，finally，finalize的区别？
 
 final 可以用来修饰类、方法、变量，分别有不同的意义，final 修饰的 class 代表不可以继承扩展，final 的变量是不可以修改的，而 final 的方法也是不可以重写的（override）。
 
@@ -1748,7 +1815,7 @@ finally 则是 Java 保证重点代码一定要被执行的一种机制。我们
 
 finalize 是基础类 java.lang.Object 的一个方法，它的设计目的是保证对象在被垃圾收集前完成特定资源的回收。finalize 机制现在已经不推荐使用，并且在 JDK 9 开始被标记为 deprecated。Java 平台目前在逐步使用 java.lang.ref.Cleaner 来替换掉原有的 finalize 实现。Cleaner 的实现利用了幻象引用（PhantomReference），这是一种常见的所谓 post-mortem 清理机制。利用幻象引用和引用队列，我们可以保证对象被彻底销毁前做一些类似资源回收的工作，比如关闭文件描述符（操作系统有限的资源），它比 finalize 更加轻量、更加可靠。
 
-#### 6. transient？
+#### 5. transient？
 
 1）一旦变量被transient修饰，变量将不再是对象持久化的一部分，该变量内容在序列化后无法获得访问。
 
@@ -1758,7 +1825,7 @@ finalize 是基础类 java.lang.Object 的一个方法，它的设计目的是�
 
 > 在Java中，对象的序列化可以通过实现两种接口来实现，若实现的是 Serializable接口，则所有的序列化将会自动进行，若实现的是Externalizable接 口，则没有任何东西可以自动序列化，需要在writeExternal方法中进行手工指定所 要序列化的变量，这与是否被transient修饰无关。因此第二个例子输出的是变量 content初始化的内容，而不是null。
 
-#### 7. Java中异常捕获机制中的finally语句是不是一定会被执行？
+#### 6. Java中异常捕获机制中的finally语句是不是一定会被执行？
 
 至少有两种情况下finally语句是不会被执行的： 
 
@@ -1776,7 +1843,7 @@ finalize 是基础类 java.lang.Object 的一个方法，它的设计目的是�
 
 5）当发生异常后，catch中的return执行情况与未发生异常时try中return的执行情况完全一样。
 
-总结：finally块的语句在try或catch中的return语句执行之后返回之前执行且finally里的修改语句可能影响也可能不影响try或catch中 return已经确定的返回 值，若finally里也有return语句则覆盖try或catch中的return语句直接返回。
+总结：finally块的语句在try或catch中的return语句执行之后返回之前执行且finally里的修改语句可能影响也可能不影响try或catch中 return已经确定的返回值，若finally里也有return语句则覆盖try或catch中的return语句直接返回。
 
 
 ## 并发
@@ -2304,7 +2371,7 @@ ThreadLocal是一个关于创建线程局部变量的类。使用场景如下所
 
 #### 14. 创建线程的三种方式的对比?
 
-采用实现Runnable、Callable接口的方式创见多线程时，
+采用实现Runnable、Callable接口的方式创建多线程时，
 
 优势是： 线程类只是实现了Runnable接口或Callable接口，还可以继承其他类。
 
@@ -2538,7 +2605,7 @@ semaphore 可用于进程间同步也可用于同一个进程间的线程同步�
 
 2.当提交的任务数超过了corePoolSize，会将当前的runable提交到一个block queue中。 
 
-3.有界队列满了之后，如果poolSize < maximumPoolsize时，会尝试new 一个Thread的进行救急处理，立马执行对应的runnable任务。 
+3.有界队列满了之后，如果poolSize < maximumPoolsize时，会尝试new一个Thread的进行救急处理，立马执行对应的runnable任务。 
 
 4.如果3中也无法处理了，就会走到第四步执行reject操作。
 
@@ -2572,7 +2639,7 @@ semaphore 可用于进程间同步也可用于同一个进程间的线程同步�
 
 **动态的锁顺序死锁**：动态的锁顺序死锁是指两个线程调用同一个方法时，传入的参数颠倒造成的死锁。
 
-解决方法：使用`System.identifyHashCode`来定义锁的顺 序。确保所有的线程都以相同的顺序获得锁。
+解决方法：使用`System.identifyHashCode`来定义锁的顺序。确保所有的线程都以相同的顺序获得锁。
 
 **协作对象之间发生的死锁**：在持有锁的情况下调用了外部的方法。
 
@@ -2628,7 +2695,7 @@ synchronized的参数放入对象和Class有什么区别？synchronized 修饰 s
 | 类别     | synchronized                                                 | Lock（底层实现主要是Volatile + CAS）                         |
 | -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | 存在层次 | Java的关键字，在jvm层面上                                    | 是一个类                                                     |
-| 锁的释放 | 1、已获取锁的线程执行完同步代码，释放锁2、线程执行发生异常，jvm会让线程释放锁。 | 在finally中必须释放锁，不然容易造成线程死锁。                |
+| 锁的释放 | 已获取锁的线程执行完同步代码，释放锁；线程执行发生异常，jvm会让线程释放锁。 | 在finally中必须释放锁，不然容易造成线程死锁。                |
 | 锁的获取 | 假设A线程获得锁，B线程等待。如果A线程阻塞，B线程会一直等待。 | 分情况而定，Lock有多个锁获取的方式，大致就是可以尝试获得锁，线程可以不用一直等待 |
 | 锁状态   | 无法判断                                                     | 可以判断                                                     |
 | 锁类型   | 可重入 不可中断 非公平                                       | 可重入 可判断 可公平（两者皆可）                             |
@@ -2646,7 +2713,7 @@ Lock（ReentrantLock）的底层实现主要是 Volatile + CAS（乐观锁），
 举例：
 
 - `悲观锁`：典型的悲观锁是独占锁，有`synchronized`、`ReentrantLock`。
-- `乐观锁`：典型的乐观锁是CAS，实现CAS的`atomic`为代表的一系列类
+- `乐观锁`：典型的乐观锁是CAS，实现CAS的`Atomic`为代表的一系列类
 
 使用场景
 
@@ -2836,14 +2903,14 @@ wait、sleep的区别
 最大的不同是在等待时 wait 会释放锁，而 sleep 一直持有锁。wait 通常被用于线程间交互，sleep 通常被用于暂停执行。
 
 - 首先，要记住这个差别，**sleep是Thread类的方法,wait是Object类中定义的方法**。尽管这两个方法都会影响线程的执行行为，但是本质上是有区别的。
-- `Thread.sleep`不会导致锁行为的改变，如果当前线程是拥有锁的，那么Thread.sleep不会让线程释放锁。
+- `Thread.sleep`不会导致锁行为的改变，如果当前线程是拥有锁的，那么`Thread.sleep`不会让线程释放锁。
 - `Thread.sleep`和`Object.wait`都会暂停当前的线程，对于CPU资源来说，不管是哪种方式暂停的线程，都表示它暂时不再需要CPU的执行时间。OS会将执行时间分配给其它线程。区别是，调用wait后，需要别的线程执行`notify/notifyAll`才能够重新获得CPU执行时间。
-- 线程的状态参考 `Thread.State`的定义。新创建的但是没有执行（还没有调用start())的线程处于“就绪”，或者说`Thread.State.NEW`状态。
-- Thread.State.BLOCKED（阻塞）表示线程正在获取锁时，因为锁不能获取到而被迫暂停执行下面的指令，一直等到这个锁被别的线程释放。BLOCKED状态下线程，OS调度机制需要决定下一个能够获取锁的线程是哪个，这种情况下，就是产生锁的争用，无论如何这都是很耗时的操作。
+- 线程的状态参考 `Thread.State`的定义。新创建的但是没有执行（还没有调用`start()`)的线程处于“就绪”，或者说`Thread.State.NEW`状态。
+- `Thread.State.BLOCKED`（阻塞）表示线程正在获取锁时，因为锁不能获取到而被迫暂停执行下面的指令，一直等到这个锁被别的线程释放。`BLOCKED`状态下线程，OS调度机制需要决定下一个能够获取锁的线程是哪个，这种情况下，就是产生锁的争用，无论如何这都是很耗时的操作。
 
 notify运行过程
 
-当线程A（消费者）调用wait()方法后，线程A让出锁，自己进入等待状态，同时加入锁对象的等待队列。 线程B（生产者）获取锁后，调用notify方法通知锁对象的等待队列，使得线程A从等待队列进入阻塞队列。 线程A进入阻塞队列后，直至线程B释放锁后，线程A竞争得到锁继续从wait()方法后执行。
+当线程A（消费者）调用`wait()`方法后，线程A让出锁，自己进入等待状态，同时加入锁对象的等待队列。 线程B（生产者）获取锁后，调用`notify()`方法通知锁对象的等待队列，使得线程A从等待队列进入阻塞队列。 线程A进入阻塞队列后，直至线程B释放锁后，线程A竞争得到锁继续从`wait()`方法后执行。
 
 
 
@@ -3118,9 +3185,7 @@ Jetpack 中定义的协程作用域`（viewModelScope 和 lifecycleScope）`可�
 
 ### 八、其他
 
-#### 1. 源码中有哪里用到了AtomicIntger
-
-#### 2. AQS了解吗？
+#### 1. AQS了解吗？
 
 
 
@@ -3286,9 +3351,9 @@ JVM 加载类的class文件，此时所有的static变量和static代码块将�
 **（1）加载 -** 将字节码数据从不同的数据源读取到 JVM 中，并映射为 JVM 认可的数据结构 (Class 对象)
 
 - 由于类加载器的代理机制，**启动类加载过程**的类加载器和真正**完成类加载工作**的类加载器，有可能不同；
-- 启动类的加载过程通过调用loadClass()来实现，称为初始加载器 (initiating loader)；而完成类的加载工作通过调用defineClass()来实现，称为类的定义加载器 (defining loader)。在 Java 虚拟机判断两个类是否相同的时候，使用的是类的定义加载器；
-- loadClass() 抛出的是  java.lang.ClassNotFoundException 异常，而 defineClass() 抛出的是 java.lang.NoClassDefFoundError 异常；
-- 类加载器在成功加载某个类之后，会把得到的 java.lang.Class 类的实例缓存起来。下次再请求加载该类的时候，类加载器会直接使用缓存的类的实例，而不会尝试再次加载 (即 loadClass()不会被重复调用)
+- 启动类的加载过程通过调用`loadClass()`来实现，称为初始加载器 (initiating loader)；而完成类的加载工作通过调用`defineClass()`来实现，称为类的定义加载器 (defining loader)。在 Java 虚拟机判断两个类是否相同的时候，使用的是类的定义加载器；
+- `loadClass()` 抛出的是  `java.lang.ClassNotFoundException` 异常，而 `defineClass()` 抛出的是 `java.lang.NoClassDefFoundError` 异常；
+- 类加载器在成功加载某个类之后，会把得到的 `java.lang.Class` 类的实例缓存起来。下次再请求加载该类的时候，类加载器会直接使用缓存的类的实例，而不会尝试再次加载 (即 `loadClass()`不会被重复调用)
 
 **（2）链接 -** 将原始的类定义信息平滑地转化入 JVM 运行的过程中
 
@@ -3402,7 +3467,7 @@ Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类
 
 2）假如这个类存在直接父类，并且这个类还没有被初始化（注意：在一个类加载器中，类只能初始化一 次），那就初始化直接的父类（不适用于接口） 
 
-3）加入类中存在初始化语句（如 static 变量和 static 块），那就依次执行这些初始化语句。
+3）类中存在初始化语句（如 static 变量和 static 块），那就依次执行这些初始化语句。
 
 #### 11. 类的加载过程，Person person = new Person();为例进行说明。
 
@@ -3420,7 +3485,7 @@ Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类
 
 7) 对对象进行与之对应的构造函数进行初始化;
 
-8) 将内存地址付给栈内存中的p变量。
+8) 将内存地址付给栈内存中的person变量。
 
 #### 12. JAVA常量池
 
@@ -3460,7 +3525,7 @@ d.Integer对象的hash值为数值本身；
 - 方法区中常量引用的对象
 - 本地方法中JNI引用的对象
 
-总结就是，方法运行时，方法中引用的对象；类的静态变量引用的对象；类中常量 引用的对象；Native方法中引用的对象
+总结就是，方法运行时，方法中引用的对象；类的静态变量引用的对象；类中常量引用的对象；Native方法中引用的对象
 
 Java 垃圾收集的原理：
 
