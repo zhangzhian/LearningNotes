@@ -661,6 +661,73 @@ protected void saveParce() {
 
 具体原因就是因为`Serilazable`的实现方式中，是有缓存的概念的，当一个对象被解析过后，将会缓存在`HandleTable`中，当下一次解析到同一种类型的对象后，便可以向二进制流中，写入对应的缓存索引即可。但是对于`Parcel`来说，没有这种概念，每一次的序列化都是独立的，每一个对象，都当作一种新的对象以及新的类型的方式来处理。
 
+#### 4. 为什么Java提供了Serializable的序列化方式，而不是直接使用json或者xml？
+
+我觉得是历史遗留问题。
+
+有的人可能会想到各种理由，比如可以标记哪些类可以被序列化。又或者可以通过UID来标示反序列化为同一个对象。等等。
+
+但是我觉得最大的问题还是历史遗留问题，在以前，json还没有成为大家认同的数据结构，所以Java就设计出了Serializable的序列化方式来解决对象持久化和对象传输的问题。然后Java中各种API就会依赖于这种序列化方式，这么些年过去了，Java体系的庞大也造成难以改变这个问题，牵一发而动全身。
+
+为什么我这么说呢？
+
+主要有两点依据：
+
+1. 曾经Oracle Java平台组的架构师说过，删除Java的序列化机制并且提供给用户可以选择的序列化方式（比如json）是他们计划中的一部分，因为Java序列化也造成了很多Java漏洞。
+2. 因为在Serializable类的介绍注释中，明确说到推荐大家选择JSON 和 GSON库，因为它简洁、易读、高效。
+
+```
+ * <h3>Recommended Alternatives</h3>
+* <strong>JSON</strong> is concise, human-readable and efficient. Android
+* includes both a {@link android.util.JsonReader streaming API} and a {@link
+* org.json.JSONObject tree API} to read and write JSON. Use a binding library
+* like <a href="http://code.google.com/p/google-gson/">GSON</a> to read and
+* write Java objects directly.
+```
+
+#### 5. 在java有Serializable的前提下，Android为什么设计出了Parcelable？
+
+java中的序列化方式Serializable效率比较低，主要有以下原因：
+
+- Serializable在序列化过程中会创建大量的临时变量，这样就会造成大量的GC。
+- Serializable使用了大量反射，而反射操作耗时。
+- Serializable使用了大量的IO操作，也影响了耗时。
+
+所以Android就像重新设计了IPC方式Binder一样，重新设计了一种序列化方式，结合Binder的方式，对上述三点进行了优化，一定程度上提高了序列化和反序列化的效率。
+
+#### 6. Serializable、Parcelable、Json等序列化方式我们该怎么选择？
+
+先说说序列化的用处，主要用在三个方面：
+
+**1、内存数据传输**
+
+内存传输方面，主要用Parcelable。一是因为Parcelable在内存传输的效率比Serializable高。二是因为在Android中很多传输数据的方法中，自带了对于Serializable、Parcelable类型的传输方法。比如:
+
+- Bundle.putParcelable,
+- Intent putExtra(String name, Parcelable value)
+
+等等吧，基本上对象传输的方法都支持了，所以这也是Parcelable的优势。
+
+**2、 数据持久化（本地存储）**
+
+如果只针对Serializable和Parcelable两种序列化方式，需要选择Serializable。
+
+首先，Serializable本身就是存储到二进制文件，所以用于持久化比较方便。而Parcelable序列化是在内存中操作，如果进程关闭或者重启的时候，内存中的数据就会消失，那么Parcelable序列化用来持久化就有可能会失败，也就是数据不会连续完整。
+
+而且Parcelable还有一个问题是兼容性，每个Android版本可能内部实现都不一样，知识用于内存中也就是传递数据的话是不影响的，但是如果持久化可能就会有问题了，低版本的数据拿到高版本可能会出现兼容性问题。
+
+但是实际情况，对于Android中的对象本地化存储，一般是以数据库、SP的方式进行保存。
+
+**3、 网络传输**
+
+而对于网络传输的情况，一般就是使用JSON了。主要有以下几点原因：
+
+1. 轻量级，没有多余的数据。
+2. 与语言无关，所以能兼容所有平台语言。
+3. 易读性，易解析。
+
+
+
 ### 六、集合
 
 #### 1. Java 集合，介绍下ArrayList 和 HashMap 的使用场景，底层实现原理
@@ -1379,14 +1446,122 @@ class ProxyHandler implements InvocationHandler{
 
 #### 4. 反射可以反射final修饰的字段吗？
 
-- 当final修饰的成员变量在定义的时候就初始化了值，那么java反射机制就已经不能动态修改它的值了。
 - 当final修饰的成员变量在定义的时候并没有初始化值的话，那么就还能通过java反射机制来动态修改它的值。
+
+- 当final修饰的成员变量在定义的时候就初始化了值，如果是基本数据类型或者String类型的时候，无法通过对象获取修改后的值，因为JVM对其进行了内联优化。
+
+> 内联函数，编译器将指定的函数体插入并取代每一处调用该函数的地方（上下文），从而节省了每次调用函数带来的额外时间开支。
+>
+> 简单的说，就是JVM在处理代码的时候会帮我们优化代码逻辑，比如上述的final变量，已知final修饰后不会被修改，所以获取这个变量的时候就直接帮你在编译阶段就给赋值了。
 
 #### 5. 静态代理和动态代理什么场景使用？
 
 - 静态代理使用场景：四大组件同AIDL与AMS进行跨进程通信
 - 动态代理使用场景：Retrofit使用了动态代理极大地提升了扩展性和可维护性。
 
+#### 6. 反射获取static静态变量？
+
+静态变量是在类的实例化之前就进行了初始化（类的初始化阶段），所以静态变量是跟着类本身走的，跟具体的对象无关，所以我们获取变量就不需要传入对象，直接传入null即可：
+
+```java
+public class User {
+ public static String name;
+}
+
+field2 = clz.getDeclaredField("name");
+field2.setAccessible(true);
+//获取静态变量
+Object getname=field2.get(null);
+System.out.println("修改前"+getname);
+
+//修改静态变量
+field2.set(null, "xixi");
+System.out.println("修改后"+User.name);
+```
+
+如上述代码：
+
+- `Field.get(null)` 可以获取静态变量。
+- `Field.set(null,object)` 可以修改静态变量。
+
+#### 7. 怎么提升反射效率
+
+**1、缓存重复用到的对象**
+
+利用缓存，在平时项目中用到多次的对象也会进行缓存，不要多次去创建。
+
+但是，这一点在反射中尤为重要，比如Class.forName方法，我们做个测试：
+
+```java
+long startTime = System.currentTimeMillis();
+Class clz = Class.forName("com.example.studynote.reflection.User");
+User user;
+int i = 0;
+while (i < 1000000) {
+    i++;
+    //方法1，直接实例化
+    user = new User();
+    //方法2，每次都通过反射获取class，然后实例化
+    user = (User) Class.forName("com.example.studynote.reflection.User").newInstance();
+    //方法3，通过之前反射得到的class进行实例化
+    user = (User) clz.newInstance();
+}
+
+System.out.println("耗时：" + (System.currentTimeMillis() - startTime));
+```
+
+
+打印结果：
+
+1、直接实例化
+耗时：15
+
+2、每次都通过反射获取class，然后实例化
+耗时：671
+
+3、通过之前反射得到的class进行实例化
+耗时：31
+
+所以看出来，只要我们合理的运用这些反射方法，比如Class.forName，Constructor，Method，Field等，尽量在循环外就缓存好实例，就能提高反射的效率，减少耗时。
+
+**2、setAccessible(true)**
+
+
+之前我们说过当遇到私有变量和方法的时候，会用到`setAccessible(true)`方法关闭安全检查。这个安全检查其实也是耗时的。所以我们在反射的过程中可以尽量调用`setAccessible(true)`来关闭安全检查，无论是否是私有的，这样也能提高反射的效率。
+
+**3、ReflectASM**
+
+[源码](https://github.com/EsotericSoftware/reflectasm)
+
+ReflectASM 是一个非常小的 Java 类库，通过代码生成来提供高性能的反射处理，自动为 get/set 字段提供访问类，访问类使用字节码操作而不是 Java 的反射技术，因此非常快
+
+ASM是一个通用的Java字节码操作和分析框架。它可以用于修改现有类或直接以二进制形式动态生成类。
+
+简单的说，这是一个类似反射，但是不同于反射的高性能库。他的原理是通过ASM库，生成了一个新的类，然后相当于直接调用新的类方法，从而完成反射的功能。
+
+#### 8. 反射原理
+
+如果我们试着查看这些反射方法的源码，会发现最终都会走到native方法中，比如
+
+getDeclaredField方法会走到
+
+```java
+public native Field getDeclaredField(String name) throws NoSuchFieldException;
+```
+
+那么在底层，是怎么获取到类的相关信息的呢？
+
+首先回顾下JVM加载Java文件的过程：
+
+- 编译阶段，.java文件会被编译成.class文件，.class文件是一种二进制文件，内容是JVM能够识别的机器码。
+- .class文件里面依次存储着类文件的各种信息，比如：版本号、类的名字、字段的描述和描述符、方法名称和描述、是不是public、类索引、字段表集合，方法集合等等数据。
+- 然后，JVM中的类加载器会读取字节码文件，取出二进制数据，加载到内存中，并且解析.class文件的信息。
+- 类加载器会获取类的二进制字节流，在内存中生成代表这个类的java.lang.Class对象。
+- 最后会开始类的生命周期，比如连接、初始化等等。
+
+而反射，就是去操作这个 java.lang.Class对象，这个对象中有整个类的结构，包括属性方法等等。
+
+总结来说就是，.class是一种有顺序的结构文件，而Class对象就是对这种文件的一种表示，所以我们能从Class对象中获取关于类的所有信息，这就是反射的原理。
 
 
 
