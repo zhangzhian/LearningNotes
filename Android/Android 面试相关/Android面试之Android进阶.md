@@ -316,6 +316,57 @@ int main(int argc __unused, char **argv __unused)
 
 ![img](https://api2.mubu.com/v3/document_image/40d5e692-a83d-41cc-9283-c3f2481ca830-2297223.jpg)
 
+#### (7) 简述Android系统启动流程
+
+如下图：
+
+![图片](https://mmbiz.qpic.cn/mmbiz_png/jfNJsrA21FJvM8ibETbuD2XeblOibqJyK2GgwnKYRfzhibLLhHkDnjWJYjAmYC2tovOjQW9ZAibXuyB1jichecgvYicQ/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
+#### (8) 第一个用户级进程是哪个？
+
+**init进程**是Android系统中用户空间的第一个进程，是所有用户进程的鼻祖。
+
+启动入口在system/core/init/init.cpp文件中，init进程中主要做了这些事：
+
+- **孵化出用户守护进程**。守护进程就是运行在后台的特殊进程，它不存在控制终端，会周期性处理一些任务。比如logd进程，就是用来进行日志的读写操作。
+
+- **启动了一些重要服务**。比如开机动画。
+
+- **孵化了Zygote进程**。Zygote进程大家都或多或少了解一些了，我们所有的应用程序都是由它孵化出来的。
+
+- **孵化了Media Server进程，用来启动和管理整个C++ framework**，比如相机服务（camera Service）。
+
+#### (9) Zygote进程做了些什么工作？
+
+- **创建服务端Socket**，为后续创建进程通信做准备。
+- **加载虚拟机**。没错，在Zygote进程中，会去加载下层的虚拟机。
+- **fork了System Server进程**。SystemServer进程是Zygote fork的第一个进程，负责启动和管理Java Framework层，包括ActivityManagerService，PackageManagerService，WindowManagerService、Binder线程池等等。
+- **fork了第一个应用进程——Launcher**，以及后续的一些系统应用进程，这就到了最上面一层——应用层了。
+
+#### (10) Activity启动流程中，大部分都是用Binder通讯，为啥跟Zygote通信的时候要用socket呢?
+
+ServiceManager不能保证在zygote起来的时候已经初始化好，所以无法使用Binder。
+
+Socket 的所有者是 root，只有系统权限用户才能读写，多了安全保障。
+
+Binder工作依赖于多线程，但是fork的时候是不允许存在多线程的，多线程情况下进程fork容易造成死锁，所以就不用Binder了。
+
+#### (11) 怎么理解ServiceManager
+
+ServiceManager其实是为了管理系统服务而设置的一种机制，每个服务注册在ServiceManager中，由ServiceManager统一管理，我们可以通过服务名在ServiceManager中查询对应的服务代理，从而完成调用系统服务的功能。所以ServiceManager有点类似于DNS，可以把服务名称和具体的服务记录在案，供客户端来查找。
+
+在我们这个AIDL的案例中，能直接获取到服务端的Service，也就直接能获取到服务端的代理类IMsgManager，所以就无需通过ServiceManager这一层来寻找服务了。
+
+而且ServiceManager本身也运行在一个单独的线程，所以它本身也是一个服务端，客户端其实是先通过跨进程获取到ServiceManager的代理对象，然后通过ServiceManager代理对象再去找到对应的服务。
+
+而ServiceManager就像我们刚才AIDL中的Service一样，是可以直接找到的，他的句柄永远是0，是一个“众所周知”的句柄，所以每个APP程序都可以通过binder机制在自己的进程空间中创建一个ServiceManager代理对象。
+
+所以通过ServiceManager查找系统服务并调用方法的过程是进行了两次跨进程通信。
+
+APP进程——>ServiceManager进程——>系统服务进程（比如ActivityManagerService）
+
+![图片](https://mmbiz.qpic.cn/mmbiz_png/jfNJsrA21FJvM8ibETbuD2XeblOibqJyK2x8RnWpXnb7N0IvBmk0fbYVQ084T2Te5Jdvp13Az9iaKlhKBNlz5NDjg/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1)
+
 ### 3. 四大组件启动相关
 
 #### (1) Activity的启动过程？
@@ -639,11 +690,43 @@ LayoutInflater是如何把xml布局文件转换成View对象的（反射）？Vi
 
 #### (7) PhoneWindow是在哪里初始化的？
 
-收到Handle的`H.LAUCH_ACTIVITY`消息，`performLaunchActivity`方法中调用了`Activity#attach()`，在该方法中：
+启动过程会执行到，收到`H.LAUCH_ACTIVITY`消息，执行ActivityThread的handleLaunchActivity方法，这里初始化了WindowManagerGlobal，也就是WindowManager实际操作Window的类，待会会看到：
+
+```java
+public Activity handleLaunchActivity(ActivityClientRecord r,
+                                     PendingTransactionActions pendingActions, 
+                                     Intent customIntent) {
+    ...
+    WindowManagerGlobal.initialize();
+    ...
+    final Activity a = performLaunchActivity(r, customIntent);
+    ...
+    return a;
+}
+```
+
+`performLaunchActivity`方法中调用了`Activity#attach()`，在该方法中：
 
 ```Java
-mWindow = new PhoneWindow(this, window, activityConfigCallback);
+final void attach() {
+    //初始化PhoneWindow
+    mWindow = new PhoneWindow(this, window, activityConfigCallback);
+    mWindow.setWindowControllerCallback(mWindowControllerCallback);
+    mWindow.setCallback(this);
+
+    //和WindowManager关联
+    mWindow.setWindowManager(
+            (WindowManager)context.getSystemService(Context.WINDOW_SERVICE),
+            mToken, mComponent.flattenToString(),
+            (info.flags & ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0);
+
+    mWindowManager = mWindow.getWindowManager();
+}
 ```
+
+可以看到，在Activity的attach方法中，创建了PhoneWindow，并且设置了callback，windowManager。
+
+这里的callback跟事件分发有关系，可以说是当前Activity和PhoneWindow建立的联系。
 
 #### (8) 说下 Activity跟Window，View之间的关系？
 
@@ -656,6 +739,370 @@ mWindow = new PhoneWindow(this, window, activityConfigCallback);
 - `Surface`其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。我们看到显示的每个`Window`（包括对话框、全屏的Activity、状态栏等）都有他自己绘制的`Surface`。而最终的显示可能存在`Window`之间遮挡的问题，此时就是通过`Surface Flinger`对象渲染最终的显示，使他们以正确的`Z-order`显示出来。一般`Surface`拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
 
 - View是Window里面用于交互的UI元素。Window只attach一个View Tree（组合模式），当Window需要重绘（如，当View调用`invalidate`）时，最终转为Window的Surface，Surface被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，Surface解锁（unlock），并且`post`到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕
+
+#### (9) **Window是什么**
+
+窗口。可以理解为手机上的整个画面，所有的视图都是通过Window呈现的，比如Activity、dialog都是附加在Window上的。Window类的唯一实现是PhoneWindow，这个名字就更加好记了吧，手机窗口呗。
+
+那Window到底在哪里呢？我们看到的View是Window吗？是也不是。
+
+如果说的只是Window概念的话，那可以说是的，View就是Window的存在形式，Window管理着View。
+
+如果说是Window类的话，那确实不是View，唯一实现类PhoneWindow管理着当前界面上的View，包括根布局——DecorView，和其他子view的添加删除等等。
+
+总结：Window是个概念性的东西，你看不到他，如果你能感知它的存在，那么就是通过View，所以View是Window的存在形式，有了View，你才感知到View外层有一个Window。
+
+#### (10) WindowManager是什么？和WMS的关系？
+
+WindowManager就是用来管理Window的，实现类为WindowManagerImpl，实际工作会委托给WindowManagerGlobal类中完成。
+
+而具体的Window操作，WM会通过Binder告诉WMS，WMS做最后的真正操作Window的工作，会为这个Window分配Surface，并绘制到屏幕上。
+
+#### (11) 怎么添加一个Window？
+
+```java
+WindowManager.LayoutParams windowParams = WindowManager.LayoutParams()
+windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+windowParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG
+Button btn = Button(this)
+windowManager.addView(btn, windowParams)
+```
+
+简单贴了下代码，加了一个Button。
+
+有的朋友可能会疑惑了，这明明是个Button，是个View啊，咋成了Window？
+
+刚才说过了，View是Window的表现形式，在实际实现中，添加window其实就是添加了一个你看不到的window，并且里面有View才能让你感觉得到这个是一个Window。
+
+所以通过windowManager添加的View其实就是添加Window的过程。
+
+这其中还有两个比较重要的属性：`flags`和`type`。下面会依次说到。
+
+#### (12) Window怎样可以显示到锁屏界面?
+
+Window的flag可以控制Window的显示特性，也就是该怎么显示、touch事件处理、与设备的关系、等等。所以这里问的锁屏界面显示也是其中的一种Flag。
+
+```java
+// Window不需要获取焦点，也不接受各种输入事件。
+public static final int FLAG_NOT_FOCUSABLE = 0x00000008;
+
+// @deprecated Use {@link android.R.attr#showWhenLocked} or
+// {@link android.app.Activity#setShowWhenLocked(boolean)} instead to prevent an
+// unintentional double life-cycle event.
+
+
+// 窗口可以在锁屏的 Window 之上显示
+public static final int FLAG_SHOW_WHEN_LOCKED = 0x00080000;
+```
+
+#### (13) Window三种类型都存在的情况下，显示层级是怎样?
+
+Type表示Window的类型，一共三种：
+
+- 应用Window。对应着一个Activity，Window层级为1~99，在视图最下层。
+- 子Window。不能单独存在，需要附属在特定的父Window之中(如Dialog就是子Window)，Window层级为1000~1999。
+- 系统Window。需要声明权限才能创建的Window，比如Toast和系统状态栏，Window层级为2000-2999，处在视图最上层。
+
+可以看到，区别就是有个Window层级（z-ordered），层级高的能覆盖住层级低的，离用户更近。
+
+#### (14) Window就是指PhoneWindow吗？
+
+如果指的Window类，那么PhoneWindow作为唯一实现类，一般指的就是PhoneWindow。
+
+如果指的Window这个概念，那肯定不是指PhoneWindow，而是存在于界面上真实的View。当然也不是所有的View都是Window，而是通过WindowManager添加到屏幕的view才是Window，所以PopupWindow是Window，上述问题中添加的单个View也是Window。
+
+#### (15) 要实现可以拖动的View该怎么做？
+
+还是接着刚才的btn例子，如果要修改btn的位置，使用updateViewLayout即可，然后在onTouch方法中传入移动的坐标即可。
+
+```java
+btn.setOnTouchListener { v, event ->
+    val index = event.findPointerIndex(0)
+    when (event.action) {
+        ACTION_MOVE -> {
+            windowParams.x = event.getRawX(index).toInt()
+            windowParams.y = event.getRawY(index).toInt()
+            windowManager.updateViewLayout(btn, windowParams)
+        }
+        else -> {
+        }
+    }
+    false
+}
+```
+
+#### (16) Window的添加、删除和更新过程？
+
+Window的操作都是通过WindowManager来完成的，而WindowManager是一个接口，他的实现类是WindowManagerImpl，并且全部交给WindowManagerGlobal来处理。下面具体说下addView，updateViewLayout，和removeView。
+
+**addView**
+
+```java
+//WindowManagerGlobal.java
+public void addView(View view, ViewGroup.LayoutParams params,
+            Display display, Window parentWindow) {
+
+        if (parentWindow != null) {
+            parentWindow.adjustLayoutParamsForSubWindow(wparams);
+        }
+
+            ViewRootImpl root;
+            View panelParentView = null;
+
+            root = new ViewRootImpl(view.getContext(), display);
+            view.setLayoutParams(wparams);
+
+            mViews.add(view);
+            mRoots.add(root);
+            mParams.add(wparams);
+
+            try {
+                root.setView(view, wparams, panelParentView);
+            } 
+        }
+    }
+
+```
+
+- 这里可以看到，创建了一个ViewRootImpl实例，这样就说明了每个Window都对应着一个ViewRootImpl。
+- 然后通过add方法修改了WindowManagerGlobal中的一些参数，比如mViews—存储了所有Window所对应的View，mRoots——所有Window所对应的ViewRootImpl，mParams—所有Window对应的布局参数。
+- 最后调用了ViewRootImpl的setView方法,继续看看。
+
+```java
+
+final IWindowSession mWindowSession;
+
+mWindowSession = WindowManagerGlobal.getWindowSession();
+
+public void setView(View view, WindowManager.LayoutParams attrs, View panelParentView) {
+    //
+    requestLayout();
+
+    res = mWindowSession.addToDisplay(mWindow,);
+}
+
+```
+
+setView方法主要完成了两件事，一是通过requestLayout方法完成异步刷新界面的请求，进行完整的view绘制流程。其次，会通过IWindowSession进行一次IPC调用，交给到WMS来实现Window的添加。
+
+其中mWindowSession是一个Binder对象，相当于在客户端的代理类，对应的服务端的实现为Session，而Session就是运行在SystemServer进程中，具体就是处于WMS服务中，最终就会调用到这个Session的addToDisplay方法，从方法名就可以猜到这个方法就是具体添加Window到屏幕的逻辑，具体就不分析了，下次说到屏幕绘制的时候再细谈。
+
+**updateViewLayout**
+
+```java
+public void updateViewLayout(View view, ViewGroup.LayoutParams params) {
+//...
+    final WindowManager.LayoutParams wparams = (WindowManager.LayoutParams)params;
+
+    view.setLayoutParams(wparams);
+
+    synchronized (mLock) {
+        int index = findViewLocked(view, true);
+        ViewRootImpl root = mRoots.get(index);
+        mParams.remove(index);
+        mParams.add(index, wparams);
+        root.setLayoutParams(wparams, false);
+    }
+}
+```
+
+这里更新了WindowManager.LayoutParams和ViewRootImpl.LayoutParams，然后在ViewRootImpl内部同样会重新对View进行绘制，最后通过IPC通信，调用到WMS的relayoutWindow完成更新。
+
+**removeView**
+
+```java
+public void removeView(View view, boolean immediate) {
+    if (view == null) {
+        throw new IllegalArgumentException("view must not be null");
+    }
+
+    synchronized (mLock) {
+        int index = findViewLocked(view, true);
+        View curView = mRoots.get(index).getView();
+        removeViewLocked(index, immediate);
+        if (curView == view) {
+            return;
+        }
+
+        throw new IllegalStateException("Calling with view " + view
+                + " but the ViewAncestor is attached to " + curView);
+    }
+}
+
+
+private void removeViewLocked(int index, boolean immediate) {
+    ViewRootImpl root = mRoots.get(index);
+    View view = root.getView();
+
+    if (view != null) {
+        InputMethodManager imm = view.getContext().getSystemService(InputMethodManager.class);
+        if (imm != null) {
+            imm.windowDismissed(mViews.get(index).getWindowToken());
+        }
+    }
+    boolean deferred = root.die(immediate);
+    if (view != null) {
+        view.assignParent(null);
+        if (deferred) {
+            mDyingViews.add(view);
+        }
+    }
+} 
+
+```
+
+该方法中，通过view找到mRoots中的对应索引，然后同样走到ViewRootImpl中进行View删除工作，通过die方法，最终走到dispatchDetachedFromWindow()方法中，主要做了以下几件事：
+
+- 回调onDetachedFromeWindow。
+- 垃圾回收相关操作。
+- 通过Session的remove()在WMS中删除Window。
+- 通过Choreographer移除监听器。
+
+#### (17) Activity、PhoneWindow、DecorView、ViewRootImpl 的关系？
+
+- PhoneWindow 其实是 Window 的唯一子类，是 Activity 和 View 交互系统的中间层，用来管理View的，并且在Window创建（添加）的时候就新建了ViewRootImpl实例。
+- DecorView 是整个 View 层级的最顶层，ViewRootImpl是DecorView 的parent，但是他并不是一个真正的 View，只是继承了ViewParent接口，用来掌管View的各种事件，包括requestLayout、invalidate、dispatchInputEvent 等等。
+
+#### (18) Window中的token是什么，有什么用？
+
+比如application的上下文去创建dialog的时候，就会报错：
+
+```
+unable to add window --token null
+```
+
+所以这个token跟window操作是有关系的，翻到刚才的addview方法中，还有个细节我们没说到，就是adjustLayoutParamsForSubWindow方法。
+
+```java
+//Window.java
+void adjustLayoutParamsForSubWindow(WindowManager.LayoutParams wp) {
+    if (wp.type >= WindowManager.LayoutParams.FIRST_SUB_WINDOW &&
+            wp.type <= WindowManager.LayoutParams.LAST_SUB_WINDOW) {
+        //子Window
+        if (wp.token == null) {
+            View decor = peekDecorView();
+            if (decor != null) {
+                wp.token = decor.getWindowToken();
+            }
+        }
+    } else if (wp.type >= WindowManager.LayoutParams.FIRST_SYSTEM_WINDOW &&
+            wp.type <= WindowManager.LayoutParams.LAST_SYSTEM_WINDOW) {
+        //系统Window
+    } else {
+        //应用Window
+        if (wp.token == null) {
+            wp.token = mContainer == null ? mAppToken : mContainer.mAppToken;
+        }
+
+    }
+}
+```
+
+上述代码分别代表了三个Window的类型：
+
+- 子Window。需要从DecorView中拿到token。
+- 系统Window。不需要token。
+- 应用Window。直接拿mAppToken，mAppToken是在setWindowManager方法中传进来的，也就是新建Window的时候就带进来了token。
+
+然后在WMS中的addWindow方法会验证这个token。
+
+所以这个token就是用来验证是否能够添加Window，可以理解为权限验证，其实也就是为了防止开发者乱用context创建window。
+
+拥有token的context（比如Activity）就可以操作Window。没有token的上下文（比如Application）就不允许直接添加Window到屏幕（除了系统Window）。
+
+#### (19) Application中可以直接弹出Dialog吗？
+
+这个问题其实跟上述问题相关：
+
+- 如果直接使用Application的上下文是不能创建Window的，而Dialog的Window等级属于子Window，必须依附与其他的父Window，所以必须传入Activity这种有window的上下文。
+- 那有没有其他办法可以在Application中弹出dialog呢？有，改成系统级Window：
+
+```java
+//检查权限
+if (!Settings.canDrawOverlays(this)) {
+    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+    intent.data = Uri.parse("package:$packageName")
+    startActivityForResult(intent, 0)
+}
+
+dialog.window.setType(WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG)
+
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+```
+
+- 另外还有一种办法，在Application类中，可以通过registerActivityLifecycleCallbacks监听Activity生命周期，不过这种办法也是传入了Activity的context，只不过在Application类中完成这个工作。
+
+#### (20) 关于事件分发，事件到底是先到DecorView还是先到Window的？
+
+这里的window可以理解为PhoneWindow，其实这道题就是问事件分发在Activity、DecorView、PhoneWindow中的顺序。
+
+当屏幕被触摸，首先会通过硬件产生触摸事件传入内核，然后走到FrameWork层，最后经过一系列事件处理到达ViewRootImpl的processPointerEvent方法，接下来就是我们要分析的内容了：
+
+```java
+//ViewRootImpl.java
+ private int processPointerEvent(QueuedInputEvent q) {
+            final MotionEvent event = (MotionEvent)q.mEvent;
+            ...
+            //mView分发Touch事件，mView就是DecorView
+            boolean handled = mView.dispatchPointerEvent(event);
+            ...
+        }
+
+//DecorView.java
+    public final boolean dispatchPointerEvent(MotionEvent event) {
+        if (event.isTouchEvent()) {
+            //分发Touch事件
+            return dispatchTouchEvent(event);
+        } else {
+            return dispatchGenericMotionEvent(event);
+        }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        //cb其实就是对应的Activity
+        final Window.Callback cb = mWindow.getCallback();
+        return cb != null && !mWindow.isDestroyed() && mFeatureId < 0
+                ? cb.dispatchTouchEvent(ev) : super.dispatchTouchEvent(ev);
+    }
+
+
+//Activity.java
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+            onUserInteraction();
+        }
+        if (getWindow().superDispatchTouchEvent(ev)) {
+            return true;
+        }
+        return onTouchEvent(ev);
+    }
+
+//PhoneWindow.java
+    @Override
+    public boolean superDispatchTouchEvent(MotionEvent event) {
+        return mDecor.superDispatchTouchEvent(event);
+    }
+
+//DecorView.java
+    public boolean superDispatchTouchEvent(MotionEvent event) {
+        return super.dispatchTouchEvent(event);
+    }    
+
+```
+
+事件的分发流程就比较清楚了：
+
+ViewRootImpl—>DecorView—>Activity—>PhoneWindow—>DecorView—>ViewGroup
+
+（这其中就用到了getCallback参数，也就是之前addView中传入的callback，也就是Activity本身）
+
+但是这个流程确实有些奇怪，为什么绕来绕去的呢，光DecorView就走了两遍？主要原因就是解耦。
+
+- ViewRootImpl并不知道有Activity，它只是持有了DecorView。所以先传给了DecorView，而DecorView知道有Activity，所以传给了Activity。
+- Activity也不知道有DecorView，它只是持有PhoneWindow，所以这么一段调用链就形成了。
+
+
 
 ### 5. PMS
 
