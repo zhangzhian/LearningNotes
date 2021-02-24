@@ -181,9 +181,9 @@ Activity依次A→B→C→B，其中B启动模式为singleTask，AC都为standar
 
 #### 12. activity的startActivity和context的startActivity区别？
 
-(1)从Activity中启动新的Activity时可以直接mContext.startActivity(intent)就好
+- 从Activity中启动新的Activity时可以直接mContext.startActivity(intent)就好
 
-(2)如果从其他Context中启动Activity则必须给intent设置Flag:
+- 如果从其他Context中启动Activity则必须给intent设置Flag:
 
 ```java
 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ; 
@@ -555,7 +555,7 @@ KeyguardManager：键盘锁服务
 
 #### 13. 多个Activity共同bind一个service，一个Activity destory，问service的情况。
 
-这里就是问service的生命周期，考察bind跟start的区别。
+调用一次UnBind，不会导致Service销毁。
 
 #### 14. 如何保证一个后台服务不被杀死？比较省电的方式是什么？
 
@@ -590,10 +590,10 @@ Android中的进程是托管的，当系统进程空间紧张的时候，会依�
 
 成功对华为手机保活。小米8下也成功突破20分钟
 
-- 3、监听锁屏广播：使Activity始终保持前台。
-- 4、使用自定义锁屏界面：覆盖了系统锁屏界面。
-- 5、通过android:process属性来为Service创建一个进程。
-- 6、跳转到系统白名单界面让用户自己添加app进入白名单。
+- 监听锁屏广播：使Activity始终保持前台。
+- 使用自定义锁屏界面：覆盖了系统锁屏界面。
+- 通过android:process属性来为Service创建一个进程。
+- 跳转到系统白名单界面让用户自己添加app进入白名单。
 
 **复活方案**
 
@@ -1027,14 +1027,13 @@ public class MyImageLoader {
                 return value.getRowBytes()*value.getHeight()/1024;
             }
         };
-
     }
 
     /**
      * 添加图片缓存
      */
     public void addBitmap(String key, Bitmap bitmap) {
-            mLruCache.put(key, bitmap);
+        mLruCache.put(key, bitmap);
     }
 
     /**
@@ -1062,7 +1061,7 @@ public class MyImageLoader {
 
 当调用LruCache的get()方法获取集合中的缓存对象时，就代表访问了一次该元素，将会更新队列，保持整个队列是按照访问顺序排序的。
 
-为什么会选择LinkedHashMap呢？
+**为什么会选择LinkedHashMap呢？**
 
 这跟LinkedHashMap的特性有关，LinkedHashMap的构造函数里有个布尔参数accessOrder，当它为true时，LinkedHashMap会以访问顺序为序排列元素，否则以插入顺序为序排序元素。
 
@@ -1534,17 +1533,54 @@ Handler 允许我们发送延时消息，如果在延时期间用户关闭了 Ac
 
 #### 17. Message#what的不同值，会影响Message在MessageQueue中的顺序么？
 
+不会。when会影响。
 
+```java
+boolean enqueueMessage(Message msg, long when) {
+    ...
+    synchronized (this) {
+        ...
+        msg.markInUse();
+        msg.when = when;
+        Message p = mMessages;
+        boolean needWake;
+        if (p == null || when == 0 || when < p.when) {
+            // New head, wake up the event queue if blocked.
+            msg.next = p;
+            mMessages = msg;
+            needWake = mBlocked;
+        } else {
+            needWake = mBlocked && p.target == null && msg.isAsynchronous();
+            Message prev;
+            for (;;) {
+                prev = p;
+                p = p.next;
+                if (p == null || when < p.when) {
+                    break;
+                }
+                if (needWake && p.isAsynchronous()) {
+                    needWake = false;
+                }
+            }
+            msg.next = p; // invariant: p == prev.next
+            prev.next = msg;
+        }
 
+        // We can assume mPtr != 0 because mQuitting is false.
+        if (needWake) {
+            nativeWake(mPtr);
+        }
+    }
+    return true;
+}
+```
 #### 18. MessageQueue中的Message是如何排列的？
 
-#### 19. 如果在当前线程内使用Handler postdelayed 两个消息，一个延迟5s，一个延迟10s，然后使当前线程sleep 5秒，以上消息的执行时间会如何变化？
+如上。根据when，按时间排序。
+
+#### 19. 如果在当前线程内使用Handler Postdelayed 两个消息，一个延迟5s，一个延迟10s，然后使当前线程sleep 5秒，以上消息的执行时间会如何变化？
 
 sleep时间<=5 对两个消息无影响，5< sleep时间 <=10 对第一个消息有影响，第一个消息会延迟到sleep后执行，sleep时间>10 对两个时间都有影响，都会延迟到sleep后执行。
-
-
-
-
 
 
 ## 九、View事件分发机制
@@ -1555,7 +1591,9 @@ sleep时间<=5 对两个消息无影响，5< sleep时间 <=10 对第一个消息
 
 1）**首先，从最外面一层传到最里面一层：**
 
-如果当前是`viewgroup`层级，就会判断 `onInterceptTouchEvent`是否为true，如果为true，则代表事件要消费在这一层级，不再往下传递。接着便执行当前 viewgroup 的onTouchEvent方法。如果`onInterceptTouchEvent`为false，则代表事件继续传递到下一层级的 `dispatchTouchEvent`方法，接着一样的代码逻辑，一直到最里面一层的view。
+如果当前是`viewgroup`层级，就会判断 `onInterceptTouchEvent`是否为true，如果为true，则代表事件要消费在这一层级，不再往下传递。接着便执行当前 `viewgroup` 的`onTouchEvent`方法。
+
+如果`onInterceptTouchEvent`为false，则代表事件继续传递到下一层级的 `dispatchTouchEvent`方法，接着一样的代码逻辑，一直到最里面一层的view。
 
 伪代码解释：
 
@@ -1579,7 +1617,7 @@ public boolean dispatchTouchEvent(MotionEvent event) {
 
 2）**到最里层的view之后，view本身还是可以选择消费或者传到外面。**
 
-到最里面一层就会直接执行`onTouchEvent`方法，这时候，view有没有权利拒绝消费事件呢？ 按道理view作为最底层的，应该是没有发言权才对。但是呢，秉着公平公正原则，view也是可以拒绝的，可以在`onTouchEvent`方法返回false，表示他不想消费这个事件。那么它的父容器的`onTouchEvent`又会被调用，如果父容器的onTouchEvent又返回false，则又交给上一级。一直到最上层，也就是Activity的`onTouchEvent`被调用。
+到最里面一层就会直接执行`onTouchEvent`方法。可以在`onTouchEvent`方法返回false，表示他不想消费这个事件。那么它的父容器的`onTouchEvent`又会被调用，如果父容器的onTouchEvent又返回false，则又交给上一级。一直到最上层，也就是Activity的`onTouchEvent`被调用。
 
 伪代码解释：
 
@@ -1607,7 +1645,9 @@ public void consumeEvent(MotionEvent event) {
     } else {
         onTouchEvent(event);
     }
+}
 
+public void onTouchEvent(event){
     if (setOnClickListener) {
         onClick();
     }
@@ -1822,7 +1862,56 @@ View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, 
 
 #### 10. MotionEvent#offsetLocation事件转发?
 
+源码：
 
+```java
+/**
+ * Adjust this event's location.
+ * @param deltaX Amount to add to the current X coordinate of the event.
+ * @param deltaY Amount to add to the current Y coordinate of the event.
+ */
+public final void offsetLocation(float deltaX, float deltaY) {
+    if (deltaX != 0.0f || deltaY != 0.0f) {
+        nativeOffsetLocation(mNativePtr, deltaX, deltaY);
+    }
+}
+```
+使用：
+
+```java
+public class MyViewGroup extends LinearLayout {
+    private View mFirstView;
+
+    public MyViewGroup(Context context, AttributeSet attrs) {
+        super(context, attrs);
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        mFirstView = getChildAt(0);
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        boolean handled = false;
+        float x = ev.getX();
+        float y = ev.getY();
+
+        if(x < mFirstView.getLeft() || x > mFirstView.getRight()) return true;
+        if(y < mFirstView.getTop() || y > mFirstView.getBottom()) return true;
+
+        int offetX = getScrollX() - mFirstView.getLeft();
+        int offetY = getScrollY() - mFirstView.getTop();
+        ev.offsetLocation(offetX, offetY);
+        handled = mFirstView.dispatchTouchEvent(ev);
+        ev.offsetLocation(-offetX, -offetY);
+
+        return handled;
+    }
+}
+```
+`offsetLocation`作用是去调整ev的位置参数，然后分发事件。
 
 ## 十、View绘制
 
@@ -2342,13 +2431,15 @@ public void draw(Canvas canvas) {
 
 > 虽然两者都是用来触发绘制流程，但是在measure和layout过程中，只会对 flag 设置为 FORCE_LAYOUT 的情况进行重新测量和布局，而draw方法中只会重绘flag为 dirty 的区域。requestLayout 是用来设置FORCE_LAYOUT标志，invalidate 用来设置 dirty 标志。所以 requestLayout 只会触发 measure 和 layout，invalidate 只会触发 draw。
 
-#### 11. 绘制的数据是如何提交到远端的SurfaceFlinger?
+#### 19. 绘制的数据是如何提交到远端的SurfaceFlinger?
 
 
 
-#### 12. GPU和surfaceFlinger之间的设计思想是什么？surfaceFlinger具体作用是什么？它对数据做了哪些操作？
+#### 20. GPU和surfaceFlinger之间的设计思想是什么？surfaceFlinger具体作用是什么？它对数据做了哪些操作？
 
-#### 13. Canvas的底层机制，绘制框架，硬件加速是什么原理，canvas lock的缓冲区是怎么回事？
+
+
+#### 21. Canvas的底层机制，绘制框架，硬件加速是什么原理，canvas lock的缓冲区是怎么回事？
 
 ## 十一、Drawbale和动画
 
@@ -2650,6 +2741,8 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 
 #### 1. 下载一张很大的图，如何保证不 oom？
 
+分段串行下载，存储到硬盘，拼接未一张图片。
+
 在加载图片时候先检查一下图片的大小：用 BitmapFactory.Options 参数，参数中的 inJustDecodeBounds 属性设置为 true 就可以让解析图片方法禁止为 bitmap 分配内存，返回值也不再是一个 Bitmap 对象，而是 null。虽然 Bitmap是 null 了，但是 BitmapFactory.Options 的 outWidth、outHeight 和 outMimeType 属性都会被赋值。从而可以得到图片的宽、高、大小。得到图片的大小后，我们就可以决定是否把整张图片加载到内存中还是加载一个压缩版的图片到内存中，从而就可以解决 OOM 异常。
 
 #### 2. Bitmap的内存计算方式？
@@ -2740,12 +2833,12 @@ Bitmap内存复用（Options.inBitmap）
 
 图片存放在drawable-hdpi和drawable-xxhdpi下，xhdpi的手机会加载哪张？如果删除掉drawable-xxhdpi下的图片呢？
 
-
+Android系统会首先从更高级别的文件夹中查找，找不到的话再从低级别找。
 
 
 ## 十四、ListView/RecyclerView
 
-#### 1. RecyclerView是怎么处理内部ViewClick冲突的
+#### 1. RecyclerView是怎么处理内部ViewClick冲突的？
 
 要监听RecyclerView中Item的点击事件一般有两种实现方式，第一种是在Adapter中进行点击事件的处理，第二种是在外部实现点击事件处理。
 
@@ -2806,7 +2899,7 @@ ClickRecyclerViewAdapter adapter=new ClickRecyclerViewAdapter(this, new ClickRec
 - 再往下滑一条数据（position=10），这时候由于可以在mRecyclerPool中找到相同viewtype的ViewHolder了。所以就直接复用了，并调用onBindViewHolder方法绑定数据。
 - 后面依次类推，刚消失的两条数据会被放到mCacheViews中，再出现的时候是不会调用onBindViewHolder方法，而复用的第三条数据是从mRecyclerPool中取得，就会调用onBindViewHolder方法了。
 
-4）所以这个问题就得出结论了（假设mCacheViews容量为默认值2）：
+所以这个问题就得出结论了（假设mCacheViews容量为默认值2）：
 
 - 如果一开始滑动的是新数据，那么滑动10个，就会走10个bindview方法。然后滑回去，会走（10-2）个bindview方法。一共18次调用。
 - 如果一开始滑动的是老数据，那么滑动（10-2）个，就会走8个bindview方法。然后滑回去，会走（10-2）个bindview方法。一共16次调用。
@@ -2978,8 +3071,6 @@ public class ChildPresenter extends RecyclerView {
 
 这是因为RecyclerView默认是`setNestedScrollingEnabled(true)`，这个方法的含义是支持嵌套滚动的。也就是说当它嵌套在`NestedScrollView`中时,默认会随着`NestedScrollView`滚动而滚动,放弃了自己的滚动。所以给我们的感觉就是滞留、卡顿。所以我们将它设置为false就解决了卡顿问题，让他正常的滑动，不受外部影响。
 
-
-
 #### 6. RecyclerView预取
 
 因为Recycleview在v25版本引入了一个新的机制，预取机制。
@@ -3097,7 +3188,62 @@ new LinearLayoutManager(this) {
 
 #### 16. ListView 中图片错位的问题是如何产生的?
 
-图片错位问题的本质源于我们的 listview 使用了缓存 convertView，假设一种场景，一个 listview 一屏显示九个 item，那么在拉出第十个 item 的时候，事实上该 item 是重复使用了第一个 item，也就是说在第一个 item 从网络中 下载图片并最终要显示的时候，其实该 item 已经不在当前显示区域内了，此时显示的后果将可能在第十个 item 上输 出图像，这就导致了图片错位的问题。所以解决之道在于可见则显示，不可见则不显示。
+图片错位问题的本质源于我们的 listview 使用了缓存 convertView，假设一种场景，一个 listview 一屏显示九个 item，那么在拉出第十个 item 的时候，事实上该 item 是重复使用了第一个 item，也就是说在第一个 item 从网络中下载图片并最终要显示的时候，其实该 item 已经不在当前显示区域内了，此时显示的后果将可能在第十个 item 上输出图像，这就导致了图片错位的问题。所以解决之道在于可见则显示，不可见则不显示。
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20190414152308174.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3UwMTMxODM2MDg=,size_16,color_FFFFFF,t_70)
+
+```java
+ @Override
+    public void onBindViewHolder(final VideoViewHolder holder, final int position) {
+        holder.thumbView.setTag(R.id.tag_dynamic_list_thumb, position);
+        Glide.with(mContext)
+                .load(picUrl)
+                .error(R.drawable.video_thumb_loading)
+                .into(new SimpleTarget<GlideDrawable>() {
+                    @Override
+                    public void onResourceReady(GlideDrawable glideDrawable, GlideAnimation<? super GlideDrawable> glideAnimation {
+                        if (position != (Integer) holder.thumbView.getTag(R.id.tag_dynamic_list_thumb))
+                            return;
+                            holder.thumbView.setImageDrawable(glideDrawable);
+                    }
+
+                    @Override
+                    public void onStart() {
+                        super.onStart();
+                        holder.thumbView.setImageResource(R.drawable.ic_loading);
+                    }
+            });
+    }
+
+```
+
+在onViewRecycled方法中重置item的ImageView并取消网络请求
+
+流程：在onBindViewHolder中发起加载请求，然后在view被回收时取消网络请求
+
+```java
+@Override
+public void onBindViewHolder(VideoViewHolder holder, int position) {
+    String istrurl = mImgList.get(position).getImageUrl();
+    if (null == holder || null == istrurl || istrurl.equals("")) {
+        return;
+    }
+    Glide.with(mContext)
+            .load(picUrl)
+            .placeholder(R.drawable.ic_loading)
+            .into(holder.thumbView);
+}
+
+@Override
+public void onViewRecycled(VideoViewHolder holder) {
+    if (holder != null) {
+        Glide.clear(holder.thumbView);
+        holder.thumbView.setImageResource(R.drawable.ic_loading);
+
+    }
+    super.onViewRecycled(holder);
+}
+```
 
 #### 17. 如何在 ScrollView 中如何嵌入 ListView
 
@@ -3160,9 +3306,9 @@ public class ScrollViewWithListView extends ListView {
 #### 19. 列表有多个不同的card，使用RecyclerView怎么解耦getViewType，获得不同的card？
 > 注解、反射，依赖注入
 
-#### 20. 想改变listview的高度，怎么做？
+#### 20. 想改变Listview的高度，怎么做？
 
-#### 21. listview跟recyclerview上拉加载的时候分别应该如何处理？
+#### 21. Listview跟Recyclerview上拉加载的时候分别应该如何处理？
 
 #### 22. 如何自己实现RecyclerView的侧滑删除？
 
@@ -3392,7 +3538,7 @@ synchronized (mWritingToDiskLock) {
 
 #### 4.SharedPreference原理？读取xml是在哪个线程?
 
-（1）`getSharedPreferences()`在创建一个SharedPreferences，会先判断是否有对应的xml文件（SharedPreferences存储数据的保存格式），如果存在则会有一个预加载操作，这个操作将把xml文件的内容通过I/O操作和xmlUtil解析后保存在一个map对象中。如果不存在则会创建一个对应的xml。
+（1）`getSharedPreferences()`在创建一个SharedPreferences，会先判断是否有对应的xml文件（SharedPreferences存储数据的保存格式），如果存在则会有一个预加载操作，这个操作将把xml文件的内容通过I/O操作和XmlUtil解析后保存在一个map对象中。如果不存在则会创建一个对应的xml。
 
 （2）而在对数据进行读取时，是从内存中该map对象中进行读取；
 
@@ -3402,7 +3548,7 @@ synchronized (mWritingToDiskLock) {
 
 ​		a. `commit()`：线程安全，性能慢，一般在当前线程完成文件操作，会有返回值；
 
-​		b. `apply()`：线程不安全，性能高，异步处理I/O操作，一般在singleThreadExecutor中执行，没有返回值
+​		b. `apply()`：线程不安全，性能高，异步处理I/O操作，一般在SingleThreadExecutor中执行，没有返回值
 
 第一次读的时候，主线程会挂起wait，等到**整个文件load完**毕，才被唤醒。
 
@@ -3443,7 +3589,7 @@ SQLite数据库只允许增加字段而不允许修改和删除表字段，只�
 - 使用索引加快检索速度：对于查询操作量级较大、业务对查询要求较高的推荐使用索引
 - ContentValues复用，Clear后再赋值
 
-#### 16. SQLite如何修改表?
+#### 11. SQLite如何修改表?
 
 数据库升级增加表和删除表都不涉及数据迁移，但是修改表涉及到对原有数据进行迁移。
 
@@ -3458,6 +3604,8 @@ SQLite数据库只允许增加字段而不允许修改和删除表字段，只�
 
 - 逐级升级，确定相邻版本与现在版本的差别，V1升级到V2,V2升级到V3，依次类推。
 - 跨级升级，确定每个版本与现在数据库的差别，为每个case编写专门升级大代码。
+
+
 
 ## 十七、其他控件
 
@@ -3640,7 +3788,7 @@ Fiddler，Wireshark
 
 Bundle主要用于传递数据；它保存的数据，内部其实就是维护了一个Map<String,Object>。
 
-我们经常使用Bundle在Activity之间传递数据，传递的数据可以是boolean、byte、int、long、float、double、string等基本类型或它们对应的数组，也可以是对象或对象数组。当Bundle传递的是对象或对象数组时，必须实现Serializable 或Parcelable接口。下面分别介绍Activity之间如何传递基本类型、传递对象。
+我们经常使用Bundle在Activity之间传递数据，传递的数据可以是boolean、byte、int、long、float、double、string等基本类型或它们对应的数组，也可以是对象或对象数组。当Bundle传递的是对象或对象数组时，必须实现Serializable 或Parcelable接口。
 
 #### 6. 如何判断是否有 SD 卡？ 
 
@@ -3651,14 +3799,6 @@ Bundle主要用于传递数据；它保存的数据，内部其实就是维护�
 #### 7. Bundle传递对象为什么需要序列化？Serialzable和Parcelable的区别？
 
 因为bundle传递数据时只支持基本数据类型，所以在传递对象时需要序列化转换成可存储或可传输的本质状态（字节流）。序列化后的对象可以在网络、IPC（比如启动另一个进程的Activity、Service和Reciver）之间进行传输，也可以存储到本地。
-
-Serializable（Java自带）：
-
-Serializable 是序列化的意思，表示将一个对象转换成存储或可传输的状态。序列化后的对象可以在网络上进传输，也可以存储到本地。
-
-Parcelable（android专用）：
-
-除了Serializable之外，使用Parcelable也可以实现相同的效果，不过不同于将对象进行序列化，Parcelable方式的实现原理是将一个完整的对象进行分解，而分解后的每一部分都是Intent所支持的数据类型，这也就实现传递对象的功能了。
 
 **区别总结如下所示**：
 
@@ -3691,10 +3831,8 @@ Parcelable方式的本质是将一个完整的对象进行分解，而分解后�
 Android5.0新特性
 
 - **MaterialDesign设计风格**
-- **支持64位ART虚拟机**（5.0推出的ART虚拟机，在5.0之前都是Dalvik。他们的区别是：
-  Dalvik,每次运行,字节码都需要通过即时编译器转换成机器码(JIT)。
-  ART,第一次安装应用的时候,字节码就会预先编译成机器码(AOT)）
-
+- **支持64位ART虚拟机**（5.0推出的ART虚拟机，在5.0之前都是Dalvik。他们的区别是：Dalvik,每次运行,字节码都需要通过即时编译器转换成机器码(JIT)。ART,第一次安装应用的时候,字节码就会预先编译成机器码(AOT)）
+  
 - 通知详情可以用户自己设计
 
 Android6.0新特性
@@ -3749,6 +3887,8 @@ Android10.0（Q）新特性
 推荐文章：[Android Developers 官方文档](https://developer.android.com/guide/topics/manifest/uses-sdk-element.html#ApiLevels)
 
 #### 9. android中有哪几种解析xml的类，官方推荐哪种？以及它们的原理和区别？
+
+![img](https://upload-images.jianshu.io/upload_images/944365-3434ec5de8ad1f14.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
 
 **DOM解析**
 
@@ -3839,7 +3979,7 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 编译期(Compile time)注解，以及处理编译期注解的手段APT和Javapoet，对应`@Retention(RetentionPolicy.CLASS)`。
 
-其中apt+javaPoet目前也是应用比较广泛，在一些大的开源库，如EventBus3.0+,页面路由 ARout、Dagger、Retrofit等均有使用的身影，注解不仅仅是通过反射一种方式来使用，也可以使用APT在编译期处理
+其中apt+javaPoet目前也是应用比较广泛，在一些大的开源库，如EventBus3.0+,页面路由 ARoute、Dagger、Retrofit等均有使用的身影，注解不仅仅是通过反射一种方式来使用，也可以使用APT在编译期处理
 
 #### 17. 强引用置为null，会不会被回收？
 
@@ -3921,9 +4061,11 @@ bsdiff：二进制差分工具bsdiff是相应的补丁合成工具,根据两个�
 
 #### 22. DDMS 和 TraceView 的区别？
 
-DDMS 原意是：davik debug monitor service。简单的说 ddms 是一个程序执行查看器，在里面可以看见线程和堆栈等信息，traceView 是程序性能分析器。traceview 是 ddms 中的一部分内容。
+DDMS 原意是：davik debug monitor service。简单的说 DDMS 是一个程序执行查看器，在里面可以看见线程和堆栈等信息，Traceview 是程序性能分析器。Traceview 是 DDMS 中的一部分内容。
 
-Traceview 是 Android 平台特有的数据采集和分析工具，它主要用于分析 Android 中应用程序的 hotspot（瓶颈）。Traceview 本身只是一个数据分析工具，而数据的采集则需要使用 Android SDK 中的 Debug 类或者利用DDMS 工具。二者的用法如下：开发者在一些关键代码段开始前调用 Android SDK 中 Debug 类的 startMethodTracing 函数，并在关键代码段结束前调用 stopMethodTracing 函数。这两个函数运行过程中将采集运行时间内该应用所有线程（注意，只能是 Java线程） 的函数执行情况， 并将采集数据保存到/mnt/sdcard/下的一个文件中。 开发者然后需要利用 SDK 中的 Traceview工具来分析这些数据。
+Traceview 是 Android 平台特有的数据采集和分析工具，它主要用于分析 Android 中应用程序的 hotspot（瓶颈）。Traceview 本身只是一个数据分析工具，而数据的采集则需要使用 Android SDK 中的 Debug 类或者利用DDMS 工具。
+
+二者的用法如下：开发者在一些关键代码段开始前调用 Android SDK 中 Debug 类的 startMethodTracing 函数，并在关键代码段结束前调用 stopMethodTracing 函数。这两个函数运行过程中将采集运行时间内该应用所有线程（注意，只能是 Java线程） 的函数执行情况， 并将采集数据保存到/mnt/sdcard/下的一个文件中。 开发者然后需要利用 SDK 中的 Traceview工具来分析这些数据。
 
 #### 23. AndroidManifest.xml 中的 targerSDK 设置有什么作用？
 
@@ -3984,7 +4126,7 @@ android系统下数据库应该存放在 /data/data/com.（package name）/ 目�
 
 app 冷启动： 当应用启动时，后台没有该应用的进程，这时系统会重新创建一个新的进程分配给该应用， 这个启动方式就叫做冷启动（后台不存在该应用进程）。冷启动因为系统会重新创建一个新的进程分配给它，所以会先创建和初始化 Application 类，再创建和初始化 MainActivity 类（包括一系列的测量、布局、 绘制），最后显示在界面上。 
 
-app 热启动： 当应用已经被打开， 但是被按下返回键、Home 键等按键时回到 桌面或者是其他程序的时候，再重新打开该 app 时， 这个方式叫做热启动（后台已经存在该应用进程）。热启动因为会从已有的进程中来启动，所以热启动就 不会走 Application 这步了，而是直接走 MainActivity（包括一系列的测量、布局、 绘制），所以热启动的过程只需要创建和初始化一个 MainActivity 就行了，而不必创建和初始化 Application
+app 热启动： 当应用已经被打开， 但是被按下返回键、Home 键等按键时回到桌面或者是其他程序的时候，再重新打开该 app 时， 这个方式叫做热启动（后台已经存在该应用进程）。热启动因为会从已有的进程中来启动，所以热启动就 不会走 Application 这步了，而是直接走 MainActivity（包括一系列的测量、布局、 绘制），所以热启动的过程只需要创建和初始化一个 MainActivity 就行了，而不必创建和初始化 Application
 
 冷启动的流程：
 
@@ -4016,9 +4158,9 @@ Application 构造方法 –> attachBaseContext()–>onCreate –>Activity 构�
 
 #### 29. 怎样防范 APP 被反编译 
 
-（1）加壳保护：就是在程序的外面再包裹上另外一段代码，保护里面的代 码不被非法修改或反编译，在程序运行的时候优先取得程序的控制权做一些 我们自己想做的工作。 
+（1）加壳保护：就是在程序的外面再包裹上另外一段代码，保护里面的代码不被非法修改或反编译，在程序运行的时候优先取得程序的控制权做一些我们自己想做的工作。 
 
-（2）dex 文件格式 ：apk 生成后所有的 java 生成的 class 文件都被 dx 命令整合成了一个 classes.dex 文件，当 apk 运行时 dalvik 虚拟机加载 classes.dex 文件并且用 dexopt 命令进行进一步的优化成 odex 文件。在这 个过程中修改 dalvik 指令来达到我们的目的。
+（2）dex 文件格式 ：apk 生成后所有的 java 生成的 class 文件都被 dx 命令整合成了一个 classes.dex 文件，当 apk 运行时 dalvik 虚拟机加载 classes.dex 文件并且用 dexopt 命令进行进一步的优化成 odex 文件。在这个过程中修改 dalvik 指令来达到我们的目的。
 
 #### 30. Oom 是否可以try catch ？
 
@@ -4049,9 +4191,19 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 
 #### 35. 没有给权限如何定位，特定机型定位失败，如何解决?
 
-#### 36. [有什么提高编译速度的方法？](https://juejin.im/post/6844903481917046791)
+#### 36. 有什么提高编译速度的方法？
+
+https://juejin.im/post/6844903481917046791
 
 #### 37. Android中进程内存的分配，能不能自己分配定额内存？
+
+不能。
+
+ google原生OS的默认值是16M，但是各个厂家的系统会对这个值进行修改。不同厂商的值不同
+
+（1）未设定属性android:largeheap = "true"时，可以申请到的最大内存空间。
+
+（2）设定属性android:largeheap = "true"时， 可以申请的最大内存空间为原来的两倍多一些。
 
 #### 38. Android长连接，怎么处理心跳机制。
 
@@ -4067,11 +4219,15 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 
 #### 40. 如何实现右滑finish activity？
 
+重写Activity 的 onTouchEvent 方法，拦截滑动事件，并根据手指的滑动来移动 DecorView 布局。
+
 #### 41. 如何在整个系统层面实现界面的圆角效果。
+
+
 
 #### 42. 非UI线程可以更新UI吗?
 
-可以，当访问UI时，ViewRootImpl会调用checkThread方法去检查当前访问UI的线程是哪个，如果不是UI线程则会抛出异常。执行onCreate方法的那个时候ViewRootImpl还没创建，无法去检查当前线程.ViewRootImpl的创建在onResume方法回调之后。
+可以，当访问UI时，ViewRootImpl会调用checkThread方法去检查当前访问UI的线程是哪个，如果不是UI线程则会抛出异常。执行onCreate方法的那个时候ViewRootImpl还没创建，无法去检查当前线程。ViewRootImpl的创建在onResume方法回调之后。
 
 ```java
 void checkThread() {
