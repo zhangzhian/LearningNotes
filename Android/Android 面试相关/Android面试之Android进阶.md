@@ -267,7 +267,7 @@ int main(int argc __unused, char **argv __unused)
 
 ####  (10) Binder线程池中如果满了，对待新来的任务，会如何处理？此时client端会是什么效果？
 
-下一个请求可能不能及时响应。
+ 
 
 
 ### 2. 进程
@@ -355,7 +355,7 @@ Binder工作依赖于多线程，但是fork的时候是不允许存在多线程�
 
 ServiceManager其实是为了管理系统服务而设置的一种机制，每个服务注册在ServiceManager中，由ServiceManager统一管理，我们可以通过服务名在ServiceManager中查询对应的服务代理，从而完成调用系统服务的功能。所以ServiceManager有点类似于DNS，可以把服务名称和具体的服务记录在案，供客户端来查找。
 
-在我们这个AIDL的案例中，能直接获取到服务端的Service，也就直接能获取到服务端的代理类IMsgManager，所以就无需通过ServiceManager这一层来寻找服务了。
+在AIDL的案例中，能直接获取到服务端的Service，也就直接能获取到服务端的代理类IMsgManager，所以就无需通过ServiceManager这一层来寻找服务了。
 
 而且ServiceManager本身也运行在一个单独的线程，所以它本身也是一个服务端，客户端其实是先通过跨进程获取到ServiceManager的代理对象，然后通过ServiceManager代理对象再去找到对应的服务。
 
@@ -462,7 +462,9 @@ APP进程——>ServiceManager进程——>系统服务进程（比如ActivityMa
 
 ![img](http://upload-images.jianshu.io/upload_images/3985563-5f711b4bca6bf21b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-#### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？从事件传递，网络请求, AMS交互角度分析
+#### (3) 登陆功能，登陆成功然后跳转到一个新Activity，中间涉及什么？
+
+从事件传递，网络请求, AMS交互角度分析
 
 AMS交互角度：同上
 
@@ -561,7 +563,7 @@ mActivity.startActivity(intent);
 
 6. **ActivityStack**，Activity在AMS的栈管理，用来记录经启动的Activity的先后关系，状态信息等。通过ActivtyStack决定是否需要启动新的进程。
 
-7. **ActivityRecord**，ActivityStack的管理对象，每个Acivity在AMS对应一个ActivityRecord，来记录Activity状态以及其他的管理信息。其实就是服务器端的Activit对象的映像。
+7. **ActivityRecord**，ActivityStack的管理对象，每个Acivity在AMS对应一个ActivityRecord，来记录Activity状态以及其他的管理信息。其实就是服务器端的Activity对象的映像。
 
 8. **TaskRecord**，AMS抽象出来的一个“任务”的概念，是记录ActivityRecord的栈，一个“Task”包含若干个ActivityRecord。AMS用TaskRecord确保Activity启动和退出的顺序。
 
@@ -601,11 +603,15 @@ Activity的启动流程图（放大可查看）如下所示：
 
 #### (13) ActivityThread工作原理?
 
+
+
 #### (14) AMS是如何管理Activity的？
+
+
 
 #### (15) Activity从创建到我们看到界面，发生了哪些事
 
-首先是通过`setContentView`加载布局，这其中创建了一个`DecorView`，然后根据然后根据activity设置的主题（theme）或者特征（Feature）加载不同的根布局文件，最后再通过inflate方法加载`layoutResID`资源文件，其实就是解析了xml文件，根据节点生成了View对象。流程图：
+首先是通过`setContentView`加载布局，这其中创建了一个`DecorView`，然后根据然后根据activity设置的主题（Theme）或者特征（Feature）加载不同的根布局文件，最后再通过inflate方法加载`layoutResID`资源文件，其实就是解析了xml文件，根据节点生成了View对象。流程图：
 
 ![img](https:////upload-images.jianshu.io/upload_images/8690467-b6f7a0a37aba3ad0.image?imageMogr2/auto-orient/strip|imageView2/2/w/1161/format/webp)
 
@@ -690,7 +696,7 @@ LayoutInflater是如何把xml布局文件转换成View对象的（反射）？Vi
 
 #### (7) PhoneWindow是在哪里初始化的？
 
-启动过程会执行到，收到`H.LAUCH_ACTIVITY`消息，执行ActivityThread的handleLaunchActivity方法，这里初始化了WindowManagerGlobal，也就是WindowManager实际操作Window的类，待会会看到：
+启动过程会执行到，收到`H.LAUCH_ACTIVITY`消息，执行ActivityThread的`handleLaunchActivity`方法，这里初始化了WindowManagerGlobal，也就是WindowManager实际操作Window的类，待会会看到：
 
 ```java
 public Activity handleLaunchActivity(ActivityClientRecord r,
@@ -740,7 +746,7 @@ final void attach() {
 
 - View是Window里面用于交互的UI元素。Window只attach一个View Tree（组合模式），当Window需要重绘（如，当View调用`invalidate`）时，最终转为Window的Surface，Surface被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，Surface解锁（unlock），并且`post`到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕
 
-#### (9) **Window是什么**
+#### (9) Window是什么?
 
 窗口。可以理解为手机上的整个画面，所有的视图都是通过Window呈现的，比如Activity、dialog都是附加在Window上的。Window类的唯一实现是PhoneWindow，这个名字就更加好记了吧，手机窗口呗。
 
@@ -809,7 +815,7 @@ Type表示Window的类型，一共三种：
 
 如果指的Window类，那么PhoneWindow作为唯一实现类，一般指的就是PhoneWindow。
 
-如果指的Window这个概念，那肯定不是指PhoneWindow，而是存在于界面上真实的View。当然也不是所有的View都是Window，而是通过WindowManager添加到屏幕的view才是Window，所以PopupWindow是Window，上述问题中添加的单个View也是Window。
+如果指的Window这个概念，那肯定不是指PhoneWindow，而是存在于界面上真实的View。当然也不是所有的View都是Window，而是通过WindowManager添加到屏幕的View才是Window，所以PopupWindow是Window，上述问题中添加的单个View也是Window。
 
 #### (15) 要实现可以拖动的View该怎么做？
 
@@ -885,7 +891,7 @@ public void setView(View view, WindowManager.LayoutParams attrs, View panelParen
 
 setView方法主要完成了两件事，一是通过requestLayout方法完成异步刷新界面的请求，进行完整的view绘制流程。其次，会通过IWindowSession进行一次IPC调用，交给到WMS来实现Window的添加。
 
-其中mWindowSession是一个Binder对象，相当于在客户端的代理类，对应的服务端的实现为Session，而Session就是运行在SystemServer进程中，具体就是处于WMS服务中，最终就会调用到这个Session的addToDisplay方法，从方法名就可以猜到这个方法就是具体添加Window到屏幕的逻辑，具体就不分析了，下次说到屏幕绘制的时候再细谈。
+其中mWindowSession是一个Binder对象，相当于在客户端的代理类，对应的服务端的实现为Session，而Session就是运行在SystemServer进程中，具体就是处于WMS服务中，最终就会调用到这个Session的addToDisplay方法，从方法名就可以猜到这个方法就是具体添加Window到屏幕的逻辑。
 
 **updateViewLayout**
 
@@ -955,7 +961,7 @@ private void removeViewLocked(int index, boolean immediate) {
 
 - 回调onDetachedFromeWindow。
 - 垃圾回收相关操作。
-- 通过Session的remove()在WMS中删除Window。
+- 通过Session的`remove()`在WMS中删除Window。
 - 通过Choreographer移除监听器。
 
 #### (17) Activity、PhoneWindow、DecorView、ViewRootImpl 的关系？
@@ -1474,6 +1480,8 @@ d. AndroidManifest.xml 中的显式权限声明
 
 向用户发起请求之后，请求完成，会有相对应的回调方法，通知软件用户是否授予了权限。 通过在 Activity 或者 Fragment 中重写 `onRequestPermissionsResult` 方法。
 
+#### 3. Runtime Permission，如何把一个预置的App默认给它权限？不要授权。
+
 
 
 ## 三、多线程断点续传
@@ -1564,7 +1572,7 @@ buffer：定期从被观察者发送的事件中获取一定数量的事件并�
 
 merge：可作用所有数据源类型，用于合并多个数据源到一个数据源。merge在合并数据源时，如果一个合并发生异常后会立即调用观察者的onError方法，并停止合并。可通过mergeDelayError操作符，将发生的异常留到最后处理。
 
-可作用于Flowable、Observable、Maybe、Single。将多个数据源的数据一个一个的合并在一起。当其中一个数据源发射完事件之后，若其他数据源还有数据未发射完毕，也会停止。
+zip：可作用于Flowable、Observable、Maybe、Single。将多个数据源的数据一个一个的合并在一起。当其中一个数据源发射完事件之后，若其他数据源还有数据未发射完毕，也会停止。
 
 区别是：
 
@@ -4613,8 +4621,3 @@ Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
 ⑤wait/notify
 ```
 
-#### 19. 动态权限适配方案，权限组的概念
-
-#### 20. Runtime permission，如何把一个预置的app默认给它权限？不要授权。
-
-#### 21. 如何实现进程安全写文件？
