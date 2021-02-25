@@ -3560,10 +3560,6 @@ Android 中的 Hook 机制，大致有两个方式：
 
 > 提供给各业务模块的基础组件，需要根据具体情况拆分成 aar 或者 library，像登录，基础网络层这样较为稳定的组件，一般直接打包成 aar，减少编译耗时。而像自定义 View 组件，由于随着版本迭代会有较多变化，就直接以源码形式抽离成 Library
 
-推荐文章：[干货 | 从智行 Android 项目看组件化架构实践](https://mp.weixin.qq.com/s?__biz=MjM5MDI3MjA5MQ==&mid=2697268363&idx=1&sn=3db2dce36a912936961c671dd1f71c78&scene=21#wechat_redirect)
-
-
-
 
 #### 2. ARouter详细原理
 
@@ -3585,13 +3581,228 @@ ARouter.getInstance().build("/test/activity").navigation();
 
 其实仔细思考下，就可以联想到，既然关键跳转过程是通过`path`跳转到具体的`activity`，那么原理无非就是把`path`和`Activity`一一对应起来就行了。没错，其实就是通过注释，通过`apt`技术，也就是注解处理工具，把path和activity关联起来了。主要有以下几个步骤：
 
-- 代码里加入的`@Route`注解，会在编译时期通过apt生成一些存储path和activity.class映射关系的类文件
-- app进程启动的时候会加载这些类文件，把保存这些映射关系的数据读到内存里(保存在map里)
-- 进行路由跳转的时候，通过`build()`方法传入要到达页面的路由地址，ARouter会通过它自己存储的路由表找到路由地址对应的Activity.class
+- 代码里加入的`@Route`注解，会在编译时期通过apt生成一些存储`path`和`activity.class`映射关系的类文件
+- app进程启动的时候会加载这些类文件，把保存这些映射关系的数据读到内存里(保存在Map里)
+- 进行路由跳转的时候，通过`build()`方法传入要到达页面的路由地址，ARouter会通过它自己存储的路由表找到路由地址对应的`Activity.class`
 - 然后`new Intent`方法，如果有调用`ARouter`的`withString()`方法，就会调用`intent.putExtra(String name, String value)`方法添加参数
-- 最后调用`navigation()`方法，它的内部会调用startActivity(intent)进行跳转
+- 最后调用`navigation()`方法，它的内部会调用`startActivity(intent)`进行跳转
+
+```java
+@Target({ElementType.TYPE})
+@Retention(RetentionPolicy.CLASS)
+public @interface Route {
+
+    String path();
+
+    String group() default "";
+
+    String name() default "";
+
+    int extras() default Integer.MIN_VALUE;
+
+    int priority() default -1;
+}
+```
 
 #### 3. ARouter怎么实现接口调用
+
+平时开发中，我们常用接口进行解耦，对接口的实现不用关心，避免接口调用与业务逻辑实现紧密关联。这里组件间的解耦也是相同的思路，仅依赖和调用服务接口，不会依赖接口的实现。
+
+可能你会有疑问了：既然首页组件可以访问购物车组件接口了，那就需要依赖购物车组件啊，这俩组件还是耦合了啊，那咋办啊？答案是**组件拆分出可暴露服务**。见下图： ![组件服务接口暴露](https:////p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/65b006aedc584e53bddc8e1f7bc28a39~tplv-k3u1fbpfcp-zoom-1.image) 左侧是组件间可以调用对方服务 但是有依赖耦合。右侧，发现多了**export_home**、**export_cart**，这是对应拆分出来的专门用于提供服务的**暴露组件**。操作说明如下：
+
+- **暴露组件 只存放 服务接口、服务接口相关的实体类**、路由信息、便于服务调用的util等
+- **服务调用方 只依赖 服务提供方的 露组件**，如module_home依赖export_cart，而不依赖module_cart
+- **组件 需要依赖 自己的暴露组件，并实现服务接口**，如module_cart依赖export_cart 并实现其中的服务接口
+- **接口的实现注入 依然是由ARouter完成**，和页面跳转一样使用路由信息
+
+首先，新建module即export_cart，在其中新建接口类ICartService并定义获取购物车商品数量方法，注意接口必须继承IProvider，是为了使用ARouter的实现注入：
+
+```java
+/**
+ * 购物车组件对外暴露的服务
+ * 必须继承IProvider
+ */
+public interface ICartService extends IProvider {
+    /**
+     * 获取购物车中商品数量
+     */
+    CartInfo getProductCountInCart();
+}
+```
+
+CartInfo是购物车信息，包含商品数量：
+
+```java
+/**
+ * 购物车信息
+ */
+public class CartInfo {
+
+    public int productCount;
+}
+```
+
+接着，创建路由表信息，存放购物车组件对外提供跳转的页面、服务的路由地址：
+
+```java
+/**
+ * 购物车组件路由表
+ * 即 购物车组件中 所有可以从外部跳转的页面 的路由信息 */
+public interface CartRouterTable {
+    /**
+     * 购物车页面
+     */
+    String PATH_PAGE_CART = "/cart/cartActivity";
+
+    /**
+     * 购物车服务
+     */
+    String PATH_SERVICE_CART = "/cart/service";
+}
+```
+
+前面说页面跳转时是直接使用路径字符串进行路由跳转，这里是和服务路由都放在这里统一管理。
+
+然后，为了外部组件使用方便新建CartServiceUtil：
+
+```java
+/**
+ * 购物车组件服务工具类
+ * 其他组件直接使用此类即可：页面跳转、获取服务。
+ * @author hufeiyang
+ */
+public class CartServiceUtil {
+
+    /**
+     * 跳转到购物车页面
+     */
+    public static void navigateCartPage(String param1, String param2){
+        ARouter.getInstance()
+                .build(CartRouterTable.PATH_PAGE_CART)
+                .withString("key1",param1)
+                .withString("key2",param2)
+                .navigation();
+    }
+
+    /**
+     * 获取服务
+     */
+    public static ICartService getService(){
+        //return ARouter.getInstance().navigation(ICartService.class);//如果只有一个实现，这种方式也可以
+        return (ICartService) ARouter.getInstance().build(CartRouterTable.PATH_SERVICE_CART).navigation();
+    }
+
+    /**
+     * 获取购物车中商品数量
+     */
+    public static CartInfo getCartProductCount(){
+        return getService().getProductCountInCart();
+    }
+}
+```
+
+注意到，这里使用静态方法分别提供了页面跳转、服务获取、服务具体方法获取。  其中服务获取和页面跳转同样是使用路由，并且服务接口实现类 也是需要添加`@Route`注解指定路径的。
+
+到这里，export_cart就已经准备完毕。再来看看module_cart对服务接口的实现。
+
+首先，module_cart需要依赖export_cart：
+
+```java
+//module_cart的Build.gradle
+dependencies {
+    ...
+    annotationProcessor 'com.alibaba:arouter-compiler:1.2.1'
+    implementation 'com.github.hufeiyang:Common:1.0.0'
+
+    //依赖export_cart
+    implementation 'com.github.hufeiyang.Cart:export_cart:1.0.5'
+}
+```
+
+点击sync后，接着CartActivity的path改为路由表提供：
+
+```java
+@Route(path = CartRouterTable.PATH_PAGE_CART)
+public class CartActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_cart);
+    }
+}
+```
+
+然后，新建服务接口的实现类来实现ICartService，**添加@Route注解指定CartRouterTable中定义的服务路由**：
+
+```java
+/**
+ * 购物车组件服务的实现
+ * 需要@Route注解、指定CartRouterTable中定义的服务路由
+ * @author hufeiyang
+ */
+@Route(path = CartRouterTable.PATH_SERVICE_CART)
+public class CartServiceImpl implements ICartService {
+
+    @Override
+    public CartInfo getProductCountInCart() {
+    	//这里实际项目中 应该是 请求接口 或查询数据库
+        CartInfo cartInfo = new CartInfo();
+        cartInfo.productCount = 666;
+        return cartInfo;
+    }
+
+    @Override
+    public void init(Context context) {
+        //初始化工作，服务注入时会调用，可忽略
+    }
+}
+```
+
+这里的实现是直接实例化了CartInfo，数量赋值666。
+
+接下来是在module_home中的使用和调试。module_home需要依赖export_cart：
+
+```java
+//module_home的Build.gradle
+dependencies {
+    ...
+    annotationProcessor 'com.alibaba:arouter-compiler:1.2.1'
+    implementation 'com.github.hufeiyang:Common:1.0.0'
+
+    //注意这里只依赖export_cart（module_cart由壳工程引入）
+    implementation 'com.github.hufeiyang.Cart:export_cart:1.0.5'
+}
+```
+
+在HomeActivity中新增TextView，调用CartServiceUtil获取并展示购物车商品数量：
+
+```java
+@Route(path = "/homepage/homeActivity")
+public class HomeActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_home);
+
+        //跳转到购物车页面
+        findViewById(R.id.btn_go_cart).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //通过路由跳转到 购物车组件的购物车页面（但没有依赖购物车组件）
+                CartServiceUtil.navigateCartPage("param1", "param1");
+            }
+        });
+
+        //调用购物车组件服务：获取购物车商品数量
+        TextView tvCartProductCount = findViewById(R.id.tv_cart_product_count);
+        tvCartProductCount.setText("购物车商品数量:"+ CartServiceUtil.getCartProductCount().productCount);
+    }
+}
+```
+
+看到使用`CartServiceUtil.getCartProductCount()`获取购物车信息并展示，跳转页面也改为了`CartServiceUtil.navigateCartPage()`方法。
 
 #### 4. ARouter怎么实现页面拦截
 
@@ -3654,7 +3865,7 @@ ARouter.getInstance().build("/test/activity").navigation();
 
 拦截器实现`IInterceptor`接口，使用注解`@Interceptor`，这个拦截器就会自动被注册了，同样是使用APT技术自动生成映射关系类。这里还有一个优先级参数`priority`，数值越小，就会越先执行。
 
-#### 5. 怎么应用到组件化中
+#### 5. ARouter怎么应用到组件化中
 
 首先，在公用组件的build.gradle中添加依赖：
 
@@ -3688,9 +3899,11 @@ dependencies {
 
 然后就可以正常使用了。
 
-#### 6.如果不用ARouter，你会怎么去解藕。接口？设计接口有什么需要注意的？
+#### 6.如果不用ARouter，你会怎么去解藕?设计接口有什么需要注意的？
 
-#### 7. 跨组件通信
+接口。
+
+#### 7. ARouter跨组件通信
 
 组件通信场景：
 
@@ -3701,56 +3914,28 @@ dependencies {
 
 - 第一种**组件之间的页面跳转**实现简单，跳转时想传递不同类型的数据提供有相应的 API即可。
 
-- 第二种组件之间的自定义类和
-
-  自定义方法的调用
-
-  要稍微复杂点，需要 ARouter 配合架构中的 公共服务(CommonService) 实现：
+- 第二种组件之间的自定义类和自定义方法的调用，要稍微复杂点，需要 ARouter 配合架构中的公共服务(CommonService) 实现：
 
   - 提供服务的业务模块：
-  - 在公共服务(CommonService) 中声明 Service 接口 (含有需要被调用的自定义方法), 然后在自己的模块中实现这个 Service 接口, 再通过 ARouter API 暴露实现类。
+- 在公共服务(CommonService) 中声明 Service 接口 (含有需要被调用的自定义方法), 然后在自己的模块中实现这个 Service 接口, 再通过 ARouter API 暴露实现类。
   - 使用服务的业务模块：
-    - 通过 ARouter 的 API 拿到这个 Service 接口(多态持有, 实际持有实现类), 即可调用 Service 接口中声明的自定义方法, 这样就可以达到模块之间的交互。
-  - 此外，可以使用 AndroidEventBus 其独有的 Tag, 可以在开发时更容易定位发送事件和接受事件的代码, 如果以组件名来作为 Tag 的前缀进行分组, 也可以更好的统一管理和查看每个组件的事件, 当然也不建议大家过多使用 EventBus。
-
-如何管理过多的路由表？
-
-- RouterHub 存在于基础库, 可以被看作是所有组件都需要遵守的通讯协议, 里面不仅可以放路由地址常量, 还可以放跨组件传递数据时命名的各种 Key 值, 再配以适当注释, 任何组件开发人员不需要事先沟通只要依赖了这个协议, 就知道了各自该怎样协同工作, 既提高了效率又降低了出错风险, 约定的东西自然要比口头上说强。
-- Tips: 如果您觉得把每个路由地址都写在基础库的 RouterHub 中, 太麻烦了, 也可以在每个组件内部建立一个私有 RouterHub, 将不需要跨组件的路由地址放入私有 RouterHub 中管理, 只将需要跨组件的路由地址放入基础库的公有 RouterHub 中管理, 如果您不需要集中管理所有路由地址的话, 这也是比较推荐的一种方式。
+  - 通过 ARouter 的 API 拿到这个 Service 接口(多态持有, 实际持有实现类), 即可调用 Service 接口中声明的自定义方法, 这样就可以达到模块之间的交互。
+  - 此外，可以使用 Android EventBus 其独有的 Tag, 可以在开发时更容易定位发送事件和接受事件的代码, 如果以组件名来作为 Tag 的前缀进行分组, 也可以更好的统一管理和查看每个组件的事件, 当然也不建议大家过多使用 EventBus。
 
 ARouter路由原理：
 
-- ARouter维护了一个路由表Warehouse，其中保存着全部的模块跳转关系，ARouter路由跳转实际上还是调用了startActivity的跳转，使用了原生的Framework机制，只是通过apt注解的形式制造出跳转规则，并人为地拦截跳转和设置跳转条件。
+ARouter维护了一个路由表Warehouse，其中保存着全部的模块跳转关系，ARouter路由跳转实际上还是调用了startActivity的跳转，使用了原生的Framework机制，只是通过apt注解的形式制造出跳转规则，并人为地拦截跳转和设置跳转条件。
 
 常见的组件化方案如下：
 
 
 ![img](https://user-gold-cdn.xitu.io/2019/4/7/169f6a3d472ef431?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
+#### 8. ARouter如何管理过多的路由表？
 
-#### 8. 组件化中路由、埋点的实现
+RouterHub 存在于基础库, 可以被看作是所有组件都需要遵守的通讯协议, 里面不仅可以放路由地址常量, 还可以放跨组件传递数据时命名的各种 Key 值, 再配以适当注释, 任何组件开发人员不需要事先沟通只要依赖了这个协议, 就知道了各自该怎样协同工作, 既提高了效率又降低了出错风险, 约定的东西自然要比口头上说强。
 
-因为在组件化中，各个业务模块之间是各自**独立**的, 并不会存在相互依赖的关系, 所以一个业务模块是访问不了其他业务模块的代码的, 如果想从 A 业务模块的 A 页面跳转到 B 业务模块的 B 页面, 光靠模块自身是不能实现的，这就需要一种跨组件通信方案—— **路由（Router）**
-
-路由
-
-主要有以下两种场景:
-
-- 第一种是**组件之间的页面跳转** (Activity 到 Activity, Fragment 到 Fragment, Activity 到 Fragment, Fragment 到 Activity) 以及跳转时的数据传递 (基础数据类型和可序列化的自定义类类型)
-- 第二种是**组件之间的自定义类**和**自定义方法的调用**(组件向外提供服务)
-
-其**原理**在于将分布在不同组件module中的某些类按照一定规则生成映射表（数据结构通常是Map，Key为一个字符串，Value为类或对象），然后在需要用到的时候从映射表中根据字符串从映射表中取出类或对象，本质上是类的查找
-
-埋点则是在应用中特定的流程收集一些信息，用来跟踪应用使用的状况
-
-- **代码埋点**：在某个事件发生时调用SDK里面相应的接口发送埋点数据，百度统计、友盟、TalkingData、Sensors Analytics等第三方数据统计服务商大都采用这种方案
-- **全埋点**：全埋点指的是将Web页面/App内产生的所有的、满足某个条件的行为，全部上报到后台服务器
-- **可视化埋点**：通过可视化工具（例如Mixpanel）配置采集节点，在Android端自动解析配置并上报埋点数据，从而实现所谓的**自动埋点**
-- **无埋点**：它并不是真正的不需要埋点，而是Android端自动采集全部事件并上报埋点数据，在后端数据计算时过滤出有用数据
-
-推荐文章：[安卓组件化开源方案实现](https://juejin.im/post/6844903565035569166)
-
-#### 9. 如何管理过多的路由表？
+> Tips: 如果您觉得把每个路由地址都写在基础库的 RouterHub 中, 太麻烦了, 也可以在每个组件内部建立一个私有 RouterHub, 将不需要跨组件的路由地址放入私有 RouterHub 中管理, 只将需要跨组件的路由地址放入基础库的公有 RouterHub 中管理, 如果您不需要集中管理所有路由地址的话, 这也是比较推荐的一种方式。
 
 ## 八、热修复
 
@@ -3870,7 +4055,7 @@ so修复主要有两个方案：
 
 ## 九、NDK
 
-#### 1. 对JNI是否了解
+#### 1. 对JNI/NDK是否了解
 
 Java的优点是**跨平台**，但也因为其跨平台的的特性导致其**本地交互的能力不够强大**，一些和操作系统相关的的特性Java无法完成，于是**Java提供JNI专门用于和本地代码交互，通过JNI，用户可以调用C、C++编写的本地代码**
 
@@ -3881,70 +4066,221 @@ NDK是Android所提供的一个工具集合，通过NDK可以在Android中更加
 - 便于平台的移植。通过C/C++实现的动态库可以很方便地在其它平台上使用
 - 提高程序在某些特定情形下的执行效率，但是并不能明显提升Android程序的性能
 
-**Java调用C++**
+JNI/NDK开发流程：
 
 - 在Java中声明Native方法（即需要调用的本地方法）
-- 编译上述 Java源文件javac（得到 .class文件） 3。 通过 javah 命令导出JNI的头文件（.h文件）
-- 使用 Java需要交互的本地代码 实现在 Java中声明的Native方法
+- 编译上述 Java源文件javac（得到 .class文件）
+- 通过 javah 命令导出JNI的头文件（.h文件）
+- 使用 Java需要交互的本地代码，实现在 Java中声明的Native方法
 - 编译.so库文件
 - 通过Java命令执行 Java程序，最终实现Java调用本地代码
 
-**C++调用Java**
+build.gradle配置中多了两个externalNativeBuild配置项。其中，defaultConfig里面的的externalNativeBuild主要是用于配置Cmake的命令参数，而外部的externalNativeBuild的主要是定义了CMake的构建脚本CMakeLists.txt的路径。
 
-- 从classpath路径下搜索ClassMethod这个类，并返回该类的Class对象。
-- 获取类的默认构造方法ID。
-- 查找实例方法的ID。
-- 创建该类的实例。
-- 调用对象的实例方法。
+```
+pply plugin: 'com.android.application'
 
-```java
-JNIEXPORT void JNICALL Java_com_study_jnilearn_AccessMethod_callJavaInstaceMethod  (JNIEnv *env, jclass cls)  
-{  
-  jclass clazz = NULL;  
-  jobject jobj = NULL;  
-  jmethodID mid_construct = NULL;  
-  jmethodID mid_instance = NULL;  
-  jstring str_arg = NULL;  
-  // 1、从classpath路径下搜索ClassMethod这个类，并返回该类的Class对象  
-  clazz = (*env)->FindClass(env, "com/study/jnilearn/ClassMethod");  
-  if (clazz == NULL) {  
-      printf("找不到'com.study.jnilearn.ClassMethod'这个类");  
-      return;  
-  }  
-    
-  // 2、获取类的默认构造方法ID  
-  mid_construct = (*env)->GetMethodID(env,clazz, "<init>","()V");  
-  if (mid_construct == NULL) {  
-      printf("找不到默认的构造方法");  
-      return;  
-  }  
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.2"
 
-  // 3、查找实例方法的ID  
-  mid_instance = (*env)->GetMethodID(env, clazz, "callInstanceMethod", "(Ljava/lang/String;I)V");  
-  if (mid_instance == NULL) {  
+    defaultConfig {
+        applicationId "com.zza.ndk"
+        ...
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+        }
+    }
 
-      return;  
-  }  
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.10.2"
+        }
+    }
+}
 
-  // 4、创建该类的实例  
-  jobj = (*env)->NewObject(env,clazz,mid_construct);  
-  if (jobj == NULL) {  
-      printf("在com.study.jnilearn.ClassMethod类中找不到callInstanceMethod方法");  
-      return;  
-  }  
-
-  // 5、调用对象的实例方法  
-  str_arg = (*env)->NewStringUTF(env,"我是实例方法");  
-  (*env)->CallVoidMethod(env,jobj,mid_instance,str_arg,200);  
-
-  // 删除局部引用  
-  (*env)->DeleteLocalRef(env,clazz);  
-  (*env)->DeleteLocalRef(env,jobj);  
-  (*env)->DeleteLocalRef(env,str_arg);  
-}  
+dependencies {
+  // 省略引用的第三方库
+}
 ```
 
+然后，我们来看一下CMakeLists.txt文件，CMakeLists.txt是CMake的构建脚本，作用相当于Android.mk，代码如下。
 
+```java
+# 设置Cmake最小版本
+cmake_minimum_required(VERSION 3.4.1)
+
+# 编译library
+add_library( # 设置library名称
+             native-lib
+
+             # 设置library模式
+             # SHARED模式会编译so文件，STATIC模式不会编译
+             SHARED
+
+             # 设置原生代码路径
+             src/main/cpp/native-lib.cpp )
+
+# 定位library
+find_library( # library名称
+              log-lib
+
+              # 将library路径存储为一个变量，可以在其他地方用这个变量引用NDK库
+              # 在这里设置变量名称
+              log )
+
+# 关联library
+target_link_libraries( # 关联的library
+                       native-lib
+
+                       # 关联native-lib和log-lib
+                       ${log-lib} )
+```
+
+然后看下具体实现。
+
+```cpp
+#include <jni.h>
+#include <string>
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_zza_ndk_MainActivity_stringFromJNI(
+        JNIEnv* env,
+        jobject /* this */) {
+    std::string hello = "Hello from C++";
+    return env->NewStringUTF(hello.c_str());
+}
+```
+
+然后，我们在看一下Android的MainActivity.java 的代码。
+
+```java
+package com.zza.ndk;
+
+public class MainActivity extends AppCompatActivity {
+
+    static {
+        System.loadLibrary("native-lib");
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        TextView tv = findViewById(R.id.sample_text);
+        tv.setText(stringFromJNI());
+    }
+
+    public native String stringFromJNI();
+}
+```
+
+总的来说就是：
+
+1. 编写java类,声明了native方法；
+2. 编写native代码；
+3. 将native代码编译成so文件；
+4. 在java类中引入so库,调用native方法；
+
+**Native调Java方法**
+
+**1.Native调用Java静态方法**
+
+首先，我们编写一个MyJNIClass.java类，代码如下。
+
+```csharp
+public class MyJNIClass {
+
+    public int age = 30;
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public static String getDes(String text) {
+        if (text == null) {
+            text = "";
+        }
+        return "传入的字符串长度是 :" + text.length() + "  内容是 : " + text;
+    }
+
+}
+```
+
+然后，在native中调用静态方法，如下所示。
+
+```rust
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xzh_allinone_jni_CallMethodActivity_callJavaStaticMethod(JNIEnv *env, jobject thiz) {
+    //调用某个类的static方法
+    //1\. 从classpath路径下搜索MyJNIClass这个类,并返回该类的Class对象
+    jclass clazz = env->FindClass("com/xzh/jni/jni/MyJNIClass");
+    //2\. 从clazz类中查找getDes方法 得到这个静态方法的方法id
+    jmethodID mid_get_des = env->GetStaticMethodID(clazz, "getDes", "(Ljava/lang/String;)Ljava/lang/String;");
+    //3\. 构建入参,调用static方法,获取返回值
+    jstring str_arg = env->NewStringUTF("我是xzh");
+    jstring result = (jstring) env->CallStaticObjectMethod(clazz, mid_get_des, str_arg);
+    const char *result_str = env->GetStringUTFChars(result, NULL);
+    LOGI("获取到Java层返回的数据 : %s", result_str);
+
+    //4\. 移除局部引用
+    env->DeleteLocalRef(clazz);
+    env->DeleteLocalRef(str_arg);
+    env->DeleteLocalRef(result);
+}
+```
+
+可以发现，Native调用Java静态方法还是比较简单的，主要会经历以下几个步骤。
+
+1. 首先，调用FindClass函数传入Class描述符(Java类的全类名，这里在AS中输入MyJNIClass时会有提示补全，直接enter即可补全)，找到该类并得到jclass类型。
+2. 然后，通过GetStaticMethodID找到该方法的id，传入方法签名，得到jmethodID类型的引用。
+3. 构建入参，然后调用CallStaticObjectMethod去调用Java类里面的静态方法，然后传入参数，返回的直接就是Java层返回的数据。其实，这里的CallStaticObjectMethod是调用的引用类型的静态方法，与之相似的还有:CallStaticVoidMethod(无返参)，CallStaticIntMethod(返参是Int)，CallStaticFloatMethod等。
+4. 移除局部引用。
+
+**2.Native调用Java实例方法**
+
+接下来，我们来看一下在Native层创建Java实例并调用该实例的方法，大致上是和上面调用静态方法差不多的。首先，我们修改下cpp文件的代码，如下所示。
+
+```rust
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xzh_allinone_jni_CallMethodActivity_createAndCallJavaInstanceMethod(JNIEnv *env, jobject thiz) {
+
+    jclass clazz = env->FindClass("com/xzh/allinone/jni/MyJNIClass");
+    //获取构造方法的方法id
+    jmethodID mid_construct = env->GetMethodID(clazz, "<init>", "()V");
+    //获取getAge方法的方法id
+    jmethodID mid_get_age = env->GetMethodID(clazz, "getAge", "()I");
+    jmethodID mid_set_age = env->GetMethodID(clazz, "setAge", "(I)V");
+    jobject jobj = env->NewObject(clazz, mid_construct);
+
+    //调用方法setAge
+    env->CallVoidMethod(jobj, mid_set_age, 20);
+    //再调用方法getAge 获取返回值 打印输出
+    jint age = env->CallIntMethod(jobj, mid_get_age);
+    LOGI("获取到 age = %d", age);
+
+    //凡是使用是jobject的子类,都需要移除引用
+    env->DeleteLocalRef(clazz);
+    env->DeleteLocalRef(jobj);
+}
+```
+
+如上所示，Native调用Java实例方法的步骤如下：
+
+1. 从classpath路径下搜索ClassMethod这个类，并返回该类的Class对象。
+2. 获取构造方法的id，获取需要调用方法的id。其中获取构造方法时，方法名称固定写法就是`<init>`，然后后面是方法签名。
+3. 使用NewObject()函数构建一个Java对象，创建该类的实例。
+4. 调用Java对象的实例方法，获取返回值。
+5. 删除引用。
 
 #### 2. 如何加载NDK库 ？如何在JNI中注册Native函数，有几种注册方法 ？
 
@@ -3960,21 +4296,15 @@ JNIEXPORT void JNICALL Java_com_study_jnilearn_AccessMethod_callJavaInstaceMetho
 注册JNI函数的两种方法
 
 - 静态方法
-- 动态注册
-
-> [注册JNI函数的两种方式](https://blog.csdn.net/wwj_748/article/details/52347341)
->
-> [Android JNI 篇 - 从入门到放弃](https://www.jianshu.com/p/3dab1be3b9a4)
+- 动态注册 `JNI_OnLoad()`
 
 #### 3. 你用JNI来实现过什么功能 ？ 怎么实现的 ？（加密处理、影音方面、图形图像处理)
 
-> 推荐文章：[Android JNI 篇 - ffmpeg 获取音视频缩略图](https://www.jianshu.com/p/411761bd5f5b)
+视频裁剪和处理。
 
 #### 4. so 的加载流程是怎样的，生命周期是怎样的？
 
-这个要从 java 层去看源码分析，是从 ClassLoader 的 PathList 中去找到目标路径加载的，同时 so 是通过 mmap 加载映射到虚拟空间的。生命周期加载库和卸载库时分别调用 JNI_OnLoad() 和 JNI_OnUnload() 方法。
-
-
+这个要从 java 层去看源码分析，是从 ClassLoader 的 PathList 中去找到目标路径加载的，同时 so 是通过 mmap 加载映射到虚拟空间的。生命周期加载库和卸载库时分别调用 `JNI_OnLoad()` 和 `JNI_OnUnload()` 方法。
 
 
 ## 十、WebView
@@ -3997,9 +4327,9 @@ JNIEXPORT void JNICALL Java_com_study_jnilearn_AccessMethod_callJavaInstaceMetho
 
 #### 5. 项目中对WebView的功能进行了怎样的增强
 
-#### 
 
-#### 6. 为什么不利用同步方法来做jsBridge交互？同步可以做异步，异步不能做同步
+
+#### 6. 为什么不利用同步方法来做JsBridge交互？同步可以做异步，异步不能做同步
 
 
 
