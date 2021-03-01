@@ -3289,9 +3289,12 @@ lib、class.dex和res占用了超过90%的空间，所以这三块是优化Apk�
 - 低耦合
 - 应用间的接入和维护更便捷，每个应用团队只需要负责自己的那一部分。
 - 应用及主dex的体积也会相应变小，间接地避免了65536限制。
-- 第一次加载到内存的只有淘宝客户端，当使用到其它插件时才会加载相应插件到内存，以减少内存占用。
+- 第一次加载到内存的只有主客户端，当使用到其它插件时才会加载相应插件到内存，以减少内存占用。
 
 **缺点**
+
+- 维护成本太高难以兼容
+- 实现复杂
 
 **对比**：
 
@@ -3301,34 +3304,31 @@ lib、class.dex和res占用了超过90%的空间，所以这三块是优化Apk�
 
 #### 2. 插件化的原理是怎样的？
 
-**插件化**是指将 APK 分为**宿主**和**插件**的部分。把需要实现的模块或功能当做一个独立的提取出来，在 APP 运行时，我们可以动态的**载入**或者**替换插件**部分，减少**宿主**的规模
+**插件化**是指将 APK 分为**宿主**和**插件**的部分。把需要实现的模块或功能当做一个独立插件的提取出来，在 APP 运行时，我们可以动态的**载入**或者**替换插件**部分，减少**宿主**的规模
 
 - 宿主： 就是当前运行的APP。
 - 插件： 相对于插件化技术来说，就是要加载运行的apk类文件。
 
 ![img](https://user-gold-cdn.xitu.io/2019/4/7/169f6c21ae14fee0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
-> **类加载机制**
+> **类加载机制**：
 >
-> Android中常用的两种类加载器，**DexClassLoader**和**PathClassLoader**，它们都继承于**BaseDexClassLoader**，两者**区别**在于**PathClassLoader**只能加载**内部存储目录**的dex/jar/apk文件。**DexClassLoader**支持加载**指定目录**(不限于内部)的dex/jar/apk文件
+> Android中常用的两种类加载器，**DexClassLoader**和**PathClassLoader**，它们都继承于**BaseDexClassLoader**，两者**区别**在于**PathClassLoader**只能加载**内部存储目录**的dex/jar/apk文件。**DexClassLoader**支持加载**指定目录**(不限于内部)的dex/jar/apk文件。插件化使用的是**DexClassLoader**。
 >
-> **插件通信**：通过给插件apk生成相应的DexClassLoader便可以访问其中的类，可分为单DexClassLoader和多DexClassLoader两种结构。
+> **插件通信**：
+>
+> 通过给插件apk生成相应的DexClassLoader便可以访问其中的类，可分为单DexClassLoader和多DexClassLoader两种结构。
 >
 > - 若使用**多ClassLoader机制**，主工程引用插件中类需要先通过插件的ClassLoader加载该类再通过**反射**调用其方法。插件化框架一般会通过统一的入口去管理对各个插件中类的访问，并且做一定的限制。
 > - 若使用**单ClassLoader机制**，主工程则可以**直接通过**类名去访问插件中的类。该方式有个弊端，若两个不同的插件工程引用了一个库的不同版本，则程序可能会出错。
 >
-> **资源加载**
+> **资源加载**：
 >
 > 原理在于通过反射将插件apk的路径加入AssetManager中并创建Resource对象加载资源，有两种处理方式：
 >
 > - 合并式：addAssetPath时加入所有插件和主工程的路径；由于AssetManager中加入了所有插件和主工程的路径，因此生成的Resource可以同时访问插件和主工程的资源。但是由于主工程和各个插件都是独立编译的，生成的资源id会存在相同的情况，在访问时会产生资源冲突。
 > - 独立式：各个插件只添加自己apk路径，各个插件的资源是互相隔离的，不过如果想要实现资源的共享，必须拿到对应的Resource对象。
 >
-> 推荐文章：
->
-> - [Android动态加载技术 简单易懂的介绍方式](https://segmentfault.com/a/1190000004062866#articleHeader1)
-> - [深入理解Android插件化技术](https://yq.aliyun.com/articles/361233?utm_content=m_40296)
-> - [为什么要做热更新](https://www.cnblogs.com/baiqiantao/p/9160806.html)
 
 要实现插件化，也就是实现从apk读取所有数据，要考虑三个问题：
 
@@ -3338,10 +3338,11 @@ lib、class.dex和res占用了超过90%的空间，所以这三块是优化Apk�
 
 1）读取插件代码，其实也就是进行插件中的类加载。所以用到类加载器就可以了。
 
-Android中常用的有两种类加载器，`DexClassLoader`和`PathClassLoader`，它们都继承于`BaseDexClassLoader`。区别在于DexClassLoader多传了一个`optimizedDirectory`参数，表示缓存我们需要加载的dex文件的，并创建一个`DexFile`对象，而且这个路径必须为内部存储路径。而`PathClassLoader`这个参数为null，意思就是不会缓存到内部存储空间了，而是直接用原来的文件路径加载。所以`DexClassLoader`功能更为强大，可以加载外部的dex文件。
+Android中常用的有两种类加载器，`DexClassLoader`和`PathClassLoader`，它们都继承于`BaseDexClassLoader`。区别在于`DexClassLoader`多传了一个`optimizedDirectory`参数，表示缓存我们需要加载的dex文件的，并创建一个`DexFile`对象，而且这个路径必须为内部存储路径。而`PathClassLoader`这个参数为null，意思就是不会缓存到内部存储空间了，而是直接用原来的文件路径加载。所以`DexClassLoader`功能更为强大，可以加载外部的dex文件。
 
 同时由于双亲委派机制，在构造插件的`ClassLoader`时会传入主工程的`ClassLoader`作为父加载器，所以插件是可以直接可以通过类名引用主工程的类。
- 而主工程调用插件则需要通过`DexClassLoader`去加载类，然后反射调用方法。
+
+而主工程调用插件则需要通过`DexClassLoader`去加载类，然后反射调用方法。
 
 2）读取插件资源，主要是通过`AssetManager`进行访问。具体代码如下：
 
@@ -3379,8 +3380,11 @@ protected void loadPluginResources() {
 这里加载插件Activity用到hook技术，有两个可以hook的点，分别是：
 
 - Hook IActivityManager
+   
    上面说了，首先会在AndroidManifest.xml中注册的Activity来进行占坑，然后合适的时机来替换我们要加载的Activity。所以我们主要需要两步操作：
+   
    `第一步`：使用占坑的这个Activity完成AMS验证。
+   
    也就是让AMS知道我们要启动的Activity是在xml里面注册过的哦。具体代码如下：
 
 ```java
@@ -3412,10 +3416,10 @@ protected void loadPluginResources() {
 ```
 
 `第二步`：替换回我们的Activity。
- 上面一步是把我们实际要启动的Activity换成了我们xml里面注册的activity来躲过验证，那么后续我们就需要把Activity换回来。
- Activity启动的最后一步其实是通过H（一个handler）中重写的handleMessage方法会对`LAUNCH_ACTIVITY`类型的消息进行处理，最终会调用Activity的onCreate方法。最后会调用到Handler的`dispatchMessage`方法用于处理消息，如果Handler的Callback类型的`mCallback`不为null，就会执行mCallback的`handleMessage`方法。 所以我们能hook的点就是这个`mCallback`。
 
+上面一步是把我们实际要启动的Activity换成了我们xml里面注册的activity来躲过验证，那么后续我们就需要把Activity换回来。
 
+Activity启动的最后一步其实是通过H（一个handler）中重写的handleMessage方法会对`LAUNCH_ACTIVITY`类型的消息进行处理，最终会调用Activity的onCreate方法。最后会调用到Handler的`dispatchMessage`方法用于处理消息，如果Handler的Callback类型的`mCallback`不为null，就会执行mCallback的`handleMessage`方法。 所以我们能hook的点就是这个`mCallback`。
 
 ```java
  public static void hookHandler() throws Exception {
@@ -3510,16 +3514,16 @@ public class InstrumentationProxy extends Instrumentation {
 
 #### 5.插件化换肤方案
 
-#### 6. startActivity hook了哪个方法
+#### 6. startActivity hook了哪个方法？
 
-#### 7. 市面上的一些插件化方案以及你的想法
+#### 7. 市面上的一些插件化方案以及你的想法？
 前几年插件化还是很火的，比如Dynamic-Load-Apk（任玉刚），DroidPlugin，RePlugin（360），VirtualApk（滴滴），但是现在机会都没怎么在运营了，好多框架都最多只支持到Android9。
 
 这是为什么呢？我觉得一个是维护成本太高难以兼容，每更新一次源码，就要重新维护一次。二就是确实插件化技术现在用的不多了，以前用插件化框架干嘛？主要是比如增加新的功能，让功能模块之间解耦。现在有RN可以进行插件化功能，有组件化可以进行项目解耦。所以用的人就不多咯。
 
 虽然插件化用的不多了，但是我觉得技术还是可以了解的，而且热更新主要用的也是这些技术。方案可以被淘汰，但是技术不会。
 
-#### 8. Hook以及插桩技术
+#### 8. Hook以及插桩技术？
 
 **Hook**是一种用于**改变API执行结果**的技术，能够将系统的API函数执行**重定向**（应用的**触发事件**和**后台逻辑处理**是根据事件流程一步步地向下执行。而**Hook**的意思，就是在事件传送到终点前截获并监控事件的传输，像个钩子钩上事件一样，并且能够在钩上事件时，处理一些自己特定的事件，例如逆向破解App）
 
@@ -3531,12 +3535,6 @@ Android 中的 Hook 机制，大致有两个方式：
 - 无 root 权限，但是只能 Hook 自身app，对系统其它 App 无能为力。
 
 **插桩**是以静态的方式修改第三方的代码，也就是从编译阶段，对源代码（中间代码）进行编译，而后重新打包，是**静态的篡改**； 而**Hook**则不需要再编译阶段修改第三方的源码或中间代码，是在运行时通过反射的方式修改调用，是一种**动态的篡改**
-
-推荐文章：
-
-- [Android插件化原理解析——Hook机制之动态代理](http://weishu.me/2016/01/28/understand-plugin-framework-proxy-hook/)
-- [android 插桩基本概念](https://blog.csdn.net/fei20121106/article/details/51879047)
-- [Android逆向之旅](http://www.520monkey.com/)
 
 
 
@@ -3552,7 +3550,7 @@ Android 中的 Hook 机制，大致有两个方式：
 - **不同的项目可以共用一个组件或模块，确保整体技术方案的统一性。**
 - **为未来插件化共用同一套底层模型做准备。**
 
-**组件化开发流程**就是把一个功能完整的App或模块拆分成**多个子模块（Module）**，每个子模块可以**独立编译运行**，也可以任意组合成另一个新的 App或模块，每个模块即不相互依赖但又可以相互交互，但是最终发布的时候是将这些组件合并统一成一个apk，遇到某些特殊情况甚至可以**升级**或者**降级**
+**组件化开发流程**就是把一个功能完整的App或模块拆分成**多个子模块（Module）**，每个子模块可以**独立编译运行**，也可以任意组合成另一个新的 App或模块，每个模块即不相互依赖但又可以相互交互，但是最终发布的时候是将这些组件合并统一成一个apk，遇到某些特殊情况甚至可以**升级**或者**降级**。
 
 举个简单的模型例子：
 
@@ -3987,8 +3985,8 @@ Instant Run编译部署流程如下：
 
 Instant Run中的资源热修复流程：
 
-- 1、创建新的AssetManager，通过反射调用addAssetPath方法加载外部的资源，这样新创建的AssetManager就含有了外部资源。
-- 2、将AssetManager类型的mAssets字段的引用全部替换为新创建的AssetManager。
+- 创建新的AssetManager，通过反射调用addAssetPath方法加载外部的资源，这样新创建的AssetManager就含有了外部资源。
+- 将AssetManager类型的mAssets字段的引用全部替换为新创建的AssetManager。
 
 **2.代码修复**：
 
@@ -4048,8 +4046,8 @@ Instant Run在第一次构建APK时，使用ASM在每一个方法中注入了类
 
 so修复主要有两个方案：
 
-- 1、将so补丁插入到NativeLibraryElement数组的前部，让so补丁的路径先被返回和加载。
-- 2、调用System的load方法来接管so的加载入口。
+- 将so补丁插入到NativeLibraryElement数组的前部，让so补丁的路径先被返回和加载。
+- 调用System的load方法来接管so的加载入口。
 
 
 
@@ -4373,19 +4371,21 @@ mWebView.evaluateJavascript（"javascript:callJS()", new ValueCallback<String>()
 
 Android 4.4 后才可使用。
 
+![方式对比图](https://imgconvert.csdnimg.cn/aHR0cDovL3VwbG9hZC1pbWFnZXMuamlhbnNodS5pby91cGxvYWRfaW1hZ2VzLzk0NDM2NS0zMGYwOTVkNGM5ZTYzOGZkLnBuZz9pbWFnZU1vZ3IyL2F1dG8tb3JpZW50L3N0cmlwJTdDaW1hZ2VWaWV3Mi8yL3cvMTI0MA)
+
 2） JS调用Android端代码
 
 **主要有两种方法：**
 
-- 通过WebView的`addJavascriptInterface（）`进行对象映射
+- 通过WebView的`addJavascriptInterface()`进行对象映射
 
-  定义一个与JS对象映射关系的Android类：AndroidtoJs：
+  定义一个与JS对象映射关系的Android类：AndroidToJs：
 
   - 定义JS需要调用的方法，被JS调用的方法必须加入`@JavascriptInterface`注解。
-  - 通过`addJavascriptInterface()`将Java对象映射到JS对象。
+  - 通过`addJavascriptInterface()`将Java对象映射到Js对象。
 
 ```java
-public class AndroidtoJs extends Object {
+public class AndroidToJs extends Object {
     // 定义JS需要调用的方法
     // 被JS调用的方法必须加入@JavascriptInterface注解
     @JavascriptInterface
@@ -4394,7 +4394,7 @@ public class AndroidtoJs extends Object {
     }
 }
 
-mWebView.addJavascriptInterface(new AndroidtoJs(), "test");
+mWebView.addJavascriptInterface(new AndroidToJs(), "test");
 
 //js中：
 function callAndroid(){
@@ -4432,11 +4432,109 @@ mWebView.setWebViewClient(new WebViewClient() {
             }
         }
     );
+
+
+ <script>
+     function callAndroid(){
+        /*约定的url协议为：js://webview?arg1=111&arg2=222*/
+        document.location = "js://webview?arg1=111&arg2=222";
+     }
+  </script>
 ```
 
 优点：不存在方式1的漏洞；
 
-缺点：JS获取Android方法的返回值复杂,如果JS想要得到Android方法的返回值，只能通过 WebView 的 `loadUrl()`去执行 JS 方法把返回值传递回去。
+缺点：JS获取Android方法的返回值复杂，如果JS想要得到Android方法的返回值，只能通过 WebView 的 `loadUrl()`去执行 JS 方法把返回值传递回去。
+
+3）通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调拦截JS对话框`alert()`、`confirm()`、`prompt()` 消息：
+
+原理：
+
+Android通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调分别拦截JS对话框 （警告框、确认框、输入框），得到他们的消息内容，然后解析即可。
+
+常用的拦截是：拦截 JS的输入框（即`prompt()`方法），因为只有`prompt()`可以返回任意类型的值，操作最全面方便、更加灵活；而`alert()`对话框没有返回值；`confirm()`对话框只能返回两种状态（确定 / 取消）两个值。
+
+```java
+public class MainActivity extends AppCompatActivity {
+    WebView mWebView;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        mWebView = (WebView) findViewById(R.id.webview);
+
+        WebSettings webSettings = mWebView.getSettings();
+
+        // 设置与Js交互的权限
+        webSettings.setJavaScriptEnabled(true);
+        // 设置允许JS弹窗
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+
+		// 先加载JS代码
+        // 格式规定为:file:///android_asset/文件名.html
+        mWebView.loadUrl("file:///android_asset/javascript.html");
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            // 拦截输入框(原理同方式2)
+            // 参数message:代表promt（）的内容（不是url）
+            // 参数result:代表输入框的返回值
+            @Override
+            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
+                // 根据协议的参数，判断是否是所需要的url(原理同方式2)
+                // 一般根据scheme（协议格式） & authority（协议名）判断（前两个参数）
+                //假定传入进来的 url = "js://webview?arg1=111&arg2=222"
+                Uri uri = Uri.parse(message);
+                // 如果url的协议 = 预先约定的 js 协议
+                // 就解析往下解析参数
+                if ( uri.getScheme().equals("js")) {
+
+                    // 如果 authority  = 预先约定协议里的 webview，即代表都符合约定的协议
+                    // 所以拦截url,下面JS开始调用Android需要的方法
+                    if (uri.getAuthority().equals("webview")) {
+                        // 执行JS所需要调用的逻辑
+                        System.out.println("js调用了Android的方法");
+                        // 可以在协议上带有参数并传递到Android上
+                        HashMap<String, String> params = new HashMap<>();
+                        Set<String> collection = uri.getQueryParameterNames();
+                        //参数result:代表消息框的返回值(输入值)
+                        result.confirm("js调用了Android的方法成功啦");
+                    }
+                    return true;
+                }
+                return super.onJsPrompt(view, url, message, defaultValue, result);
+            }
+
+			// 通过alert()和confirm()拦截的原理相同，此处不作过多讲述
+            // 拦截JS的警告框
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                return super.onJsAlert(view, url, message, result);
+            }
+
+            // 拦截JS的确认框
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                return super.onJsConfirm(view, url, message, result);
+            }
+        }
+        );
+    }
+}
+        
+	function clickprompt(){
+    	// 调用prompt（）
+    	var result=prompt("js://demo?arg1=111&arg2=222");
+    	alert("demo " + result);
+    }
+```
+
+![示意图](https://imgconvert.csdnimg.cn/aHR0cDovL3VwbG9hZC1pbWFnZXMuamlhbnNodS5pby91cGxvYWRfaW1hZ2VzLzk0NDM2NS04YzkxNDgxMzI1YTUyNTNlLnBuZz9pbWFnZU1vZ3IyL2F1dG8tb3JpZW50L3N0cmlwJTdDaW1hZ2VWaWV3Mi8yL3cvMTI0MA)
+
+总结:
+
+![image](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d30fadf235d549798b205c3e28c2b37b~tplv-k3u1fbpfcp-zoom-1.image)
+
+
 
 #### 8. 如何避免WebView内存泄露
 
@@ -4449,7 +4547,7 @@ WebView的内存泄露主要是因为在页面销毁后，WebView的资源无法
 ```java
 //addview
 private WeakReference<BaseWebActivity> webActivityReference = new WeakReference<BaseWebActivity>(this);
-mWebView = new BridgeWebView(webActivityReference .get());
+mWebView = new BridgeWebView(webActivityReference.get());
 webview_container.addView(mWebView);
 
 
@@ -4478,18 +4576,6 @@ mWebView=null；
 System.exit(0)   
 ```
 
-3、通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调拦截JS对话框`alert()`、`confirm()`、`prompt()` 消息：
-
-原理：
-
-Android通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()`方法回调分别拦截JS对话框 （警告框、确认框、输入框），得到他们的消息内容，然后解析即可。
-
-常用的拦截是：拦截 JS的输入框（即prompt()方法），因为只有prompt()可以返回任意类型的值，操作最全面方便、更加灵活；而alert()对话框没有返回值；confirm()对话框只能返回两种状态（确定 / 取消）两个值。
-
-![image](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d30fadf235d549798b205c3e28c2b37b~tplv-k3u1fbpfcp-zoom-1.image)
-
-[Android：你要的WebView与 JS 交互方式 都在这里了](https://blog.csdn.net/carson_ho/article/details/64904691)
-
 #### 9. webView还有哪些可以优化的地
 
 - 提前初始化或者使用`全局WebView`。首次初始化WebView会比第二次初始化慢很多。初始化后，即使WebView已释放，但一些多WebView共用的全局服务/资源对想仍未释放，而第二次初始化不需要生成，因此初始化变快。
@@ -4508,69 +4594,7 @@ Android通过 WebChromeClient 的`onJsAlert()`、`onJsConfirm()`、`onJsPrompt()
 
 推荐文章：[WebView性能、体验分析与优化](https://tech.meituan.com/2017/06/09/webviewperf.html)
 
-#### 10. WebView 与 JS 交互方式，shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
-
-[最全面总结 Android WebView与 JS 的交互方式](https://www.jianshu.com/p/345f4d8a5cfa)
-
-（1）android 中利用 webview 调用网页上的 js 代码。 首先将 webview 控件的支持 js 的属性设置为 true，，然后通过 loadUrl 就可以 直接进行调用，如下所示：
-
-```java
- mWebView.getSettings().setJavaScriptEnabled(true);
- mWebView.loadUrl("javascript:test()"); 
-```
-
-（2）网页上调用 android 中 java 代码的方法 在网页中调用 java 代码，需要在 webview 控件中添加 javascriptInterface。如 下所示： 
-
-```java
-mWebView.addJavascriptInterface(new Object() {
-    public void clickOnAndroid() {
-        mHandler.post(new Runnable() {
-            public void run() {
-                Toast.makeText(Test.this, “测试调用 java”，
-                Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-}, "demo");
-```
-
-在网页中，只需要像调用 js 方法一样，进行调用就可以
-
-```xml
-<div id='b'>
-<aonclick="window.demo.clickOnAndroid()">b.c</a>
-</div>
-```
-
-（3）Java 代码调用 js 并传参
-
-首先需要带参数的 js 函数，如 function test(str)，然后只需在调用 js 时传入参 数即可，如下所示： `mWebView.loadUrl("javascript:test('aa')");`
-
-（4）Js 中调用 java 函数并传参 首先一样需要带参数的函数形式，但需注意此处的参数需要 final 类型，即得到 以后不可修改，如果需要修改其中的值，可以先设置中间变量，然后进行修改。 如下所示：
-
-```java
-mWebView.addJavascriptInterface(new Object() {
-    public void clickOnAndroid(final int i) {
-        mHandler.post(new Runnable() {
-        public void run() {
-			int j = i;
-            j++;
-            Toast.makeText(Test.this, "测试调用 java" + String.valueOf(j), Toast.LENGTH_LONG).show();
-		}
-     });
-    }
-}, "demo");
-
-```
-
-然后在 html 页面中，利用如下代码
-```xml
-<div id='b'>
-<aonclick="window.demo.clickOnAndroid(2)">b.c</a>
-</div>
-```
-
-#### 11. 如何清除 webview 的缓存
+#### 10. 如何清除 webview 的缓存
 webview 的缓存包括网页数据缓存（存储打开过的页面及资源）、H5 缓存（即 AppCache），webview 会将我们浏览过的网页 url 已经网页文件(css、图片、js 等)保存到数据库表中，如下；
 
 ```
@@ -4582,11 +4606,11 @@ webview 的缓存包括网页数据缓存（存储打开过的页面及资源）
 
 #### 12. webview 播放视频，5.0 以上没有全屏播放按钮
 
-实现全屏的时候把 webview 里的视频放到一个 View 里面，然后把 webview隐藏掉；即可实现全屏播放。
+实现全屏的时候把 Webview 里的视频放到一个 View 里面，然后把 webview隐藏掉；即可实现全屏播放。
 
 #### 13. Webview 中是如何控制显示加载完成的进度条的
 
-在 WebView 的 setWebChromClient() 中 ， 重写 WebChromClient 的 openDialog()和 closeDialog()方法；实现监听进度条的显示与关闭。
+在 WebView 的 `setWebChromClient()` 中， 重写 WebChromClient 的 `openDialog()`和 `closeDialog()`方法；实现监听进度条的显示与关闭。
 
 #### 14. @JavaScriptInterface为什么不通过多个方法来实现？
 
@@ -4622,10 +4646,6 @@ public @interface JavascriptInterface {
 - React框架代码执行慢，可以将这部分代码拆分出来，提前进行解析。
 
 
-
-
-
-
 ## 十一、架构
 
 #### 1. MVC、MVP和MVVM是什么？
@@ -4636,18 +4656,15 @@ public @interface JavascriptInterface {
 
 **MVC**
 
-- 视图层(View)
-  对应于xml布局文件和java代码动态view部分
-- 控制层(Controller)
-  MVC中Android的控制层是由Activity来承担的，Activity本来主要是作为初始化页面，展示数据的操作，但是因为XML视图功能太弱，所以Activity既要负责视图的显示又要加入控制逻辑，承担的功能过多。
-- 模型层(Model)
-  针对业务模型，建立数据结构和相关的类，它主要负责网络请求，数据库处理，I/O的操作。
+- 视图层(View)：对应于xml布局文件和java代码动态View部分
+- 控制层(Controller)：MVC中Android的控制层是由Activity来承担的，Activity本来主要是作为初始化页面，展示数据的操作，但是因为XML视图功能太弱，所以Activity既要负责视图的显示又要加入控制逻辑，承担的功能过多。
+- 模型层(Model)：针对业务模型，建立数据结构和相关的类，它主要负责网络请求，数据库处理，I/O的操作。
 
-具有一定的分层，model彻底解耦，controller和view并没有解耦。层与层之间的交互尽量使用回调或者去使用消息机制去完成，尽量避免直接持有controller和view，在android中无法做到彻底分离，但在代码逻辑层面一定要分清。业务逻辑被放置在model层，能够更好的复用和修改增加业务。
+具有一定的分层，Model彻底解耦，Controller和View并没有解耦。层与层之间的交互尽量使用回调或者去使用消息机制去完成，尽量避免直接持有Controller和View，在android中无法做到彻底分离，但在代码逻辑层面一定要分清。业务逻辑被放置在model层，能够更好的复用和修改增加业务。
 
 **MVP**
 
-通过引入接口BaseView，让相应的视图组件如Activity，Fragment去实现BaseView，实现了视图层的独立，通过中间层Preseter实现了Model和View的完全解耦。MVP彻底解决了MVC中View和Controller傻傻分不清楚的问题，但是随着业务逻辑的增加，一个页面可能会非常复杂，UI的改变是非常多，会有非常多的case，这样就会造成View的接口会很庞大。
+通过引入接口BaseView，让相应的视图组件如Activity，Fragment去实现BaseView，实现了视图层的独立，通过中间层Preseter实现了Model和View的完全解耦。MVP彻底解决了MVC中View和Controller分不清楚的问题，但是随着业务逻辑的增加，一个页面可能会非常复杂，UI的改变是非常多，会有非常多的case，这样就会造成View的接口会很庞大。
 
 **MVVM**
 
@@ -4673,11 +4690,9 @@ MVVM是一种思想，DataBinding是谷歌推出的方便实现MVVM的工具。
 
 MVP是MVC的进一步解耦，简单来讲，在MVC中，View层既可以和Controller层交互，又可以和Model层交互；而在MVP中，View层只能和Presenter层交互，Model层也只能和Presenter层交互，减少了View层和Model层的耦合，更容易定位错误的来源。
 
-#### 3. MVVM和MVP的最大区别在哪？
+#### 3. MVVM和MVP的最大区别在哪？MVVM怎么更新UI？
 
 MVP中的每个方法都需要你去主动调用，它其实是被动的，而MVVM中有数据驱动这个概念，当你的持有的数据状态发生变更的时候，你的View你可以监听到这个变化，从而主动去更新，这其实是主动的。
-
-
 
 #### 5. 讲讲MVP模式中内存泄漏的问题，怎么处理内存泄漏
 
@@ -4689,23 +4704,19 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 7. mainfest中配置LargeHeap，真的能分配到大内存吗？ 
 
-
+和具体的手机机型相关，通常能分到2倍左右内存。
 
 #### 8. 如果叫你实现，你会怎样实现一个多主题的效果
 
 
 
-#### 10. mvp与mvvm的区别，mvvm怎么更新UI
+#### 9. 如何在网络框架里直接避免内存泄漏，不需要在presenter中释放订阅
 
 
 
-#### 11. 如何在网络框架里直接避免内存泄漏，不需要在presenter中释放订阅
+#### 10. 封装Presenter层之后，如果Presenter层数据过大,如何解决?
 
-
-
-#### 12. 封装Presenter层之后.如果Presenter层数据过大,如何解决?
-
-对于MVP模式来说，P层如果数据逻辑过于臃肿，建议引入**RxJava**或则**Dagger**，越是复杂的逻辑，越能体现RxJava的优越性
+对于MVP模式来说，P层如果数据逻辑过于臃肿，建议引入**RxJava**或则**Dagger**，越是复杂的逻辑，越能体现RxJava的优越性。
 
 #### MVC的情况下怎么把Activity的C和V抽离？
 
@@ -4731,10 +4742,6 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 二：客户端和服务器之间维持一个TCP/IP长连接，服务器向客户端push。
 
-[blog.csdn.net/clh604/arti…](https://blog.csdn.net/clh604/article/details/20167263)
-
-[www.jianshu.com/p/45202dcd5…](https://www.jianshu.com/p/45202dcd5688)
-
 
 
 
@@ -4742,21 +4749,21 @@ MVP中的每个方法都需要你去主动调用，它其实是被动的，而MV
 
 #### 1. DVM 和 JVM 的区别？
 
-a) dvm 执行的是.dex 文件，而 jvm 执行的是.class。Android 工程编译后的所有.class 字节码会被 dex 工具抽 取到一个.dex 文件中。 
+a) dvm 执行的是`.dex` 文件，而 jvm 执行的是`.class`。Android 工程编译后的所有`.class`字节码会被 dex 工具抽取到一个`.dex`文件中。 
 
 JVM：`.java -> javac -> .class -> jar -> .jar`
 
 DVM：`.java -> javac -> .class -> dx.bat -> .dex`
 
-b) dvm 是基于寄存器的虚拟机 而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
+b) dvm 是基于寄存器的虚拟机，而 jvm 执行是基于虚拟栈的虚拟机。寄存器存取速度比栈快的多，dvm 可以根 据硬件实现最大的优化，比较适合移动设备。
 
-JVM架构: 堆和栈的架构.
+JVM架构: 堆和栈的架构。
 
-DVM架构: 寄存器(cpu上的一块高速缓存)
+DVM架构: 寄存器(CPU上的一块高速缓存)。
 
-c) .class 文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的.class 文件整合到.dex 文件中。减少 了 I/O 操作，提高了类的查找速度。
+c) `.class`文件存在很多的冗余信息，dex 工具会去除冗余信息，并把所有的`.class` 文件整合到`.dex`文件中。减少 了 I/O 操作，提高了类的查找速度。
 
-#### 2. Android2个虚拟机的区别（一个5.0之前，一个5.0之后）
+#### 2. Android 2个虚拟机的区别?
 
 什么是Dalvik：Dalvik是Google公司自己设计用于Android平台的Java虚拟机。Dalvik虚拟机是Google等厂商合作开发的Android移动设备平台的核心组成部分之一，它可以支持已转换为.dex(即Dalvik Executable)格式的Java应用程序的运行，.dex格式是专为Dalvik应用设计的一种压缩格式，适合内存和处理器速度有限的系统。Dalvik经过优化，允许在有限的内存中同时运行多个虚拟机的实例，并且每一个Dalvik应用作为独立的Linux进程执行。独立的进程可以防止在虚拟机崩溃的时候所有程序都被关闭。
 
@@ -4782,7 +4789,9 @@ ART缺点：
 
 #### 6. Android中App是如何沙箱化的,为何要这么做？
 
-#### 7. [一个图片在app中调用R.id后是如何找到的](https://my.oschina.net/u/255456/blog/608229)？
+#### 7. 一个图片在app中调用R.id后是如何找到的?
+
+https://my.oschina.net/u/255456/blog/608229
 
 
 
@@ -4853,9 +4862,7 @@ ART缺点：
 要测试Android应用程序，通常会创建以下类型自动单元测试
 
 - **本地测试**：只在本地机器JVM上运行，以最小化执行时间，这种单元测试不依赖于Android框架，或者即使有依赖，也很方便使用模拟框架来模拟依赖，以达到隔离Android依赖的目的，模拟框架如Google推荐的Mockito；
-- [**Android官网-建立本地单元测试**](https://developer.android.com/training/testing/unit-testing/local-unit-tests.html)
 - **检测测试**：真机或模拟器上运行的单元测试，由于需要跑到设备上，比较慢，这些测试可以访问仪器（Android系统）信息，比如被测应用程序的上下文，一般地，依赖不太方便通过模拟框架模拟时采用这种方式；
-- [**Android官网-建立仪表单元测试**](https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests.html)
 
 注意：单元测试不适合测试复杂的UI交互事件
 
@@ -4899,15 +4906,13 @@ Junit4它的优点是速度快，支持代码覆盖率如jacoco等代码质量�
 
 最后，自动化UI测试项目中我使用的是Expresso，它提供了一系列类似onView().check().perform()的方式来实现点击、滑动、检测页面显示等自动化的UI测试效果，这里在我的WanAndroid项目下的BasePageTest基类里面封装了一系列通用的方法，有兴趣可以去看看。
 
-
-
 #### 8. Android中如何查看一个对象的回收情况 ？
 
 首先要了解Java四种引用类型的场景和使用（强引用、软引用、弱引用、虛引用）
 
 举个场景例子：**SoftReference**对象是用来保存软引用的，但它同时也是一个Java对象，所以当软引用对象被回收之后，虽然这个**SoftReference**对象的get方法返回null，但**SoftReference**对象本身并不是null，而此时这个**SoftReference**对象已经不再具有存在的价值，需要一个适当的清除机制，避免大量**SoftReference**对象带来的**内存泄露**
 
-因此，Java提供**ReferenceQueue**来处理引用对象的回收情况。当**SoftReference**所引用的对象被GC后，**JVM**会先将**softReference**对象添加到**ReferenceQueue**这个队列中。当我们调用**ReferenceQueue的poll()方法**，如果这个队列中不是空队列，那么将返回并移除前面添加的那个Reference对象。
+因此，Java提供**ReferenceQueue**来处理引用对象的回收情况。当**SoftReference**所引用的对象被GC后，**JVM**会先将**SoftReference**对象添加到**ReferenceQueue**这个队列中。当我们调用**ReferenceQueue的poll()方法**，如果这个队列中不是空队列，那么将返回并移除前面添加的那个Reference对象。
 
 ![img](https://user-gold-cdn.xitu.io/2019/3/27/169bd0c28741e8e0?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
@@ -4923,9 +4928,13 @@ Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
 - 注意内存的使用和管理
 - 使用Thread.UncaughtExceptionHandler接口
 
-#### 10. [Java多线程引发的性能问题，怎么解决](https://blog.csdn.net/luofenghan/article/details/78596950)？
+#### 10. Java多线程引发的性能问题，怎么解决
 
-#### 11. TraceView的实现原理，分析数据误差来源。
+#### https://blog.csdn.net/luofenghan/article/details/78596950？
+
+#### 11. TraceView的实现原理，分析数据误差来源?
+
+
 
 #### 12. 是否使用过SysTrace，原理的了解？
 
@@ -4935,9 +4944,9 @@ Error、OOM，StackOverFlowError、Runtime，比如说空指针异常
 
 #### 14. 设计一个方案，apk已经发出去了，java代码是最新，但是分包下发的so文件是旧版本，如何做一个兼容方案，保证兼容可用？
 
-#### 15. 设计一个组件，统计Activity的前台时长，Fragment的前台时长。
+#### 15. 设计一个组件，统计Activity的前台时长，Fragment的前台时长?
 
-#### 16. 设计一个埋点库。需要哪些模块。
+#### 16. 设计一个埋点库。需要哪些模块?
 
 #### 17. 友盟bug统计，混淆后怎么定位bug？没接入热修复的APP中，上线后遇到bug怎么解决？
 
