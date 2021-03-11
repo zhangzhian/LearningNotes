@@ -190,7 +190,7 @@ intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ;
 mContext.startActivity(intent);
 ```
 
-#### 13. 子线程是否可以 context.startActivity() ？例如ApplicationContext, 会不会有什么问题？
+#### 13. 子线程是否可以context.startActivity() ？例如ApplicationContext, 会不会有什么问题？
 
 是可以的。
 
@@ -248,7 +248,7 @@ TaskAffinity 可以翻译为“任务相关性”，这个参数标示了一个 
 
 allowTaskReparenting 这个属性指的是一个 Activity 运行时，可以重新选择自己所属的task。
 
-当 TaskAffinity 和 allowTaskReparenting 结合的时候，若应用 A 启动了一个应用 B 中的某个 Activity C 后，如果 Activity C的 allowTaskReparenting 属性为 true ， 那么当应用 B 被启动后，此 Activity 会直接从应用 A 的任务栈转移到应用 B 的任务栈中；此时点击 Home 键回到桌面，点击应用 B 的桌面图标，这是不是启动应用 B 的主 Activity ，而是从新显示了被应用 A 启动的 Activity C ，或者说 C 中 A 的任务栈转移到了 B 的任务栈中。
+当 TaskAffinity 和 allowTaskReparenting 结合的时候，若应用 A 启动了一个应用 B 中的某个 Activity C 后，如果 Activity C的 allowTaskReparenting 属性为 true ， 那么当应用 B 被启动后，此 Activity 会直接从应用 A 的任务栈转移到应用 B 的任务栈中；此时点击 Home 键回到桌面，点击应用 B 的桌面图标，这是不是启动应用 B 的主 Activity ，而是重新显示了被应用 A 启动的 Activity C ，或者说 C 中 A 的任务栈转移到了 B 的任务栈中。
 
 
 
@@ -771,7 +771,7 @@ Sql 也有增删改查的方法，但是 sql 只能查询本应用下的数据�
 
 #### 2. ViewPager切换Fragment遇到过什么问题吗? 什么最耗时？
 
-- 滑动的时候，调用setCurrentItem方法，要注意第二个参数`smoothScroll`。传false，就是直接跳到fragment，传true，就是平滑过去。一般主页切换页面都是用false。
+- 滑动的时候，调用`setCurrentItem`方法，要注意第二个参数`smoothScroll`。传false，就是直接跳到fragment，传true，就是平滑过去。一般主页切换页面都是用false。
 
 ```java
     /**
@@ -838,7 +838,9 @@ getActivity().getSupportFragmentManager().findFragmentByTag("mainFragment");
 
 4）广播
 
-#### 4. Fragment状态保存
+#### 4. Fragment状态保存?
+
+当Fragment有很大可能被销毁的时候，系统会调用Fragment的`onSaveInstanceState`方法。状态恢复Activity是调用`onRestoreInstanceState`，而Fragment是没有该方法的，他可以在`onActivityCreated`方法中得到Bundle，从而可以恢复状态。
 
 Fragment状态保存入口:
 
@@ -1008,7 +1010,7 @@ px = dp * density
 
 见《Android基础》中第十一章LruCache原理解析章节
 
-LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在集合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队头。
+LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用`put()`方法时，就会在集合中添加元素，并调用`trimToSize()`判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队尾元素，即近期最少访问的元素。当调用`get()`方法访问缓存对象时，就会调用LinkedHashMap的`get()`方法获得对应集合元素，同时会更新该元素到队头。
 
 #### 1. LruCache使用和原理
 
@@ -1051,15 +1053,15 @@ public class MyImageLoader {
 
 它的内部存在一个 LinkedHashMap 和 maxSize，把最近使用的对象用强引用存储在 LinkedHashMap 中，给出来 put 和 get 方法，每次 put 图片时计算缓存中所有图片的总大小，跟 maxSize 进行比较，大于 maxSize，就将最久添加的图片移除，反之小于 maxSize 就添加进来。
 
-详细来说就是LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用trimToSize()判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队头元素，即近期最少访问的元素。当调用get()方法访问缓存对象时，就会调用LinkedHashMap的get()方法获得对应集合元素，同时会更新该元素到队尾。
+详细来说就是LruCache中维护了一个集合LinkedHashMap，该LinkedHashMap是以访问顺序排序的。当调用put()方法时，就会在结合中添加元素，并调用`trimToSize()`判断缓存是否已满，如果满了就用LinkedHashMap的迭代器删除队头元素，即近期最少访问的元素。当调用`get()`方法访问缓存对象时，就会调用LinkedHashMap的`get()`方法获得对应集合元素，同时会更新该元素到队尾。
 
 ##### LruCache put方法核心逻辑
 
-在添加过缓存对象后，调用trimToSize()方法，来判断缓存是否已满，如果满了就要删除近期最少使用的对象。trimToSize()方法不断地删除LinkedHashMap中队头的元素，即近期最少访问的，直到缓存大小小于最大值（maxSize）。
+在添加过缓存对象后，调用`trimToSize()`方法，来判断缓存是否已满，如果满了就要删除近期最少使用的对象。`trimToSize()`方法不断地删除LinkedHashMap中队头的元素，即近期最少访问的，直到缓存大小小于最大值（maxSize）。
 
 ##### LruCache get方法核心逻辑
 
-当调用LruCache的get()方法获取集合中的缓存对象时，就代表访问了一次该元素，将会更新队列，保持整个队列是按照访问顺序排序的。
+当调用LruCache的`get()`方法获取集合中的缓存对象时，就代表访问了一次该元素，将会更新队列，保持整个队列是按照访问顺序排序的。
 
 **为什么会选择LinkedHashMap呢？**
 
@@ -1228,7 +1230,7 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
         handler.sendMessage(message);
 ```
 
-移除屏障：移除屏障可以通过MessageQueue的removeSyncBarrier(int token) 方法。
+移除屏障：移除屏障可以通过`MessageQueue#removeSyncBarrier(int token)` 方法。
 
 #### 5. postDelay()的具体实现？
 
@@ -1264,7 +1266,7 @@ post的参数是RunRnable，通过getPostMessage封装为Message，sendMessage�
     }
 ```
 
-底层都是通过sendMessageAtTime()->enqueueMessage()->enqueueMessage():
+底层都是通过`sendMessageAtTime()`->`enqueueMessage()`->`enqueueMessage()`:
 
 ```java
     public final boolean sendMessageDelayed(Message msg, long delayMillis)
@@ -1487,7 +1489,7 @@ Handler 允许我们发送延时消息，如果在延时期间用户关闭了 Ac
         setContentView(R.layout.activity_three);
         new Thread(new Runnable() {
             @Override
-            public void run() {
+            publi
                 //创建Looper，MessageQueue
                 Looper.prepare();
                 new Handler().post(new Runnable() {
@@ -1617,7 +1619,7 @@ public boolean dispatchTouchEvent(MotionEvent event) {
 
 2）**到最里层的view之后，view本身还是可以选择消费或者传到外面。**
 
-到最里面一层就会直接执行`onTouchEvent`方法。可以在`onTouchEvent`方法返回false，表示他不想消费这个事件。那么它的父容器的`onTouchEvent`又会被调用，如果父容器的onTouchEvent又返回false，则又交给上一级。一直到最上层，也就是Activity的`onTouchEvent`被调用。
+到最里面一层就会直接执行`onTouchEvent`方法。可以在`onTouchEvent`方法返回false，表示他不想消费这个事件。那么它的父容器的`onTouchEvent`又会被调用，如果父容器的`onTouchEvent`又返回false，则又交给上一级。一直到最上层，也就是Activity的`onTouchEvent`被调用。
 
 伪代码解释：
 
@@ -1631,7 +1633,7 @@ public void handleTouchEvent(MotionEvent event) {
 
 3）**消费之后**
 
-当某一层viewGroup的`onInterceptTouchEvent`为true，则代表当前层级要消费事件。如果它的`onTouchListener`被设置了的话，则onTouch会被调用，如果onTouch的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置onTouchListener，则会继续调用onTouchEvent。而onClick方法则是设置了`onClickListener`则会被正常调用。
+当某一层viewGroup的`onInterceptTouchEvent`为true，则代表当前层级要消费事件。如果它的`onTouchListener`被设置了的话，则`onTouch`会被调用，如果`onTouch`的返回值返回true，则`onTouchEvent`不会被调用。如果返回false或者没有设置`onTouchListener`，则会继续调用`onTouchEvent`。而`onClick`方法则是设置了`onClickListener`则会被正常调用。
 
 伪代码解释：
 
@@ -1860,6 +1862,64 @@ View的`onAttachToWindow() `是在其`dispatchAttachedToWindow(AttachInfo info, 
 1. ViewRootImpl 第一次 `performTraversal()`时会将整个view tree里所有有view的 `dispatchAttachedToWindow()` DFS 调用一遍.
 2. ViewGroup 的 `addViewInner(View child, int index, LayoutParams params, boolean preventRequestLayout):`
 
+```java
+//ViewRootImpl
+private void performTraversals(){
+    // cache mView since it is used so much below...
+    final View host = mView;
+	...
+    host.dispatchAttachedToWindow(mAttachInfo, 0);    
+    ...
+}
+```
+
+```java
+//ViewGroup 
+private void addViewInner(View child, int index, LayoutParams params,
+        boolean preventRequestLayout) {
+    ...
+    AttachInfo ai = mAttachInfo;
+    if (ai != null && (mGroupFlags & FLAG_PREVENT_DISPATCH_ATTACHED_TO_WINDOW) == 0) {
+        boolean lastKeepOn = ai.mKeepScreenOn;
+        ai.mKeepScreenOn = false;
+        child.dispatchAttachedToWindow(mAttachInfo, (mViewFlags&VISIBILITY_MASK));
+        if (ai.mKeepScreenOn) {
+            needGlobalAttributesUpdate(true);
+        }
+        ai.mKeepScreenOn = lastKeepOn;
+    }
+    ...
+}
+```
+
+```java
+//View
+void dispatchAttachedToWindow(AttachInfo info, int visibility) {
+   ...
+   onAttachedToWindow();
+   ...
+}
+
+protected void onAttachedToWindow() {
+    if ((mPrivateFlags & PFLAG_REQUEST_TRANSPARENT_REGIONS) != 0) {
+        mParent.requestTransparentRegion(this);
+    }
+    mPrivateFlags3 &= ~PFLAG3_IS_LAID_OUT;
+    jumpDrawablesToCurrentState();
+    resetSubtreeAccessibilityStateChanged();
+    // rebuild, since Outline not maintained while View is detached
+    rebuildOutline();
+    if (isFocused()) {
+        InputMethodManager imm = InputMethodManager.peekInstance();
+        if (imm != null) {
+            imm.focusIn(this);
+        }
+    }
+}
+```
+
+
+
 #### 10. MotionEvent#offsetLocation事件转发?
 
 源码：
@@ -1917,8 +1977,8 @@ public class MyViewGroup extends LinearLayout {
 
 #### 1. 怎么计算一个View在屏幕可见部分的百分比？
 
-- View.getGlobalVisibleRect(rect); 	// 以屏幕 左上角 为参考系的
-- View.getLocalVisibleRect(rect);       //以目标 View 左上角 为参考系
+- `View.getGlobalVisibleRect(rect); `	// 以屏幕 左上角 为参考系的
+- `View.getLocalVisibleRect(rect);`       //以目标 View 左上角 为参考系
 
 true: View 全部或者部分可见 
 
@@ -2083,7 +2143,7 @@ private void performTraversals() {
  }
 ```
 
-可以看到在`performTraversals`方法中执行了，但是在view绘制之前，这是因为在绘制之前就把需要执行的`runnable`封装成Message发送到`MessageQueue`里排队了，但是Looper不会马上去取这个消息，因为`Looper`会按顺序取消息，主线程还有什么消息没执行完呢？其实就是当前的这个`performTraversals`所在的任务，所以要等下面的·performMeasure，performLayout，performDraw·都执行完，也就是view绘制完毕了，才会去执行之前我们post的那个runnable，也就是我们能在`view.post`方法里的`runnable`能获取宽高的主要原因了。
+可以看到在`performTraversals`方法中执行了，但是在view绘制之前，这是因为在绘制之前就把需要执行的`runnable`封装成Message发送到`MessageQueue`里排队了，但是Looper不会马上去取这个消息，因为`Looper`会按顺序取消息，主线程还有什么消息没执行完呢？其实就是当前的这个`performTraversals`所在的任务，所以要等下面的`performMeasure`，`performLayout`，`performDraw`都执行完，也就是view绘制完毕了，才会去执行之前我们`post`的那个`runnable`，也就是我们能在`view.post`方法里的`runnable`能获取宽高的主要原因了。
 
 `view.post()`的原理：
 
@@ -2371,9 +2431,9 @@ mScroller = new Scroller(context);
     }
 ```
 
-其中`performMeasure`方法会执行到View的measure方法，用来测量大小。`performLayout`方法会执行到view的layout方法，用来计算位置。`performDraw`方法需要注意下，他会执行到view的draw方法，但是并不一定会进行绘制，只有只有 flag 被设置为 `PFLAG_DIRTY_OPAQUE` 才会进行绘制。
+其中`performMeasure`方法会执行到View的`measure`方法，用来测量大小。`performLayout`方法会执行到View的`layout`方法，用来计算位置。`performDraw`方法需要注意下，他会执行到View的`draw`方法，但是并不一定会进行绘制，只有 flag 被设置为 `PFLAG_DIRTY_OPAQUE` 才会进行绘制。
 
-`invalidate`方法也是用来触发绘制流程，主要表现就是会调用`draw()`方法。虽然他也会走到`scheduleTraversals`方法，也就是会走到三大流程，但是View会通过`mPrivateFlags`来判断是否进行`onMeasure`和`onLayout`操作。而在用`invalidate`方法时，更新了`mPrivateFlags`，所以不会进行`measure`和`layout`。同时他也会设置Flag为`PFLAG_DIRTY_OPAQUE`，所以肯定会执行onDraw方法。
+`invalidate`方法也是用来触发绘制流程，主要表现就是会调用`draw()`方法。虽然他也会走到`scheduleTraversals`方法，也就是会走到三大流程，但是View会通过`mPrivateFlags`来判断是否进行`onMeasure`和`onLayout`操作。而在用`invalidate`方法时，更新了`mPrivateFlags`，所以不会进行`measure`和`layout`。同时他也会设置Flag为`PFLAG_DIRTY_OPAQUE`，所以肯定会执行`onDraw`方法。
 
 ```java
 private void invalidateRectOnScreen(Rect dirty) {
@@ -2632,7 +2692,7 @@ save和restore要配对使用（restore可以比save少，但不能多），如�
 
 Animation 框架定义了透明度，旋转，缩放和位移几种常见的动画，而且控制的是整个View。实现原理：
 
-每次绘制视图时，View 所在的 ViewGroup 中的 drawChild 函数获取该View 的 Animation 的 Transformation 值，然后调用canvas.concat(transformToApply.getMatrix())，通过矩阵运算完成动画帧，如果动画没有完成，继续调用 invalidate() 函数，启动下次绘制来驱动动画，动画过程中的帧之间间隙时间是绘制函数所消耗的时间，可能会导致动画消耗比较多的CPU资源，最重要的是，动画改变的只是显示，并不能响应事件。
+每次绘制视图时，View 所在的 ViewGroup 中的 drawChild 函数获取该 View 的 Animation 的 Transformation 值，然后调用`canvas.concat(transformToApply.getMatrix())`，通过矩阵运算完成动画帧，如果动画没有完成，继续调用 `invalidate()` 函数，启动下次绘制来驱动动画，动画过程中的帧之间间隙时间是绘制函数所消耗的时间，可能会导致动画消耗比较多的CPU资源，最重要的是，动画改变的只是显示，并不能响应事件。
 
 
 
@@ -2662,7 +2722,7 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 
 1.生命周期
 
-很多开发者会认为一个在Activity中创建的AsyncTask会随着Activity的销毁而销毁。然而事实并非如此。AsynTask会一直执行，直到doInBackground()方法执行完毕，然后，如果cancel(boolean)被调用,那么onCancelled(Result result)方法会被执行；否则，执行onPostExecute(Result result)方法。如果我们的Activity销毁之前，没有取消AsyncTask，这有可能让我们的应用崩溃(crash)。因为它想要处理的view已经不存在了。所以，我们是必须确保在销毁活动之前取消任务。总之，我们使用AsyncTask需要确保AsyncTask正确的取消。
+很多开发者会认为一个在Activity中创建的AsyncTask会随着Activity的销毁而销毁。然而事实并非如此。AsynTask会一直执行，直到`doInBackground()`方法执行完毕，然后，如果`cancel(boolean)`被调用,那么`onCancelled(Result result)`方法会被执行；否则，执行`onPostExecute(Result result)`方法。如果我们的Activity销毁之前，没有取消AsyncTask，这有可能让我们的应用崩溃(crash)。因为它想要处理的view已经不存在了。所以，我们是必须确保在销毁活动之前取消任务。总之，我们使用AsyncTask需要确保AsyncTask正确的取消。
 
 2.内存泄漏
 
@@ -2670,7 +2730,7 @@ AsyncTask里面线程池是一个核心线程数为CPU + 1，最大线程数为C
 
 3.结果丢失
 
-屏幕旋转或Activity在后台被系统杀掉等情况会导致Activity的重新创建，之前运行的AsyncTask会持有一个之前Activity的引用，这个引用已经无效，这时调用onPostExecute()再去更新界面将不再生效。
+屏幕旋转或Activity在后台被系统杀掉等情况会导致Activity的重新创建，之前运行的AsyncTask会持有一个之前Activity的引用，这个引用已经无效，这时调用`onPostExecute()`再去更新界面将不再生效。
 
 4.并行还是串行
 
@@ -2954,7 +3014,7 @@ static class AdapterDataObservable extends Observable<AdapterDataObserver> {
     }
 }
 ```
-payload可以用来存储一些变量值或者常数，然后在notifyItemChanged中传进去payload，指定某个item进行刷新，在这个Item的onBindViewHolder中就可以从第三个参数拿到传过来的payload。
+payload可以用来存储一些变量值或者常数，然后在notifyItemChanged中传进去payload，指定某个item进行刷新，在这个Item的`onBindViewHolder`中就可以从第三个参数拿到传过来的payload。
 
 如果payloads不为空并且viewHolder已经绑定了旧数据了，那么adapter会使用payloads参数进行布局刷新。如果payloads为空，adapter就会重新绑定数据，也就是刷新整个item。但是adapter不能保证payload通过nofityItemChanged方法会被onBindViewHolder接收，例如当view没有绑定到screen时，payloads就会失效被丢弃。
 
@@ -3421,7 +3481,7 @@ public class CustomViewPager extends ViewPager {
 
 Viewpager 默认加载 3 个。1 个 Activity 里面可能会以 Viewpager（或其他容器）与多个 Fragment 来组合使用， 而如果每个 fragment 都需要去加载数据，或从本地加载，或从网络加载，那么在这个 Activity 刚创建的时候就变成 需要初始化大量资源。所以我们要进行懒加载。
 
-自定义一个 LazyLoadFragment 基类，利用 `setUserVisibleHint` 和 `生命周期方法`，通过对 Fragment 状态判断，进行数据加载，并将数据加载的接口提供开放出去，供子类使用。然后在子类 Fragment 中实现 requestData 方法即可。这里添加了一个 isDataLoaded 变量，目的是避免重复加载数据。考虑到有时候需要刷新数据的问题，便提供了一个用于强制刷新的参数判断。
+自定义一个 LazyLoadFragment 基类，利用 `setUserVisibleHint` 和 `生命周期方法`，通过对 Fragment 状态判断，进行数据加载，并将数据加载的接口提供开放出去，供子类使用。然后在子类 Fragment 中实现 `requestData` 方法即可。这里添加了一个 `isDataLoaded` 变量，目的是避免重复加载数据。考虑到有时候需要刷新数据的问题，便提供了一个用于强制刷新的参数判断。.
 
 ```java
 public abstract class LazyLoadFragment extends BaseFragment {
@@ -3967,9 +4027,9 @@ res/raw：和 asset 下文件一样，打包时直接打入程序安装包中（
 
 2) google提供的 Gson
 
-通过fromJson()实现对象的反序列化（即将json串转换为对象类型）
+通过`fromJson()`实现对象的反序列化（即将json串转换为对象类型）
 
-通过toJson()实现对象的序列化 （即将对象类型转换为json串）
+通过`toJson()`实现对象的序列化 （即将对象类型转换为json串）
 
 3) 阿里的fastjson
 
@@ -4185,11 +4245,23 @@ Java中管理内存除了显式地catch OOM之外还有更多有效的方法：�
 
 #### 32. Application中持有静态的用户信息，有何缺点？如何改进？
 
+有可能导致空指针。
+
+Application对象不会一直在内存中存在，他可能被杀掉。不会恢复以前的信息。Android会创建一个新的Application对象，然后重新打开之前用户按Home离开的那个Activity。
+
+解决方案：通过Intent在Activity之间传递数据；使用多种持久化保存数据的方式（文件，数据库，sharedpreference等）；做null判断，并且手动处理null的情况。
+
 #### 33. ANR的log中关键字是什么？
 
 #### 34. Debug跟Release的APK的区别？
 
+Debug通常称为调试版本，通过一系列编译选项的配合，编译的结果通常包含调试信息，而且不做任何优化，为开发人员提供强大的应用程序调试能力。
+
+Release通常称为发布版本，是为用户使用的，一般客户不允许在发布版本上进行调试。所以不保存调试信息，同时，它往往进行了各种优化，以期达到代码最小和速度最优。为用户的使用提供便利。
+
 #### 35. 没有给权限如何定位，特定机型定位失败，如何解决?
+
+网络定位。
 
 #### 36. 有什么提高编译速度的方法？
 
@@ -4238,4 +4310,4 @@ void checkThread() {
 }
 ```
 
-非UI线程是可以刷新UI的，前提是它要拥有自己的ViewRoot,即更新UI的线程和创建ViewRoot的线程是同一个，或者在执行checkThread()前更新UI。
+非UI线程是可以刷新UI的，前提是它要拥有自己的ViewRoot，即更新UI的线程和创建ViewRoot的线程是同一个，或者在执行`checkThread()`前更新UI。
