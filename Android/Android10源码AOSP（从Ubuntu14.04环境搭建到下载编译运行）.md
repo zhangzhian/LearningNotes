@@ -559,8 +559,6 @@ emulator: WARNING: system partition size adjusted to match image file (3083 MB >
 
 OK，至此我们就完成了下载AOSP并编译导入Android Studio的完整过程。
 
-
-
 参考：
 
 1.https://source.android.google.cn/setup/start
