@@ -289,7 +289,10 @@ $ source build/envsetup.sh
 在命令行输入下面的命令选择打算编译的源码类型
 
 ```shell
-Lunch menu... pick a combo:
+$ lunch
+	
+	You're building on Darwin
+	Lunch menu... pick a combo:
      1. aosp_arm-eng
      2. aosp_arm64-eng
      3. aosp_blueline-userdebug
@@ -373,6 +376,13 @@ OUT_DIR=out
 make clobber
 ```
 
+它会删除**所有设置**所生成的所有的output与中间文件。
+等价于指令
+
+```
+rm -rf out/
+```
+
 为了加快编译的速度，最好并发来编译（并发数不建议太高，可能会造成内存不足，磁盘不足等问题）
 
 ```shell
@@ -408,6 +418,12 @@ SyntaxError: invalid syntax
 emulator
 ```
 
+打印更多信息，指定核数，显示kernel调试信息
+
+```
+emulator -verbose -partition-size 4096 -cores 4 -show-kernel  -gpu off
+```
+
 KVM错误
 
 ```
@@ -439,6 +455,17 @@ emulator -partition-size 4096 -kernel ./prebuilts/qemu-kernel/x86/4.9/kernel-qem
 ```
 
 通过使用kernel-qemu-armv7内核 解决模拟器等待黑屏问题.而-partition-size 4096则是解决警告: system partion siez adjusted to match image file (3083 MB > 800 MB)
+
+```
+queryCoreProfileSupport: swap interval not found
+qemu_ram_alloc_user_backed: call
+```
+
+模拟器黑屏，显示这个，添加关闭gpu解决
+
+```
+ emulator -gpu off
+```
 
 ### 模拟器启动后崩溃
 
